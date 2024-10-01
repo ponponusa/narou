@@ -21,32 +21,35 @@ version: 2.0
 # 目次取得設定
 toc_url: https://\\k<domain>/\\k<ncode>/
 subtitles: |-
-  (?:<div class="chapter_title">(?<chapter>.+?)</div>
+  (?:<div class="p-eplist__chapter-title">(?<chapter>.+?)</div>
   
-  )?<dl class="novel_sublist2">
-  <dd class="subtitle">
-  <a href="(?<href>/.+?/(?<index>\d+?)/)">(?<subtitle>.+?)</a>
-  </dd>
-  <dt class="long_update">
-  (?<subdate>.+?)(?:<span title="(?<subupdate>.+?) 改稿">（<u>改</u>）</span>)?</dt>
-  </dl>
-next_toc: <a href="/(?<next_page>[^"]+)" class="novelview_pager-next">
+  )?<div class="p-eplist__sublist">
+  <a href="(?<href>/.+?/(?<index>\d+?)/)" class="p-eplist__subtitle">
+  (?<subtitle>.+?)
+  </a>
+  
+  <div class="p-eplist__update">
+  (?:<span class="p-eplist__favep">.+?</span></span>)?(?<subdate>.+?)
+  (?:<span title="(?<subupdate>.+?) 改稿">（<u>改</u>）</span>
+  )?</div>
+  </div>
+next_toc: <a href="/(?<next_page>[^"]+)" class="c-pager__item c-pager__item--next">
 next_url: https://\\k<domain>/\\k<next_page>
 # 最大のページ数を得る。固定の数字でも可。
-toc_page_max: <a href="/[^"]+p=(?<toc_page_max>\d+)" class="novelview_pager-last">
+toc_page_max: <a href="/[^"]+p=(?<toc_page_max>\d+)" class="c-pager__item c-pager__item--last">
 
 # ------------------------------------------------------------
 # 本文取得設定
 body_pattern: |-
-  <div id="novel_honbun" class="novel_view">
+  <div class="js-novel-text p-novel__text">
   (?<body>.+?)
   ?</div>
 introduction_pattern: |-
-  <div id="novel_p" class="novel_view">
+  <div class="js-novel-text p-novel__text p-novel__text--preface">
   (?<introduction>.+?)
   ?</div>
 postscript_pattern: |-
-  <div id="novel_a" class="novel_view">
+  <div class="js-novel-text p-novel__text p-novel__text--afterword">
   (?<postscript>.+?)
   ?</div>
 
@@ -73,7 +76,7 @@ novel_type_string:
   短編: 2
 
 # general_all_no 掲載話数
-ga: </span>全(?<general_all_no>\d+)部
+ga: </span>全(?<general_all_no>\d+)エピソード
 
 # story あらすじ
 s: <td class="ex">(?<story>.+?)</td>
@@ -85,14 +88,14 @@ gf: |-
 
 # novelupdated_at 小説の更新時刻。連載小説だと書いてないので最終掲載日で代用
 nu: |-
-  <th>(?:最終更新日|最終話掲載日)</th>
+  <th>(?:最終更新日|最新掲載日|最終掲載日)</th>
   <td>(?:
   )?(?<novelupdated_at>.+?)(?:
   )?</td>
 
-# general_lastup 最終話掲載日
+# general_lastup 最終掲載日
 gl: |-
-  <th>最終話掲載日</th>
+  <th>(?:最新掲載日|最終掲載日)</th>
   <td>(?<general_lastup>.+?)</td>
 
 # writer 作者名
