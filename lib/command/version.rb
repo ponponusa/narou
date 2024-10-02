@@ -32,6 +32,7 @@ module Command
     end
 
     def version_more
+      puts "  on #{RUBY_DESCRIPTION}"
       # NovelConverter.txt_to_epubより必要な部分を持ってきた
       pwd = Dir.pwd
       java_encoding = "-Dfile.encoding=UTF-8" +
@@ -75,7 +76,7 @@ module Command
           outs = res[0].lines
           if res[2].success? && outs[2].start_with?(" -c,") && outs[-1].start_with?(" -tf")
             # ヘルプメッセージのみと思われるならバージョン出力のみにする
-            print "AozoraEpub3　"
+            print "AozoraEpub3 "
             print outs[1]
           else
             # ヘルプメッセージではなさそうならすべて出力する
