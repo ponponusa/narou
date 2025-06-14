@@ -18,3 +18,12 @@
 zws	&#8203;
 
 ### Narou.rb embedded custom chuki ###
+
+### Narou Bridge embedded custom chuki ###
+ｌｉｎｋ＿ｓ	<a href="
+link_s	<a href="
+ｌｉｎｋ＿ｔ	">
+link_t	">
+ｌｉｎｋ＿ｅ	</a>
+link_e	</a>
+### Narou Bridge embedded custom chuki ###
