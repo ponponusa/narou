@@ -107,5 +107,5 @@ l: |-
 
 # tag キーワード
 tag: |-
-  <dt class="p-infotop-data__title">キーワード</dt>\s*
+  <dt class="p-infotop-data__title">キーワード</dt>[\s\S]*?
   <dd class="p-infotop-data__value">(?<tag>[^<]+)</dd>
