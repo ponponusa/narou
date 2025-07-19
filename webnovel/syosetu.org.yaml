@@ -76,4 +76,4 @@ l: 合計文字数</td><td.*?>(?<length>.+?)文字
 
 # tags タグ
 tags: |-
-  <tr><td class="label">タグ</td><td colspan="3">(?<tag>.+?)</td></tr>
+  <tr><td class="label">タグ</td><td colspan=3 >(?<tag>.+?)</td></tr>
