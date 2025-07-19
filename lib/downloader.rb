@@ -416,8 +416,9 @@ class Downloader
         :none
       end
 
-    if @setting["tag"]
-      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').strip
+    auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
+    if @setting["tag"] && auto_add_tags
+      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
       if clean_tag.length > 0
         new_tags = clean_tag.split(/[ 　]+|&nbsp;/).uniq
         old_tags = (record && record["tags"]) ? record["tags"] : []
@@ -640,12 +641,14 @@ class Downloader
       "length" => novel_length,
       "suspend" => suspend
     }
-    if @setting["tag"]
-      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').strip
+    auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
+    if @setting["tag"] && auto_add_tags
+      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
       if clean_tag.length > 0
         tags = clean_tag.split(/[ 　]+|&nbsp;/)
         if record && record["tags"]
-          tags.concat(record["tags"])
+          old_tags = record["tags"]
+          tags.concat(old_tags)
         end
         data["tags"] = tags.uniq
       end
@@ -803,7 +806,7 @@ class Downloader
       story_html.strip_decoration_tag = true
       @setting["story"] = story_html.to_aozora
     end
-    @setting.multi_match(toc_source, "tag")
+    @setting.multi_match(toc_source, "tags")
     @setting["info"] = info
     replace_external_properties_of_setting
 

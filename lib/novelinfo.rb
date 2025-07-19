@@ -10,7 +10,7 @@ require_relative "html"
 
 class NovelInfo
   REFRESH_INTERVAL = 10 # キャッシュを捨てて再取得するまでの時間(s)
-  DEFAULT_OF = "t-nt-ga-s-gf-nu-gl-w-l-e-sitename"
+  DEFAULT_OF = "t-nt-ga-s-gf-nu-gl-w-l-e-tags-sitename"
   @@novel_info_parameters = {}
 
   def self.load(setting, toc_source: nil, of: DEFAULT_OF)

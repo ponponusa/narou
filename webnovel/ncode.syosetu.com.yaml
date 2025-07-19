@@ -10,7 +10,7 @@ append_title_to_folder_name: yes
 title_strip_pattern: null
 cookie: over18=yes
 sitename: *name
-version: 2.1
+version: 2.2
 
 # ------------------------------------------------------------
 # 目次取得設定
@@ -106,6 +106,6 @@ l: |-
   <dd class="p-infotop-data__value">(?<length>.+?)文字</dd>
 
 # tag キーワード
-tag: |-
-  <dt class="p-infotop-data__title">キーワード</dt>\s*
-  <dd class="p-infotop-data__value">(?<tag>[^<]+)</dd>
+tags: |-
+  <dt class="p-infotop-data__title">キーワード</dt>
+  <dd class="p-infotop-data__value">(?<tag>.+?)</dd>

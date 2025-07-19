@@ -15,7 +15,7 @@ sitename: |-
   <dt class="p-infotop-data__title">掲載サイト</dt>
   <dd class="p-infotop-data__value">(?<sitename>.+?)\(.+\)</dd>
 
-version: 2.1
+version: 2.2
 
 # ------------------------------------------------------------
 # 目次取得設定
@@ -111,6 +111,6 @@ l: |-
   <dd class="p-infotop-data__value">(?<length>.+?)文字</dd>
 
 # tag キーワード
-tag: |-
-  <dt class="p-infotop-data__title">キーワード</dt>\s*
-  <dd class="p-infotop-data__value">(?<tag>[^<]+)</dd>
+tags: |-
+  <dt class="p-infotop-data__title">キーワード</dt>
+  <dd class="p-infotop-data__value">(?<tag>.+?)</dd>

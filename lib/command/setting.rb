@@ -508,6 +508,11 @@ module Command
           help: "ネタバレ防止機能。ダウンロード時の各話タイトルを伏せ字で表示する",
           tab: :detail
         },
+        "auto-add-tags" => {
+          type: :boolean,
+          help: "サイトから取得したタグを自動的に小説データに追加する",
+          tab: :general
+        },
         "normalize-filename" => {
           type: :boolean,
           help: "ファイル名の文字列をNFCで正規化する。※既存データとの互換性が無くなる可能性があるので、" \

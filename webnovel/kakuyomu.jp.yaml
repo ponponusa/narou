@@ -10,7 +10,7 @@ confirm_over18: no
 append_title_to_folder_name: yes
 title_strip_pattern: null
 sitename: *name
-version: 2.0
+version: 2.1
 
 # ------------------------------------------------------------
 # 前処理設定
@@ -55,9 +55,15 @@ code: &code
         work["author"] = work["alternateAuthorName"] + "／" + work["author"] if work["alternateAuthorName"]
         # あらすじの改行を<br>に変換し、正規表現を単純化する。<br>はnarourb側で再変換される
         work["introduction"].gsub!("\n", "<br>")
+        # tagLabelsを文字列に変換（スペース区切り）
+        if work["tagLabels"] && work["tagLabels"].is_a?(Array)
+          work["tagLabels"] = work["tagLabels"].join(" ")
+        else
+          work["tagLabels"] = ""
+        end
         # workからTOC以外に利用する属性を列挙している
         work_attr = %w(author title serialStatus publicEpisodeCount publishedAt
-            editedAt lastEpisodePublishedAt totalCharacterCount introduction)
+            editedAt lastEpisodePublishedAt totalCharacterCount introduction tagLabels)
         # HTMLコメントの開始、前処理済みか検知するためのmagicword、
         # TOC以外のworkの利用する属性値、TOC、HTMLコメントの終了を生成し
         str = ["<!---", magicword,
@@ -132,3 +138,6 @@ w: ^author::(?<writer>.+?)$
 
 # length 文字数
 l: ^totalCharacterCount::(?<length>.+?)$
+
+# tags タグ
+tags: ^tagLabels::(?<tag>.+?)$

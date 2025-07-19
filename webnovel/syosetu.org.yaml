@@ -12,7 +12,7 @@ append_title_to_folder_name: yes
 title_strip_pattern: null
 cookie: over18=off
 sitename: *name
-version: 1.1
+version: 1.2
 
 # ------------------------------------------------------------
 # 目次取得設定
@@ -73,3 +73,7 @@ w: 作者</td><td.*?>(?:<a href=.+?>)?(?<writer>.+?)(?:</a>)?</td>
 
 # length 文字数
 l: 合計文字数</td><td.*?>(?<length>.+?)文字
+
+# tags タグ
+tags: |-
+  <tr><td class="label">タグ</td><td colspan=3 >(?<tag>.+?)</td></tr>
