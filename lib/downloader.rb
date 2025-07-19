@@ -417,12 +417,15 @@ class Downloader
       end
 
     if @setting["tag"]
-      new_tags = @setting["tag"].split(/[ 　]+|&nbsp;/).uniq
-      old_tags = (record && record["tags"]) ? record["tags"] : []
-      if (new_tags - old_tags).any?
-        @stream.puts "#{id_and_title} のタグが更新されています"
-        update_database
-        return_status = :ok if return_status == :none
+      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').strip
+      if clean_tag.length > 0
+        new_tags = clean_tag.split(/[ 　]+|&nbsp;/).uniq
+        old_tags = (record && record["tags"]) ? record["tags"] : []
+        if (new_tags - old_tags).any?
+          @stream.puts "#{id_and_title} のタグが更新されています"
+          update_database
+          return_status = :ok if return_status == :none
+        end
       end
     end
 
@@ -638,11 +641,14 @@ class Downloader
       "suspend" => suspend
     }
     if @setting["tag"]
-      tags = @setting["tag"].split(/[ 　]+|&nbsp;/)
-      if record && record["tags"]
-        tags.concat(record["tags"])
+      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').strip
+      if clean_tag.length > 0
+        tags = clean_tag.split(/[ 　]+|&nbsp;/)
+        if record && record["tags"]
+          tags.concat(record["tags"])
+        end
+        data["tags"] = tags.uniq
       end
-      data["tags"] = tags.uniq
     end
     if record
       database[@id].merge!(data)
