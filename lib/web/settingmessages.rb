@@ -28,5 +28,6 @@ module Narou
     "logging" => "%%ORIG%%\n※要サーバ再起動",
     "logging.format-filename" => "%%ORIG%%\n※要サーバ再起動",
     "logging.format-timestamp" => "%%ORIG%%\n※要サーバ再起動",
+    "auto-add-tags" => "小説サイトから取得したタグを自動的に小説データに追加する",
   }
 end

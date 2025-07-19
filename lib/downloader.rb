@@ -416,7 +416,8 @@ class Downloader
         :none
       end
 
-    if @setting["tag"]
+    auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
+    if @setting["tag"] && auto_add_tags
       clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
       if clean_tag.length > 0
         new_tags = clean_tag.split(/[ 　]+|&nbsp;/).uniq
@@ -640,7 +641,8 @@ class Downloader
       "length" => novel_length,
       "suspend" => suspend
     }
-    if @setting["tag"]
+    auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
+    if @setting["tag"] && auto_add_tags
       clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
       if clean_tag.length > 0
         tags = clean_tag.split(/[ 　]+|&nbsp;/)
