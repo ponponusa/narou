@@ -111,6 +111,6 @@ l: |-
   <dd class="p-infotop-data__value">(?<length>.+?)文字</dd>
 
 # tag キーワード
-tag: |-
+tags: |-
   <dt class="p-infotop-data__title">キーワード</dt>
   <dd class="p-infotop-data__value">(?<tag>.+?)</dd>
