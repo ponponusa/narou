@@ -804,6 +804,7 @@ class Downloader
       story_html.strip_decoration_tag = true
       @setting["story"] = story_html.to_aozora
     end
+    @setting.multi_match(toc_source, "tags")
     @setting["info"] = info
     replace_external_properties_of_setting
 
