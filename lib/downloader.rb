@@ -416,6 +416,16 @@ class Downloader
         :none
       end
 
+    if @setting["tag"]
+      new_tags = @setting["tag"].split(/[ 　]+|&nbsp;/).uniq
+      old_tags = (record && record["tags"]) ? record["tags"] : []
+      if (new_tags - old_tags).any?
+        @stream.puts "#{id_and_title} のタグが更新されています"
+        update_database
+        return_status = :ok if return_status == :none
+      end
+    end
+
     record["general_all_no"] = latest_toc_subtitles.size
 
     save_toc_once(latest_toc)
@@ -627,6 +637,13 @@ class Downloader
       "length" => novel_length,
       "suspend" => suspend
     }
+    if @setting["tag"]
+      tags = @setting["tag"].split(/[ 　]+|&nbsp;/)
+      if record && record["tags"]
+        tags.concat(record["tags"])
+      end
+      data["tags"] = tags.uniq
+    end
     if record
       database[@id].merge!(data)
     else
@@ -780,6 +797,7 @@ class Downloader
       story_html.strip_decoration_tag = true
       @setting["story"] = story_html.to_aozora
     end
+    @setting.multi_match(toc_source, "tag")
     @setting["info"] = info
     replace_external_properties_of_setting
 
