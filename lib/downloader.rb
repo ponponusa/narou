@@ -641,9 +641,12 @@ class Downloader
       "suspend" => suspend
     }
     if @setting["tag"]
+      puts "[DEBUG] Raw @setting[\"tag\"]: #{@setting["tag"].inspect}"
       clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
+      puts "[DEBUG] Cleaned tag: #{clean_tag.inspect}"
       if clean_tag.length > 0
         tags = clean_tag.split(/[ 　]+|&nbsp;/)
+        puts "[DEBUG] Split tags: #{tags.inspect}"
         if record && record["tags"]
           tags.concat(record["tags"])
         end
