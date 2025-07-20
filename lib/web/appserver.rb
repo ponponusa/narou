@@ -1007,7 +1007,12 @@ class Narou::AppServer < Sinatra::Base
         Command::Tag.execute!("--add", tags.join(" "), ids, io: Narou::NullIO.new)
       end
     end
-    Narou::AppServer.clear_api_list_cache # キャッシュ無効化
+    
+    # キャッシュを確実にクリアしてからイベント送信
+    Narou::AppServer.clear_api_list_cache 
+    puts "タグ編集完了: キャッシュクリア後にリロードイベントを送信"
+    
+    # テーブルリロードとタグキャンバス更新を順次実行
     @@push_server.send_all(:"table.reload")
     @@push_server.send_all(:"tag.updateCanvas")
   end
@@ -1049,6 +1054,12 @@ class Narou::AppServer < Sinatra::Base
     tag_colors = Inventory.load("tag_colors")
     tag_colors[tag] = color
     tag_colors.save
+    
+    # キャッシュを確実にクリアしてからイベント送信
+    Narou::AppServer.clear_api_list_cache 
+    puts "タグ色変更完了: キャッシュクリア後にリロードイベントを送信"
+    
+    # テーブルリロードとタグキャンバス更新を順次実行
     @@push_server.send_all(:"table.reload")
     @@push_server.send_all(:"tag.updateCanvas")
   end
