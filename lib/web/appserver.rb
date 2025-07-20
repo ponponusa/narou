@@ -259,6 +259,13 @@ class Narou::AppServer < Sinatra::Base
       end
       setting.execute!(built_arguments, io: Narou::NullIO.new)
       Inventory.clear
+      
+      # 自動アップデート設定が変更された場合、スケジューラーを再起動
+      if built_arguments.any? { |arg| arg.start_with?("update.auto-schedule") }
+        require_relative "../command/update/scheduler"
+        Command::Update::Scheduler.stop
+        Command::Update::Scheduler.start
+      end
     end
 
     # 置換設定保存
