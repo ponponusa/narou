@@ -492,16 +492,33 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/api/list" do
-    view_frozen = query_to_boolean(params["view_frozen"], default: true)
-    view_nonfrozen = query_to_boolean(params["view_nonfrozen"], default: true)
+    begin
+      view_frozen = query_to_boolean(params["view_frozen"], default: true)
+      view_nonfrozen = query_to_boolean(params["view_nonfrozen"], default: true)
     
     # DataTablesのサーバーサイド処理パラメータ
     draw = params["draw"].to_i
-    start = params["start"].to_i
-    length = params["length"].to_i
-    search_value = params["search"] && params["search"]["value"]
-    order_column = params["order"] && params["order"]["0"] && params["order"]["0"]["column"].to_i
-    order_dir = params["order"] && params["order"]["0"] && params["order"]["0"]["dir"]
+    start = params["start"].to_i || 0
+    length = params["length"].to_i || 50
+    
+    # 検索パラメータの安全な取得
+    search_value = nil
+    if params["search"] && params["search"].is_a?(Hash)
+      search_value = params["search"]["value"]
+    elsif params["search[value]"]
+      search_value = params["search[value]"]
+    end
+    
+    # ソートパラメータの安全な取得
+    order_column = nil
+    order_dir = nil
+    if params["order"] && params["order"].is_a?(Hash) && params["order"]["0"]
+      order_column = params["order"]["0"]["column"].to_i
+      order_dir = params["order"]["0"]["dir"]
+    elsif params["order[0][column]"] && params["order[0][dir]"]
+      order_column = params["order[0][column]"].to_i
+      order_dir = params["order[0][dir]"]
+    end
     
     # 軽量なタグ処理モード（大量データ用）
     lightweight_mode = params["lightweight"] == "true"
@@ -557,8 +574,8 @@ class Narou::AppServer < Sinatra::Base
         {
           id: id.to_s,
           last_update: data["last_update"].to_i,
-          title: escape_html(data["title"]),
-          author: escape_html(data["author"]),
+          title: h(data["title"]),
+          author: h(data["author"]),
           sitename: data["sitename"],
           toc_url: data["toc_url"],
           novel_type: data["novel_type"] == 2 ? "短編" : "連載",
@@ -593,12 +610,17 @@ class Narou::AppServer < Sinatra::Base
     
     # 検索フィルタリング
     if search_value && !search_value.empty?
-      search_regex = Regexp.new(Regexp.escape(search_value), Regexp::IGNORECASE)
-      filtered_data = filtered_data.select do |item|
-        item[:title].match?(search_regex) || 
-        item[:author].match?(search_regex) ||
-        item[:sitename].to_s.match?(search_regex) ||
-        item[:status].match?(search_regex)
+      begin
+        search_regex = Regexp.new(Regexp.escape(search_value), Regexp::IGNORECASE)
+        filtered_data = filtered_data.select do |item|
+          item[:title].to_s.match?(search_regex) || 
+          item[:author].to_s.match?(search_regex) ||
+          item[:sitename].to_s.match?(search_regex) ||
+          item[:status].to_s.match?(search_regex)
+        end
+      rescue StandardError => e
+        # 検索エラーの場合はフィルタリングをスキップ
+        puts "Search filter error: #{e.message}"
       end
     end
     
@@ -655,13 +677,26 @@ class Narou::AppServer < Sinatra::Base
       end
     end
     
-    json_objects = {
-      draw: draw,
-      data: paginated_data,
-      recordsTotal: records_total,
-      recordsFiltered: records_filtered
-    }
-    json json_objects
+      json_objects = {
+        draw: draw,
+        data: paginated_data,
+        recordsTotal: records_total,
+        recordsFiltered: records_filtered
+      }
+      json json_objects
+    rescue StandardError => e
+      # エラーが発生した場合のレスポンス
+      puts "API List Error: #{e.message}"
+      puts e.backtrace.join("\n")
+      
+      json({
+        draw: params["draw"].to_i || 1,
+        data: [],
+        recordsTotal: 0,
+        recordsFiltered: 0,
+        error: "サーバーエラーが発生しました: #{e.message}"
+      })
+    end
   end
 
   post "/api/cancel" do
