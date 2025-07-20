@@ -31,6 +31,7 @@
       var slideNavbar;
   %body
     = embed_concurrency_enabled
+    = embed_performance_mode
     - if session[:alert]
       - message, type = session[:alert]
       - session[:alert] = nil

@@ -571,6 +571,16 @@ module Command
           ),
           tab: :webui
         },
+        "webui.performance-mode" => {
+          type: :select, help: "パフォーマンスモードを設定。autoの場合は小説数2000件以上で自動的に有効になります",
+          select_keys: %w(auto on off),
+          select_summaries: %w(
+            自動判定
+            常に有効
+            常に無効
+          ),
+          tab: :webui
+        },
       },
       global: {
         "aozoraepub3dir" => {

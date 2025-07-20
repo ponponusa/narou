@@ -140,6 +140,14 @@ module Narou::ServerHelpers
     HTML
   end
 
+  def embed_performance_mode
+    local_setting = Inventory.load("local_setting")
+    performance_mode = local_setting["webui.performance-mode"] || "auto"
+    <<~HTML
+      <input type="hidden" id="performance-mode" value="#{performance_mode}">
+    HTML
+  end
+
   def concurrency_push(&block)
     if Narou.concurrency_enabled?
       yield
