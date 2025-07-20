@@ -124,15 +124,28 @@ module Command
             Narou::WebWorker.push do
               puts "自動アップデート処理を開始します"
               begin
-                # 別プロセスで narou update を実行
-                result = system("narou", "update")
-                if result
+                # 同一プロセス内でupdateコマンドを実行して詳細ログを表示
+                require_relative "../update"
+                
+                update_command = Command::Update.new
+                
+                # exitを回避するため、execute内でのexitをrescueする
+                begin
+                  update_command.execute([])
                   puts "自動アップデートが正常に完了しました"
-                else
-                  puts "自動アップデートでエラーが発生しました（終了コード: #{$?.exitstatus}）"
+                rescue SystemExit => e
+                  case e.status
+                  when 0
+                    puts "自動アップデートが正常に完了しました"
+                  when 1..9
+                    puts "自動アップデートが完了しました（#{e.status}件の小説でエラーがありました）"
+                  else
+                    puts "自動アップデートで重大なエラーが発生しました（終了コード: #{e.status}）"
+                  end
                 end
               rescue => e
                 puts "自動アップデート処理中にエラーが発生しました: #{e.message}"
+                puts "バックトレース: #{e.backtrace.first(3).join(', ')}"
               end
             end
             puts "自動アップデートをキューに追加しました"
