@@ -71,7 +71,7 @@ module Command
             ntp_time = Net::NTP.get(server).time
             @ntp_cache = ntp_time
             @ntp_cache_time = Time.now
-            puts "NTP時刻を取得しました (#{server}): #{ntp_time.strftime('%Y/%m/%d %H:%M:%S')}"
+            puts "NTP時刻を取得しました (#{server}) 最終取得時間: #{ntp_time.strftime('%Y/%m/%d %H:%M:%S')}"
             return ntp_time
           rescue => e
             puts "NTPサーバー #{server} への接続に失敗しました: #{e.message}"
@@ -149,7 +149,7 @@ module Command
 
       def execute_auto_update
         ntp_time = get_ntp_time
-        puts "自動アップデートを実行中... (#{ntp_time.strftime('%Y/%m/%d %H:%M:%S')} NTP)"
+        puts "自動アップデートを実行中... (#{ntp_time.strftime('%Y/%m/%d %H:%M:%S')} 正確な時刻)"
         
         begin
           # WebWorkerを使用して非同期実行
