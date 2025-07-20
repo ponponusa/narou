@@ -390,14 +390,17 @@ class NovelConverter
   # メモリリーク回避のための明示的なクリーンアップ
   #
   def cleanup
+    # 循環参照を切断（settingは最後まで必要）
     @inspector&.cleanup if @inspector.respond_to?(:cleanup)
     @illustration&.cleanup if @illustration.respond_to?(:cleanup)
     @converter&.cleanup if @converter.respond_to?(:cleanup)
-    @setting = nil
+    
+    # 重いオブジェクトのみ解放
     @inspector = nil
     @illustration = nil
     @converter = nil
     @data = nil
+    # @settingは最後まで必要なので解放しない
   end
 
   #
@@ -425,6 +428,9 @@ class NovelConverter
     display_footer
 
     array_of_output_path
+  ensure
+    # 変換完了後にリソースを解放（ensureで確実に実行）
+    cleanup
   end
 
   def initialize_event
@@ -773,9 +779,6 @@ class NovelConverter
     end
 
     @inspector.save
-  ensure
-    # 変換完了後にリソースを解放
-    cleanup
   end
 
   #
