@@ -121,11 +121,20 @@ module Command
         begin
           # WebWorkerを使用して非同期実行
           if defined?(Narou::WebWorker)
-            Narou::WebWorker.push(
-              __id: "auto_update_#{Time.now.to_i}",
-              __type: "update",
-              __cancel: false
-            )
+            Narou::WebWorker.push do
+              puts "自動アップデート処理を開始します"
+              begin
+                # 別プロセスで narou update を実行
+                result = system("narou", "update")
+                if result
+                  puts "自動アップデートが正常に完了しました"
+                else
+                  puts "自動アップデートでエラーが発生しました（終了コード: #{$?.exitstatus}）"
+                end
+              rescue => e
+                puts "自動アップデート処理中にエラーが発生しました: #{e.message}"
+              end
+            end
             puts "自動アップデートをキューに追加しました"
           else
             # フォールバック：別プロセスで実行
