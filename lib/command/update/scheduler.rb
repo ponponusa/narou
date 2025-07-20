@@ -1,6 +1,5 @@
 require "time"
 require "thread"
-require "net/ntp"
 require_relative "../../inventory"
 
 module Command
@@ -10,10 +9,6 @@ module Command
         @thread = nil
         @running = false
         @mutex = Mutex.new
-        @ntp_servers = ["ntp.nict.jp", "ntp.tohoku.ac.jp", "time.google.com", "pool.ntp.org"]
-        @ntp_cache = nil
-        @ntp_cache_time = nil
-        @ntp_cache_duration = 3600 # 1時間キャッシュ
       end
 
       def start
@@ -57,33 +52,6 @@ module Command
 
       private
 
-      def get_ntp_time
-        # キャッシュが有効な場合は使用
-        if @ntp_cache && @ntp_cache_time && 
-           (Time.now - @ntp_cache_time) < @ntp_cache_duration
-          offset = Time.now - @ntp_cache_time
-          return @ntp_cache + offset
-        end
-
-        # NTPサーバーから時刻を取得
-        @ntp_servers.each do |server|
-          begin
-            ntp_time = Net::NTP.get(server).time
-            @ntp_cache = ntp_time
-            @ntp_cache_time = Time.now
-            puts "NTP時刻を取得しました (#{server}) 最終取得時間: #{ntp_time.strftime('%Y/%m/%d %H:%M:%S')}"
-            return ntp_time
-          rescue => e
-            puts "NTPサーバー #{server} への接続に失敗しました: #{e.message}"
-            next
-          end
-        end
-        
-        # 全てのNTPサーバーで失敗した場合はローカル時刻を使用
-        puts "全てのNTPサーバーへの接続に失敗しました。ローカル時刻を使用します。"
-        Time.now
-      end
-
       def run_scheduler(schedule_string)
         while @running
           times = parse_schedule_times(schedule_string)
@@ -120,8 +88,8 @@ module Command
       def calculate_next_run_time(times)
         return nil if times.empty?
         
-        now = get_ntp_time
-        today = now.to_date
+        now = Time.now
+        today = Date.today
         
         # 今日の時間をチェック
         times.each do |time|
@@ -137,7 +105,7 @@ module Command
 
       def sleep_until(target_time)
         while @running
-          now = get_ntp_time
+          now = Time.now
           if now >= target_time
             break
           end
@@ -148,8 +116,7 @@ module Command
       end
 
       def execute_auto_update
-        ntp_time = get_ntp_time
-        puts "自動アップデートを実行中... (#{ntp_time.strftime('%Y/%m/%d %H:%M:%S')} 正確な時刻)"
+        puts "自動アップデートを実行中... (#{Time.now.strftime('%Y/%m/%d %H:%M:%S')})"
         
         begin
           # WebWorkerを使用して非同期実行
