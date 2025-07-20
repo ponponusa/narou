@@ -119,10 +119,20 @@ module Command
         puts "自動アップデートを実行中... (#{Time.now.strftime('%Y/%m/%d %H:%M:%S')})"
         
         begin
-          # update コマンドを実行
-          update_command = Command::Update.new
-          update_command.execute([])
-          puts "自動アップデートが完了しました"
+          # WebWorkerを使用して非同期実行
+          if defined?(Narou::WebWorker)
+            Narou::WebWorker.push(
+              __id: "auto_update_#{Time.now.to_i}",
+              __type: "update",
+              __cancel: false
+            )
+            puts "自動アップデートをキューに追加しました"
+          else
+            # フォールバック：別プロセスで実行
+            pid = Process.spawn("narou", "update")
+            Process.detach(pid)
+            puts "自動アップデートを開始しました（プロセスID: #{pid}）"
+          end
         rescue => e
           puts "自動アップデート中にエラーが発生しました: #{e.message}"
         end
