@@ -20,10 +20,16 @@ module Inventory
     return @@cache[name] if @@cache[name]
     
     # キャッシュサイズ制限（メモリリーク対策）
-    if @@cache.size > 50  # 設定ファイル数の上限
-      # 最も古いエントリを削除
-      oldest_key = @@cache.keys.first
-      @@cache.delete(oldest_key)
+    # 重要な設定ファイルは保護、一時的なもののみ削除
+    if @@cache.size > 200  # 上限を大幅に引き上げ
+      protected_keys = ["local_setting", "database", "global_setting", "latest_convert"]
+      removable_keys = @@cache.keys - protected_keys
+      
+      if removable_keys.any?
+        # 保護対象外の最も古いエントリを削除
+        oldest_removable = removable_keys.first
+        @@cache.delete(oldest_removable)
+      end
     end
     
     {}.tap { |h|
