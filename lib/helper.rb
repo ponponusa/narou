@@ -450,6 +450,12 @@ module Helper
     @@mutex = Mutex.new
     @@caches = {}
     @@result_caches = {}
+    @@cache_access_order = []
+    @@result_cache_access_order = []
+    
+    # キャッシュサイズ制限（メモリ使用量制限）
+    MAX_CACHE_SIZE = 100  # ファイル数制限
+    MAX_RESULT_CACHE_SIZE = 50  # 結果キャッシュ数制限
 
     DEFAULT_OPTIONS = { mode: "r:BOM|UTF-8" }
 
@@ -465,9 +471,22 @@ module Helper
         cache_data = @@caches[fullpath]
         if Helper.file_latest?(fullpath) || !cache_data
           body = File.read(fullpath, **options)
+          # LRU キャッシュの実装
           @@caches[fullpath] = body
+          @@cache_access_order.delete(fullpath)
+          @@cache_access_order.push(fullpath)
+          
+          # キャッシュサイズ制限
+          if @@caches.size > MAX_CACHE_SIZE
+            oldest = @@cache_access_order.shift
+            @@caches.delete(oldest)
+          end
+          
           return body
         else
+          # アクセス順を更新
+          @@cache_access_order.delete(fullpath)
+          @@cache_access_order.push(fullpath)
           return cache_data
         end
       end
@@ -494,9 +513,24 @@ module Helper
         cache = @@result_caches[key]
         if Helper.file_latest?(fullpath) || !cache
           data = File.read(fullpath, **options)
-          @@result_caches[key] = result = block.call(data)
+          result = block.call(data)
+          
+          # 結果キャッシュのLRU実装
+          @@result_caches[key] = result
+          @@result_cache_access_order.delete(key)
+          @@result_cache_access_order.push(key)
+          
+          # 結果キャッシュサイズ制限
+          if @@result_caches.size > MAX_RESULT_CACHE_SIZE
+            oldest = @@result_cache_access_order.shift
+            @@result_caches.delete(oldest)
+          end
+          
           return result
         else
+          # アクセス順を更新
+          @@result_cache_access_order.delete(key)
+          @@result_cache_access_order.push(key)
           return cache
         end
       end
@@ -522,11 +556,50 @@ module Helper
       @@mutex.synchronize do
         if path
           fullpath = File.expand_path(path)
-          @@cache.delete(fullpath)
-          @@result_caches.delete(fullpath)
+          @@caches.delete(fullpath)
+          @@cache_access_order.delete(fullpath)
+          # 結果キャッシュも該当ファイルのものを削除
+          @@result_caches.delete_if { |key, _| key.start_with?("#{fullpath}:") }
+          @@result_cache_access_order.delete_if { |key| key.start_with?("#{fullpath}:") }
         else
-          @@cache.clear
+          @@caches.clear
           @@result_caches.clear
+          @@cache_access_order.clear
+          @@result_cache_access_order.clear
+        end
+      end
+    end
+    #
+    # キャッシュサイズ情報を取得する（デバッグ用）
+    #
+    def cache_stats
+      @@mutex.synchronize do
+        {
+          file_cache_size: @@caches.size,
+          result_cache_size: @@result_caches.size,
+          file_cache_limit: MAX_CACHE_SIZE,
+          result_cache_limit: MAX_RESULT_CACHE_SIZE
+        }
+      end
+    end
+
+    #
+    # メモリ使用量が多い場合に強制的にキャッシュを削減する
+    #
+    def force_cleanup(target_size_ratio = 0.5)
+      @@mutex.synchronize do
+        # ファイルキャッシュを半分に削減
+        target_file_size = (@@caches.size * target_size_ratio).to_i
+        while @@caches.size > target_file_size && !@@cache_access_order.empty?
+          oldest = @@cache_access_order.shift
+          @@caches.delete(oldest)
+        end
+        
+        # 結果キャッシュを半分に削減
+        target_result_size = (@@result_caches.size * target_size_ratio).to_i
+        while @@result_caches.size > target_result_size && !@@result_cache_access_order.empty?
+          oldest = @@result_cache_access_order.shift
+          @@result_caches.delete(oldest)
         end
       end
     end

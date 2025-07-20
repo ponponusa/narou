@@ -387,6 +387,20 @@ class NovelConverter
   end
 
   #
+  # メモリリーク回避のための明示的なクリーンアップ
+  #
+  def cleanup
+    @inspector&.cleanup if @inspector.respond_to?(:cleanup)
+    @illustration&.cleanup if @illustration.respond_to?(:cleanup)
+    @converter&.cleanup if @converter.respond_to?(:cleanup)
+    @setting = nil
+    @inspector = nil
+    @illustration = nil
+    @converter = nil
+    @data = nil
+  end
+
+  #
   # 変換処理メインループ
   #
   def convert_main(text = nil)
@@ -759,6 +773,9 @@ class NovelConverter
     end
 
     @inspector.save
+  ensure
+    # 変換完了後にリソースを解放
+    cleanup
   end
 
   #

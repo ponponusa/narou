@@ -18,6 +18,14 @@ module Inventory
   def self.load(name = "local_setting", scope = :local)
     @@cache ||= {}
     return @@cache[name] if @@cache[name]
+    
+    # キャッシュサイズ制限（メモリリーク対策）
+    if @@cache.size > 50  # 設定ファイル数の上限
+      # 最も古いエントリを削除
+      oldest_key = @@cache.keys.first
+      @@cache.delete(oldest_key)
+    end
+    
     {}.tap { |h|
       h.extend(Inventory)
       h.init(name, scope)

@@ -263,6 +263,7 @@ class Downloader
     @new_novel = record.!
     @from_download = options[:from_download]
     @section_download_cache = {}
+    @max_cache_size = 20  # セクションキャッシュの上限
     @download_wait_steps = Inventory.load("local_setting")["download.wait-steps"] || 0
     @download_use_subdirectory = use_subdirectory?
     if @setting["is_narou"] && (@download_wait_steps > 10 || @download_wait_steps == 0)
@@ -1146,6 +1147,10 @@ class Downloader
   def a_section_download(subtitle_info)
     index = subtitle_info["index"]
     return @section_download_cache[index] if @section_download_cache[index]
+    
+    # キャッシュサイズ制限をチェック
+    cleanup_cache_if_needed
+    
     sleep_for_download
     href = subtitle_info["href"]
     subtitle_url =
@@ -1165,6 +1170,25 @@ class Downloader
     subtitle_info["download_time"] = Time.now
     @section_download_cache[index] = element
     element
+  end
+
+  #
+  # セクションキャッシュのサイズ制限とクリーンアップ
+  #
+  def cleanup_cache_if_needed
+    return if @section_download_cache.size <= @max_cache_size
+    
+    # 古いエントリから削除（インデックスの小さいものから）
+    sorted_keys = @section_download_cache.keys.sort
+    keys_to_remove = sorted_keys.first(@section_download_cache.size - @max_cache_size + 1)
+    keys_to_remove.each { |key| @section_download_cache.delete(key) }
+  end
+
+  #
+  # Downloaderの完了時にキャッシュをクリア
+  #
+  def cleanup
+    @section_download_cache.clear if @section_download_cache
   end
 
   def display_hint
