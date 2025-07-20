@@ -418,7 +418,7 @@ class Downloader
 
     auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
     if @setting["tag"] && auto_add_tags
-      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
+      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワードが設定されていません/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
       if clean_tag.length > 0
         new_tags = clean_tag.split(/[ 　]+|&nbsp;/).uniq
         old_tags = (record && record["tags"]) ? record["tags"] : []
