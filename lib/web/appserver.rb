@@ -476,89 +476,190 @@ class Narou::AppServer < Sinatra::Base
   # -------------------------------------------------------------------------------
 
   # 小説一覧APIのキャッシュ機能
-  @@api_list_cache = nil
+  @@api_list_cache = {}
   @@api_list_cache_time = nil
   @@api_list_cache_duration = 10 # 10秒キャッシュ
 
   # API一覧のキャッシュを無効化する
   def self.clear_api_list_cache
-    @@api_list_cache = nil
+    @@api_list_cache = {}
     @@api_list_cache_time = nil
+  end
+
+  # 小説総数を取得するAPI
+  get "/api/novels/count" do
+    json({ count: Database.instance.get_object.size })
   end
 
   get "/api/list" do
     view_frozen = query_to_boolean(params["view_frozen"], default: true)
     view_nonfrozen = query_to_boolean(params["view_nonfrozen"], default: true)
     
-    # キャッシュチェック
+    # DataTablesのサーバーサイド処理パラメータ
+    draw = params["draw"].to_i
+    start = params["start"].to_i
+    length = params["length"].to_i
+    search_value = params["search"] && params["search"]["value"]
+    order_column = params["order"] && params["order"]["0"] && params["order"]["0"]["column"].to_i
+    order_dir = params["order"] && params["order"]["0"] && params["order"]["0"]["dir"]
+    
+    # 軽量なタグ処理モード（大量データ用）
+    lightweight_mode = params["lightweight"] == "true"
+    
+    # キャッシュチェック（軽量データも分けてキャッシュ）
+    cache_key = lightweight_mode ? :lightweight : :full
     current_time = Time.now
-    if @@api_list_cache && @@api_list_cache_time && 
+    if @@api_list_cache && @@api_list_cache[cache_key] && @@api_list_cache_time && 
        (current_time - @@api_list_cache_time) < @@api_list_cache_duration
-      # キャッシュからフィルタリングして返す
-      filtered_data = @@api_list_cache.select do |item|
-        (view_frozen || !item[:frozen]) && (view_nonfrozen || item[:frozen])
+      cached_data = @@api_list_cache[cache_key]
+    else
+      # キャッシュが無い場合は新規作成
+      database_values = Database.instance.get_object.values
+      cached_data = database_values.map do |data|
+        id = data["id"]
+        is_frozen = Narou.novel_frozen?(id)
+        tags = data["tags"] || []
+        
+        # 軽量モードではタグ処理を簡素化（表示のみ）
+        tags_html = if lightweight_mode
+                      if tags.empty?
+                        ""
+                      else
+                        # 軽量表示だが、data-tag属性は保持
+                        visible_tags = tags.first(3)
+                        hidden_count = tags.size > 3 ? tags.size - 3 : 0
+                        
+                        tag_spans = visible_tags.map { |tag| %!<span class="tag-simple" data-tag="#{tag}">#{tag}</span>! }
+                        result = tag_spans.join(", ")
+                        
+                        if hidden_count > 0
+                          result += %! <span class="tag-more">... (+#{hidden_count}個)</span>!
+                        end
+                        
+                        # 隠されたタグもdata-tag属性として保持（検索用）
+                        if tags.size > 3
+                          hidden_tags = tags[3..-1]
+                          hidden_spans = hidden_tags.map { |tag| %!<span class="tag-hidden" data-tag="#{tag}" style="display:none;"></span>! }
+                          result += hidden_spans.join
+                        end
+                        
+                        result + %!&nbsp;<span class="tag tag-reset label label-white" data-tag="" data-toggle="tooltip" title="タグ検索を解除">&nbsp;</span>!
+                      end
+                    else
+                      if tags.empty?
+                        ""
+                      else
+                        %!#{decorate_tags(tags)}&nbsp;<span class="tag tag-reset label label-white"! +
+                        %!data-tag="" data-toggle="tooltip" title="タグ検索を解除">&nbsp;</span>!
+                      end
+                    end
+        
+        {
+          id: id.to_s,
+          last_update: data["last_update"].to_i,
+          title: escape_html(data["title"]),
+          author: escape_html(data["author"]),
+          sitename: data["sitename"],
+          toc_url: data["toc_url"],
+          novel_type: data["novel_type"] == 2 ? "短編" : "連載",
+          tags: tags_html,
+          raw_tags: tags,  # 生のタグ配列も追加（JavaScript側での直接アクセス用）
+          status: [
+            is_frozen ? "凍結" : nil,
+            tags.include?("end") ? "完結" : nil,
+            tags.include?("404") ? "削除" : nil,
+            data["suspend"] ? "中断" : nil
+          ].compact.join(", "),
+          download: %!<a href="/novels/#{id}/download" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span></a>!,
+          frozen: is_frozen,
+          new_arrivals_date: data["new_arrivals_date"].tap { |m| break m.to_i if m },
+          general_lastup: data["general_lastup"].tap { |m| break m.to_i if m },
+          general_all_no: data["general_all_no"],
+          last_check_date: data["last_check_date"].tap { |m| break m.to_i if m },
+          length: data["length"],
+        }
       end
-      json_objects = {
-        draw: 1,
-        data: filtered_data,
-        recordsTotal: filtered_data.size,
-        recordsFiltered: filtered_data.size
-      }
-      return json(json_objects)
+
+      # キャッシュを更新
+      @@api_list_cache ||= {}
+      @@api_list_cache[cache_key] = cached_data
+      @@api_list_cache_time = current_time
     end
 
-    # キャッシュが無い場合は新規作成
-    database_values = Database.instance.get_object.values
-    cached_data = database_values.map do |data|
-      id = data["id"]
-      is_frozen = Narou.novel_frozen?(id)
-      tags = data["tags"] || []
-      
-      # 重い処理を一度だけ実行してキャッシュ
-      {
-        id: id.to_s,
-        last_update: data["last_update"].to_i,
-        title: escape_html(data["title"]),
-        author: escape_html(data["author"]),
-        sitename: data["sitename"],
-        toc_url: data["toc_url"],
-        novel_type: data["novel_type"] == 2 ? "短編" : "連載",
-        tags: if tags.empty?
-                ""
-              else
-                %!#{decorate_tags(tags)}&nbsp;<span class="tag tag-reset label label-white"! +
-                %!data-tag="" data-toggle="tooltip" title="タグ検索を解除">&nbsp;</span>!
-              end,
-        status: [
-          is_frozen ? "凍結" : nil,
-          tags.include?("end") ? "完結" : nil,
-          tags.include?("404") ? "削除" : nil,
-          data["suspend"] ? "中断" : nil
-        ].compact.join(", "),
-        download: %!<a href="/novels/#{id}/download" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span></a>!,
-        frozen: is_frozen,
-        new_arrivals_date: data["new_arrivals_date"].tap { |m| break m.to_i if m },
-        general_lastup: data["general_lastup"].tap { |m| break m.to_i if m },
-        general_all_no: data["general_all_no"],
-        last_check_date: data["last_check_date"].tap { |m| break m.to_i if m },
-        length: data["length"],
-      }
-    end
-
-    # キャッシュを更新
-    @@api_list_cache = cached_data
-    @@api_list_cache_time = current_time
-
-    # フィルタリングして返す
+    # フィルタリング
     filtered_data = cached_data.select do |item|
       (view_frozen || !item[:frozen]) && (view_nonfrozen || item[:frozen])
     end
     
+    # 検索フィルタリング
+    if search_value && !search_value.empty?
+      search_regex = Regexp.new(Regexp.escape(search_value), Regexp::IGNORECASE)
+      filtered_data = filtered_data.select do |item|
+        item[:title].match?(search_regex) || 
+        item[:author].match?(search_regex) ||
+        item[:sitename].to_s.match?(search_regex) ||
+        item[:status].match?(search_regex)
+      end
+    end
+    
+    records_total = cached_data.size
+    records_filtered = filtered_data.size
+    
+    # ソート処理
+    if order_column && order_dir
+      column_names = ["id", "last_update", "general_lastup", "last_check_date", "title", "author", "sitename", "novel_type", "tags", "general_all_no", "length", "status", "toc_url"]
+      sort_column = column_names[order_column]
+      if sort_column
+        filtered_data.sort! do |a, b|
+          val_a = a[sort_column.to_sym] || 0
+          val_b = b[sort_column.to_sym] || 0
+          
+          if val_a.is_a?(Numeric) && val_b.is_a?(Numeric)
+            comparison = val_a <=> val_b
+          else
+            comparison = val_a.to_s <=> val_b.to_s
+          end
+          
+          order_dir == "desc" ? -comparison : comparison
+        end
+      end
+    end
+    
+    # ページネーション
+    if length > 0 && length != -1
+      paginated_data = filtered_data[start, length] || []
+    else
+      # "Show All" の場合 (length == -1) は全てのデータを返す
+      # データ量に応じて段階的な制限を適用
+      total_count = filtered_data.size
+      if total_count <= 1000
+        # 1000件以下なら全て表示
+        paginated_data = filtered_data
+      elsif total_count <= 5000
+        # 5000件以下なら軽量モードを強制
+        lightweight_mode = true
+        paginated_data = filtered_data
+      else
+        # 5000件を超える場合は最大件数を制限
+        max_show_all = 5000
+        paginated_data = filtered_data.first(max_show_all)
+        # レスポンスに制限情報を追加
+        json_objects = {
+          draw: draw,
+          data: paginated_data,
+          recordsTotal: records_total,
+          recordsFiltered: records_filtered,
+          warning: "表示件数が多いため、最初の#{max_show_all}件のみ表示しています。"
+        }
+        return json(json_objects)
+      end
+    end
+    
     json_objects = {
-      draw: 1,
-      data: filtered_data,
-      recordsTotal: filtered_data.size,
-      recordsFiltered: filtered_data.size
+      draw: draw,
+      data: paginated_data,
+      recordsTotal: records_total,
+      recordsFiltered: records_filtered
     }
     json json_objects
   end

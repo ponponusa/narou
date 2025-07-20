@@ -321,6 +321,13 @@
 .container.container-main.theme-showcase#novel-list-container(role="main")
   -# 小説の一覧テーブル
   %div
+    %input#total-novels-count(type="hidden" value="0")
+    #performance-info.alert.alert-info.hide(style="margin-bottom: 10px;")
+      %strong パフォーマンスモード:
+      大量のデータが検出されたため、軽量表示モードで動作しています。タグ表示が簡素化されています。
+    #show-all-warning.alert.alert-warning.hide(style="margin-bottom: 10px;")
+      %strong 注意:
+      「全」表示モードが選択されています。大量のデータを表示中のため、ブラウザの動作が重くなる可能性があります。
     %table#novel-list.dataTable.table.table-bordered(cellspacing="0" width="100%")
       %thead
 
