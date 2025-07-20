@@ -475,52 +475,91 @@ class Narou::AppServer < Sinatra::Base
   # API's
   # -------------------------------------------------------------------------------
 
+  # 小説一覧APIのキャッシュ機能
+  @@api_list_cache = nil
+  @@api_list_cache_time = nil
+  @@api_list_cache_duration = 10 # 10秒キャッシュ
+
+  # API一覧のキャッシュを無効化する
+  def self.clear_api_list_cache
+    @@api_list_cache = nil
+    @@api_list_cache_time = nil
+  end
+
   get "/api/list" do
     view_frozen = query_to_boolean(params["view_frozen"], default: true)
     view_nonfrozen = query_to_boolean(params["view_nonfrozen"], default: true)
+    
+    # キャッシュチェック
+    current_time = Time.now
+    if @@api_list_cache && @@api_list_cache_time && 
+       (current_time - @@api_list_cache_time) < @@api_list_cache_duration
+      # キャッシュからフィルタリングして返す
+      filtered_data = @@api_list_cache.select do |item|
+        (view_frozen || !item[:frozen]) && (view_nonfrozen || item[:frozen])
+      end
+      json_objects = {
+        draw: 1,
+        data: filtered_data,
+        recordsTotal: filtered_data.size,
+        recordsFiltered: filtered_data.size
+      }
+      return json(json_objects)
+    end
+
+    # キャッシュが無い場合は新規作成
     database_values = Database.instance.get_object.values
+    cached_data = database_values.map do |data|
+      id = data["id"]
+      is_frozen = Narou.novel_frozen?(id)
+      tags = data["tags"] || []
+      
+      # 重い処理を一度だけ実行してキャッシュ
+      {
+        id: id.to_s,
+        last_update: data["last_update"].to_i,
+        title: escape_html(data["title"]),
+        author: escape_html(data["author"]),
+        sitename: data["sitename"],
+        toc_url: data["toc_url"],
+        novel_type: data["novel_type"] == 2 ? "短編" : "連載",
+        tags: if tags.empty?
+                ""
+              else
+                %!#{decorate_tags(tags)}&nbsp;<span class="tag tag-reset label label-white"! +
+                %!data-tag="" data-toggle="tooltip" title="タグ検索を解除">&nbsp;</span>!
+              end,
+        status: [
+          is_frozen ? "凍結" : nil,
+          tags.include?("end") ? "完結" : nil,
+          tags.include?("404") ? "削除" : nil,
+          data["suspend"] ? "中断" : nil
+        ].compact.join(", "),
+        download: %!<a href="/novels/#{id}/download" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span></a>!,
+        frozen: is_frozen,
+        new_arrivals_date: data["new_arrivals_date"].tap { |m| break m.to_i if m },
+        general_lastup: data["general_lastup"].tap { |m| break m.to_i if m },
+        general_all_no: data["general_all_no"],
+        last_check_date: data["last_check_date"].tap { |m| break m.to_i if m },
+        length: data["length"],
+      }
+    end
+
+    # キャッシュを更新
+    @@api_list_cache = cached_data
+    @@api_list_cache_time = current_time
+
+    # フィルタリングして返す
+    filtered_data = cached_data.select do |item|
+      (view_frozen || !item[:frozen]) && (view_nonfrozen || item[:frozen])
+    end
+    
     json_objects = {
-      draw: 1
+      draw: 1,
+      data: filtered_data,
+      recordsTotal: filtered_data.size,
+      recordsFiltered: filtered_data.size
     }
-    json_objects[:data] =
-      database_values.map do |data|
-        id = data["id"]
-        is_frozen = Narou.novel_frozen?(id)
-        next nil if !view_frozen && is_frozen
-        next nil if !view_nonfrozen && !is_frozen
-        tags = data["tags"] || []
-        {
-          id: id.to_s,
-          last_update: data["last_update"].to_i,
-          title: escape_html(data["title"]),
-          author: escape_html(data["author"]),
-          sitename: data["sitename"],
-          toc_url: data["toc_url"],
-          novel_type: data["novel_type"] == 2 ? "短編" : "連載",
-          tags: if tags.empty?
-                  ""
-                else
-                  %!#{decorate_tags(tags)}&nbsp;<span class="tag tag-reset label label-white"! +
-                  %!data-tag="" data-toggle="tooltip" title="タグ検索を解除">&nbsp;</span>!
-                end,
-          status: [
-            is_frozen ? "凍結" : nil,
-            tags.include?("end") ? "完結" : nil,
-            tags.include?("404") ? "削除" : nil,
-            data["suspend"] ? "中断" : nil
-          ].compact.join(", "),
-          download: %!<a href="/novels/#{id}/download" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span></a>!,
-          frozen: is_frozen,
-          new_arrivals_date: data["new_arrivals_date"].tap { |m| break m.to_i if m },
-          general_lastup: data["general_lastup"].tap { |m| break m.to_i if m },
-          # 掲載話数
-          general_all_no: data["general_all_no"],
-          last_check_date: data["last_check_date"].tap { |m| break m.to_i if m },
-          length: data["length"],
-        }
-      end.compact
-    json_objects[:recordsTotal] = json_objects[:data].size
-    json_objects[:recordsFiltered] = json_objects[:recordsTotal]
     json json_objects
   end
 
@@ -544,6 +583,7 @@ class Narou::AppServer < Sinatra::Base
     pass if targets.size == 0
     Narou::WebWorker.push do
       CommandLine.run!("download", targets, opt_mail)
+      Narou::AppServer.clear_api_list_cache # キャッシュ無効化
       @@push_server.send_all(:"table.reload")
     end
   end
@@ -552,6 +592,7 @@ class Narou::AppServer < Sinatra::Base
     ids = select_valid_novel_ids(params["ids"]) or pass
     Narou::WebWorker.push do
       CommandLine.run!("download", "--force", ids)
+      Narou::AppServer.clear_api_list_cache # キャッシュ無効化
       @@push_server.send_all(:"table.reload")
     end
   end
@@ -779,6 +820,7 @@ class Narou::AppServer < Sinatra::Base
         Command::Tag.execute!("--add", tags.join(" "), ids, io: Narou::NullIO.new)
       end
     end
+    Narou::AppServer.clear_api_list_cache # キャッシュ無効化
     @@push_server.send_all(:"table.reload")
     @@push_server.send_all(:"tag.updateCanvas")
   end
