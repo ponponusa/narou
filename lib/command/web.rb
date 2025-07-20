@@ -141,7 +141,16 @@ module Command
       Narou::Worker.push_server = push_server
       Narou::AppServer.push_server = push_server
       Narou::WebWorker.run
+      
+      # 自動アップデートスケジューラーを開始
+      require_relative "update/scheduler"
+      Command::Update::Scheduler.start
+      
       Narou::AppServer.run!
+      
+      # 自動アップデートスケジューラーを停止
+      Command::Update::Scheduler.stop
+      
       push_server.quit
       Narou::WebWorker.stop
       Narou::Worker.stop

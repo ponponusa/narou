@@ -406,6 +406,17 @@ module Command
           select_summaries: Narou::UPDATE_SORT_KEYS.values,
           tab: :general
         },
+        "update.auto-schedule.enable" => {
+          type: :boolean,
+          help: "自動アップデート機能を有効にする",
+          tab: :general
+        },
+        "update.auto-schedule" => {
+          type: :string,
+          help: "自動アップデートする時間を指定する。カンマ区切りで複数指定可能。\n" \
+                "      書式：HHMM (例: 0800,1200,1800 = 8時、12時、18時)",
+          tab: :general
+        },
         "convert.copy-to" => {
           type: :directory,
           help: "変換したらこのフォルダにコピーする\n" \

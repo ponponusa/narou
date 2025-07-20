@@ -14,6 +14,7 @@ require_relative "../eventable"
 require_relative "update/interval"
 require_relative "update/general_lastup_updater"
 require_relative "update/hotentry_manager"
+require_relative "update/scheduler"
 
 module Command
   class Update < CommandBase
