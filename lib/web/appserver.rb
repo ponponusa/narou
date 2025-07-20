@@ -509,6 +509,9 @@ class Narou::AppServer < Sinatra::Base
       search_value = params["search[value]"]
     end
     
+    # フィルタパラメータの取得（タグフィルタリング含む）
+    filter_value = params["filter"]
+    
     # ソートパラメータの安全な取得
     order_column = nil
     order_dir = nil
@@ -608,19 +611,43 @@ class Narou::AppServer < Sinatra::Base
       (view_frozen || !item[:frozen]) && (view_nonfrozen || item[:frozen])
     end
     
-    # 検索フィルタリング
-    if search_value && !search_value.empty?
+    # フィルタ処理（タグフィルタリング含む）
+    combined_filter = [filter_value, search_value].compact.join(" ").strip
+    
+    if !combined_filter.empty?
       begin
-        search_regex = Regexp.new(Regexp.escape(search_value), Regexp::IGNORECASE)
+        # フィルタ文字列を単語に分割
+        filter_words = combined_filter.split(/\s+/)
+        
         filtered_data = filtered_data.select do |item|
-          item[:title].to_s.match?(search_regex) || 
-          item[:author].to_s.match?(search_regex) ||
-          item[:sitename].to_s.match?(search_regex) ||
-          item[:status].to_s.match?(search_regex)
+          filter_words.all? do |word|
+            if word.match(/^([-^]?)tag:(.+)$/i)
+              # タグフィルタリング
+              exclude_flag = $1
+              tag_name = $2.downcase
+              
+              has_tag = item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+              
+              case exclude_flag
+              when "-", "^"
+                !has_tag  # 除外
+              else
+                has_tag   # 包含
+              end
+            else
+              # 通常の検索フィルタリング
+              search_regex = Regexp.new(Regexp.escape(word), Regexp::IGNORECASE)
+              item[:title].to_s.match?(search_regex) || 
+              item[:author].to_s.match?(search_regex) ||
+              item[:sitename].to_s.match?(search_regex) ||
+              item[:status].to_s.match?(search_regex) ||
+              item[:raw_tags].any? { |tag| tag.match?(search_regex) }
+            end
+          end
         end
       rescue StandardError => e
-        # 検索エラーの場合はフィルタリングをスキップ
-        puts "Search filter error: #{e.message}"
+        # フィルタエラーの場合はフィルタリングをスキップ
+        puts "Filter error: #{e.message}"
       end
     end
     
