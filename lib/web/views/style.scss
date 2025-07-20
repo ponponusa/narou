@@ -499,6 +499,31 @@ input::-ms-clear {
   cursor: pointer;
 }
 
+// 軽量モード用のタグスタイル
+.tag-simple {
+  cursor: copy;
+  color: #31708f;
+  background-color: #d9edf7;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  
+  &:hover {
+    background-color: #afd9ee;
+  }
+}
+
+.tag-more {
+  color: #777;
+  font-size: 11px;
+  font-style: italic;
+}
+
+.tag-hidden {
+  // 検索用の隠し要素（表示はしない）
+  display: none !important;
+}
+
 #tag-list-canvas {
   padding: 3px 20px;
   overflow: auto;

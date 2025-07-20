@@ -38,6 +38,8 @@ module Narou
       })
       Thread.new do
         @server.run do |ws|
+          que = nil
+          thread = nil
           begin
             ws.handshake
             que = Queue.new
@@ -66,9 +68,19 @@ module Narou
                 }))
               end
             end
+          rescue WebSocket::Error => e
+            # WebSocketハンドシェイクエラー（通常はクライアントの切断）
+            # デバッグレベルでログ出力（エラーレベルだと大量に出力される）
+            puts "[DEBUG] WebSocket handshake failed: #{e.message}" if $DEBUG
           rescue Errno::ECONNRESET => e
+            # 接続リセットエラー
+            puts "[DEBUG] WebSocket connection reset: #{e.message}" if $DEBUG
+          rescue StandardError => e
+            # その他の予期しないエラー
+            puts "[ERROR] WebSocket unexpected error: #{e.class}: #{e.message}"
+            puts e.backtrace.first(5).join("\n") if $DEBUG
           ensure
-            @connections.delete(que)
+            @connections.delete(que) if que
             thread.terminate if thread
           end
         end
