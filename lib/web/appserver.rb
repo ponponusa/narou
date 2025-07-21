@@ -1180,10 +1180,18 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/api/csv/download" do
-    content_type "application/csv"
-    attachment "novels.csv"
+    begin
+      content_type "application/csv"
+      attachment "novels.csv"
 
-    Command::Csv.new.generate
+      Command::Csv.new.generate
+    rescue StandardError => e
+      puts "[ERROR] CSV download failed: #{e.class}: #{e.message}"
+      puts e.backtrace.first(10).join("\n") if $DEBUG
+      status 500
+      content_type "text/plain"
+      "CSV download error: #{e.message}\nError type: #{e.class}"
+    end
   end
 
   post "/api/csv/import" do

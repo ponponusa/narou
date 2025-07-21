@@ -59,23 +59,42 @@ module Command
     # 小説の情報をCSV形式の文字列で取得
     #
     def generate
-      database_values = Database.instance.get_object.values
+      database_obj = Database.instance.get_object
+      unless database_obj
+        raise "Database not initialized"
+      end
+      
+      database_values = database_obj.values
+      unless database_values
+        raise "Database values not available"
+      end
+      
       CSV.generate do |csv|
         csv << %w(id title author sitename url novel_type tags frozen last_update general_lastup)
         database_values.each do |data|
-          tags = data["tags"] || []
-          csv << [
-            data["id"],
-            data["title"],
-            data["author"],
-            data["sitename"],
-            data["toc_url"],
-            data["novel_type"] == 2 ? "短編" : "連載",
-            tags.join(" "),
-            Narou.novel_frozen?(data["id"]),
-            data["last_update"].to_i,
-            data["general_lastup"].to_i
-          ]
+          next unless data.is_a?(Hash)
+          
+          begin
+            tags = data["tags"] || []
+            novel_id = data["id"]
+            
+            csv << [
+              novel_id,
+              data["title"] || "",
+              data["author"] || "",
+              data["sitename"] || "",
+              data["toc_url"] || "",
+              data["novel_type"] == 2 ? "短編" : "連載",
+              tags.is_a?(Array) ? tags.join(" ") : "",
+              novel_id ? Narou.novel_frozen?(novel_id) : false,
+              (data["last_update"] || 0).to_i,
+              (data["general_lastup"] || 0).to_i
+            ]
+          rescue StandardError => e
+            puts "[WARN] CSV generation error for novel ID #{data["id"] rescue 'unknown'}: #{e.message}"
+            # エラーが発生した小説はスキップして続行
+            next
+          end
         end
       end
     end
