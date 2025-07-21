@@ -491,6 +491,125 @@ class Narou::AppServer < Sinatra::Base
     json({ count: Database.instance.get_object.size })
   end
 
+  # フィルター条件に一致する全小説IDを取得
+  get "/api/novels/all_ids" do
+    begin
+      all_ids = get_all_filtered_novel_ids(params)
+      json({ ids: all_ids })
+    rescue StandardError => e
+      status 500
+      json({ error: e.message })
+    end
+  end
+
+  # フィルター条件に一致する全小説IDを取得する共通メソッド
+  def get_all_filtered_novel_ids(params)
+    view_frozen = query_to_boolean(params["view_frozen"], default: true)
+    view_nonfrozen = query_to_boolean(params["view_nonfrozen"], default: true)
+    
+    # 検索パラメータの安全な取得
+    search_value = nil
+    if params["search"] && params["search"].is_a?(Hash)
+      search_value = params["search"]["value"]
+    elsif params["search[value]"]
+      search_value = params["search[value]"]
+    end
+    
+    # フィルタ文字列の取得
+    url_filter = params["filter"]
+    combined_filter = [search_value, url_filter].compact.reject(&:empty?).join(" ")
+    
+    # データベースから全データを取得
+    database_values = Database.instance.get_object.values
+    filtered_data = database_values.map do |data|
+      id = data["id"]
+      is_frozen = Narou.novel_frozen?(id)
+      tags = data["tags"] || []
+      
+      {
+        id: id.to_s,
+        title: data["title"],
+        author: data["author"],
+        sitename: data["sitename"],
+        status: data["status"],
+        frozen: is_frozen,
+        raw_tags: tags
+      }
+    end
+    
+    # 凍結状態でフィルタリング
+    unless view_frozen && view_nonfrozen
+      filtered_data = filtered_data.select do |item|
+        if view_frozen && !view_nonfrozen
+          item[:frozen]
+        elsif !view_frozen && view_nonfrozen
+          !item[:frozen]
+        else
+          true
+        end
+      end
+    end
+    
+    # 検索フィルタリング
+    if combined_filter && !combined_filter.strip.empty?
+      begin
+        # フィルタ文字列を単語に分割
+        filter_words = combined_filter.split(/\s+/)
+        
+        filtered_data = filtered_data.select do |item|
+          filter_words.all? do |word|
+            if word.match(/^([-^]?)tag:(.+)$/i)
+              # タグフィルタリング（OR検索対応）
+              exclude_flag = $1
+              tag_names_part = $2.downcase
+              
+              # パイプ（|）でOR検索をサポート
+              tag_names = tag_names_part.split('|').map(&:strip)
+              
+              if tag_names.size > 1
+                # OR検索: いずれかのタグにマッチすればOK
+                has_any_tag = tag_names.any? do |tag_name|
+                  item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+                end
+                
+                case exclude_flag
+                when "-", "^"
+                  !has_any_tag  # いずれのタグも持たない
+                else
+                  has_any_tag   # いずれかのタグを持つ
+                end
+              else
+                # 単一タグの従来処理
+                tag_name = tag_names.first
+                has_tag = item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+                
+                case exclude_flag
+                when "-", "^"
+                  !has_tag  # 除外
+                else
+                  has_tag   # 包含
+                end
+              end
+            else
+              # 通常の検索フィルタリング
+              search_regex = Regexp.new(Regexp.escape(word), Regexp::IGNORECASE)
+              item[:title].to_s.match?(search_regex) || 
+              item[:author].to_s.match?(search_regex) ||
+              item[:sitename].to_s.match?(search_regex) ||
+              item[:status].to_s.match?(search_regex) ||
+              item[:raw_tags].any? { |tag| tag.match?(search_regex) }
+            end
+          end
+        end
+      rescue StandardError => e
+        # エラーの場合はフィルターを適用せずに続行
+      end
+    end
+    
+    # IDのみを抽出して返す
+    filtered_data.map { |item| item[:id] }
+  end
+
   # 小説一覧処理の共通メソッド
   def process_novel_list_request(params)
     view_frozen = query_to_boolean(params["view_frozen"], default: true)
@@ -622,17 +741,36 @@ class Narou::AppServer < Sinatra::Base
         filtered_data = filtered_data.select do |item|
           filter_words.all? do |word|
             if word.match(/^([-^]?)tag:(.+)$/i)
-              # タグフィルタリング
+              # タグフィルタリング（OR検索対応）
               exclude_flag = $1
-              tag_name = $2.downcase
+              tag_names_part = $2.downcase
               
-              has_tag = item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+              # パイプ（|）でOR検索をサポート
+              tag_names = tag_names_part.split('|').map(&:strip)
               
-              case exclude_flag
-              when "-", "^"
-                !has_tag  # 除外
+              if tag_names.size > 1
+                # OR検索: いずれかのタグにマッチすればOK
+                has_any_tag = tag_names.any? do |tag_name|
+                  item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+                end
+                
+                case exclude_flag
+                when "-", "^"
+                  !has_any_tag  # いずれのタグも持たない
+                else
+                  has_any_tag   # いずれかのタグを持つ
+                end
               else
-                has_tag   # 包含
+                # 単一タグの従来処理
+                tag_name = tag_names.first
+                has_tag = item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+                
+                case exclude_flag
+                when "-", "^"
+                  !has_tag  # 除外
+                else
+                  has_tag   # 包含
+                end
               end
             else
               # 通常の検索フィルタリング
@@ -1079,19 +1217,38 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/api/csv/download" do
-    content_type "application/csv"
-    attachment "novels.csv"
+    begin
+      content_type "application/csv"
+      attachment "novels.csv"
 
-    Command::Csv.new.generate
+      csv_command = Command::Csv.new
+      result = csv_command.generate
+      puts "CSVファイルをエクスポートしました (#{result.bytesize} bytes)"
+      result
+    rescue StandardError => e
+      puts "[ERROR] CSVエクスポートに失敗しました: #{e.message}"
+      status 500
+      content_type "text/plain"
+      "CSVエクスポートエラー: #{e.message}"
+    end
   end
 
   post "/api/csv/import" do
-    files = params["files"] or pass
-    csv = Command::Csv.new
-    files.each do |file|
-      csv.import(file[:tempfile])
+    begin
+      files = params["files"] or pass
+      csv = Command::Csv.new
+      imported_count = 0
+      files.each do |file|
+        csv.import(file[:tempfile])
+        imported_count += 1
+      end
+      puts "CSVファイルをインポートしました (#{imported_count}件)"
+      ""
+    rescue StandardError => e
+      puts "[ERROR] CSVインポートに失敗しました: #{e.message}"
+      status 500
+      "CSVインポートエラー: #{e.message}"
     end
-    ""
   end
 
   # ダウンロード登録すると同時にグレーのボタン画像を返す
