@@ -76,40 +76,46 @@ module Command
       puts "[DEBUG] Database values count: #{database_values.size}"
       
       puts "[DEBUG] Starting CSV generation"
-      result = CSV.generate do |csv|
-        csv << %w(id title author sitename url novel_type tags frozen last_update general_lastup)
+      puts "[DEBUG] CSV class: #{CSV.class}"
+      puts "[DEBUG] CSV.generate method: #{CSV.method(:generate)}"
+      
+      # 直接文字列生成でCSVを作成
+      csv_lines = []
+      csv_lines << %w(id title author sitename url novel_type tags frozen last_update general_lastup).to_csv
+      
+      database_values.each_with_index do |data, index|
+        next unless data.is_a?(Hash)
         
-        database_values.each_with_index do |data, index|
-          next unless data.is_a?(Hash)
+        begin
+          tags = data["tags"] || []
+          novel_id = data["id"]
           
-          begin
-            tags = data["tags"] || []
-            novel_id = data["id"]
-            
-            if index % 100 == 0
-              puts "[DEBUG] Processing novel #{index + 1}/#{database_values.size}"
-            end
-            
-            csv << [
-              novel_id,
-              data["title"] || "",
-              data["author"] || "",
-              data["sitename"] || "",
-              data["toc_url"] || "",
-              data["novel_type"] == 2 ? "短編" : "連載",
-              tags.is_a?(Array) ? tags.join(" ") : "",
-              novel_id ? Narou.novel_frozen?(novel_id) : false,
-              (data["last_update"] || 0).to_i,
-              (data["general_lastup"] || 0).to_i
-            ]
-          rescue StandardError => e
-            puts "[WARN] CSV generation error for novel ID #{data["id"] rescue 'unknown'} at index #{index}: #{e.message}"
-            puts "[WARN] Error backtrace: #{e.backtrace.first(3).join(', ')}"
-            # エラーが発生した小説はスキップして続行
-            next
+          if index % 100 == 0
+            puts "[DEBUG] Processing novel #{index + 1}/#{database_values.size}"
           end
+          
+          row = [
+            novel_id,
+            data["title"] || "",
+            data["author"] || "",
+            data["sitename"] || "",
+            data["toc_url"] || "",
+            data["novel_type"] == 2 ? "短編" : "連載",
+            tags.is_a?(Array) ? tags.join(" ") : "",
+            novel_id ? Narou.novel_frozen?(novel_id) : false,
+            (data["last_update"] || 0).to_i,
+            (data["general_lastup"] || 0).to_i
+          ]
+          csv_lines << row.to_csv
+        rescue StandardError => e
+          puts "[WARN] CSV generation error for novel ID #{data["id"] rescue 'unknown'} at index #{index}: #{e.message}"
+          puts "[WARN] Error backtrace: #{e.backtrace.first(3).join(', ')}"
+          # エラーが発生した小説はスキップして続行
+          next
         end
       end
+      
+      result = csv_lines.join
       
       puts "[DEBUG] CSV generation completed successfully"
       result
