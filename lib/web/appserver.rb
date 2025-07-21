@@ -553,39 +553,65 @@ class Narou::AppServer < Sinatra::Base
     # 検索フィルタリング
     if combined_filter && !combined_filter.strip.empty?
       begin
+        puts "=== フィルター処理開始 ==="
+        puts "フィルター文字列: '#{combined_filter}'"
+        
         # フィルタ文字列を単語に分割
         filter_words = combined_filter.split(/\s+/)
+        puts "フィルター単語: #{filter_words.inspect}"
+        
+        original_count = filtered_data.size
+        puts "フィルター適用前のデータ数: #{original_count}"
         
         filtered_data = filtered_data.select do |item|
-          filter_words.all? do |word|
+          match_result = filter_words.all? do |word|
             if word.match(/^([-^]?)tag:(.+)$/i)
               # タグフィルタリング
               exclude_flag = $1
               tag_name = $2.downcase
               
+              puts "タグフィルター: word='#{word}', exclude='#{exclude_flag}', tag='#{tag_name}'"
+              puts "小説ID #{item[:id]} のタグ: #{item[:raw_tags].inspect}"
+              
               has_tag = item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+              puts "タグマッチ結果: #{has_tag}"
               
               case exclude_flag
               when "-", "^"
-                !has_tag  # 除外
+                result = !has_tag  # 除外
+                puts "除外フィルター結果: #{result}"
+                result
               else
+                puts "包含フィルター結果: #{has_tag}"
                 has_tag   # 包含
               end
             else
               # 通常の検索フィルタリング
               search_regex = Regexp.new(Regexp.escape(word), Regexp::IGNORECASE)
-              item[:title].to_s.match?(search_regex) || 
-              item[:author].to_s.match?(search_regex) ||
-              item[:sitename].to_s.match?(search_regex) ||
-              item[:status].to_s.match?(search_regex) ||
-              item[:raw_tags].any? { |tag| tag.match?(search_regex) }
+              title_match = item[:title].to_s.match?(search_regex)
+              author_match = item[:author].to_s.match?(search_regex)
+              site_match = item[:sitename].to_s.match?(search_regex)
+              status_match = item[:status].to_s.match?(search_regex)
+              tag_match = item[:raw_tags].any? { |tag| tag.match?(search_regex) }
+              
+              result = title_match || author_match || site_match || status_match || tag_match
+              puts "通常検索 '#{word}' -> 小説ID #{item[:id]}: #{result} (title:#{title_match}, author:#{author_match}, site:#{site_match}, status:#{status_match}, tag:#{tag_match})"
+              result
             end
           end
+          puts "小説ID #{item[:id]} 最終マッチ結果: #{match_result}"
+          match_result
         end
+        
+        puts "フィルター適用後のデータ数: #{filtered_data.size}"
+        puts "=== フィルター処理完了 ==="
       rescue StandardError => e
         puts "フィルター処理でエラーが発生しました: #{e.message}"
+        puts e.backtrace.first(5)
         # エラーの場合はフィルターを適用せずに続行
       end
+    else
+      puts "フィルターなし（combined_filter: '#{combined_filter}'）"
     end
     
     # IDのみを抽出して返す
@@ -715,6 +741,11 @@ class Narou::AppServer < Sinatra::Base
     # フィルタ処理（タグフィルタリング含む）
     combined_filter = [filter_value, search_value].compact.join(" ").strip
     
+    puts "=== process_novel_list_request フィルター処理 ==="
+    puts "filter_value: '#{filter_value}'"
+    puts "search_value: '#{search_value}'"
+    puts "combined_filter: '#{combined_filter}'"
+    
     if !combined_filter.empty?
       begin
         # フィルタ文字列を単語に分割
@@ -814,7 +845,16 @@ class Narou::AppServer < Sinatra::Base
 
   get "/api/list" do
     begin
+      puts "=== /api/list リクエスト受信 ==="
+      puts "受信パラメータ: #{params.inspect}"
+      puts "フィルター値: #{params['filter']}"
+      
       result = process_novel_list_request(params)
+      
+      puts "処理結果データ数: #{result[:data]&.length || 0}"
+      puts "総レコード数: #{result[:recordsTotal]}"
+      puts "フィルタ後レコード数: #{result[:recordsFiltered]}"
+      
       json result
     rescue StandardError => e
       # エラーが発生した場合のレスポンス
