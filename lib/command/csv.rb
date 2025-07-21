@@ -59,24 +59,36 @@ module Command
     # 小説の情報をCSV形式の文字列で取得
     #
     def generate
+      puts "[DEBUG] CSV generate method called"
+      
+      puts "[DEBUG] Getting database instance"
       database_obj = Database.instance.get_object
       unless database_obj
         raise "Database not initialized"
       end
+      puts "[DEBUG] Database object obtained: #{database_obj.class}"
       
+      puts "[DEBUG] Getting database values"
       database_values = database_obj.values
       unless database_values
         raise "Database values not available"
       end
+      puts "[DEBUG] Database values count: #{database_values.size}"
       
-      CSV.generate do |csv|
+      puts "[DEBUG] Starting CSV generation"
+      result = CSV.generate do |csv|
         csv << %w(id title author sitename url novel_type tags frozen last_update general_lastup)
-        database_values.each do |data|
+        
+        database_values.each_with_index do |data, index|
           next unless data.is_a?(Hash)
           
           begin
             tags = data["tags"] || []
             novel_id = data["id"]
+            
+            if index % 100 == 0
+              puts "[DEBUG] Processing novel #{index + 1}/#{database_values.size}"
+            end
             
             csv << [
               novel_id,
@@ -91,12 +103,16 @@ module Command
               (data["general_lastup"] || 0).to_i
             ]
           rescue StandardError => e
-            puts "[WARN] CSV generation error for novel ID #{data["id"] rescue 'unknown'}: #{e.message}"
+            puts "[WARN] CSV generation error for novel ID #{data["id"] rescue 'unknown'} at index #{index}: #{e.message}"
+            puts "[WARN] Error backtrace: #{e.backtrace.first(3).join(', ')}"
             # エラーが発生した小説はスキップして続行
             next
           end
         end
       end
+      
+      puts "[DEBUG] CSV generation completed successfully"
+      result
     end
 
     #

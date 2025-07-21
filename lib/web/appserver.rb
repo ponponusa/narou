@@ -1181,13 +1181,20 @@ class Narou::AppServer < Sinatra::Base
 
   get "/api/csv/download" do
     begin
+      puts "[DEBUG] CSV download request started"
       content_type "application/csv"
       attachment "novels.csv"
 
-      Command::Csv.new.generate
+      puts "[DEBUG] Creating CSV command instance"
+      csv_command = Command::Csv.new
+      puts "[DEBUG] Generating CSV data"
+      result = csv_command.generate
+      puts "[DEBUG] CSV generation completed, size: #{result.bytesize} bytes"
+      result
     rescue StandardError => e
       puts "[ERROR] CSV download failed: #{e.class}: #{e.message}"
-      puts e.backtrace.first(10).join("\n") if $DEBUG
+      puts "[ERROR] Backtrace:"
+      puts e.backtrace.first(15).join("\n")
       status 500
       content_type "text/plain"
       "CSV download error: #{e.message}\nError type: #{e.class}"
