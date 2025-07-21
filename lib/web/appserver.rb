@@ -559,17 +559,36 @@ class Narou::AppServer < Sinatra::Base
         filtered_data = filtered_data.select do |item|
           filter_words.all? do |word|
             if word.match(/^([-^]?)tag:(.+)$/i)
-              # タグフィルタリング
+              # タグフィルタリング（OR検索対応）
               exclude_flag = $1
-              tag_name = $2.downcase
+              tag_names_part = $2.downcase
               
-              has_tag = item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+              # パイプ（|）でOR検索をサポート
+              tag_names = tag_names_part.split('|').map(&:strip)
               
-              case exclude_flag
-              when "-", "^"
-                !has_tag  # 除外
+              if tag_names.size > 1
+                # OR検索: いずれかのタグにマッチすればOK
+                has_any_tag = tag_names.any? do |tag_name|
+                  item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+                end
+                
+                case exclude_flag
+                when "-", "^"
+                  !has_any_tag  # いずれのタグも持たない
+                else
+                  has_any_tag   # いずれかのタグを持つ
+                end
               else
-                has_tag   # 包含
+                # 単一タグの従来処理
+                tag_name = tag_names.first
+                has_tag = item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+                
+                case exclude_flag
+                when "-", "^"
+                  !has_tag  # 除外
+                else
+                  has_tag   # 包含
+                end
               end
             else
               # 通常の検索フィルタリング
@@ -722,17 +741,36 @@ class Narou::AppServer < Sinatra::Base
         filtered_data = filtered_data.select do |item|
           filter_words.all? do |word|
             if word.match(/^([-^]?)tag:(.+)$/i)
-              # タグフィルタリング
+              # タグフィルタリング（OR検索対応）
               exclude_flag = $1
-              tag_name = $2.downcase
+              tag_names_part = $2.downcase
               
-              has_tag = item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+              # パイプ（|）でOR検索をサポート
+              tag_names = tag_names_part.split('|').map(&:strip)
               
-              case exclude_flag
-              when "-", "^"
-                !has_tag  # 除外
+              if tag_names.size > 1
+                # OR検索: いずれかのタグにマッチすればOK
+                has_any_tag = tag_names.any? do |tag_name|
+                  item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+                end
+                
+                case exclude_flag
+                when "-", "^"
+                  !has_any_tag  # いずれのタグも持たない
+                else
+                  has_any_tag   # いずれかのタグを持つ
+                end
               else
-                has_tag   # 包含
+                # 単一タグの従来処理
+                tag_name = tag_names.first
+                has_tag = item[:raw_tags].any? { |tag| tag.downcase.include?(tag_name) }
+                
+                case exclude_flag
+                when "-", "^"
+                  !has_tag  # 除外
+                else
+                  has_tag   # 包含
+                end
               end
             else
               # 通常の検索フィルタリング
