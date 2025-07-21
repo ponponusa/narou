@@ -1181,33 +1181,37 @@ class Narou::AppServer < Sinatra::Base
 
   get "/api/csv/download" do
     begin
-      puts "[DEBUG] CSV download request started"
       content_type "application/csv"
       attachment "novels.csv"
 
-      puts "[DEBUG] Creating CSV command instance"
       csv_command = Command::Csv.new
-      puts "[DEBUG] Generating CSV data"
       result = csv_command.generate
-      puts "[DEBUG] CSV generation completed, size: #{result.bytesize} bytes"
+      puts "CSVファイルをエクスポートしました (#{result.bytesize} bytes)"
       result
     rescue StandardError => e
-      puts "[ERROR] CSV download failed: #{e.class}: #{e.message}"
-      puts "[ERROR] Backtrace:"
-      puts e.backtrace.first(15).join("\n")
+      puts "[ERROR] CSVエクスポートに失敗しました: #{e.message}"
       status 500
       content_type "text/plain"
-      "CSV download error: #{e.message}\nError type: #{e.class}"
+      "CSVエクスポートエラー: #{e.message}"
     end
   end
 
   post "/api/csv/import" do
-    files = params["files"] or pass
-    csv = Command::Csv.new
-    files.each do |file|
-      csv.import(file[:tempfile])
+    begin
+      files = params["files"] or pass
+      csv = Command::Csv.new
+      imported_count = 0
+      files.each do |file|
+        csv.import(file[:tempfile])
+        imported_count += 1
+      end
+      puts "CSVファイルをインポートしました (#{imported_count}件)"
+      ""
+    rescue StandardError => e
+      puts "[ERROR] CSVインポートに失敗しました: #{e.message}"
+      status 500
+      "CSVインポートエラー: #{e.message}"
     end
-    ""
   end
 
   # ダウンロード登録すると同時にグレーのボタン画像を返す
