@@ -694,7 +694,7 @@ class Narou::AppServer < Sinatra::Base
                     end
         
         {
-          id: id.to_s,
+          id: id,
           last_update: data["last_update"].to_i,
           title: h(data["title"]),
           author: h(data["author"]),
