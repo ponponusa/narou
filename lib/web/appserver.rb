@@ -1017,17 +1017,37 @@ class Narou::AppServer < Sinatra::Base
     if params["with_file"] == "true"
       opt_arguments << "--with-file"
     end
-    Narou::WebWorker.push do
-      CommandLine.run!("remove", "--yes", ids, opt_arguments)
-      @@push_server.send_all(:"table.reload")
+    begin
+      Narou::WebWorker.push do
+        begin
+          CommandLine.run!("remove", "--yes", ids, opt_arguments)
+          @@push_server.send_all(:"table.reload")
+        rescue => e
+          @@push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })
+        end
+      end
+      { success: true }.to_json
+    rescue => e
+      status 500
+      { error: "削除処理でエラーが発生しました: #{e.message}" }.to_json
     end
   end
 
   post "/api/remove_with_file" do
     ids = select_valid_novel_ids(params["ids"]) or pass
-    Narou::WebWorker.push do
-      CommandLine.run!("remove", "--yes", "--with-file", ids)
-      @@push_server.send_all(:"table.reload")
+    begin
+      Narou::WebWorker.push do
+        begin
+          CommandLine.run!("remove", "--yes", "--with-file", ids)
+          @@push_server.send_all(:"table.reload")
+        rescue => e
+          @@push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })
+        end
+      end
+      { success: true }.to_json
+    rescue => e
+      status 500
+      { error: "削除処理でエラーが発生しました: #{e.message}" }.to_json
     end
   end
 
