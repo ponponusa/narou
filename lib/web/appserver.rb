@@ -710,7 +710,6 @@ class Narou::AppServer < Sinatra::Base
             data["suspend"] ? "中断" : nil
           ].compact.join(", "),
           download: %!<a href="/novels/#{id}/download" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span></a>!,
-          epub: nil,
           frozen: is_frozen,
           new_arrivals_date: data["new_arrivals_date"].tap { |m| break m.to_i if m },
           general_lastup: data["general_lastup"].tap { |m| break m.to_i if m },
@@ -1231,40 +1230,6 @@ class Narou::AppServer < Sinatra::Base
       status 500
       content_type "text/plain"
       "CSVエクスポートエラー: #{e.message}"
-    end
-  end
-
-  get "/api/epub/download/:id" do
-    begin
-      id = params[:id].to_i
-      database = Database.instance
-      data = database[id]
-      
-      unless data
-        status 404
-        return "小説が見つかりません"
-      end
-
-      device = Narou.get_device
-      ext = device ? device.ebook_file_ext : ".epub"
-      paths = Narou.get_ebook_file_paths(id, ext)
-      
-      if paths.empty? || !File.exist?(paths[0])
-        status 404
-        return "EPUBファイルが見つかりません"
-      end
-
-      filename = File.basename(paths[0])
-      content_type "application/epub+zip"
-      attachment filename
-      
-      puts "EPUBファイルをダウンロード: #{filename}"
-      send_file(paths[0])
-    rescue StandardError => e
-      puts "[ERROR] EPUBダウンロードに失敗しました: #{e.message}"
-      status 500
-      content_type "text/plain"
-      "EPUBダウンロードエラー: #{e.message}"
     end
   end
 
