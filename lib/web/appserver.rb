@@ -494,9 +494,13 @@ class Narou::AppServer < Sinatra::Base
   # フィルター条件に一致する全小説IDを取得
   get "/api/novels/all_ids" do
     begin
+      puts "[DEBUG] /api/novels/all_ids called with params: #{params.inspect}"
       all_ids = get_all_filtered_novel_ids(params)
+      puts "[DEBUG] Retrieved #{all_ids.length} IDs: #{all_ids.inspect}"
       json({ ids: all_ids })
     rescue StandardError => e
+      puts "[ERROR] /api/novels/all_ids error: #{e.message}"
+      puts e.backtrace.join("\n")
       status 500
       json({ error: e.message })
     end
@@ -521,13 +525,15 @@ class Narou::AppServer < Sinatra::Base
     
     # データベースから全データを取得
     database_values = Database.instance.get_object.values
+    puts "[DEBUG] Database values count: #{database_values.length}"
     filtered_data = database_values.map do |data|
       id = data["id"]
+      puts "[DEBUG] Processing novel ID: #{id} (#{id.class})"
       is_frozen = Narou.novel_frozen?(id)
       tags = data["tags"] || []
       
       {
-        id: id.to_s,
+        id: id.to_i,  # 数値として保持
         title: data["title"],
         author: data["author"],
         sitename: data["sitename"],
@@ -607,7 +613,9 @@ class Narou::AppServer < Sinatra::Base
     end
     
     # IDのみを抽出して返す
-    filtered_data.map { |item| item[:id] }
+    result_ids = filtered_data.map { |item| item[:id] }
+    puts "[DEBUG] Final result IDs: #{result_ids.inspect}"
+    result_ids
   end
 
   # 小説一覧処理の共通メソッド
