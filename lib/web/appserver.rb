@@ -966,7 +966,10 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/update" do
-    puts "[DEBUG] Update API called with params: #{params["ids"].inspect}"
+    puts "[DEBUG] Update API called"
+    puts "[DEBUG] All params: #{params.inspect}"
+    puts "[DEBUG] params['ids']: #{params["ids"].inspect}"
+    puts "[DEBUG] params['ids'] class: #{params["ids"].class}"
     ids = select_valid_novel_ids(params["ids"]) || []
     puts "[DEBUG] Valid IDs: #{ids.inspect}"
     
