@@ -55,26 +55,33 @@ module Narou::ServerHelpers
   # 現在のソート状態に基づいてIDを並び替える
   #
   def sort_ids_by_current_sort(ids)
+    puts "[DEBUG] sort_ids_by_current_sort called with #{ids ? ids.length : 0} IDs: #{ids.inspect}"
     return ids unless ids && ids.length > 0
     
     server_setting = Inventory.load("server_setting", :global)
     current_sort = server_setting["current_sort"]
+    puts "[DEBUG] Current sort from server: #{current_sort.inspect}"
     return ids unless current_sort
     
     order_column = current_sort["column"]
     order_dir = current_sort["dir"]
+    puts "[DEBUG] Sort params: column=#{order_column}, dir=#{order_dir}"
     return ids unless order_column && order_dir
     
     column_names = ["id", "last_update", "general_lastup", "last_check_date", "title", "author", "sitename", "novel_type", "tags", "general_all_no", "length", "status", "toc_url"]
     sort_column = column_names[order_column]
+    puts "[DEBUG] Sort column: #{sort_column}"
     return ids unless sort_column
     
     # IDから小説データを取得してソート
     database = Database.instance
     novels_data = ids.map do |id|
       data = database[id.to_i]
+      puts "[DEBUG] ID #{id}: #{data ? 'found' : 'not found'}"
       data ? [id, data] : nil
     end.compact
+    
+    puts "[DEBUG] Found #{novels_data.length} novels with data"
     
     # ソート実行
     novels_data.sort! do |a, b|
@@ -91,7 +98,9 @@ module Narou::ServerHelpers
     end
     
     # ソート済みのIDのみを返す
-    novels_data.map { |novel| novel[0] }
+    sorted_ids = novels_data.map { |novel| novel[0] }
+    puts "[DEBUG] Sorted IDs: #{sorted_ids.inspect}"
+    sorted_ids
   end
 
   #

@@ -644,12 +644,16 @@ class Narou::AppServer < Sinatra::Base
     
     # ソート状態をサーバー側に保存
     if order_column && order_dir
+      puts "[DEBUG] Saving sort state: column=#{order_column}, dir=#{order_dir}"
       server_setting = Inventory.load("server_setting", :global)
       server_setting["current_sort"] = {
         "column" => order_column,
         "dir" => order_dir
       }
       server_setting.save
+      puts "[DEBUG] Sort state saved successfully"
+    else
+      puts "[DEBUG] No sort parameters to save: column=#{order_column}, dir=#{order_dir}"
     end
     
     # 軽量なタグ処理モード（大量データ用）
@@ -962,9 +966,20 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/update" do
+    puts "[DEBUG] Update API called with params: #{params["ids"].inspect}"
     ids = select_valid_novel_ids(params["ids"]) || []
-    # 現在のソート状態に基づいてIDを並び替え
-    sorted_ids = sort_ids_by_current_sort(ids)
+    puts "[DEBUG] Valid IDs: #{ids.inspect}"
+    
+    # skip_sort パラメータがある場合はソートをスキップ（現在のページ表示順序を維持）
+    if params["skip_sort"] == "true"
+      puts "[DEBUG] Skipping server-side sort, using client order"
+      sorted_ids = ids
+    else
+      # 現在のソート状態に基づいてIDを並び替え
+      sorted_ids = sort_ids_by_current_sort(ids)
+      puts "[DEBUG] Sorted IDs for update: #{sorted_ids.inspect}"
+    end
+    
     opt_arguments = []
     if params["force"] == "true"
       opt_arguments << "--force"
