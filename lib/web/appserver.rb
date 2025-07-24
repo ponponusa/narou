@@ -978,33 +978,63 @@ class Narou::AppServer < Sinatra::Base
     puts "[DEBUG] All params: #{params.inspect}"
     puts "[DEBUG] params['ids']: #{params["ids"].inspect}"
     puts "[DEBUG] params['ids'] class: #{params["ids"].class}"
-    ids = select_valid_novel_ids(params["ids"]) || []
-    puts "[DEBUG] Valid IDs: #{ids.inspect}"
+    puts "[DEBUG] params['update_all']: #{params["update_all"].inspect}"
     
-    # skip_sort パラメータがある場合はソートをスキップ（現在のページ表示順序を維持）
-    if params["skip_sort"] == "true"
-      puts "[DEBUG] Skipping server-side sort, using client order"
-      sorted_ids = ids
-    else
-      # 現在のソート状態に基づいてIDを並び替え
-      sorted_ids = sort_ids_by_current_sort(ids)
-      puts "[DEBUG] Sorted IDs for update: #{sorted_ids.inspect}"
-    end
-    
-    opt_arguments = []
-    if params["force"] == "true"
-      opt_arguments << "--force"
-    end
-    Narou::WebWorker.push do
-      puts "<white>更新を開始します（ソート順序: #{sorted_ids.length}件）</white>".termcolor
-      cmd = Command::Update.new
-      if table_reload_timing == "every"
-        cmd.on(:success) do
-          @@push_server.send_all(:"table.reload")
-        end
+    if params["update_all"] == "true"
+      # 全件更新の場合
+      puts "[DEBUG] All novels update requested"
+      
+      # 全小説のIDを取得してソート順序で並び替え
+      all_novel_ids = Database.instance.get_object.keys
+      puts "[DEBUG] All novel IDs: #{all_novel_ids.inspect}"
+      sorted_ids = sort_ids_by_current_sort(all_novel_ids.map(&:to_s))
+      puts "[DEBUG] Sorted all IDs for update: #{sorted_ids.inspect}"
+      
+      opt_arguments = []
+      if params["force"] == "true"
+        opt_arguments << "--force"
       end
-      cmd.execute!(sorted_ids, opt_arguments)
-      @@push_server.send_all(:"table.reload")
+      Narou::WebWorker.push do
+        puts "<white>全ての小説の更新を開始します（ソート順序: #{sorted_ids.length}件）</white>".termcolor
+        cmd = Command::Update.new
+        if table_reload_timing == "every"
+          cmd.on(:success) do
+            @@push_server.send_all(:"table.reload")
+          end
+        end
+        cmd.execute!(sorted_ids, opt_arguments)
+        @@push_server.send_all(:"table.reload")
+      end
+    else
+      # 選択された小説のみ更新
+      ids = select_valid_novel_ids(params["ids"]) || []
+      puts "[DEBUG] Valid IDs: #{ids.inspect}"
+      
+      # skip_sort パラメータがある場合はソートをスキップ（現在のページ表示順序を維持）
+      if params["skip_sort"] == "true"
+        puts "[DEBUG] Skipping server-side sort, using client order"
+        sorted_ids = ids
+      else
+        # 現在のソート状態に基づいてIDを並び替え
+        sorted_ids = sort_ids_by_current_sort(ids)
+        puts "[DEBUG] Sorted IDs for update: #{sorted_ids.inspect}"
+      end
+      
+      opt_arguments = []
+      if params["force"] == "true"
+        opt_arguments << "--force"
+      end
+      Narou::WebWorker.push do
+        puts "<white>更新を開始します（ソート順序: #{sorted_ids.length}件）</white>".termcolor
+        cmd = Command::Update.new
+        if table_reload_timing == "every"
+          cmd.on(:success) do
+            @@push_server.send_all(:"table.reload")
+          end
+        end
+        cmd.execute!(sorted_ids, opt_arguments)
+        @@push_server.send_all(:"table.reload")
+      end
     end
   end
 
