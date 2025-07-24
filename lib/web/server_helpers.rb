@@ -77,16 +77,24 @@ module Narou::ServerHelpers
     database = Database.instance
     novels_data = ids.map do |id|
       data = database[id.to_i]
-      puts "[DEBUG] ID #{id}: #{data ? 'found' : 'not found'}"
+      if data
+        puts "[DEBUG] ID #{id}: found - #{sort_column}: #{data[sort_column.to_s]}"
+      else
+        puts "[DEBUG] ID #{id}: not found"
+      end
       data ? [id, data] : nil
     end.compact
     
     puts "[DEBUG] Found #{novels_data.length} novels with data"
     
     # ソート実行
+    puts "[DEBUG] Before sort: #{novels_data.map{|n| [n[0], n[1][sort_column.to_sym]]}.inspect}"
+    
     novels_data.sort! do |a, b|
       val_a = a[1][sort_column.to_sym] || 0
       val_b = b[1][sort_column.to_sym] || 0
+      
+      puts "[DEBUG] Comparing ID #{a[0]} (#{val_a}) vs ID #{b[0]} (#{val_b})"
       
       if val_a.is_a?(Numeric) && val_b.is_a?(Numeric)
         comparison = val_a <=> val_b
@@ -94,8 +102,12 @@ module Narou::ServerHelpers
         comparison = val_a.to_s <=> val_b.to_s
       end
       
-      order_dir == "desc" ? -comparison : comparison
+      result = order_dir == "desc" ? -comparison : comparison
+      puts "[DEBUG] Comparison result: #{result} (#{order_dir})"
+      result
     end
+    
+    puts "[DEBUG] After sort: #{novels_data.map{|n| [n[0], n[1][sort_column.to_sym]]}.inspect}"
     
     # ソート済みのIDのみを返す
     sorted_ids = novels_data.map { |novel| novel[0] }

@@ -985,9 +985,18 @@ class Narou::AppServer < Sinatra::Base
       puts "[DEBUG] All novels update requested"
       
       # 全小説のIDを取得してソート順序で並び替え
-      all_novel_ids = Database.instance.get_object.keys
-      puts "[DEBUG] All novel IDs: #{all_novel_ids.inspect}"
-      sorted_ids = sort_ids_by_current_sort(all_novel_ids.map(&:to_s))
+      database_obj = Database.instance.get_object
+      puts "[DEBUG] Database object keys: #{database_obj.keys.inspect}"
+      puts "[DEBUG] Database object sample values:"
+      database_obj.each_with_index do |(key, value), index|
+        break if index >= 3
+        puts "[DEBUG]   #{key}: {id: #{value['id']}, title: #{value['title']}, general_lastup: #{value['general_lastup']}}"
+      end
+      
+      # データベースのIDフィールドから実際のIDを取得
+      all_novel_ids = database_obj.values.map { |data| data["id"].to_s }
+      puts "[DEBUG] All novel IDs from data['id']: #{all_novel_ids.inspect}"
+      sorted_ids = sort_ids_by_current_sort(all_novel_ids)
       puts "[DEBUG] Sorted all IDs for update: #{sorted_ids.inspect}"
       
       opt_arguments = []
