@@ -642,6 +642,16 @@ class Narou::AppServer < Sinatra::Base
       order_dir = params["order[0][dir]"]
     end
     
+    # ソート状態をサーバー側に保存
+    if order_column && order_dir
+      server_setting = Inventory.load("server_setting", :global)
+      server_setting["current_sort"] = {
+        "column" => order_column,
+        "dir" => order_dir
+      }
+      server_setting.save
+    end
+    
     # 軽量なタグ処理モード（大量データ用）
     lightweight_mode = params["lightweight"] == "true"
     
@@ -893,10 +903,30 @@ class Narou::AppServer < Sinatra::Base
     Narou::Worker.cancel if Narou.concurrency_enabled?
   end
 
+  get "/api/sort_state" do
+    server_setting = Inventory.load("server_setting", :global)
+    current_sort = server_setting["current_sort"]
+    
+    if current_sort
+      json({
+        column: current_sort["column"],
+        dir: current_sort["dir"]
+      })
+    else
+      # デフォルトソート: 最新話掲載日 降順
+      json({
+        column: 2,
+        dir: "desc"
+      })
+    end
+  end
+
   post "/api/convert" do
     ids = select_valid_novel_ids(params["ids"]) or pass
+    # 現在のソート状態に基づいてIDを並び替え
+    sorted_ids = sort_ids_by_current_sort(ids)
     concurrency_push do
-      CommandLine.run!("convert", "--no-open", ids)
+      CommandLine.run!("convert", "--no-open", sorted_ids)
     end
   end
 
@@ -933,19 +963,21 @@ class Narou::AppServer < Sinatra::Base
 
   post "/api/update" do
     ids = select_valid_novel_ids(params["ids"]) || []
+    # 現在のソート状態に基づいてIDを並び替え
+    sorted_ids = sort_ids_by_current_sort(ids)
     opt_arguments = []
     if params["force"] == "true"
       opt_arguments << "--force"
     end
     Narou::WebWorker.push do
-      puts "<white>更新を開始します</white>".termcolor
+      puts "<white>更新を開始します（ソート順序: #{sorted_ids.length}件）</white>".termcolor
       cmd = Command::Update.new
       if table_reload_timing == "every"
         cmd.on(:success) do
           @@push_server.send_all(:"table.reload")
         end
       end
-      cmd.execute!(ids, opt_arguments)
+      cmd.execute!(sorted_ids, opt_arguments)
       @@push_server.send_all(:"table.reload")
     end
   end
@@ -1013,6 +1045,8 @@ class Narou::AppServer < Sinatra::Base
 
   post "/api/remove" do
     ids = select_valid_novel_ids(params["ids"]) or pass
+    # 現在のソート状態に基づいてIDを並び替え
+    sorted_ids = sort_ids_by_current_sort(ids)
     opt_arguments = []
     if params["with_file"] == "true"
       opt_arguments << "--with-file"
@@ -1020,7 +1054,7 @@ class Narou::AppServer < Sinatra::Base
     begin
       Narou::WebWorker.push do
         begin
-          CommandLine.run!("remove", "--yes", ids, opt_arguments)
+          CommandLine.run!("remove", "--yes", sorted_ids, opt_arguments)
           @@push_server.send_all(:"table.reload")
         rescue => e
           @@push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })
@@ -1035,10 +1069,12 @@ class Narou::AppServer < Sinatra::Base
 
   post "/api/remove_with_file" do
     ids = select_valid_novel_ids(params["ids"]) or pass
+    # 現在のソート状態に基づいてIDを並び替え
+    sorted_ids = sort_ids_by_current_sort(ids)
     begin
       Narou::WebWorker.push do
         begin
-          CommandLine.run!("remove", "--yes", "--with-file", ids)
+          CommandLine.run!("remove", "--yes", "--with-file", sorted_ids)
           @@push_server.send_all(:"table.reload")
         rescue => e
           @@push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })

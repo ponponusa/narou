@@ -52,6 +52,49 @@ module Narou::ServerHelpers
   end
 
   #
+  # 現在のソート状態に基づいてIDを並び替える
+  #
+  def sort_ids_by_current_sort(ids)
+    return ids unless ids && ids.length > 0
+    
+    server_setting = Inventory.load("server_setting", :global)
+    current_sort = server_setting["current_sort"]
+    return ids unless current_sort
+    
+    order_column = current_sort["column"]
+    order_dir = current_sort["dir"]
+    return ids unless order_column && order_dir
+    
+    column_names = ["id", "last_update", "general_lastup", "last_check_date", "title", "author", "sitename", "novel_type", "tags", "general_all_no", "length", "status", "toc_url"]
+    sort_column = column_names[order_column]
+    return ids unless sort_column
+    
+    # IDから小説データを取得してソート
+    database = Database.instance
+    novels_data = ids.map do |id|
+      data = database[id.to_i]
+      data ? [id, data] : nil
+    end.compact
+    
+    # ソート実行
+    novels_data.sort! do |a, b|
+      val_a = a[1][sort_column.to_sym] || 0
+      val_b = b[1][sort_column.to_sym] || 0
+      
+      if val_a.is_a?(Numeric) && val_b.is_a?(Numeric)
+        comparison = val_a <=> val_b
+      else
+        comparison = val_a.to_s <=> val_b.to_s
+      end
+      
+      order_dir == "desc" ? -comparison : comparison
+    end
+    
+    # ソート済みのIDのみを返す
+    novels_data.map { |novel| novel[0] }
+  end
+
+  #
   # フォーム情報の真偽値データを実際のデータに変換
   #
   def convert_on_off_to_boolean(str)
