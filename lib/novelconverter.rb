@@ -326,9 +326,7 @@ class NovelConverter
           return :error
         end
         # mimetypeを無圧縮(STORED)・先頭で追加
-        mimetype_entry = Zip::Entry.new('', 'mimetype')
-        mimetype_entry.compression_method = Zip::Entry::STORED
-        zos.put_next_entry(mimetype_entry)
+        zos.put_next_entry('mimetype', Zip::Entry::STORED)
         zos.write File.read(mimetype_path, mode: "rb")
 
         # 他のファイルを追加（mimetypeを除く）
