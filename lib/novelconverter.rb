@@ -325,8 +325,10 @@ class NovelConverter
           stream_io.error "mimetypeファイルが見つかりません"
           return :error
         end
-        # mimetypeを無圧縮(STORED)・先頭で追加
-        zos.put_next_entry('mimetype', Zip::Entry::STORED)
+
+        # 第1引数に名前、第4引数にZip::Entry::STORED を渡す
+        zos.put_next_entry('mimetype', nil, nil, Zip::Entry::STORED)
+
         zos.write File.read(mimetype_path, mode: "rb")
 
         # 他のファイルを追加（mimetypeを除く）
