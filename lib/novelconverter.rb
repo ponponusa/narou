@@ -321,8 +321,10 @@ class NovelConverter
         # mimetypeファイルを最初に無圧縮で追加
         mimetype_path = File.join(temp_dir, "mimetype")
         if File.exist?(mimetype_path)
-          zip_file.add("mimetype", mimetype_path) do |entry|
-            entry.compression_method = Zip::Entry::STORED  # 無圧縮
+          # OutputStreamを使用して無圧縮を指定
+          zip_file.get_output_stream("mimetype") do |stream|
+            stream.compression_method = Zip::Entry::STORED  # 無圧縮
+            stream.write(File.read(mimetype_path))
           end
         end
         
