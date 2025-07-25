@@ -539,7 +539,8 @@ module Command
         "convert.dc-subject-exclude-tags" => {
           type: :string,
           help: "dc:subjectから除外するタグをカンマ区切りで指定する。" \
-                "デフォルトは「404,end」（404は削除タグ、endは完結タグ）",
+                "初期値は「404,end」（初回実行時に自動設定される）。" \
+                "すべてのタグを埋め込みたい場合は空文字列を設定",
           tab: :general
         },
         "folder-length-limit" => {

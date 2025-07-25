@@ -302,8 +302,18 @@ module Command
       if @options["add-dc-subject-to-epub"] && @novel_data && @novel_data["tags"]
         tags = @novel_data["tags"]
         if tags.is_a?(Array)
-          # 除外タグの設定を取得（デフォルト: "404,end"）
-          exclude_tags_setting = @options["dc-subject-exclude-tags"] || "404,end"
+          # 除外タグの設定を取得
+          exclude_tags_setting = @options["dc-subject-exclude-tags"]
+          
+          # 初回実行時にデフォルト値を設定
+          if exclude_tags_setting.nil?
+            exclude_tags_setting = "404,end"
+            # 設定を保存
+            local_settings = Inventory.load("local_setting")
+            local_settings["convert.dc-subject-exclude-tags"] = exclude_tags_setting
+            local_settings.save
+          end
+          
           excluded_tags = exclude_tags_setting.split(",").map(&:strip).reject(&:empty?)
           dc_subjects = tags.reject { |tag| excluded_tags.include?(tag) }.map(&:strip).reject(&:empty?)
         end
