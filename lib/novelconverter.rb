@@ -292,35 +292,45 @@ class NovelConverter
         return :error
       end
       
-      # XMLを読み込み、dc:subjectを追加
-      doc = REXML::Document.new(File.read(opf_path))
-      metadata = doc.root.elements["metadata"]
+      # 文字列置換でdc:subjectを追加する方式に変更
+      # （REXMLの整形では元のフォーマットが崩れるため）
+      content = File.read(opf_path)
       
-      unless metadata
-        stream_io.error "metadataセクションが見つかりませんでした"
-        return :error
-      end
+      # 既存のdc:subjectを削除
+      content.gsub!(/<dc:subject>.*?<\/dc:subject>\s*\n?\s*/m, "")
       
-      # 既存のdc:subjectを削除（重複を避けるため）
-      metadata.elements.delete_all("dc:subject")
-      
-      # 新しいdc:subjectを追加
-      subjects.each do |subject|
+      # 新しいdc:subjectを生成（XMLエスケープも行う）
+      dc_subject_lines = subjects.map do |subject|
         next if subject.strip.empty?
-        element = REXML::Element.new("dc:subject")
-        element.text = subject.strip
-        metadata.add_element(element)
+        escaped_subject = subject.strip.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;").gsub("\"", "&quot;").gsub("'", "&apos;")
+        "    <dc:subject>#{escaped_subject}</dc:subject>"
+      end.compact
+      
+      if dc_subject_lines.any?
+        # </metadata>の直前にdc:subjectを挿入
+        dc_subjects_xml = dc_subject_lines.join("\n") + "\n"
+        content.sub!(/(\s*)<\/metadata>/, "\n#{dc_subjects_xml}\\1</metadata>")
       end
       
       # XMLを書き戻し
-      File.write(opf_path, doc.to_s)
+      File.write(opf_path, content)
       
       # EPUBファイルを再作成
       File.delete(epub_path)
       Zip::File.open(epub_path, Zip::File::CREATE) do |zip_file|
+        # mimetypeファイルを最初に無圧縮で追加
+        mimetype_path = File.join(temp_dir, "mimetype")
+        if File.exist?(mimetype_path)
+          zip_file.add("mimetype", mimetype_path) do |entry|
+            entry.compression_method = Zip::Entry::STORED  # 無圧縮
+          end
+        end
+        
+        # 他のファイルを追加（mimetypeを除く）
         Dir.glob(File.join(temp_dir, "**", "*"), File::FNM_DOTMATCH).each do |file_path|
           next if File.directory?(file_path)
           relative_path = file_path.sub(temp_dir + "/", "")
+          next if relative_path == "mimetype"  # mimetypeは既に追加済み
           zip_file.add(relative_path, file_path)
         end
       end
@@ -513,13 +523,14 @@ class NovelConverter
   #
   # 小説のタグ情報をdc:subject用の配列として取得
   #
-  def get_dc_subjects_from_tags
+  def get_dc_subjects_from_tags(exclude_tags_setting = "404,end")
     return [] unless @data && @data["tags"]
     tags = @data["tags"]
     return [] unless tags.is_a?(Array)
     
-    # "end"タグは除外し、他のタグを返す
-    tags.reject { |tag| tag == "end" }.map(&:strip).reject(&:empty?)
+    # 除外タグの設定を解析
+    excluded_tags = exclude_tags_setting.split(",").map(&:strip).reject(&:empty?)
+    tags.reject { |tag| excluded_tags.include?(tag) }.map(&:strip).reject(&:empty?)
   end
 
   #

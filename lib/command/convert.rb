@@ -302,7 +302,10 @@ module Command
       if @options["add-dc-subject-to-epub"] && @novel_data && @novel_data["tags"]
         tags = @novel_data["tags"]
         if tags.is_a?(Array)
-          dc_subjects = tags.reject { |tag| tag == "end" }.map(&:strip).reject(&:empty?)
+          # 除外タグの設定を取得（デフォルト: "404,end"）
+          exclude_tags_setting = @options["dc-subject-exclude-tags"] || "404,end"
+          excluded_tags = exclude_tags_setting.split(",").map(&:strip).reject(&:empty?)
+          dc_subjects = tags.reject { |tag| excluded_tags.include?(tag) }.map(&:strip).reject(&:empty?)
         end
       end
       

@@ -536,6 +536,12 @@ module Command
                 "小説のタグ情報がdc:subjectとして埋め込まれます",
           tab: :general
         },
+        "convert.dc-subject-exclude-tags" => {
+          type: :string,
+          help: "dc:subjectから除外するタグをカンマ区切りで指定する。" \
+                "デフォルトは「404,end」（404は削除タグ、endは完結タグ）",
+          tab: :general
+        },
         "folder-length-limit" => {
           type: :integer,
           help: "小説を格納するフォルダ名の長さを制限する。デフォルトは#{Helper::FOLDER_LENGTH_LIMIT}文字",
