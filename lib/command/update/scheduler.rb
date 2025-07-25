@@ -129,9 +129,29 @@ module Command
                 
                 update_command = Command::Update.new
                 
+                # WebUIのソート設定を取得して適用
+                server_setting = Inventory.load("server_setting", :global)
+                current_sort = server_setting["current_sort"]
+                if current_sort && current_sort["column"] && current_sort["dir"]
+                  # WebUIソート設定をコマンドライン用に変換
+                  column_names = ["id", "last_update", "general_lastup", "last_check_date", "title", "author", "sitename", "novel_type", "tags", "general_all_no", "length", "status", "toc_url"]
+                  sort_column = column_names[current_sort["column"]]
+                  if sort_column && ["id", "last_update", "general_lastup", "last_check_date"].include?(sort_column)
+                    # updateコマンドでサポートされているソートキーのみ適用
+                    argv_with_sort = ["--sort-by", sort_column]
+                    puts "自動アップデート: WebUIソート設定を適用 (#{sort_column} #{current_sort["dir"]})"
+                  else
+                    argv_with_sort = []
+                    puts "自動アップデート: デフォルトソート順序で実行"
+                  end
+                else
+                  argv_with_sort = []
+                  puts "自動アップデート: デフォルトソート順序で実行"
+                end
+                
                 # exitを回避するため、execute内でのexitをrescueする
                 begin
-                  update_command.execute([])
+                  update_command.execute(argv_with_sort)
                   puts "自動アップデートが正常に完了しました"
                 rescue SystemExit => e
                   case e.status
