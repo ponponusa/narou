@@ -87,7 +87,7 @@ class Narou::AppServer < Sinatra::Base
       global_setting["server-port"] = port
       global_setting.save
     end
-    bind = "127.0.0.1" if bind == "localhost"
+#    bind = "127.0.0.1" if bind == "localhost"
     host = bind ? bind : ipaddress
     set :port, port
     set :bind, host
