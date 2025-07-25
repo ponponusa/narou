@@ -890,7 +890,7 @@ class Narou::AppServer < Sinatra::Base
 
   # 処理用の完全ソート済IDリストを取得する
   def self.get_full_sorted_ids(params = {})
-    debug_puts "[DEBUG] get_full_sorted_ids called with params: #{params.inspect}"
+    puts "[DEBUG] get_full_sorted_ids called with params: #{params.inspect}" if ENV["NAROU_DEBUG"] == "1"
     
     # キャッシュキーの生成（フィルター・ソート条件に基づく）
     server_setting = Inventory.load("server_setting", :global)
@@ -909,11 +909,11 @@ class Narou::AppServer < Sinatra::Base
     # キャッシュチェック
     if @@full_sorted_ids_cache[cache_key] && @@full_ids_cache_time && 
        (current_time - @@full_ids_cache_time) < @@full_ids_cache_duration
-      debug_puts "[DEBUG] Using cached full sorted IDs: #{@@full_sorted_ids_cache[cache_key].length} items"
+      puts "[DEBUG] Using cached full sorted IDs: #{@@full_sorted_ids_cache[cache_key].length} items" if ENV["NAROU_DEBUG"] == "1"
       return @@full_sorted_ids_cache[cache_key]
     end
     
-    debug_puts "[DEBUG] Generating new full sorted IDs"
+    puts "[DEBUG] Generating new full sorted IDs" if ENV["NAROU_DEBUG"] == "1"
     
     # process_novel_list_requestと同じフィルタリング・ソート処理（ページング無し）
     view_frozen = query_to_boolean(params["view_frozen"], default: true)
@@ -1066,7 +1066,7 @@ class Narou::AppServer < Sinatra::Base
     @@full_sorted_ids_cache[cache_key] = sorted_ids
     @@full_ids_cache_time = current_time
     
-    debug_puts "[DEBUG] Generated #{sorted_ids.length} sorted IDs: #{sorted_ids.first(5)}..."
+    puts "[DEBUG] Generated #{sorted_ids.length} sorted IDs: #{sorted_ids.first(5)}..." if ENV["NAROU_DEBUG"] == "1"
     return sorted_ids
   end
 
@@ -1173,20 +1173,20 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/update" do
-    debug_puts "[DEBUG] Update API called"
-    debug_puts "[DEBUG] All params: #{params.inspect}"
-    debug_puts "[DEBUG] params['ids']: #{params["ids"].inspect}"
-    debug_puts "[DEBUG] params['ids'] class: #{params["ids"].class}"
-    debug_puts "[DEBUG] params['update_all']: #{params["update_all"].inspect}"
+    puts "[DEBUG] Update API called" if ENV["NAROU_DEBUG"] == "1"
+    puts "[DEBUG] All params: #{params.inspect}" if ENV["NAROU_DEBUG"] == "1"
+    puts "[DEBUG] params['ids']: #{params["ids"].inspect}" if ENV["NAROU_DEBUG"] == "1"
+    puts "[DEBUG] params['ids'] class: #{params["ids"].class}" if ENV["NAROU_DEBUG"] == "1"
+    puts "[DEBUG] params['update_all']: #{params["update_all"].inspect}" if ENV["NAROU_DEBUG"] == "1"
     
     if params["update_all"] == "true"
       # 全件更新の場合 - 処理用完全IDリストを使用
-      debug_puts "[DEBUG] All novels update requested"
+      puts "[DEBUG] All novels update requested" if ENV["NAROU_DEBUG"] == "1"
       
       # 新しいキャッシュシステムで全IDを取得（現在のフィルター・ソート条件適用済み）
       sorted_ids = self.class.get_full_sorted_ids(params)
-      debug_puts "[DEBUG] Full sorted IDs for update: #{sorted_ids.length} items"
-      debug_puts "[DEBUG] First 10 IDs: #{sorted_ids.first(10).inspect}"
+      puts "[DEBUG] Full sorted IDs for update: #{sorted_ids.length} items" if ENV["NAROU_DEBUG"] == "1"
+      puts "[DEBUG] First 10 IDs: #{sorted_ids.first(10).inspect}" if ENV["NAROU_DEBUG"] == "1"
       
       opt_arguments = []
       if params["force"] == "true"
@@ -1206,23 +1206,23 @@ class Narou::AppServer < Sinatra::Base
     else
       # 選択された小説のみ更新 - 処理用完全IDリストと照合
       selected_ids = select_valid_novel_ids(params["ids"]) || []
-      debug_puts "[DEBUG] Selected IDs from WebUI: #{selected_ids.inspect}"
+      puts "[DEBUG] Selected IDs from WebUI: #{selected_ids.inspect}" if ENV["NAROU_DEBUG"] == "1"
       
       if selected_ids.empty?
-        debug_puts "[DEBUG] No valid IDs selected, skipping update"
+        puts "[DEBUG] No valid IDs selected, skipping update" if ENV["NAROU_DEBUG"] == "1"
         return
       end
       
       # 処理用完全IDリストを取得（現在のフィルター・ソート条件適用済み）
       full_sorted_ids = self.class.get_full_sorted_ids(params)
-      debug_puts "[DEBUG] Full sorted IDs: #{full_sorted_ids.length} items"
+      puts "[DEBUG] Full sorted IDs: #{full_sorted_ids.length} items" if ENV["NAROU_DEBUG"] == "1"
       
       # 選択されたIDを完全リストの順序で並び替え
       sorted_ids = full_sorted_ids.select { |id| selected_ids.include?(id) }
-      debug_puts "[DEBUG] Final sorted IDs for update: #{sorted_ids.inspect}"
+      puts "[DEBUG] Final sorted IDs for update: #{sorted_ids.inspect}" if ENV["NAROU_DEBUG"] == "1"
       
       if sorted_ids.empty?
-        debug_puts "[DEBUG] No selected IDs found in current filter/sort, skipping update"
+        puts "[DEBUG] No selected IDs found in current filter/sort, skipping update" if ENV["NAROU_DEBUG"] == "1"
         return
       end
       
