@@ -29,5 +29,6 @@ module Narou
     "logging.format-filename" => "%%ORIG%%\n※要サーバ再起動",
     "logging.format-timestamp" => "%%ORIG%%\n※要サーバ再起動",
     "auto-add-tags" => "小説サイトから取得したタグを自動的に小説データに追加する",
+    "convert.add-dc-subject-to-epub" => "EPUB変換時にstandard.opfファイルにdc:subject要素を追加する。\n小説のタグ情報（「完結」タグを除く）がdc:subjectとして埋め込まれ、\n電子書籍リーダーでの検索やカテゴリ分類に活用できます",
   }
 end
