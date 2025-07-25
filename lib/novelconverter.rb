@@ -6,13 +6,19 @@
 
 require "fileutils"
 require "stringio"
-require "rexml/document"
 
 begin
   require "zip"
 rescue LoadError
   # rubyzipが利用できない場合のフラグ
   ZIP_UNAVAILABLE = true
+end
+
+begin
+  require "rexml/document"
+rescue LoadError
+  # rexmlが利用できない場合のフラグ
+  REXML_UNAVAILABLE = true
 end
 require_relative "novelsetting"
 require_relative "inspector"
@@ -254,9 +260,14 @@ class NovelConverter
   def self.add_dc_subject_to_epub(epub_path, subjects, stream_io: $stdout2)
     return :success if subjects.nil? || subjects.empty?
     
-    # rubyzipが利用できない場合は警告を出して処理をスキップ
+    # 必要なgemが利用できない場合は警告を出して処理をスキップ
     if defined?(ZIP_UNAVAILABLE)
       stream_io.error "dc:subject埋め込み機能を使用するにはrubyzip gemが必要です"
+      return :error
+    end
+    
+    if defined?(REXML_UNAVAILABLE)
+      stream_io.error "dc:subject埋め込み機能を使用するにはrexml gemが必要です"
       return :error
     end
     
@@ -297,7 +308,6 @@ class NovelConverter
       subjects.each do |subject|
         next if subject.strip.empty?
         element = REXML::Element.new("dc:subject")
-        element.add_namespace("dc", "http://purl.org/dc/elements/1.1/")
         element.text = subject.strip
         metadata.add_element(element)
       end

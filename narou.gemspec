@@ -67,6 +67,7 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'psych', '~> 4.0'
   gem.add_runtime_dependency 'nkf', '~> 0.2.0'
   gem.add_runtime_dependency 'csv', '~> 3.3'
+  gem.add_runtime_dependency 'rexml', '~> 3.2'
 
   gem.add_development_dependency 'rspec', '~> 3.10'
   gem.add_development_dependency 'rspec-retry', '~> 0.6'
