@@ -317,14 +317,13 @@ class NovelConverter
       
       # EPUBファイルを再作成
       File.delete(epub_path)
+      
       Zip::File.open(epub_path, Zip::File::CREATE) do |zip_file|
-        # mimetypeファイルを最初に無圧縮で追加
+        # mimetypeファイルを最初に無圧縮で追加（rubyzip 2.x系の正しい方法）
         mimetype_path = File.join(temp_dir, "mimetype")
         if File.exist?(mimetype_path)
-          # OutputStreamを使用して無圧縮を指定
-          zip_file.get_output_stream("mimetype") do |stream|
-            stream.compression_method = Zip::Entry::STORED  # 無圧縮
-            stream.write(File.read(mimetype_path))
+          zip_file.add("mimetype", mimetype_path) do |entry|
+            entry.compression_method = Zip::Entry::STORED
           end
         end
         
