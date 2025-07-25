@@ -889,8 +889,8 @@ class Narou::AppServer < Sinatra::Base
   end
 
   # 処理用の完全ソート済IDリストを取得する
-  def self.get_full_sorted_ids(params = {})
-    puts "[DEBUG] get_full_sorted_ids called with params: #{params.inspect}" if ENV["NAROU_DEBUG"] == "1"
+  def get_full_sorted_ids(params = {})
+    debug_puts "[DEBUG] get_full_sorted_ids called with params: #{params.inspect}"
     
     # キャッシュキーの生成（フィルター・ソート条件に基づく）
     server_setting = Inventory.load("server_setting", :global)
@@ -909,11 +909,11 @@ class Narou::AppServer < Sinatra::Base
     # キャッシュチェック
     if @@full_sorted_ids_cache[cache_key] && @@full_ids_cache_time && 
        (current_time - @@full_ids_cache_time) < @@full_ids_cache_duration
-      puts "[DEBUG] Using cached full sorted IDs: #{@@full_sorted_ids_cache[cache_key].length} items" if ENV["NAROU_DEBUG"] == "1"
+      debug_puts "[DEBUG] Using cached full sorted IDs: #{@@full_sorted_ids_cache[cache_key].length} items"
       return @@full_sorted_ids_cache[cache_key]
     end
     
-    puts "[DEBUG] Generating new full sorted IDs" if ENV["NAROU_DEBUG"] == "1"
+    debug_puts "[DEBUG] Generating new full sorted IDs"
     
     # process_novel_list_requestと同じフィルタリング・ソート処理（ページング無し）
     view_frozen = query_to_boolean(params["view_frozen"], default: true)
@@ -1066,7 +1066,7 @@ class Narou::AppServer < Sinatra::Base
     @@full_sorted_ids_cache[cache_key] = sorted_ids
     @@full_ids_cache_time = current_time
     
-    puts "[DEBUG] Generated #{sorted_ids.length} sorted IDs: #{sorted_ids.first(5)}..." if ENV["NAROU_DEBUG"] == "1"
+    debug_puts "[DEBUG] Generated #{sorted_ids.length} sorted IDs: #{sorted_ids.first(5)}..."
     return sorted_ids
   end
 
@@ -1184,7 +1184,7 @@ class Narou::AppServer < Sinatra::Base
       puts "[DEBUG] All novels update requested" if ENV["NAROU_DEBUG"] == "1"
       
       # 新しいキャッシュシステムで全IDを取得（現在のフィルター・ソート条件適用済み）
-      sorted_ids = self.class.get_full_sorted_ids(params)
+      sorted_ids = get_full_sorted_ids(params)
       puts "[DEBUG] Full sorted IDs for update: #{sorted_ids.length} items" if ENV["NAROU_DEBUG"] == "1"
       puts "[DEBUG] First 10 IDs: #{sorted_ids.first(10).inspect}" if ENV["NAROU_DEBUG"] == "1"
       
@@ -1214,7 +1214,7 @@ class Narou::AppServer < Sinatra::Base
       end
       
       # 処理用完全IDリストを取得（現在のフィルター・ソート条件適用済み）
-      full_sorted_ids = self.class.get_full_sorted_ids(params)
+      full_sorted_ids = get_full_sorted_ids(params)
       puts "[DEBUG] Full sorted IDs: #{full_sorted_ids.length} items" if ENV["NAROU_DEBUG"] == "1"
       
       # 選択されたIDを完全リストの順序で並び替え
