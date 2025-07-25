@@ -78,31 +78,7 @@ module Narou::ServerHelpers
     novels_data = ids.map do |id|
       data = database[id.to_i]
       if data
-        puts "[DEBUG] ===== ID #{id} COMPLETE DATA ANALYSIS ====="
-        puts "[DEBUG] Data class: #{data.class}"
-        puts "[DEBUG] Data methods: #{data.methods.sort.select{|m| !Object.new.methods.include?(m)}.inspect}"
-        puts "[DEBUG] Data respond_to?('[]'): #{data.respond_to?('[]')}"
-        puts "[DEBUG] All keys (raw): #{data.keys.inspect rescue 'NO KEYS METHOD'}"
-        puts "[DEBUG] All keys (to_s): #{data.keys.map(&:to_s).inspect rescue 'NO KEYS METHOD'}"
-        
-        # Try different access methods
-        puts "[DEBUG] Access method tests:"
-        puts "[DEBUG]   data['#{sort_column}']: #{data[sort_column] rescue 'ERROR'}"
-        puts "[DEBUG]   data[:#{sort_column}]: #{data[sort_column.to_sym] rescue 'ERROR'}"
-        puts "[DEBUG]   data.#{sort_column}: #{data.send(sort_column) rescue 'ERROR'}"
-        puts "[DEBUG]   data.send('#{sort_column}'): #{data.send(sort_column) rescue 'ERROR'}"
-        
-        # Show a sample of actual data
-        puts "[DEBUG] Sample data keys and values:"
-        begin
-          data.keys.first(5).each do |key|
-            puts "[DEBUG]   #{key.inspect} (#{key.class}): #{data[key].inspect}"
-          end
-        rescue
-          puts "[DEBUG]   Could not iterate keys"
-        end
-        
-        puts "[DEBUG] ===== END COMPLETE ANALYSIS FOR ID #{id} ====="
+        puts "[DEBUG] Found data for ID #{id}"
       else
         puts "[DEBUG] ID #{id}: not found"
       end
@@ -112,12 +88,12 @@ module Narou::ServerHelpers
     puts "[DEBUG] Found #{novels_data.length} novels with data"
     
     # ソート実行
-    puts "[DEBUG] Before sort: #{novels_data.map{|n| [n[0], n[1][sort_column.to_s] || n[1][sort_column.to_sym]]}.inspect}"
+    puts "[DEBUG] Before sort: #{novels_data.map{|n| [n[0], n[1][sort_column]]}.inspect}"
     
     novels_data.sort! do |a, b|
-      # 文字列キーと文字列キーの両方を試す
-      val_a = a[1][sort_column.to_s] || a[1][sort_column.to_sym] || 0
-      val_b = b[1][sort_column.to_s] || b[1][sort_column.to_sym] || 0
+      # データベースのHashは文字列キーを使用
+      val_a = a[1][sort_column] || 0
+      val_b = b[1][sort_column] || 0
       
       puts "[DEBUG] Comparing ID #{a[0]} (#{val_a}) vs ID #{b[0]} (#{val_b})"
       
@@ -132,7 +108,7 @@ module Narou::ServerHelpers
       result
     end
     
-    puts "[DEBUG] After sort: #{novels_data.map{|n| [n[0], n[1][sort_column.to_s] || n[1][sort_column.to_sym]]}.inspect}"
+    puts "[DEBUG] After sort: #{novels_data.map{|n| [n[0], n[1][sort_column]]}.inspect}"
     
     # ソート済みのIDのみを返す
     sorted_ids = novels_data.map { |novel| novel[0] }
