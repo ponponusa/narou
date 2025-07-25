@@ -116,6 +116,25 @@ module Narou::ServerHelpers
     sorted_ids
   end
 
+  #
+  # 現在のソート状態を日本語で表示する文字列を生成
+  #
+  def current_sort_display_string
+    server_setting = Inventory.load("server_setting", :global)
+    current_sort = server_setting["current_sort"]
+    return "ID順" unless current_sort
+    
+    order_column = current_sort["column"]
+    order_dir = current_sort["dir"]
+    return "ID順" unless order_column && order_dir
+    
+    column_names = ["ID", "最終更新日", "最新話掲載日", "最終確認日", "タイトル", "作者", "サイト名", "小説種別", "タグ", "話数", "文字数", "状態", "URL"]
+    column_display = column_names[order_column] || "不明"
+    dir_display = order_dir == "desc" ? "降順" : "昇順"
+    
+    "#{column_display}#{dir_display}"
+  end
+
   private
 
   def debug_puts(message)

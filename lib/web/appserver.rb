@@ -1004,7 +1004,7 @@ class Narou::AppServer < Sinatra::Base
         opt_arguments << "--force"
       end
       Narou::WebWorker.push do
-        puts "<white>全ての小説の更新を開始します（ソート順序: #{sorted_ids.length}件）</white>".termcolor
+        puts "<white>全ての小説の更新を開始します（#{sorted_ids.length}件を#{current_sort_display_string}で処理）</white>".termcolor
         cmd = Command::Update.new
         if table_reload_timing == "every"
           cmd.on(:success) do
@@ -1034,7 +1034,7 @@ class Narou::AppServer < Sinatra::Base
         opt_arguments << "--force"
       end
       Narou::WebWorker.push do
-        puts "<white>更新を開始します（ソート順序: #{sorted_ids.length}件）</white>".termcolor
+        puts "<white>更新を開始します（#{sorted_ids.length}件を#{current_sort_display_string}で処理）</white>".termcolor
         cmd = Command::Update.new
         if table_reload_timing == "every"
           cmd.on(:success) do
