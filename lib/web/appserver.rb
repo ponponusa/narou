@@ -1173,12 +1173,6 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/update" do
-    puts "[DEBUG] Update API called"
-    puts "[DEBUG] All params: #{params.inspect}"
-    puts "[DEBUG] params['ids']: #{params["ids"].inspect}"
-    puts "[DEBUG] params['ids'] class: #{params["ids"].class}"
-    puts "[DEBUG] params['update_all']: #{params["update_all"].inspect}"
-    
     if params["update_all"] == "true"
       # 全件更新の場合 - 処理用完全IDリストを使用
       puts "[DEBUG] All novels update requested" if ENV["NAROU_DEBUG"] == "1"

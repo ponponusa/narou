@@ -46,8 +46,16 @@ module Narou::ServerHelpers
   def select_valid_novel_ids(ids)
     return nil unless ids.kind_of?(Array)
     result = ids.select do |id|
-      id =~ /^\d+$/
-    end
+      # 数値または数値文字列をチェック
+      case id
+      when Integer
+        true
+      when String
+        id =~ /^\d+$/
+      else
+        false
+      end
+    end.map(&:to_s)  # 最終的に文字列に統一
     result.empty? ? nil : result
   end
 
