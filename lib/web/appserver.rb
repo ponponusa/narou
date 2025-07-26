@@ -1471,7 +1471,12 @@ class Narou::AppServer < Sinatra::Base
     
     database = Database.instance
     tag_info = {}
-    database.each_value do |data|
+    
+    # 選択されたIDの小説のタグのみを取得
+    sorted_ids.each do |id|
+      data = database[id]
+      next unless data
+      
       tags = data["tags"] || []
       tags.each do |tag|
         tag_info[tag] ||= {
@@ -1480,9 +1485,7 @@ class Narou::AppServer < Sinatra::Base
           html: decorate_tags([tag]),
           exclusion_html: params["with_exclusion"] ? decorate_exclusion_tags([tag]) : ""
         }
-        if sorted_ids.include?(data["id"])
-          tag_info[tag][:count] += 1
-        end
+        tag_info[tag][:count] += 1
       end
     end
     debug_puts "[DEBUG] TagInfo processing #{sorted_ids.length} novels for #{tag_info.keys.length} tags"
