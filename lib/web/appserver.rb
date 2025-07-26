@@ -1472,23 +1472,32 @@ class Narou::AppServer < Sinatra::Base
     database = Database.instance
     tag_info = {}
     
-    # 選択されたIDの小説のタグのみを取得
+    # まず全体のタグ一覧を取得（すべてのタグを選択肢として表示するため）
+    all_tags = Command::Tag.get_tag_list
+    all_tags.each do |tag, total_count|
+      tag_info[tag] = {
+        count: 0,
+        total_count: total_count,
+        tag: tag,
+        html: decorate_tags([tag]),
+        exclusion_html: params["with_exclusion"] ? decorate_exclusion_tags([tag]) : ""
+      }
+    end
+    
+    # 選択されたIDの小説での各タグの出現回数を計算
     sorted_ids.each do |id|
       data = database[id]
       next unless data
       
       tags = data["tags"] || []
       tags.each do |tag|
-        tag_info[tag] ||= {
-          count: 0,
-          tag: tag,
-          html: decorate_tags([tag]),
-          exclusion_html: params["with_exclusion"] ? decorate_exclusion_tags([tag]) : ""
-        }
-        tag_info[tag][:count] += 1
+        if tag_info[tag]
+          tag_info[tag][:count] += 1
+        end
       end
     end
-    debug_puts "[DEBUG] TagInfo processing #{sorted_ids.length} novels for #{tag_info.keys.length} tags"
+    
+    debug_puts "[DEBUG] TagInfo processing #{sorted_ids.length} novels for #{tag_info.keys.length} tags (#{all_tags.keys.length} total tags available)"
     json Hash[tag_info.sort_by { |k, v| k }].values
   end
 
