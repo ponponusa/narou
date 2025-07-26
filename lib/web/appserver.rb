@@ -1309,6 +1309,7 @@ class Narou::AppServer < Sinatra::Base
       ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
       Narou::WebWorker.push do
         CommandLine.run!("freeze", ids)
+        Narou::AppServer.clear_all_cache
         @@push_server.send_all(:"table.reload")
       end
       json({ success: true, message: "凍結状態を切り替えました", count: ids.length })
@@ -1324,6 +1325,7 @@ class Narou::AppServer < Sinatra::Base
       ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
       Narou::WebWorker.push do
         CommandLine.run!("freeze", "--on", ids)
+        Narou::AppServer.clear_all_cache
         @@push_server.send_all(:"table.reload")
       end
       json({ success: true, message: "凍結しました", count: ids.length })
@@ -1339,6 +1341,7 @@ class Narou::AppServer < Sinatra::Base
       ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
       Narou::WebWorker.push do
         CommandLine.run!("freeze", "--off", ids)
+        Narou::AppServer.clear_all_cache
         @@push_server.send_all(:"table.reload")
       end
       json({ success: true, message: "凍結を解除しました", count: ids.length })
