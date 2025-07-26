@@ -71,12 +71,16 @@ module Device::Ibooks
 
   def extract_epub(ebook_file_path, epubdir_path)
     require "zip"
+
+    # 上書き許可（2.3.2の推奨記法）
     Zip.on_exists_proc = true
+
     Zip::File.open(ebook_file_path) do |zip_file|
       zip_file.each do |entry|
         extract_path = File.join(epubdir_path, entry.name)
         FileUtils.mkdir_p(File.dirname(extract_path))
-        entry.extract(extract_path)
+        # entry.extract は既に2.3.2で安全に動作します
+        entry.extract(extract_path) { true }  # 上書き許可
       end
     end
   end

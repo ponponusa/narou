@@ -6,6 +6,20 @@
 
 require "fileutils"
 require "stringio"
+
+begin
+  require "zip"
+rescue LoadError
+  # rubyzipが利用できない場合のフラグ
+  ZIP_UNAVAILABLE = true
+end
+
+begin
+  require "rexml/document"
+rescue LoadError
+  # rexmlが利用できない場合のフラグ
+  REXML_UNAVAILABLE = true
+end
 require_relative "novelsetting"
 require_relative "inspector"
 require_relative "illustration"
@@ -241,6 +255,105 @@ class NovelConverter
   end
 
   #
+  # EPUBファイルのstandard.opfにdc:subjectを追加する
+  #
+  def self.add_dc_subject_to_epub(epub_path, subjects, stream_io: $stdout2)
+    return :success if subjects.nil? || subjects.empty?
+
+    # 必要なgemが利用できない場合は警告を出して処理をスキップ
+    if defined?(ZIP_UNAVAILABLE)
+      stream_io.error "dc:subject埋め込み機能を使用するにはrubyzip gemが必要です"
+      return :error
+    end
+
+    if defined?(REXML_UNAVAILABLE)
+      stream_io.error "dc:subject埋め込み機能を使用するにはrexml gemが必要です"
+      return :error
+    end
+
+    temp_dir = nil
+    begin
+      # 一時ディレクトリ作成
+      temp_dir = Dir.mktmpdir
+
+      # EPUBファイルを展開
+      Zip::File.open(epub_path) do |zip_file|
+        zip_file.each do |entry|
+          entry_path = File.join(temp_dir, entry.name)
+          FileUtils.mkdir_p(File.dirname(entry_path))
+          entry.extract(entry_path)
+        end
+      end
+
+      # standard.opfファイルを探す
+      opf_path = Dir.glob(File.join(temp_dir, "**", "standard.opf")).first
+      unless opf_path
+        stream_io.error "standard.opfファイルが見つかりませんでした"
+        return :error
+      end
+
+      # 文字列置換でdc:subjectを追加する方式に変更
+      # （REXMLの整形では元のフォーマットが崩れるため）
+      content = File.read(opf_path)
+
+      # 既存のdc:subjectを削除
+      content.gsub!(/<dc:subject>.*?<\/dc:subject>\s*\n?\s*/m, "")
+
+      # 新しいdc:subjectを生成（XMLエスケープも行う）
+      dc_subject_lines = subjects.map do |subject|
+        next if subject.strip.empty?
+        escaped_subject = subject.strip.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;").gsub("\"", "&quot;").gsub("'", "&apos;")
+        "    <dc:subject>#{escaped_subject}</dc:subject>"
+      end.compact
+
+      if dc_subject_lines.any?
+        # </metadata>の直前にdc:subjectを挿入
+        dc_subjects_xml = dc_subject_lines.join("\n") + "\n"
+        content.sub!(/(\s*)<\/metadata>/, "\n#{dc_subjects_xml}\\1</metadata>")
+      end
+
+      # XMLを書き戻し
+      File.write(opf_path, content)
+
+      # EPUBファイルを再作成（OutputStreamを使用しmimetypeを無圧縮・先頭に配置）
+      File.delete(epub_path)
+
+      Zip::OutputStream.open(epub_path) do |zos|
+        # mimetypeファイルを最初に無圧縮で追加
+        mimetype_path = File.join(temp_dir, "mimetype")
+        unless File.exist?(mimetype_path)
+          stream_io.error "mimetypeファイルが見つかりません"
+          return :error
+        end
+
+        # 第1引数に名前、第4引数にZip::Entry::STORED を渡す
+        zos.put_next_entry('mimetype', nil, nil, Zip::Entry::STORED)
+
+        zos.write File.read(mimetype_path, mode: "rb")
+
+        # 他のファイルを追加（mimetypeを除く）
+        Dir.glob(File.join(temp_dir, "**", "*"), File::FNM_DOTMATCH).sort.each do |file_path|
+          next if File.directory?(file_path)
+          relative_path = file_path.sub(temp_dir + "/", "")
+          next if relative_path == "mimetype"  # mimetypeは既に追加済み
+          zos.put_next_entry(relative_path)
+          zos.write File.read(file_path, mode: "rb")
+        end
+      end
+
+      stream_io.puts "dc:subjectを追加しました: #{subjects.join(', ')}"
+      :success
+
+    rescue => e
+      stream_io.error "dc:subject追加中にエラーが発生しました: #{e.message}"
+      :error
+    ensure
+      # 一時ディレクトリを削除
+      FileUtils.rm_rf(temp_dir) if temp_dir
+    end
+  end
+
+  #
   # EPUBファイルをkindlegenでMOBIへ
   # AozoraEpub3.jar と同じ場所に kindlegen が無ければ何もしない
   #
@@ -329,6 +442,16 @@ class NovelConverter
       epub_ext = ".epub"
     end
     epub_path = txt_path.sub(/\.txt$/, epub_ext)
+    
+    # dc:subject埋め込み処理
+    if options[:dc_subjects] && !options[:dc_subjects].empty?
+      add_dc_subject_status = NovelConverter.add_dc_subject_to_epub(
+        epub_path, options[:dc_subjects], stream_io: stream_io
+      )
+      if add_dc_subject_status == :error
+        stream_io.error "dc:subject埋め込み処理に失敗しましたが、変換を続行します"
+      end
+    end
 
     if !device || !device.kindle? || options[:no_mobi]
       stream_io.puts File.basename(epub_path) + " を出力しました"
@@ -401,6 +524,19 @@ class NovelConverter
     @converter = nil
     @data = nil
     # @settingは最後まで必要なので解放しない
+  end
+
+  #
+  # 小説のタグ情報をdc:subject用の配列として取得
+  #
+  def get_dc_subjects_from_tags(exclude_tags_setting = "404,end")
+    return [] unless @data && @data["tags"]
+    tags = @data["tags"]
+    return [] unless tags.is_a?(Array)
+    
+    # 除外タグの設定を解析
+    excluded_tags = exclude_tags_setting.split(",").map(&:strip).reject(&:empty?)
+    tags.reject { |tag| excluded_tags.include?(tag) }.map(&:strip).reject(&:empty?)
   end
 
   #

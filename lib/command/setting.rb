@@ -530,6 +530,19 @@ module Command
                 "バックアップを取った上で機能を理解の上有効にして下さい",
           tab: :detail,
         },
+        "convert.add-dc-subject-to-epub" => {
+          type: :boolean,
+          help: "EPUB変換時にstandard.opfファイルにdc:subject要素を追加する。" \
+                "小説のタグ情報がdc:subjectとして埋め込まれます",
+          tab: :general
+        },
+        "convert.dc-subject-exclude-tags" => {
+          type: :string,
+          help: "dc:subjectから除外するタグをカンマ区切りで指定する。" \
+                "初期値は「404,end」（初回実行時に自動設定される）。" \
+                "すべてのタグを埋め込みたい場合は空文字列を設定",
+          tab: :general
+        },
         "folder-length-limit" => {
           type: :integer,
           help: "小説を格納するフォルダ名の長さを制限する。デフォルトは#{Helper::FOLDER_LENGTH_LIMIT}文字",

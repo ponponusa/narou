@@ -297,6 +297,28 @@ module Command
     # 変換された整形済みテキストファイルをデバイスに対応した書籍データに変換する
     #
     def convert_txt_to_ebook_file
+      # dc:subject埋め込み設定の確認とタグ情報の取得
+      dc_subjects = nil
+      if @options["add-dc-subject-to-epub"] && @novel_data && @novel_data["tags"]
+        tags = @novel_data["tags"]
+        if tags.is_a?(Array)
+          # 除外タグの設定を取得
+          exclude_tags_setting = @options["dc-subject-exclude-tags"]
+          
+          # 初回実行時にデフォルト値を設定
+          if exclude_tags_setting.nil?
+            exclude_tags_setting = "404,end"
+            # 設定を保存
+            local_settings = Inventory.load("local_setting")
+            local_settings["convert.dc-subject-exclude-tags"] = exclude_tags_setting
+            local_settings.save
+          end
+          
+          excluded_tags = exclude_tags_setting.split(",").map(&:strip).reject(&:empty?)
+          dc_subjects = tags.reject { |tag| excluded_tags.include?(tag) }.map(&:strip).reject(&:empty?)
+        end
+      end
+      
       return NovelConverter.convert_txt_to_ebook_file(@converted_txt_path, {
         use_dakuten_font: @use_dakuten_font,
         device: @device,
@@ -305,7 +327,8 @@ module Command
         no_mobi: @options["no-mobi"],
         no_strip: @options["no-strip"],
         no_cleanup_txt: @argument_target_type == :file,
-        yokogaki: @options["yokogaki"]
+        yokogaki: @options["yokogaki"],
+        dc_subjects: dc_subjects
       })
     end
 

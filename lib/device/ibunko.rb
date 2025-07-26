@@ -22,7 +22,7 @@ module Device::Ibunko
   def hook_convert_txt_to_ebook_file(&original_func)
     return false if @options["no-zip"]
     require "zip"
-    Zip.unicode_names = true
+    Zip.unicode_names = true  # 日本語ファイル名対応
     # TODO: テキストファイル変換時もsettingを取れるようにする
     setting = {}
     if @novel_data
@@ -33,20 +33,21 @@ module Device::Ibunko
     zipfile_path = @converted_txt_path.sub(/.txt$/, @device.ebook_file_ext)
     File.delete(zipfile_path) if File.exist?(zipfile_path)
     Zip::File.open(zipfile_path, Zip::File::CREATE) do |zip|
-      zip.add(File.basename(@converted_txt_path), @converted_txt_path)
+      # テキスト本体
+      zip.add(File.basename(@converted_txt_path), @converted_txt_path) { true }
       # 挿絵
       if setting["enable_illust"]
         illust_dirpath = File.join(dirpath, Illustration::ILLUST_DIR)
         if File.exist?(illust_dirpath)
           Dir.glob(File.join(illust_dirpath, "*")) do |img_path|
-            zip.add(File.join(Illustration::ILLUST_DIR, File.basename(img_path)), img_path)
+            zip.add(File.join(Illustration::ILLUST_DIR, File.basename(img_path)), img_path) { true }
           end
         end
       end
       # 表紙画像
       cover_name = NovelConverter.get_cover_filename(dirpath)
       if cover_name
-        zip.add(cover_name, File.join(dirpath, cover_name))
+        zip.add(cover_name, File.join(dirpath, cover_name)) { true }
       end
     end
     puts File.basename(zipfile_path) + " を出力しました"
@@ -63,7 +64,7 @@ module Device::Ibunko
   #
   def translate_illust_chuki_to_img_tag
     data = File.read(@converted_txt_path, encoding: Encoding::UTF_8)
-    data.gsub!(/［＃挿絵（(.+?)）入る］/, "<img src=\"\\1\">")
+    data.gsub!(/［＃挿絵（(.+?)）入る］/, '<img src="\1">')
     File.write(@converted_txt_path, data)
   end
 end
