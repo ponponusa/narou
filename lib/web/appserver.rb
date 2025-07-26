@@ -1505,8 +1505,15 @@ class Narou::AppServer < Sinatra::Base
     end
     
     debug_puts "[DEBUG] Tag edit processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
+    debug_puts "[DEBUG] Received params: #{params.inspect}"
     debug_puts "[DEBUG] Received states param: #{params["states"].inspect}"
-    debug_puts "[DEBUG] Received states class: #{params["states"].class.name}"
+    debug_puts "[DEBUG] Received states class: #{params["states"]&.class&.name || 'nil'}"
+    
+    # states パラメータの存在チェック
+    if params["states"].nil? || params["states"].empty?
+      debug_puts "[ERROR] States parameter is nil or empty"
+      return { success: false, error: "No tag states provided" }.to_json
+    end
     
     # key と value を重複を維持したまま反転
     begin
@@ -1515,7 +1522,7 @@ class Narou::AppServer < Sinatra::Base
     rescue => e
       debug_puts "[ERROR] Failed to invert states: #{e.message}"
       debug_puts "[ERROR] States param details: #{params["states"].inspect}"
-      raise e
+      return { success: false, error: e.message }.to_json
     end
     
     has_additions = false
