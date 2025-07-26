@@ -140,4 +140,4 @@ w: ^author::(?<writer>.+?)$
 l: ^totalCharacterCount::(?<length>.+?)$
 
 # tags タグ
-tags: ^tagLabels::(?<tag>.+?)$
+tags: ^tagLabels::(?<tag>.+?)$|^$
