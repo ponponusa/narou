@@ -67,3 +67,4 @@ module Device::Ibunko
     data.gsub!(/［＃挿絵（(.+?)）入る］/, '<img src="\1">')
     File.write(@converted_txt_path, data)
   end
+end
