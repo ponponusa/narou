@@ -1305,26 +1305,47 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/freeze" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
-    Narou::WebWorker.push do
-      CommandLine.run!("freeze", ids)
-      @@push_server.send_all(:"table.reload")
+    begin
+      ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
+      Narou::WebWorker.push do
+        CommandLine.run!("freeze", ids)
+        @@push_server.send_all(:"table.reload")
+      end
+      json({ success: true, message: "凍結状態を切り替えました", count: ids.length })
+    rescue StandardError => e
+      puts "[ERROR] Freeze API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "凍結処理でエラーが発生しました: #{e.message}" })
     end
   end
 
   post "/api/freeze_on" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
-    Narou::WebWorker.push do
-      CommandLine.run!("freeze", "--on", ids)
-      @@push_server.send_all(:"table.reload")
+    begin
+      ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
+      Narou::WebWorker.push do
+        CommandLine.run!("freeze", "--on", ids)
+        @@push_server.send_all(:"table.reload")
+      end
+      json({ success: true, message: "凍結しました", count: ids.length })
+    rescue StandardError => e
+      puts "[ERROR] Freeze On API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "凍結処理でエラーが発生しました: #{e.message}" })
     end
   end
 
   post "/api/freeze_off" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
-    Narou::WebWorker.push do
-      CommandLine.run!("freeze", "--off", ids)
-      @@push_server.send_all(:"table.reload")
+    begin
+      ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
+      Narou::WebWorker.push do
+        CommandLine.run!("freeze", "--off", ids)
+        @@push_server.send_all(:"table.reload")
+      end
+      json({ success: true, message: "凍結を解除しました", count: ids.length })
+    rescue StandardError => e
+      puts "[ERROR] Freeze Off API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "凍結解除処理でエラーが発生しました: #{e.message}" })
     end
   end
 
