@@ -675,8 +675,13 @@ class Narou::AppServer < Sinatra::Base
         "column" => order_column,
         "dir" => order_dir
       }
-      server_setting.save
-      debug_puts "[DEBUG] Sort state saved successfully"
+      begin
+        server_setting.save
+        debug_puts "[DEBUG] Sort state saved successfully"
+      rescue => e
+        debug_puts "[DEBUG] Failed to save sort state: #{e.message}"
+        # ソート状態の保存に失敗してもリクエスト処理は継続
+      end
     else
       debug_puts "[DEBUG] No sort parameters to save: column=#{order_column}, dir=#{order_dir}"
     end
