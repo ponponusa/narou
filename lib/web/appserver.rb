@@ -1138,21 +1138,35 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/convert" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
-    
-    # convert実行時点でのソート状態が渡された場合はそれを使用
-    if params["sort_state"] && params["timestamp"]
-      debug_puts "[DEBUG] Convert with fixed sort state (timestamp: #{params["timestamp"]})"
-      sorted_ids = sort_ids_with_fixed_state(ids, params["sort_state"])
-    else
-      # 従来通りの現在のソート状態に基づく並び替え
-      debug_puts "[DEBUG] Convert with current sort state"
-      sorted_ids = sort_ids_by_current_sort(ids)
-    end
-    
-    debug_puts "[DEBUG] Convert processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
-    concurrency_push do
-      CommandLine.run!("convert", "--no-open", sorted_ids)
+    begin
+      ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
+      
+      # convert実行時点でのソート状態が渡された場合はそれを使用
+      if params["sort_state"] && params["timestamp"]
+        debug_puts "[DEBUG] Convert with fixed sort state (timestamp: #{params["timestamp"]})"
+        sorted_ids = sort_ids_with_fixed_state(ids, params["sort_state"])
+      else
+        # 従来通りの現在のソート状態に基づく並び替え
+        debug_puts "[DEBUG] Convert with current sort state"
+        sorted_ids = sort_ids_by_current_sort(ids)
+      end
+      
+      debug_puts "[DEBUG] Convert processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
+      concurrency_push do
+        CommandLine.run!("convert", "--no-open", sorted_ids)
+      end
+      
+      json({ 
+        success: true, 
+        message: "変換処理を開始しました", 
+        count: sorted_ids.length,
+        ids: sorted_ids 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Convert API error: #{e.class}: #{e.message}"
+      puts e.backtrace.first(5).join("\n") if $DEBUG
+      status 500
+      json({ error: "変換処理でエラーが発生しました: #{e.message}" })
     end
   end
 
