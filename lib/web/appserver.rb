@@ -1532,14 +1532,14 @@ class Narou::AppServer < Sinatra::Base
       case state.to_i
       when 0
         # タグを削除
-        puts "タグ削除実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
+        debug_puts "タグ削除実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
         Command::Tag.execute!("--delete", tags.join(" "), sorted_ids, io: Narou::NullIO.new)
         has_deletions = true
       when 1
         # 現状を維持(何もしない)
       when 2
         # タグを追加
-        puts "タグ追加実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
+        debug_puts "タグ追加実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
         Command::Tag.execute!("--add", tags.join(" "), sorted_ids, io: Narou::NullIO.new)
         has_additions = true
       end
@@ -1547,13 +1547,13 @@ class Narou::AppServer < Sinatra::Base
     
     # タグ追加がある場合は、データベース書き込み完了を待つ
     if has_additions
-      puts "タグ追加処理のためデータベース同期を待機中..."
+      debug_puts "タグ追加処理のためデータベース同期を待機中..."
       sleep(0.5)  # データベース書き込み完了を待つ
     end
     
     # キャッシュを確実にクリアしてからイベント送信
     Narou::AppServer.clear_all_cache 
-    puts "タグ編集完了 (追加: #{has_additions}, 削除: #{has_deletions}): 全キャッシュクリア後にリロードイベントを送信"
+    debug_puts "タグ編集完了 (追加: #{has_additions}, 削除: #{has_deletions}): 全キャッシュクリア後にリロードイベントを送信"
     
     # テーブルリロードとタグキャンバス更新を順次実行
     @@push_server.send_all(:"table.reload")
