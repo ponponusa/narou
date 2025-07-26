@@ -196,13 +196,28 @@ module Command
 
     def convert_novels(argv)
       tagname_to_ids(argv)
+      total_count = argv.length
+      completed_count = 0
+      
+      $stdout2.puts "変換処理開始: #{total_count}件の小説を処理します"
+      
       argv.each.with_index(1) do |target, index|
-        Narou.lock(target) do
-          convert_novel_main(target, index)
+        begin
+          $stdout2.puts "[#{index}/#{total_count}] 処理中: #{target}"
+          Narou.lock(target) do
+            convert_novel_main(target, index)
+          end
+          completed_count += 1
+          $stdout2.puts "[#{index}/#{total_count}] 完了: #{target}"
+        rescue => e
+          $stdout2.error "[#{index}/#{total_count}] エラー: #{target} - #{e.message}"
+          # 個別のエラーでは処理を継続
         end
       end
+      
+      $stdout2.puts "変換処理完了: #{completed_count}/#{total_count}件が正常に変換されました"
     rescue Interrupt
-      $stdout2.puts "変換を中断しました"
+      $stdout2.puts "変換を中断しました (#{completed_count}/#{total_count}件完了)"
       exit Narou::EXIT_INTERRUPT
     end
 

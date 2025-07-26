@@ -125,6 +125,54 @@ module Narou::ServerHelpers
   end
 
   #
+  # 固定されたソート状態に基づいてIDを並び替える（convert実行時点のソート状態を保持）
+  #
+  def sort_ids_with_fixed_state(ids, sort_state)
+    debug_puts "[DEBUG] sort_ids_with_fixed_state called with #{ids ? ids.length : 0} IDs"
+    debug_puts "[DEBUG] Fixed sort state: #{sort_state.inspect}"
+    return ids unless ids && ids.length > 0
+    return ids unless sort_state
+    
+    order_column = sort_state["column"]
+    order_dir = sort_state["dir"]
+    debug_puts "[DEBUG] Fixed sort params: column=#{order_column}, dir=#{order_dir}"
+    return ids unless order_column && order_dir
+    
+    column_names = ["id", "last_update", "general_lastup", "last_check_date", "title", "author", "sitename", "novel_type", "tags", "general_all_no", "length", "status", "toc_url"]
+    sort_column = column_names[order_column.to_i]
+    debug_puts "[DEBUG] Fixed sort column: #{sort_column}"
+    return ids unless sort_column
+    
+    # IDから小説データを取得してソート（convert実行時点のデータを取得）
+    database = Database.instance
+    novels_data = ids.map do |id|
+      data = database[id.to_i]
+      data ? [id, data.dup] : nil  # データをコピーして固定化
+    end.compact
+    
+    debug_puts "[DEBUG] Found #{novels_data.length} novels with data for fixed sort"
+    
+    # ソート実行（固定されたソート条件で）
+    novels_data.sort! do |a, b|
+      val_a = a[1][sort_column] || 0
+      val_b = b[1][sort_column] || 0
+      
+      if val_a.is_a?(Numeric) && val_b.is_a?(Numeric)
+        comparison = val_a <=> val_b
+      else
+        comparison = val_a.to_s <=> val_b.to_s
+      end
+      
+      order_dir == "desc" ? -comparison : comparison
+    end
+    
+    # ソート済みのIDのみを返す
+    sorted_ids = novels_data.map { |novel| novel[0] }
+    debug_puts "[DEBUG] Fixed sorted IDs: #{sorted_ids.inspect}"
+    sorted_ids
+  end
+
+  #
   # 現在のソート状態を日本語で表示する文字列を生成
   #
   def current_sort_display_string

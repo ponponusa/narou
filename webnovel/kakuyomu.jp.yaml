@@ -55,19 +55,21 @@ code: &code
         work["author"] = work["alternateAuthorName"] + "／" + work["author"] if work["alternateAuthorName"]
         # あらすじの改行を<br>に変換し、正規表現を単純化する。<br>はnarourb側で再変換される
         work["introduction"].gsub!("\n", "<br>")
-        # tagLabelsを文字列に変換（スペース区切り）
-        if work["tagLabels"] && work["tagLabels"].is_a?(Array)
-          work["tagLabels"] = work["tagLabels"].join(" ")
+        # tagLabelsを個別のタグ行として処理
+        if work["tagLabels"] && work["tagLabels"].is_a?(Array) && !work["tagLabels"].empty?
+          tag_lines = work["tagLabels"].map {|tag| "tag::#{tag}"}.join("\n")
+          work["tagLabels"] = tag_lines
         else
           work["tagLabels"] = ""
         end
-        # workからTOC以外に利用する属性を列挙している
+        # workからTOC以外に利用する属性を列挙している（tagLabelsは別途処理）
         work_attr = %w(author title serialStatus publicEpisodeCount publishedAt
-            editedAt lastEpisodePublishedAt totalCharacterCount introduction tagLabels)
+            editedAt lastEpisodePublishedAt totalCharacterCount introduction)
         # HTMLコメントの開始、前処理済みか検知するためのmagicword、
-        # TOC以外のworkの利用する属性値、TOC、HTMLコメントの終了を生成し
+        # TOC以外のworkの利用する属性値、タグデータ、TOC、HTMLコメントの終了を生成し
         str = ["<!---", magicword,
           work.slice(*work_attr).map {|v| v.join("::")},
+          work["tagLabels"],
           toc, "--->"].join("\n")
         # 元のページデータに挿入する。デバッグ時用に元々のデータはすべて残す。
         source.insert(m.begin(0), str)
@@ -140,4 +142,4 @@ w: ^author::(?<writer>.+?)$
 l: ^totalCharacterCount::(?<length>.+?)$
 
 # tags タグ
-tags: ^tagLabels::(?<tag>.+?)$
+tags: ^tag::(?<tag>.+?)$
