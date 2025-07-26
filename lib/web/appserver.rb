@@ -1505,9 +1505,18 @@ class Narou::AppServer < Sinatra::Base
     end
     
     debug_puts "[DEBUG] Tag edit processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
+    debug_puts "[DEBUG] Received states param: #{params["states"].inspect}"
+    debug_puts "[DEBUG] Received states class: #{params["states"].class.name}"
     
     # key と value を重複を維持したまま反転
-    invert_states = params["states"].inject({}) { |h,(k,v)| (h[v] ||= []) << k; h }
+    begin
+      invert_states = params["states"].inject({}) { |h,(k,v)| (h[v] ||= []) << k; h }
+      debug_puts "[DEBUG] Inverted states: #{invert_states.inspect}"
+    rescue => e
+      debug_puts "[ERROR] Failed to invert states: #{e.message}"
+      debug_puts "[ERROR] States param details: #{params["states"].inspect}"
+      raise e
+    end
     
     has_additions = false
     has_deletions = false
