@@ -109,4 +109,3 @@ l: |-
 tags: |-
   <dt class="p-infotop-data__title">キーワード</dt>
   <dd class="p-infotop-data__value">(?<tag>.+?)</dd>
-  |^$
