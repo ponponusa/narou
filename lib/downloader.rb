@@ -1404,7 +1404,7 @@ end
 # 既存コードには手を入れず、戻り値の文字列だけを UTF-8 に正規化します。
 
 module Narou
-  module __Utf8Hotfix
+  module Utf8Hotfix
     module_function
     def utf8(v)
       case v
@@ -1430,7 +1430,7 @@ if defined?(Narou::Downloader)
       alias __orig_get_latest_table_of_contents get_latest_table_of_contents
       def get_latest_table_of_contents(*args, **kwargs, &blk)
         res = __orig_get_latest_table_of_contents(*args, **kwargs, &blk)
-        Narou::__Utf8Hotfix.utf8(res)
+        Narou::Utf8Hotfix.utf8(res)
       end
     end
 
@@ -1439,7 +1439,7 @@ if defined?(Narou::Downloader)
       alias __orig_run_download run_download
       def run_download(*args, **kwargs, &blk)
         res = __orig_run_download(*args, **kwargs, &blk)
-        Narou::__Utf8Hotfix.utf8(res)
+        Narou::Utf8Hotfix.utf8(res)
       end
     end
   end
