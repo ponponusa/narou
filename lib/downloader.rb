@@ -1398,3 +1398,50 @@ class Downloader
     @setting["author"] = @setting["author"].delete("\r\n")
   end
 end
+
+# ==== UTF-8 Hotfix: avoid "UTF-8 and ASCII-8BIT" clashes ====
+# このブロックは downloader.rb の最下部にそのまま追記してください。
+# 既存コードには手を入れず、戻り値の文字列だけを UTF-8 に正規化します。
+
+module Narou
+  module __Utf8Hotfix
+    module_function
+    def utf8(v)
+      case v
+      when String
+        # BINARY(ASCII-8BIT) を含む可能性があるので強制的に UTF-8 + scrub
+        v.encoding == Encoding::UTF_8 ? v : v.dup.force_encoding(Encoding::UTF_8).scrub
+      when Array
+        v.map { |e| utf8(e) }
+      when Hash
+        # 値側を再帰的に正規化。キーはそのまま（シンボルや固定文字列想定）
+        v.transform_values { |e| utf8(e) }
+      else
+        v
+      end
+    end
+  end
+end
+
+if defined?(Narou::Downloader)
+  class Narou::Downloader
+    # get_latest_table_of_contents の戻り値を UTF-8 に正規化
+    if method_defined?(:get_latest_table_of_contents)
+      alias __orig_get_latest_table_of_contents get_latest_table_of_contents
+      def get_latest_table_of_contents(*args, **kwargs, &blk)
+        res = __orig_get_latest_table_of_contents(*args, **kwargs, &blk)
+        Narou::__Utf8Hotfix.utf8(res)
+      end
+    end
+
+    # 念のため run_download の戻り値も正規化（TOC 以外の経路対策）
+    if method_defined?(:run_download)
+      alias __orig_run_download run_download
+      def run_download(*args, **kwargs, &blk)
+        res = __orig_run_download(*args, **kwargs, &blk)
+        Narou::__Utf8Hotfix.utf8(res)
+      end
+    end
+  end
+end
+# ==== /UTF-8 Hotfix ====
