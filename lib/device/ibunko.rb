@@ -17,6 +17,66 @@ module Device::Ibunko
   }
 
   #
+  # make-zip 用：純粋な青空文庫テキストからZIP生成（EPUB最適化要素を除去）
+  #
+  def create_pure_aozora_zip
+    require "zip"
+    Zip.unicode_names = true
+    setting = {}
+    if @novel_data
+      setting = NovelSetting.load(@novel_data["id"], @options["ignore-force"], @options["ignore-default"])
+    end
+    dirpath = File.dirname(@converted_txt_path)
+
+    # 元テキストを汚さないように一時ファイルを生成して整形
+    sanitized_txt_path = @converted_txt_path.sub(/\.txt$/, ".ibunko.txt")
+    data = File.read(@converted_txt_path, encoding: Encoding::UTF_8)
+    # EPUB最適化のために混入しうるHTML/タグ類を汎用的に除去
+    # 先に汎用HTMLを除去してから、青空注記→i文庫カスタムタグへの変換を行う
+    data.gsub!(%r{</?[^>]+>}, "")
+    # HTMLエンティティは実体に復号
+    data = Helper.restore_entity(data)
+    # 青空注記 → i文庫HDカスタムタグへ変換
+    # 挿絵注記
+    data.gsub!(/［＃挿絵（(.+?)）入る］/, '<IMG SRC="\1">')
+    # 改ページ
+    data.gsub!(/［＃改ページ］/, '<PBR>')
+    # 改行コードをCR+LFに正規化（i文庫HDの仕様に準拠）
+    data.gsub!("\r\n", "\n")
+    data.gsub!("\r", "\n")
+    data.gsub!("\n", "\r\n")
+    File.write(sanitized_txt_path, data)
+
+    zipfile_path = @converted_txt_path.sub(/.txt$/, @device.ebook_file_ext)
+    File.delete(zipfile_path) if File.exist?(zipfile_path)
+    Zip::File.open(zipfile_path, Zip::File::CREATE) do |zip|
+      # テキスト本体（整形済み）
+      zip.add(File.basename(@converted_txt_path), sanitized_txt_path) { true }
+      # 挿絵（Aozora注記のまま。画像ファイルは同梱）
+      if setting["enable_illust"]
+        illust_dirpath = File.join(dirpath, Illustration::ILLUST_DIR)
+        if File.exist?(illust_dirpath)
+          Dir.glob(File.join(illust_dirpath, "*")) do |img_path|
+            zip.add(File.join(Illustration::ILLUST_DIR, File.basename(img_path)), img_path) { true }
+          end
+        end
+      end
+      # 表紙画像
+      cover_name = NovelConverter.get_cover_filename(dirpath)
+      if cover_name
+        zip.add(cover_name, File.join(dirpath, cover_name)) { true }
+      end
+    end
+    FileUtils.rm_f(sanitized_txt_path)
+    puts File.basename(zipfile_path) + " を出力しました"
+    puts "<bold><green>#{@device.display_name}用ファイルを出力しました</green></bold>".termcolor
+    if Narou.economy?("cleanup_temp") && @argument_target_type == :novel
+      FileUtils.rm_f(@converted_txt_path)
+    end
+    zipfile_path
+  end
+
+  #
   # i文庫用にテキストと挿絵ファイルをzipアーカイブ化する
   #
   def hook_convert_txt_to_ebook_file(&original_func)

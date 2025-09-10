@@ -70,6 +70,9 @@ module Command
       @opt.on("-o FILE", "--output FILE", "出力ファイル名を指定する。フォルダパス部分は無視される") { |filename|
         @options["output"] = filename
       }
+      @opt.on("--make-zip", "i文庫用のzipファイルを作る") {
+        @options["make-zip"] = true
+      }
       @opt.on("-e ENCODING", "--enc ENCODING",
               "テキストファイル指定時の文字コードを指定する。デフォルトはUTF-8") { |encoding|
         encoding = "utf-8" if encoding =~ /UTF8/i
@@ -105,7 +108,7 @@ module Command
       @opt.separator <<-EOS
 
   Configuration:
-    --no-epub, --no-mobi, --no-strip, --no-zip, --no-open , --inspect は narou setting コマンドで恒常的な設定にすることが可能です。
+    --make-zip, --no-epub, --no-mobi, --no-strip, --no-zip, --no-open , --inspect は narou setting コマンドで恒常的な設定にすることが可能です。
     convert.copy-to を設定すれば変換したEPUB/MOBIを指定のフォルダに自動でコピー出来ます。
     device で設定した端末が接続されていた場合、対応するデータを自動送信します。
     詳しくは narou setting --help を参照して下さい。
@@ -336,17 +339,50 @@ module Command
         end
       end
       
-      return NovelConverter.convert_txt_to_ebook_file(@converted_txt_path, {
+      # EPUB生成（dc:subject 挿入を含む）
+      # ZIPも生成する場合(cleanup_tempの影響を避けるため)は一旦txtのクリーンアップを抑止
+      no_cleanup_txt = (@argument_target_type == :file) || @options["make-zip"]
+      ebook_path = NovelConverter.convert_txt_to_ebook_file(@converted_txt_path, {
         use_dakuten_font: @use_dakuten_font,
         device: @device,
         verbose: @options["verbose"],
         no_epub: @options["no-epub"],
         no_mobi: @options["no-mobi"],
         no_strip: @options["no-strip"],
-        no_cleanup_txt: @argument_target_type == :file,
+        no_cleanup_txt: no_cleanup_txt,
         yokogaki: @options["yokogaki"],
         dc_subjects: dc_subjects
       })
+      # その他の処理 -> EPUBタグ挿入処理(有効時) -> ZIP作成処理(有効時)
+      # ZIP作成はEPUB生成の成否に依存させない（TXTから生成するため）
+      if @options["make-zip"] && !@options["no-zip"]
+        begin
+          zip_path = generate_ibunko_zip
+          copy_to_converted_zip_file(zip_path) if zip_path
+        rescue => e
+          $stdout2.error "ZIP生成に失敗しました: #{e.message}"
+        end
+      end
+      ebook_path
+    end
+
+    #
+    # i文庫用ZIP生成を明示的に実行する
+    #
+    def generate_ibunko_zip
+      prev_device = @device
+      ibunko_device = Narou.get_device("ibunko")
+      # デバイス情報を一時的に差し替えてフック処理を使う
+      @device = ibunko_device
+      # 純青空テキストからのZIP生成（EPUB最適化要素を除去）
+      if Device::Ibunko.instance_methods(false).include?(:create_pure_aozora_zip)
+        Device::Ibunko.instance_method(:create_pure_aozora_zip).bind(self).call
+      else
+        # フォールバック（互換性維持）
+        Device::Ibunko.instance_method(:hook_convert_txt_to_ebook_file).bind(self).call { ->{} }
+      end
+    ensure
+      @device = prev_device
     end
 
     class NoSuchDirectory < StandardError; end
