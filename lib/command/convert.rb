@@ -268,6 +268,8 @@ module Command
         next if ebook_file.nil?
         if ebook_file
           copy_to_converted_file(ebook_file)
+          # ZIP専用のコピー先が設定されている場合、ZIPを追加コピー
+          copy_to_converted_zip_file(ebook_file)
           send_file_to_device(ebook_file) unless using_send_command
         end
       end
@@ -394,6 +396,25 @@ module Command
       copy_to_dir_with_groups
     end
     private :get_copy_to_directory
+
+    #
+    # ZIPファイルを convert.copy-zip-to にコピーする
+    #
+    def copy_to_converted_zip_file(src_path, io: $stdout2)
+      return nil unless File.extname(src_path).downcase == ".zip"
+      copy_to_dir = @options["copy-zip-to"]
+      return nil if copy_to_dir.nil? || copy_to_dir.to_s.empty?
+      unless File.directory?(copy_to_dir)
+        raise NoSuchDirectory, copy_to_dir
+      end
+      FileUtils.copy(src_path, copy_to_dir)
+      copied_file_path = File.join(copy_to_dir, File.basename(src_path))
+      io.puts copied_file_path.to_s.encode(Encoding::UTF_8) + " へZIPをコピーしました"
+      copied_file_path
+    rescue NoSuchDirectory => e
+      io.error "#{e.message} はフォルダではないかすでに削除されています。ZIPをコピー出来ませんでした"
+      nil
+    end
 
     def grouping_values
       result = OpenStruct.new

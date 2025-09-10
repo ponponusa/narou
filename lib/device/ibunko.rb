@@ -20,7 +20,8 @@ module Device::Ibunko
   # i文庫用にテキストと挿絵ファイルをzipアーカイブ化する
   #
   def hook_convert_txt_to_ebook_file(&original_func)
-    return false if @options["no-zip"]
+    # 既存の no-zip 設定、または make-zip=false の場合はZIPを作らない
+    return false if @options["no-zip"] || (@options.key?("make-zip") && !@options["make-zip"])
     require "zip"
     Zip.unicode_names = true  # 日本語ファイル名対応
     # TODO: テキストファイル変換時もsettingを取れるようにする

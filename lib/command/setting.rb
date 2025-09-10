@@ -423,6 +423,12 @@ module Command
                 "      ※注意：存在しないフォルダだとエラーになる",
           tab: :general
         },
+        "convert.copy-zip-to" => {
+          type: :directory,
+          help: "生成したZIPファイルをこのフォルダにコピーする\n" \
+                "      ※注意：存在しないフォルダだとエラーになる",
+          tab: :general
+        },
         "convert.copy-to-grouping" => {
           type: :multiple,
           help: "copy-toで指定したフォルダの中で更に指定の各種フォルダにまとめる",
@@ -447,6 +453,11 @@ module Command
         },
         "convert.no-zip" => {
           type: :boolean, help: "i文庫用のzipファイル作成を無効にする", invisible: true
+        },
+        "convert.make-zip" => {
+          type: :boolean,
+          help: "ZIPファイルの作成を有効にする（対応端末: i文庫）",
+          tab: :general
         },
         "convert.no-open" => {
           type: :boolean, help: "変換時に保存フォルダを開かないようにする",
