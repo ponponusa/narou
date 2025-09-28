@@ -270,9 +270,9 @@ module Command
         ebook_file = hook_call(:convert_txt_to_ebook_file)
         next if ebook_file.nil?
         if ebook_file
-          copy_to_converted_file(ebook_file)
+          copy_to_converted_file(ebook_file, io: stream_io)
           # ZIP専用のコピー先が設定されている場合、ZIPを追加コピー
-          copy_to_converted_zip_file(ebook_file)
+          copy_to_converted_zip_file(ebook_file, io: stream_io)
           send_file_to_device(ebook_file) unless using_send_command
         end
       end
@@ -358,7 +358,7 @@ module Command
       if @options["make-zip"] && !@options["no-zip"]
         begin
           zip_path = generate_ibunko_zip
-          copy_to_converted_zip_file(zip_path) if zip_path
+          copy_to_converted_zip_file(zip_path, io: stream_io) if zip_path
         rescue => e
           $stdout2.error "ZIP生成に失敗しました: #{e.message}"
         end
@@ -390,7 +390,8 @@ module Command
     #
     # convert.copy-to で指定されたディレクトリに書籍データをコピーする
     #
-    def copy_to_converted_file(src_path, io: $stdout2)
+    def copy_to_converted_file(src_path, io: nil)
+      io ||= (respond_to?(:stream_io) ? stream_io : nil) || $stdout2
       copy_to_dir = get_copy_to_directory
       return nil unless copy_to_dir
       FileUtils.copy(src_path, copy_to_dir)
@@ -436,7 +437,8 @@ module Command
     #
     # ZIPファイルを convert.copy-zip-to にコピーする
     #
-    def copy_to_converted_zip_file(src_path, io: $stdout2)
+    def copy_to_converted_zip_file(src_path, io: nil)
+      io ||= (respond_to?(:stream_io) ? stream_io : nil) || $stdout2
       return nil unless File.extname(src_path).downcase == ".zip"
       copy_to_dir = @options["copy-zip-to"]
       return nil if copy_to_dir.nil? || copy_to_dir.to_s.empty?

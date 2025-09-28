@@ -1,39 +1,39 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `lib/` – Ruby sources (core under `lib/narou/*.rb`, web under `lib/web/*`, CLI subcommands in `lib/command/*`).
-- `spec/` – RSpec tests (`*_spec.rb`), helpers in `spec/support/`.
-- `bin/narou` / `narou.rb` – CLI entry points for local development.
-- `webnovel/` – site configuration YAMLs.
-- `preset/`, `template/` – conversion templates and assets.
-- `.circleci/` – CI configuration.
+- `lib/` holds Ruby sources: core logic in `lib/narou/`, web helpers in `lib/web/`, and CLI subcommands under `lib/command/`.
+- `spec/` contains RSpec examples plus shared helpers in `spec/support/`.
+- CLI entry points live in `bin/narou` and `narou.rb` for local execution.
+- Site settings, templates, and assets reside in `webnovel/`, `preset/`, and `template/`.
+- CI and release automation are under `.circleci/` and `Rakefile` tasks.
 
 ## Build, Test, and Development Commands
-- Setup: `bundle install` – install Ruby gem dependencies.
-- Run CLI (local): `bundle exec ruby narou.rb <command>` (e.g., `web`, `download`, `convert`).
-- Tests: `bundle exec rspec` or `bundle exec rake spec` – run the test suite.
-- Lint (Ruby): `bundle exec rubocop` (auto-fix: `-A`). Smells: `bundle exec reek`.
-- Lint (templates/styles when edited): `bundle exec haml-lint`, `bundle exec scss-lint`.
-- Build gem: `bundle exec rake build` (release: `bundle exec rake release`).
+- `bundle install`: install gem dependencies locally.
+- `bundle exec ruby narou.rb web`: boot the local web interface for manual checks.
+- `bundle exec ruby narou.rb download <novel_id>`: fetch source content for conversion experiments.
+- `bundle exec rspec`: run the full test suite; scope to a file with `bundle exec rspec spec/downloader_spec.rb`.
+- `bundle exec rubocop` (add `-A` to auto-correct): enforce Ruby style and catch regressions.
 
 ## Coding Style & Naming Conventions
-- Ruby 2-space indentation; keep `# frozen_string_literal: true` in new files.
-- Prefer single quotes for simple strings; snake_case for files/methods; CamelCase for classes/modules under the `Narou` namespace.
-- Follow cops defined in `.rubocop.yml`; do not reformat unrelated code.
-- Place new CLI subcommands in `lib/command/<name>.rb` mirroring existing patterns.
+- Use Ruby two-space indentation, single quotes for simple strings, and snake_case for files and methods.
+- Namespaces should follow `Narou::CamelCase` modules; mirror existing CLI subcommand patterns in `lib/command/`.
+- Keep new files ASCII with `# frozen_string_literal: true` at the top when applicable.
+- Run `bundle exec rubocop` and `bundle exec reek` before submitting changes.
 
 ## Testing Guidelines
-- Framework: RSpec. Add tests under `spec/` with filenames `*_spec.rb` and descriptive `describe`/`context` blocks.
-- Keep tests deterministic; avoid network I/O—stub external calls.
-- Run full suite with `bundle exec rspec`; target a file during TDD, e.g., `bundle exec rspec spec/downloader_spec.rb`.
+- Write deterministic RSpec examples in `spec/`; name files `*_spec.rb` and group contexts clearly.
+- Stub network or filesystem side effects; rely on fixtures in `spec/support/` when possible.
+- Execute `bundle exec rspec` prior to review; add focused specs for new behaviour or bug fixes.
 
 ## Commit & Pull Request Guidelines
-- Commits: concise imperative subject, optional body for rationale; reference issues (e.g., `#123`). Update `ChangeLog.md` for user-facing changes.
-- PRs: include summary, motivation, scope of change, test notes, and screenshots for web/UI impacts. Link related issues and note migration steps if any.
+- Craft imperative commit subjects (e.g., `Add downloader retry logic`) and reference issues like `#123` when relevant.
+- Update `ChangeLog.md` for user-facing changes and summarise scope, motivation, and test notes in PR descriptions.
+- Attach screenshots or logs for web/UI work and call out migrations or breaking changes explicitly.
 
 ## Security & Configuration Tips
-- Use UTF-8 consistently (as enforced in entry script). Do not commit secrets or tokens.
-- Validate site YAMLs in `webnovel/` and include minimal tests for new formats.
+- Keep secrets out of the tree; validate new YAML configs in `webnovel/` before shipping.
+- Follow UTF-8 defaults in entry scripts and ensure downloaded data is sanitised before conversion.
 
 ## Agent-Specific Instructions
-- Keep changes minimal and scoped; follow linters before proposing large refactors. Respect existing public APIs and command behaviors.
+- Keep edits minimal and scoped, favour incremental fixes over sweeping refactors.
+- Respect existing public APIs and CLI behaviours; coordinate larger changes through issues first.

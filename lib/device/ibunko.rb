@@ -68,8 +68,9 @@ module Device::Ibunko
       end
     end
     FileUtils.rm_f(sanitized_txt_path)
-    puts File.basename(zipfile_path) + " を出力しました"
-    puts "<bold><green>#{@device.display_name}用ファイルを出力しました</green></bold>".termcolor
+    output_io = (respond_to?(:stream_io) ? stream_io : nil) || $stdout
+    output_io.puts File.basename(zipfile_path) + " を出力しました"
+    output_io.puts "<bold><green>#{@device.display_name}用ファイルを出力しました</green></bold>".termcolor
     if Narou.economy?("cleanup_temp") && @argument_target_type == :novel
       FileUtils.rm_f(@converted_txt_path)
     end
@@ -111,8 +112,9 @@ module Device::Ibunko
         zip.add(cover_name, File.join(dirpath, cover_name)) { true }
       end
     end
-    puts File.basename(zipfile_path) + " を出力しました"
-    puts "<bold><green>#{@device.display_name}用ファイルを出力しました</green></bold>".termcolor
+    output_io = (respond_to?(:stream_io) ? stream_io : nil) || $stdout
+    output_io.puts File.basename(zipfile_path) + " を出力しました"
+    output_io.puts "<bold><green>#{@device.display_name}用ファイルを出力しました</green></bold>".termcolor
     if Narou.economy?("cleanup_temp") && @argument_target_type == :novel
       # 作業用ファイルを削除
       FileUtils.rm_f(@converted_txt_path)
