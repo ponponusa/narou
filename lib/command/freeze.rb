@@ -65,6 +65,14 @@ module Command
           puts "#{title} を凍結しました"
         else
           frozen_list.delete(id)
+          # 凍結解除時に404タグも削除
+          tags = data["tags"] || []
+          if tags.include?("404")
+            tags.delete("404")
+            database = Database.instance
+            database[id]["tags"] = tags
+            database.save_database
+          end
           puts "#{title} の凍結を解除しました"
           next
         end
