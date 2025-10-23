@@ -18,13 +18,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Ruby 3.0
+      - name: Set up Ruby 3.4
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.0"
+          ruby-version: "3.4"
 
-      - name: Install bundler 2.1.4
-        run: gem install bundler:2.1.4
+      - name: Install bundler 2.7.2
+        run: gem install bundler:2.7.2
 
       - name: Cache bundle
         uses: actions/cache@v4
@@ -36,14 +36,14 @@ jobs:
 
       - name: Bundle install
         run: |
-          bundle _2.1.4_ config set path "${BUNDLE_PATH}"
-          bundle _2.1.4_ check || bundle _2.1.4_ install
+          bundle _2.7.2_ config set path "${BUNDLE_PATH}"
+          bundle _2.7.2_ check || bundle _2.7.2_ install
 
       - name: Run RSpec
         run: |
           mkdir -p test_results/rspec
           # CircleCI のテスト分割は GHA ではそのまま使えないため、単純実行に置き換え
-          bundle _2.1.4_ exec rspec \
+          bundle _2.7.2_ exec rspec \
             --format RspecJunitFormatter \
             --out test_results/rspec/results.xml \
             --format progress

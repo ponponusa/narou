@@ -11,6 +11,9 @@ require "socket"
 require "sinatra/base"
 require "sinatra/json"
 require "sinatra/reloader" if $development
+require "securerandom"
+require "rack/session"
+require "rack/protection"
 # require "better_errors" if $debug
 require "tilt/erubi"
 require "tilt/haml"
@@ -33,6 +36,7 @@ class Narou::AppServer < Sinatra::Base
   configure do
     set :app_file, __FILE__
     set :erb, trim: "-"
+    set :quiet, true
     enable :protection
     enable :sessions
 
@@ -41,7 +45,8 @@ class Narou::AppServer < Sinatra::Base
     end
 
     set :environment, :production unless $development
-    set :server, :webrick
+    set :server, :puma
+    set :server_settings, { Silent: true }
 
     if $debug
       use BetterErrors::Middleware

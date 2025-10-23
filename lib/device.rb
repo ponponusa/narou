@@ -33,6 +33,9 @@ class Device
   when :mac
     require_relative "device/library/mac"
     extend Device::Library::Mac
+  when :docker
+    require_relative "device/library/docker"
+    extend Device::Library::Docker
   else
     require_relative "device/library/linux"
     extend Device::Library::Linux

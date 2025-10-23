@@ -30,6 +30,11 @@ module Helper
     @@os_is_cygwin ||= HOST_OS =~ /cygwin/i
   end
 
+  def running_in_docker?
+    return false unless File.exist?('/proc/1/cgroup')
+    File.readlines('/proc/1/cgroup').any? { |line| line.include?('/docker/') || line.include?('/lxc/') }
+  end
+
   def determine_os
     case
     when os_windows?
@@ -38,6 +43,8 @@ module Helper
       :mac
     when os_cygwin?
       :cygwin
+    when running_in_docker?
+      :docker
     else
       :other
     end
