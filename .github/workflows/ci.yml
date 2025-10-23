@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      BUNDLE_JOBS: "1"
+      BUNDLE_RETRY: "3"
+      BUNDLE_PATH: vendor/bundle
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby 3.0
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.0"
+
+      - name: Install bundler 2.1.4
+        run: gem install bundler:2.1.4
+
+      - name: Cache bundle
+        uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-narou-bundle-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-narou-bundle-
+
+      - name: Bundle install
+        run: |
+          bundle _2.1.4_ config set path "${BUNDLE_PATH}"
+          bundle _2.1.4_ check || bundle _2.1.4_ install
+
+      - name: Run RSpec
+        run: |
+          mkdir -p test_results/rspec
+          # CircleCI のテスト分割は GHA ではそのまま使えないため、単純実行に置き換え
+          bundle _2.1.4_ exec rspec \
+            --format RspecJunitFormatter \
+            --out test_results/rspec/results.xml \
+            --format progress
+
+      - name: Upload test results (JUnit XML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rspec-junit
+          path: test_results
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
