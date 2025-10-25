@@ -167,19 +167,17 @@ class Narou::AppServer < Sinatra::Base
   end
 
   # サーバーの認証の設定
-  # とりあえずDigest認証のみ
+  # - Digest認証がRackの機能からオミットされたので、Basic認証に変更
   def setup_server_authentication
-    auth = Inventory.load("global_setting", :global).group("server-digest-auth")
+    auth = Inventory.load("global_setting", :global).group("server-basic-auth")
     user = auth.user
-    hashed = auth.hashed_password
-    passwd = hashed || auth.password
+    passwd = auth.password  # ハッシュは使わない
 
-    # enableかつユーザー名とパスワードが設定されている時のみ認証を有効にする
     return unless auth.enable && user && passwd
 
     self.class.class_exec do
-      use Rack::Auth::Digest::MD5, { realm: "narou.rb", opaque: "", passwords_hashed: hashed } do |username|
-        passwd if username == user
+      use Rack::Auth::Basic, "narou.rb" do |username, password|
+        username == user && password == passwd
       end
     end
   end
