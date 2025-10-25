@@ -7,6 +7,7 @@
 require "yaml"
 require "fileutils"
 require "ostruct"
+require "sanitize"
 require_relative "narou"
 require_relative "helper"
 require_relative "sitesetting"
@@ -419,7 +420,7 @@ class Downloader
 
     auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
     if @setting["tag"] && auto_add_tags
-      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワードが設定されていません/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
+      clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワードが設定されていません/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
       if clean_tag.length > 0
         new_tags = clean_tag.split(/[ 　]+|&nbsp;/).uniq
         old_tags = (record && record["tags"]) ? record["tags"] : []
@@ -644,7 +645,7 @@ class Downloader
     }
     auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
     if @setting["tag"] && auto_add_tags
-      clean_tag = @setting["tag"].gsub(/<[^>]*>/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
+      clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
       if clean_tag.length > 0
         tags = clean_tag.split(/[ 　]+|&nbsp;/)
         if record && record["tags"]

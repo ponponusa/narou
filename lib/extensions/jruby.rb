@@ -10,7 +10,7 @@ if Helper.os_windows?
   module FileUtils
     # マルチバイト文字を含むパスを認識出来ないため
     def self.cp(src, dst, opt = nil)
-      open(src, "rb") do |fp|
+      File.open(src, "rb") do |fp|
         File.binwrite(dst, fp.read)
       end
     end
@@ -19,7 +19,7 @@ if Helper.os_windows?
   class File
     # 何故かエンコーディングエラーが出るため
     def self.binwrite(path, data)
-      open(path, "wb") do |fp|
+      File.open(path, "wb") do |fp|
         fp.write(data)
       end
     end

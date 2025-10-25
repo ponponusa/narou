@@ -59,7 +59,7 @@ class Illustration
       content_type = fp.meta["content-type"]
       ext = MIME[content_type] or raise UnknownMIMEType, content_type
       illust_abs_path = create_illust_path(basename) + "." + ext
-      open(illust_abs_path, "wb") do |write_fp|
+      File.open(illust_abs_path, "wb") do |write_fp|
         write_fp.write(fp.read)
       end
       @inspector.info("挿絵「#{File.basename(illust_abs_path)}」を保存しました。")

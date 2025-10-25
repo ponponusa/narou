@@ -82,7 +82,7 @@ class Inspector
 
   def save(path = nil)
     path = File.join(@setting.archive_path, INSPECT_LOG_NAME) if path.nil?
-    open(path, "w") do |fp|
+    File.open(path, "w") do |fp|
       fp.puts "--- ログ出力 #{Time.now} ---"
       display(ALL, fp)
     end

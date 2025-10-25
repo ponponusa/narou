@@ -103,7 +103,7 @@ class Ini
     unless filename
       raise NoFilenameError
     end
-    open(@filename, "w") do |fp|
+    File.open(@filename, "w") do |fp|
       @data.each do |section, values|
         if section != GLOBAL_SECTION
           fp.puts("[#{section}]")

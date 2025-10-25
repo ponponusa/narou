@@ -21,7 +21,7 @@ module Command
       def decorate_id
         disp_id = ((frozen ? "*" : "") + id.to_s).rjust(4)
         if frozen
-          disp_id.sub("*", "<bold><cyan>*</cyan></bold>")
+          disp_id.gsub("*", "<bold><cyan>*</cyan></bold>")
         else
           disp_id
         end

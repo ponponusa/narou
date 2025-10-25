@@ -33,7 +33,11 @@ module Device::Ibunko
     data = File.read(@converted_txt_path, encoding: Encoding::UTF_8)
     # EPUB最適化のために混入しうるHTML/タグ類を汎用的に除去
     # 先に汎用HTMLを除去してから、青空注記→i文庫カスタムタグへの変換を行う
-    data.gsub!(%r{</?[^>]+>}, "")
+    previous = nil
+    while data != previous
+      previous = data
+      data = data.gsub(%r{</?[^>]+>}, "")
+    end
     # HTMLエンティティは実体に復号
     data = Helper.restore_entity(data)
     # 青空注記 → i文庫HDカスタムタグへ変換

@@ -89,7 +89,7 @@ class NovelConverter
     setting.author = ""
     setting.title = File.basename(filename)
     novel_converter = new(setting, output_filename, options[:display_inspector])
-    text = open(filename, "r:BOM|UTF-8") { |fp| fp.read }.gsub("\r", "")
+    text = File.open(filename, "r:BOM|UTF-8") { |fp| fp.read }.gsub("\r", "")
     if options[:encoding]
       text.force_encoding(options[:encoding]).encode!(Encoding::UTF_8)
     end

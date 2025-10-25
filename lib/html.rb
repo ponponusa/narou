@@ -59,7 +59,12 @@ class HTML
   end
 
   def delete_tag(text = @string)
-    text.gsub(/<.+?>/, "")
+    previous = nil
+    while text != previous
+      previous = text
+      text = text.gsub(/<.+?>/, "")
+    end
+    text
   end
 
   def br_to_aozora(text = @string)
