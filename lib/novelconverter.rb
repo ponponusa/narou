@@ -827,7 +827,7 @@ class NovelConverter
   # subtitle info から変換処理をする
   #
   def subtitles_to_sections(subtitles, html)
-    # 章データキャッシュ
+    # 章データをキャッシュ
     @__section_cache ||= {}
 
     sections = []
@@ -839,37 +839,61 @@ class NovelConverter
       trigger(:"convert_main.loop", i)
       @converter.current_index = i
 
-      # Yamlロードをキャッシュ
+      # YAMLロードをキャッシュ
       key = subinfo["index"]
-      section = @__section_cache[key]
-      unless section
-        # load_novel_section はハッシュを返す
-        section = load_novel_section(subinfo, section_save_dir)
-        @__section_cache[key] = section
+      original_section = @__section_cache[key]
+      unless original_section
+        original_section = load_novel_section(subinfo, section_save_dir)
+        @__section_cache[key] = original_section
       end
 
-      # dupしてから編集する事でキャッシュ汚染を防ぐ
-      section = section.dup
-      section["element"] = section["element"].dup
+      # キャッシュを壊さないようディープ寄りにdup
+      # （chapter/subtitle/elementなど後で書き換えるので）
+      section = original_section.dup
+      section["element"] = original_section["element"].dup
 
-      # Converter呼び出しを一箇所に集約
-      if section["chapter"] && !section["chapter"].empty?
-        section["chapter"] = @converter.convert(section["chapter"], "chapter")
-      end
-
-      @inspector.subtitle = section["subtitle"]
-      section["subtitle"] = @converter.convert(section["subtitle"], "subtitle")
-
+      # data_type 判定
       element = section["element"]
       data_type = element.delete("data_type") || "text"
       @converter.data_type = data_type
 
+      # HTML→青空変換が必要なやつを先にプレーンテキスト化
+      preprocessed_element_texts = {}
       element.each do |text_type, elm_text|
         if data_type != "text"
           html.string = elm_text
           elm_text = html.to_aozora(pre_html: data_type == "pre_html")
         end
-        element[text_type] = @converter.convert(elm_text, text_type)
+        preprocessed_element_texts[text_type] = elm_text
+      end
+
+      # まとめてコンバータに渡すためのバッチ入力を作る
+      batch_inputs = {}
+
+      # chapter
+      if section["chapter"] && !section["chapter"].empty?
+        batch_inputs[:chapter] = [section["chapter"], "chapter"]
+      end
+
+      # subtitle
+      @inspector.subtitle = section["subtitle"]
+      batch_inputs[:subtitle] = [section["subtitle"], "subtitle"]
+
+      # element 各種
+      preprocessed_element_texts.each do |text_type, body_text|
+        batch_inputs[[:element, text_type]] = [body_text, text_type]
+      end
+
+      # 一括変換
+      converted = @converter.convert_multi(batch_inputs)
+      if batch_inputs[:chapter]
+        section["chapter"] = converted[:chapter]
+      end
+
+      section["subtitle"] = converted[:subtitle]
+
+      element.keys.each do |text_type|
+        section["element"][text_type] = converted[[:element, text_type]]
       end
 
       sections << section
@@ -880,6 +904,7 @@ class NovelConverter
   ensure
     trigger(:"convert_main.finish")
   end
+
 
   #
   # テキストデータ先頭二行からタイトルと作者名を取得
