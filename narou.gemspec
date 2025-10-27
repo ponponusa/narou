@@ -70,6 +70,7 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'csv', '~> 3.3'
   gem.add_runtime_dependency 'rexml', '~> 3.4'
   gem.add_runtime_dependency 'sanitize', '~> 7.0.0'
+  gem.add_runtime_dependency 'bootsnap', '~> 1.18', '>= 1.18.6'
 
   gem.add_development_dependency 'rspec', '~> 3.13'
   gem.add_development_dependency 'rspec-retry', '~> 0.6'
