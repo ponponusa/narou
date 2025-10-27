@@ -259,97 +259,64 @@ class NovelConverter
   #
   def self.add_dc_subject_to_epub(epub_path, subjects, stream_io: $stdout2)
     return :success if subjects.nil? || subjects.empty?
-
-    # 必要なgemが利用できない場合は警告を出して処理をスキップ
     if defined?(ZIP_UNAVAILABLE)
       stream_io.error "dc:subject埋め込み機能を使用するにはrubyzip gemが必要です"
       return :error
     end
 
-    if defined?(REXML_UNAVAILABLE)
-      stream_io.error "dc:subject埋め込み機能を使用するにはrexml gemが必要です"
-      return :error
-    end
-
-    temp_dir = nil
+    entries = {}
     begin
-      # 一時ディレクトリ作成
-      temp_dir = Dir.mktmpdir
-
-      # EPUBファイルを展開
+      # EPUBをメモリ上に展開
       Zip::File.open(epub_path) do |zip_file|
         zip_file.each do |entry|
-          entry_path = File.join(temp_dir, entry.name)
-          FileUtils.mkdir_p(File.dirname(entry_path))
-          entry.extract(entry_path)
+          entries[entry.name] = entry.get_input_stream.read
         end
       end
 
-      # standard.opfファイルを探す
-      opf_path = Dir.glob(File.join(temp_dir, "**", "standard.opf")).first
-      unless opf_path
+      # standard.opf 書き換え
+      opf_name, opf_body = entries.find { |name, _| name.end_with?("standard.opf") }
+      unless opf_name
         stream_io.error "standard.opfファイルが見つかりませんでした"
         return :error
       end
 
-      # 文字列置換でdc:subjectを追加する方式に変更
-      # （REXMLの整形では元のフォーマットが崩れるため）
-      content = File.read(opf_path)
-
-      # 既存のdc:subjectを削除
+      content = opf_body.dup
       content.gsub!(/<dc:subject>.*?<\/dc:subject>\s*\n?\s*/m, "")
-
-      # 新しいdc:subjectを生成（XMLエスケープも行う）
-      dc_subject_lines = subjects.map do |subject|
-        next if subject.strip.empty?
-        escaped_subject = subject.strip.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;").gsub("\"", "&quot;").gsub("'", "&apos;")
-        "    <dc:subject>#{escaped_subject}</dc:subject>"
-      end.compact
-
+      dc_subject_lines = subjects.map(&:strip).reject(&:empty?).map { |s|
+        esc = s.gsub("&","&amp;").gsub("<","&lt;").gsub(">","&gt;").gsub("\"","&quot;").gsub("'","&apos;")
+        "    <dc:subject>#{esc}</dc:subject>"
+      }
       if dc_subject_lines.any?
-        # </metadata>の直前にdc:subjectを挿入
         dc_subjects_xml = dc_subject_lines.join("\n") + "\n"
         content.sub!(/(\s*)<\/metadata>/, "\n#{dc_subjects_xml}\\1</metadata>")
       end
+      entries[opf_name] = content
 
-      # XMLを書き戻し
-      File.write(opf_path, content)
-
-      # EPUBファイルを再作成（OutputStreamを使用しmimetypeを無圧縮・先頭に配置）
+      # 再Zip化 (mimetypeは無圧縮で先頭)
       File.delete(epub_path)
-
       Zip::OutputStream.open(epub_path) do |zos|
-        # mimetypeファイルを最初に無圧縮で追加
-        mimetype_path = File.join(temp_dir, "mimetype")
-        unless File.exist?(mimetype_path)
+        # mimetype必須
+        if !entries["mimetype"]
           stream_io.error "mimetypeファイルが見つかりません"
           return :error
         end
 
         # 第1引数に名前、第4引数にZip::Entry::STORED を渡す
-        zos.put_next_entry('mimetype', nil, nil, Zip::Entry::STORED)
+        zos.put_next_entry("mimetype", nil, nil, Zip::Entry::STORED)
+        zos.write entries["mimetype"]
 
-        zos.write File.read(mimetype_path, mode: "rb")
-
-        # 他のファイルを追加（mimetypeを除く）
-        Dir.glob(File.join(temp_dir, "**", "*"), File::FNM_DOTMATCH).sort.each do |file_path|
-          next if File.directory?(file_path)
-          relative_path = file_path.sub(temp_dir + "/", "")
-          next if relative_path == "mimetype"  # mimetypeは既に追加済み
-          zos.put_next_entry(relative_path)
-          zos.write File.read(file_path, mode: "rb")
+        entries.each do |name, body|
+          next if name == "mimetype"
+          zos.put_next_entry(name)
+          zos.write body
         end
       end
 
       stream_io.puts "dc:subjectを追加しました: #{subjects.join(', ')}"
       :success
-
     rescue => e
       stream_io.error "dc:subject追加中にエラーが発生しました: #{e.message}"
       :error
-    ensure
-      # 一時ディレクトリを削除
-      FileUtils.rm_rf(temp_dir) if temp_dir
     end
   end
 
@@ -575,9 +542,12 @@ class NovelConverter
     on(:"convert_main.init") do |subtitles|
       progressbar = ProgressBar.new(subtitles.size, io: stream_io)
     end
+
     on(:"convert_main.loop") do |i|
-      progressbar.output(i) if progressbar
+      # 毎回ではな10件ごとに絞る
+      progressbar.output(i) if progressbar && (i % 10).zero?
     end
+
     on(:"convert_main.finish") do
       progressbar.clear if progressbar
     end
@@ -611,13 +581,25 @@ class NovelConverter
     cover_chuki = create_cover_chuki
     device = Narou.get_device
     setting = @setting
-    toc["title"] = setting.novel_title unless setting.novel_title.empty?
+
+    toc["title"]  = setting.novel_title  unless setting.novel_title.empty?
     toc["author"] = setting.novel_author unless setting.novel_author.empty?
+
     processing_title = toc["title"]
     processing_title += "_#{index}" if index
     processed_title = decorate_title(processing_title)
     template_name = (device && device.ibunko? ? NOVEL_TEXT_TEMPLATE_NAME_FOR_IBUNKO : NOVEL_TEXT_TEMPLATE_NAME)
-    Template.get(template_name, binding, 1.1)
+
+    # テンプレートをキャッシュする
+    # コンパイル済みERB（またはProc）をキャッシュして binding だけ都度差し込む
+    @__template_cache ||= {}
+    compiled = @__template_cache[template_name]
+    unless compiled
+      compiled = Template.compile(template_name, 1.1)
+      @__template_cache[template_name] = compiled
+    end
+
+    Template.render(compiled, binding)
   end
 
   #
@@ -845,6 +827,9 @@ class NovelConverter
   # subtitle info から変換処理をする
   #
   def subtitles_to_sections(subtitles, html)
+    # 章データをキャッシュ
+    @__section_cache ||= {}
+
     sections = []
     section_save_dir = Downloader.get_novel_section_save_dir(@setting.archive_path)
 
@@ -853,30 +838,73 @@ class NovelConverter
     subtitles.each_with_index do |subinfo, i|
       trigger(:"convert_main.loop", i)
       @converter.current_index = i
-      section = load_novel_section(subinfo, section_save_dir)
-      if section["chapter"].length > 0
-        section["chapter"] = @converter.convert(section["chapter"], "chapter")
+
+      # YAMLロードをキャッシュ
+      key = subinfo["index"]
+      original_section = @__section_cache[key]
+      unless original_section
+        original_section = load_novel_section(subinfo, section_save_dir)
+        @__section_cache[key] = original_section
       end
 
-      @inspector.subtitle = section["subtitle"]
-      section["subtitle"] = @converter.convert(section["subtitle"], "subtitle")
+      # キャッシュを壊さないようディープ寄りにdup
+      # （chapter/subtitle/elementなど後で書き換えるので）
+      section = original_section.dup
+      section["element"] = original_section["element"].dup
+
+      # data_type 判定
       element = section["element"]
       data_type = element.delete("data_type") || "text"
       @converter.data_type = data_type
+
+      # HTML→青空変換が必要なやつを先にプレーンテキスト化
+      preprocessed_element_texts = {}
       element.each do |text_type, elm_text|
         if data_type != "text"
           html.string = elm_text
           elm_text = html.to_aozora(pre_html: data_type == "pre_html")
         end
-        element[text_type] = @converter.convert(elm_text, text_type)
+        preprocessed_element_texts[text_type] = elm_text
       end
+
+      # まとめてコンバータに渡すためのバッチ入力を作る
+      batch_inputs = {}
+
+      # chapter
+      if section["chapter"] && !section["chapter"].empty?
+        batch_inputs[:chapter] = [section["chapter"], "chapter"]
+      end
+
+      # subtitle
+      @inspector.subtitle = section["subtitle"]
+      batch_inputs[:subtitle] = [section["subtitle"], "subtitle"]
+
+      # element 各種
+      preprocessed_element_texts.each do |text_type, body_text|
+        batch_inputs[[:element, text_type]] = [body_text, text_type]
+      end
+
+      # 一括変換
+      converted = @converter.convert_multi(batch_inputs)
+      if batch_inputs[:chapter]
+        section["chapter"] = converted[:chapter]
+      end
+
+      section["subtitle"] = converted[:subtitle]
+
+      element.keys.each do |text_type|
+        section["element"][text_type] = converted[[:element, text_type]]
+      end
+
       sections << section
     end
+
     @use_dakuten_font = @converter.use_dakuten_font
     sections
   ensure
     trigger(:"convert_main.finish")
   end
+
 
   #
   # テキストデータ先頭二行からタイトルと作者名を取得

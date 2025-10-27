@@ -45,6 +45,7 @@ class ConverterBase
     @subtitles = nil
     @data_type = "text"
     @current_index = 0
+    @device = Narou.get_device
     reset_member_values
   end
 
@@ -65,7 +66,6 @@ class ConverterBase
     @num_and_comma_list = {}
     @force_indent_special_chapter_list = {}
     @in_author_comment_block = nil
-    @device = Narou.get_device
   end
 
   def outputs(data = "", force = false)
@@ -1332,6 +1332,17 @@ class ConverterBase
     return data
   end
 
+  # 複数のテキストをまとめて変換する
+  # pairs: { key1 => [text, text_type], key2 => [text, text_type], ... }
+  # 戻り値: { key1 => converted_text1, key2 => converted_text2, ... }
+  def convert_multi(pairs)
+    results = {}
+    pairs.each do |key, (text, text_type)|
+      results[key] = convert(text, text_type)
+    end
+    results
+  end
+
   #
   # 変換処理本体
   #
@@ -1368,7 +1379,7 @@ class ConverterBase
       @write_fp.write(data)
     else
       @read_fp.each_with_index do |line, i|
-        progressbar.output(i) if progressbar
+        progressbar.output(i) if progressbar && (i % 50).zero?  # 50行ごとに制限
         @request_skip_output_line = false
         zenkaku_rstrip(line)
         if @request_insert_blank_next_line
