@@ -259,97 +259,64 @@ class NovelConverter
   #
   def self.add_dc_subject_to_epub(epub_path, subjects, stream_io: $stdout2)
     return :success if subjects.nil? || subjects.empty?
-
-    # 必要なgemが利用できない場合は警告を出して処理をスキップ
     if defined?(ZIP_UNAVAILABLE)
       stream_io.error "dc:subject埋め込み機能を使用するにはrubyzip gemが必要です"
       return :error
     end
 
-    if defined?(REXML_UNAVAILABLE)
-      stream_io.error "dc:subject埋め込み機能を使用するにはrexml gemが必要です"
-      return :error
-    end
-
-    temp_dir = nil
+    entries = {}
     begin
-      # 一時ディレクトリ作成
-      temp_dir = Dir.mktmpdir
-
-      # EPUBファイルを展開
+      # EPUBをメモリ上に展開
       Zip::File.open(epub_path) do |zip_file|
         zip_file.each do |entry|
-          entry_path = File.join(temp_dir, entry.name)
-          FileUtils.mkdir_p(File.dirname(entry_path))
-          entry.extract(entry_path)
+          entries[entry.name] = entry.get_input_stream.read
         end
       end
 
-      # standard.opfファイルを探す
-      opf_path = Dir.glob(File.join(temp_dir, "**", "standard.opf")).first
-      unless opf_path
+      # standard.opf 書き換え
+      opf_name, opf_body = entries.find { |name, _| name.end_with?("standard.opf") }
+      unless opf_name
         stream_io.error "standard.opfファイルが見つかりませんでした"
         return :error
       end
 
-      # 文字列置換でdc:subjectを追加する方式に変更
-      # （REXMLの整形では元のフォーマットが崩れるため）
-      content = File.read(opf_path)
-
-      # 既存のdc:subjectを削除
+      content = opf_body.dup
       content.gsub!(/<dc:subject>.*?<\/dc:subject>\s*\n?\s*/m, "")
-
-      # 新しいdc:subjectを生成（XMLエスケープも行う）
-      dc_subject_lines = subjects.map do |subject|
-        next if subject.strip.empty?
-        escaped_subject = subject.strip.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;").gsub("\"", "&quot;").gsub("'", "&apos;")
-        "    <dc:subject>#{escaped_subject}</dc:subject>"
-      end.compact
-
+      dc_subject_lines = subjects.map(&:strip).reject(&:empty?).map { |s|
+        esc = s.gsub("&","&amp;").gsub("<","&lt;").gsub(">","&gt;").gsub("\"","&quot;").gsub("'","&apos;")
+        "    <dc:subject>#{esc}</dc:subject>"
+      }
       if dc_subject_lines.any?
-        # </metadata>の直前にdc:subjectを挿入
         dc_subjects_xml = dc_subject_lines.join("\n") + "\n"
         content.sub!(/(\s*)<\/metadata>/, "\n#{dc_subjects_xml}\\1</metadata>")
       end
+      entries[opf_name] = content
 
-      # XMLを書き戻し
-      File.write(opf_path, content)
-
-      # EPUBファイルを再作成（OutputStreamを使用しmimetypeを無圧縮・先頭に配置）
+      # 再Zip化 (mimetypeは無圧縮で先頭)
       File.delete(epub_path)
-
       Zip::OutputStream.open(epub_path) do |zos|
-        # mimetypeファイルを最初に無圧縮で追加
-        mimetype_path = File.join(temp_dir, "mimetype")
-        unless File.exist?(mimetype_path)
+        # mimetype必須
+        if !entries["mimetype"]
           stream_io.error "mimetypeファイルが見つかりません"
           return :error
         end
 
         # 第1引数に名前、第4引数にZip::Entry::STORED を渡す
-        zos.put_next_entry('mimetype', nil, nil, Zip::Entry::STORED)
+        zos.put_next_entry("mimetype", nil, nil, Zip::Entry::STORED)
+        zos.write entries["mimetype"]
 
-        zos.write File.read(mimetype_path, mode: "rb")
-
-        # 他のファイルを追加（mimetypeを除く）
-        Dir.glob(File.join(temp_dir, "**", "*"), File::FNM_DOTMATCH).sort.each do |file_path|
-          next if File.directory?(file_path)
-          relative_path = file_path.sub(temp_dir + "/", "")
-          next if relative_path == "mimetype"  # mimetypeは既に追加済み
-          zos.put_next_entry(relative_path)
-          zos.write File.read(file_path, mode: "rb")
+        entries.each do |name, body|
+          next if name == "mimetype"
+          zos.put_next_entry(name)
+          zos.write body
         end
       end
 
       stream_io.puts "dc:subjectを追加しました: #{subjects.join(', ')}"
       :success
-
     rescue => e
       stream_io.error "dc:subject追加中にエラーが発生しました: #{e.message}"
       :error
-    ensure
-      # 一時ディレクトリを削除
-      FileUtils.rm_rf(temp_dir) if temp_dir
     end
   end
 
