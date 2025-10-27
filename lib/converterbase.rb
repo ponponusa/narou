@@ -1368,7 +1368,7 @@ class ConverterBase
       @write_fp.write(data)
     else
       @read_fp.each_with_index do |line, i|
-        progressbar.output(i) if progressbar
+        progressbar.output(i) if progressbar && (i % 50).zero?  # 50行ごとに制限
         @request_skip_output_line = false
         zenkaku_rstrip(line)
         if @request_insert_blank_next_line

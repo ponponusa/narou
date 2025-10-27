@@ -575,9 +575,12 @@ class NovelConverter
     on(:"convert_main.init") do |subtitles|
       progressbar = ProgressBar.new(subtitles.size, io: stream_io)
     end
+
     on(:"convert_main.loop") do |i|
-      progressbar.output(i) if progressbar
+      # 毎回ではな10件ごとに絞る
+      progressbar.output(i) if progressbar && (i % 10).zero?
     end
+
     on(:"convert_main.finish") do
       progressbar.clear if progressbar
     end
@@ -611,13 +614,25 @@ class NovelConverter
     cover_chuki = create_cover_chuki
     device = Narou.get_device
     setting = @setting
-    toc["title"] = setting.novel_title unless setting.novel_title.empty?
+
+    toc["title"]  = setting.novel_title  unless setting.novel_title.empty?
     toc["author"] = setting.novel_author unless setting.novel_author.empty?
+
     processing_title = toc["title"]
     processing_title += "_#{index}" if index
     processed_title = decorate_title(processing_title)
     template_name = (device && device.ibunko? ? NOVEL_TEXT_TEMPLATE_NAME_FOR_IBUNKO : NOVEL_TEXT_TEMPLATE_NAME)
-    Template.get(template_name, binding, 1.1)
+
+    # テンプレートをキャッシュする
+    # コンパイル済みERB（またはProc）をキャッシュして binding だけ都度差し込む
+    @__template_cache ||= {}
+    compiled = @__template_cache[template_name]
+    unless compiled
+      compiled = Template.compile(template_name, 1.1)
+      @__template_cache[template_name] = compiled
+    end
+
+    Template.render(compiled, binding)
   end
 
   #
@@ -845,6 +860,9 @@ class NovelConverter
   # subtitle info から変換処理をする
   #
   def subtitles_to_sections(subtitles, html)
+    # 章データキャッシュ
+    @__section_cache ||= {}
+
     sections = []
     section_save_dir = Downloader.get_novel_section_save_dir(@setting.archive_path)
 
@@ -853,16 +871,32 @@ class NovelConverter
     subtitles.each_with_index do |subinfo, i|
       trigger(:"convert_main.loop", i)
       @converter.current_index = i
-      section = load_novel_section(subinfo, section_save_dir)
-      if section["chapter"].length > 0
+
+      # Yamlロードをキャッシュ
+      key = subinfo["index"]
+      section = @__section_cache[key]
+      unless section
+        # load_novel_section はハッシュを返す
+        section = load_novel_section(subinfo, section_save_dir)
+        @__section_cache[key] = section
+      end
+
+      # dupしてから編集する事でキャッシュ汚染を防ぐ
+      section = section.dup
+      section["element"] = section["element"].dup
+
+      # Converter呼び出しを一箇所に集約
+      if section["chapter"] && !section["chapter"].empty?
         section["chapter"] = @converter.convert(section["chapter"], "chapter")
       end
 
       @inspector.subtitle = section["subtitle"]
       section["subtitle"] = @converter.convert(section["subtitle"], "subtitle")
+
       element = section["element"]
       data_type = element.delete("data_type") || "text"
       @converter.data_type = data_type
+
       element.each do |text_type, elm_text|
         if data_type != "text"
           html.string = elm_text
@@ -870,8 +904,10 @@ class NovelConverter
         end
         element[text_type] = @converter.convert(elm_text, text_type)
       end
+
       sections << section
     end
+
     @use_dakuten_font = @converter.use_dakuten_font
     sections
   ensure

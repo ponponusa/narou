@@ -13,6 +13,57 @@ class Template
 
   class LoadError < StandardError; end
 
+  # コンパイル済みテンプレートをキャッシュする
+  # { "novel.txt" => { erb: <ERB>, binary_version: 1.1, src_filename: "novel.txt" } }
+  # キャッシュする関係でスレッドセーフにはなっていないので、並列での変換処理を行う場合は対応が必要
+  @__compiled_cache = {}
+
+    #
+  # テンプレートを元にデータを作成
+  #
+  # テンプレートファイルの検索順位
+  # 1. root_dir/template
+  # 2. script_dir/template
+  #
+  def self.compile(src_filename, binary_version)
+    # すでにキャッシュ済みならそのまま返す
+    cached = @__compiled_cache[src_filename]
+    return cached if cached
+
+    # ファイル探索（getと同じロジック）
+    [Narou.root_dir, Narou.script_dir].each do |dir|
+      path = dir.join(TEMPLATE_DIR, src_filename + ".erb")
+      next unless path.exist?
+
+      src = Helper::CacheLoader.load(path)
+      erb = ERB.new(src, trim_mode: "-")
+
+      compiled = {
+        erb: erb,
+        binary_version: binary_version,
+        src_filename: src_filename
+      }
+
+      @__compiled_cache[src_filename] = compiled
+      return compiled
+    end
+
+    raise LoadError, "テンプレートファイルが見つかりません。(#{src_filename}.erb)"
+  end
+
+  def self.render(compiled, _binding)
+    # compiled は compile が返した Hash
+    @@binary_version = compiled[:binary_version]
+    @@src_filename   = compiled[:src_filename]
+
+    # target_binary_version から参照される @@src_version は
+    # テンプレート内で <%= Template.target_binary_version 1.1 %> みたいに呼ばれる想定
+    # なので、ここでは設定しない。テンプレの中から呼ばれた時点で
+    # @@src_version が更新され、invalid_templace_version? が機能する
+
+    compiled[:erb].result(_binding)
+  end
+
   #
   # テンプレートを元にファイルを作成
   #
@@ -36,24 +87,10 @@ class Template
     end
   end
 
-  #
-  # テンプレートを元にデータを作成
-  #
-  # テンプレートファイルの検索順位
-  # 1. root_dir/template
-  # 2. script_dir/template
-  #
+  # 既存コード向けのwrap関数
   def self.get(src_filename, _binding, binary_version)
-    @@binary_version = binary_version
-    @@src_filename = src_filename
-    [Narou.root_dir, Narou.script_dir].each do |dir|
-      path = dir.join(TEMPLATE_DIR, src_filename + ".erb")
-      next unless path.exist?
-      src = Helper::CacheLoader.load(path)
-      result = ERB.new(src, trim_mode: "-").result(_binding)
-      return result
-    end
-    raise LoadError, "テンプレートファイルが見つかりません。(#{src_filename}.erb)"
+    compiled = compile(src_filename, binary_version)
+    render(compiled, _binding)
   end
 
   def self.invalid_templace_version?
