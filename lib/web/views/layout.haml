@@ -21,7 +21,7 @@
     %link{:href => "//cdn.datatables.net/colvis/1.1.1/css/dataTables.colVis.css", :rel => "stylesheet"}/
     %link{:href => "//cdn.jsdelivr.net/npm/bootstrap-select@1.13.18/dist/css/bootstrap-select.min.css", :rel => "stylesheet"}/
     %link{:href => "//cdn.jsdelivr.net/npm/perfect-scrollbar@1.5.6/css/perfect-scrollbar.min.css", :rel => "stylesheet"}/
-    %link{:href => "/resources/toggle-switch.css", :rel => "stylesheet"}/
+    %link{:href => "/resources/css/toggle-switch.css", :rel => "stylesheet"}/
     %link{:href => "/style.css?_=#{Narou::VERSION}", :rel => "stylesheet"}/
     :javascript
       var local_initialize_functions = [];
@@ -50,15 +50,15 @@
     %script{:src => "//cdn.jsdelivr.net/npm/bootstrap-select@1.13.18/js/bootstrap-select.min.js"}
     %script{:src => "//cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"}
     %script{:src => "//cdn.jsdelivr.net/npm/perfect-scrollbar@0.8.1/dist/js/perfect-scrollbar.jquery.min.js"}
-    %script{:src => "/resources/bootbox.js"}
-    %script{:src => "/resources/sprintf.js"}
-    %script{:src => "/resources/shortcut.js"}
-    %script{:src => "/resources/jquery.outerclick.js"}
-    %script{:src => "/resources/jquery.slidenavbar.js"}
-    %script{:src => "/resources/jquery.moveto.js"}
-    %script{:src => "/resources/narou.library.js?_=#{Narou::VERSION}"}
-    %script{:src => "/resources/narou.queue.js?_=#{Narou::VERSION}"}
-    %script{:src => "/resources/common.ui.js?_=#{Narou::VERSION}"}
+    %script{:src => "/resources/js/bootbox.js"}
+    %script{:src => "/resources/js/sprintf.js"}
+    %script{:src => "/resources/js/shortcut.js"}
+    %script{:src => "/resources/js/jquery.outerclick.js"}
+    %script{:src => "/resources/js/jquery.slidenavbar.js"}
+    %script{:src => "/resources/js/jquery.moveto.js"}
+    %script{:src => "/resources/js/narou.library.js?_=#{Narou::VERSION}"}
+    %script{:src => "/resources/js/narou.queue.js?_=#{Narou::VERSION}"}
+    %script{:src => "/resources/js/common.ui.js?_=#{Narou::VERSION}"}
     :javascript
       $(document).ready(function($) {
         slideNavbar = $(".navbar-collapse").slideNavbar();
@@ -67,5 +67,5 @@
         });
       });
     - if env["PATH_INFO"] == "/"
-      %script{:src => "/resources/narou.ui.js?_=#{Narou::VERSION}"}
+      %script{:src => "/resources/js/narou.ui.js?_=#{Narou::VERSION}"}
 
