@@ -203,10 +203,10 @@ table#novel-list {
   }
   thead {
     .sorting_asc {
-      @include dataTableSortingHeader("/resources/sort_asc.png");
+      @include dataTableSortingHeader("/resources/images/sort_asc.png");
     }
     .sorting_desc {
-      @include dataTableSortingHeader("/resources/sort_desc.png");
+      @include dataTableSortingHeader("/resources/images/sort_desc.png");
     }
   }
   /*
