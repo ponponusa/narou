@@ -101,6 +101,7 @@ table#novel-list {
   color: $default-color;
   //border-color: darken($odd-color, 20%);
   border-color: $novel-list-border-color;
+  background-color: $even-color;
 
   @mixin dataTableSortingHeader($arrow_img_url) {
     background: url($arrow_img_url) no-repeat center right !important;
@@ -110,12 +111,16 @@ table#novel-list {
   thead {
     background-color: $thead-background-color;
     color: #ddd0cc;
+    th {
+      background-color: $thead-background-color;
+    }
   }
   td {
     padding: 4px !important;
     vertical-align: middle;
     //border-color: darken($odd-color, 20%);
     border-color: $novel-list-border-color;
+    background-color: inherit;
   }
   tr {
     td.text-center {
@@ -134,9 +139,28 @@ table#novel-list {
       background-color: #f8f3e5;
     }
   }
+  
+  /* DataTables 2.x対応: nth-childベースのストライプ */
+  tbody > tr:nth-child(odd) {
+    background-color: $odd-color;
+    td.sorting_1 {
+      background-color: #f0ecde;
+    }
+  }
+  tbody > tr:nth-child(even) {
+    background-color: $even-color;
+    td.sorting_1 {
+      background-color: #f8f3e5;
+    }
+  }
   $selected-color: mix($odd-color, rgba(255,212,0,0.5));
   //$selected-color: #90cebc;
   $selected-hover-color: #ded;
+  
+  /* DataTables 2.x のCSS変数を上書き */
+  --dt-row-selected: #{$selected-color};
+  --dt-row-selected-text: #{$default-color};
+  
   tr.selected {
     td {
       background-color: $selected-color !important;
@@ -330,6 +354,8 @@ table#novel-list {
 
 // DataTables 共通設定
 table.dataTable {
+  background-color: white;
+  
   th {
     text-align: center;
   }
@@ -340,6 +366,10 @@ table.dataTable {
     .sorting_desc_disabled {
       background: inherit;
     }
+  }
+  
+  tbody {
+    background-color: white;
   }
 }
 
