@@ -212,8 +212,20 @@ module Command
       cache_sections = []
       cache_section_list.each do |path|
         match_latest_path = File.join(novel_dir, File.basename(path))
-        latest_novel_sections << YAML.unsafe_load_file(match_latest_path) if File.exist?(match_latest_path)
-        cache_sections << YAML.unsafe_load_file(path)
+        if File.exist?(match_latest_path)
+          begin
+            latest_novel_sections << YAML.unsafe_load_file(match_latest_path)
+          rescue SystemCallError
+            # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
+            latest_novel_sections << YAML.unsafe_load(File.read(match_latest_path))
+          end
+        end
+        begin
+          cache_sections << YAML.unsafe_load_file(path)
+        rescue SystemCallError
+          # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
+          cache_sections << YAML.unsafe_load(File.read(path))
+        end
       end
 
       novel_info = Database.instance[id]

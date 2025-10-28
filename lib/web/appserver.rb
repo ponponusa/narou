@@ -432,7 +432,13 @@ class Narou::AppServer < Sinatra::Base
     postscripts_count = 0
     toc["subtitles"].each do |sub|
       begin
-        element = YAML.unsafe_load_file(downloader.section_file_path(sub))["element"]
+        section_path = downloader.section_file_path(sub)
+        begin
+          element = YAML.unsafe_load_file(section_path)["element"]
+        rescue SystemCallError
+          # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
+          element = YAML.unsafe_load(File.read(section_path))["element"]
+        end
         data_type = element["data_type"] || "text"
         introduction = element["introduction"] || ""
         postscript = element["postscript"] || ""
