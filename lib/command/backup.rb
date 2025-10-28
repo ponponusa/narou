@@ -46,7 +46,12 @@ module Command
       backup_dir = novel_dir.join(BACKUP_DIR_NAME)
       backup_dir.mkdir unless backup_dir.exist?
       Zip.unicode_names = true unless Helper.os_windows?
-      Zip::File.open(backup_dir.join(zipfilename), Zip::File::CREATE) do |zip|
+      
+      # Windowsでのスレッド内ファイル操作対策: GCを強制実行してファイルハンドルを解放
+      GC.start
+      sleep 0.1
+      
+      Zip::File.open(backup_dir.join(zipfilename), create: true) do |zip|
         paths.each do |path|
           relative_path = path_to_relative(novel_dir, path).to_s
           zipped_filename =

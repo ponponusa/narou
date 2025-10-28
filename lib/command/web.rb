@@ -180,12 +180,12 @@ module Command
 
     def send_rebooted_event_when_connection_recover(push_server)
       return unless @rebooted
-      Thread.new do |th|
+      Thread.new do
         timeout = Time.now + 20
         # WebSocketのコネクションが回復するまで待つ
         until push_server.connections.count != 0
           sleep 0.2
-          th.kill if Time.now > timeout
+          Thread.current.kill if Time.now > timeout
         end
         puts "<yellow>再起動が完了しました。</yellow>".termcolor
         push_server.send_all(:"server.rebooted")
