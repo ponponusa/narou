@@ -43,6 +43,16 @@
 
 ## 更新履歴 - ChangeLog
 
+### [3.9.1.mod.R1.1](https://github.com/ponponusa/narou/releases/latest) : 2025-10-28
+
+#### <更新内容>
+
+```md
+- Windows環境におけるYAML読込エラーの修正
+- 小説一覧テーブルにおける行選択時のスタイルを修正
+- その他、細かな修正
+```
+
 ### 3.9.1.mod.R1 : 2025-10-28
 
 #### <更新内容> ※[Rumia-Channel/narou](https://github.com/Rumia-Channel/narou)からの更新点を記載しています
