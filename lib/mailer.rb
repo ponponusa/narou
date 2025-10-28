@@ -23,7 +23,12 @@ class Mailer
     this.clear
     setting_file_path = File.join(Narou.root_dir, SETTING_FILE)
     if File.exist?(setting_file_path)
-      options = YAML.unsafe_load_file(setting_file_path)
+      begin
+        options = YAML.unsafe_load_file(setting_file_path)
+      rescue SystemCallError
+        # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
+        options = YAML.unsafe_load(File.read(setting_file_path))
+      end
       unless options.delete(:complete)
         raise SettingUncompleteError, "設定ファイルの書き換えが終了していないようです。\n" +
                                       "設定ファイルは #{setting_file_path} にあります"

@@ -45,7 +45,13 @@ module Command
         if @options["vote"]
           # TODO: 最新話の場所をAPIで取得する
           data_dir = Downloader.get_novel_data_dir_by_target(data["id"])
-          latest_index = YAML.unsafe_load_file(File.join(data_dir, Downloader::TOC_FILE_NAME))["subtitles"].last["index"]
+          toc_path = File.join(data_dir, Downloader::TOC_FILE_NAME)
+          begin
+            latest_index = YAML.unsafe_load_file(toc_path)["subtitles"].last["index"]
+          rescue SystemCallError
+            # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
+            latest_index = YAML.unsafe_load(File.read(toc_path))["subtitles"].last["index"]
+          end
           open_url = "#{toc_url + latest_index}/#my_novelpoint"
         else
           open_url = toc_url

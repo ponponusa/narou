@@ -73,7 +73,12 @@ class SiteSetting
 
   def initialize(path)
     @match_values = {}
-    @yaml = YAML.unsafe_load_file(path)
+    begin
+      @yaml = YAML.unsafe_load_file(path)
+    rescue SystemCallError
+      # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
+      @yaml = YAML.unsafe_load(File.read(path))
+    end
     @path = path
   end
 

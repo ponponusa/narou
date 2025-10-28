@@ -54,6 +54,27 @@
   user-select: none;
 }
 
+/* DataTables wrapper の背景色設定 */
+.dataTables_wrapper {
+  background-color: transparent;
+}
+
+#novel-list {
+  background-color: #fffcef !important;
+  /* DataTables 2.x のCSS変数を上書きして選択色を黄色系に */
+  --dt-row-selected: 241, 230, 178;  /* RGB値で指定 */
+  --dt-row-selected-text: 51, 51, 51;
+}
+
+#novel-list tbody tr {
+  background-color: inherit;
+}
+
+/* 選択行のスタイルを強制 */
+#novel-list tbody tr.selected > * {
+  box-shadow: inset 0 0 0 9999px rgba(255, 212, 0, 0.3) !important;
+}
+
 /* より包括的な選択防止 */
 body, * {
   -webkit-user-select: none;

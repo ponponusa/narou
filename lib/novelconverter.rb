@@ -565,7 +565,13 @@ class NovelConverter
   def load_novel_section(subtitle_info, section_save_dir)
     file_subtitle = subtitle_info["file_subtitle"] || subtitle_info["subtitle"]   # 互換性維持のため
     path = section_save_dir.join("#{subtitle_info["index"]} #{file_subtitle}.yaml")
-    YAML.unsafe_load_file(path)
+    begin
+      YAML.unsafe_load_file(path)
+    rescue SystemCallError => e
+      # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
+      raise if e.is_a?(Errno::ENOENT)
+      YAML.unsafe_load(File.read(path))
+    end
   rescue Errno::ENOENT => e
     stream_io.puts
     stream_io.error(<<~MSG.termcolor)

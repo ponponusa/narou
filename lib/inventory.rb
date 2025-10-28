@@ -64,7 +64,12 @@ module Inventory
           error "#{@inventory_file_path} が壊れてるっぽい"
           raise
         end
-        YAML.unsafe_load_file(@inventory_file_path)
+        begin
+          YAML.unsafe_load_file(@inventory_file_path)
+        rescue SystemCallError
+          # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
+          YAML.unsafe_load(File.read(@inventory_file_path))
+        end
       end
     })
   end
