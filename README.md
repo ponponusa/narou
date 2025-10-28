@@ -1,15 +1,18 @@
 # Narou.rb_MOD - 小説家になろうのダウンローダ＆縦書き整形＆管理アプリ。
 
-このプロジェクトは下記プロジェクトの派生です。
-
-- Original Project : [whiteleaf7/narou](https://github.com/whiteleaf7/narou)
-
-- Forked from : [Rumia-Channel/narou](https://github.com/Rumia-Channel/narou)
+> [!NOTE]
+> このプロジェクトは下記プロジェクトの派生です。
+>
+> - **Original Project : [whiteleaf7/narou](https://github.com/whiteleaf7/narou) --** <sub>![GitHub last commit](https://img.shields.io/github/last-commit/whiteleaf7/narou?style=flat&labelColor=blue&color=white)</sub>
+>
+> - **Forked from : [Rumia-Channel/narou](https://github.com/Rumia-Channel/narou) --** <sub>![GitHub last commit](https://img.shields.io/github/last-commit/Rumia-Channel/narou?style=flat&labelColor=gold&color=pink&link=https%3A%2F%2Fgithub.com%2FRumia-Channel%2Fnarou)</sub>
+>
 
 素晴らしいプロジェクトを作成していただいた、[whiteleaf7](https://github.com/whiteleaf7) さん、[Rumia-Channel](https://github.com/Rumia-Channel) さんに多大なる感謝を。
 
-
 ## 概要 - Summary
+
+![GitHub Release](https://img.shields.io/github/v/release/ponponusa/narou)
 
 このアプリは[小説家になろう](http://syosetu.com/)などで公開されている小説の管理、
 及び電子書籍データへの変換を支援します。縦書き用に特化されており、
@@ -17,19 +20,22 @@
 また、校正機能もありますので、小説としての一般的な整形ルールに矯正します。（例：感嘆符のあとにはスペースが必ずくる）
 
 小説家になろうを含めて、下記のサイトに対応しています。
-+ 小説家になろう http://syosetu.com/
-+ ノクターンノベルズ http://noc.syosetu.com/
-+ ムーンライトノベルズ http://mnlt.syosetu.com/
-+ ミッドナイトノベルズ http://mid.syosetu.com/
-+ ハーメルン https://syosetu.org/
-+ Arcadia http://www.mai-net.net/
-+ 暁 http://www.akatsuki-novels.com/ （※300話以上ある作品は未対応）
-+ カクヨム https://kakuyomu.jp/
+
+| サイト名 | URL | 備考 |
+|----------|----------|----------|
+| 小説家になろう | http://syosetu.com/ | |
+| ノクターンノベルズ | http://noc.syosetu.com/ | |
+| ムーンライトノベルズ | http://mnlt.syosetu.com/ | |
+| ミッドナイトノベルズ | http://mid.syosetu.com/ | |
+| ハーメルン | https://syosetu.org/ | |
+| Arcadia | http://www.mai-net.net/ | |
+| 暁 | http://www.akatsuki-novels.com/ | （※300話以上ある作品は未対応） |
+| カクヨム | https://kakuyomu.jp/ | |
 
 主な機能は小説家になろうの小説のダウンロード、更新管理、テキスト整形、AozoraEpub3・kindlegen連携によるEPUB/MOBI出力です。  
 その他にも変換したデータを直接電子書籍端末へ送信する機能は、メールで送信する機能などもあります。
 
-詳細な説明やインストール方法は **[Narou.rb_MOD説明書](https://github.com/ponponusa/narou/wiki)** を御覧ください。
+~~詳細な説明やインストール方法は **[Narou.rb_MOD説明書](https://github.com/ponponusa/narou/wiki)** を御覧ください。~~（準備中）
 
 ## 動作要件 - Requirements
 
@@ -37,7 +43,7 @@
 
 ## 更新履歴 - ChangeLog
 
-### > 3.9.1.mod.R1 : 2025-10-28
+### 3.9.1.mod.R1 : 2025-10-28
 
 #### <更新内容> ※[Rumia-Channel/narou](https://github.com/Rumia-Channel/narou)からの更新点を記載しています
 
@@ -72,4 +78,4 @@
 
 ----
 
-「小説家になろう」は株式会社ヒナプロジェクトの登録商標です。
+:classical_building:「小説家になろう」は株式会社ヒナプロジェクトの登録商標です。
