@@ -7,16 +7,26 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require 'bootsnap'
-Bootsnap.setup(
-  cache_dir:            'tmp/cache',          # Path to your cache
-  ignore_directories:   [],                   # Directory names to skip.
-  development_mode:     false,                # Current working environment, e.g. RACK_ENV, RAILS_ENV, etc
-  load_path_cache:      true,                 # Optimize the LOAD_PATH with a cache
-  compile_cache_iseq:   true,                 # Compile Ruby code into ISeq cache, breaks coverage reporting.
-  compile_cache_yaml:   true,                 # Compile YAML into a cache
-  readonly:             true,                 # Use the caches but don't update them on miss or stale entries.
-)
+begin
+  # narouコマンド前に下記のように環境変数を定義すればbootsnapは無効にする
+  # > set NAROU_NO_BOOTSNAP=1
+  unless ENV["NAROU_NO_BOOTSNAP"] == "1"
+    # 念のためWindows系のプラットフォームではないことを確認しておく
+    is_windows = Gem.win_platform? rescue (/mswin|mingw|cygwin|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+    unless is_windows
+      require "bootsnap"
+      Bootsnap.setup(
+        cache_dir: 'tmp/bootsnap-cache',
+        development_mode: false,
+        load_path_cache: true,
+        compile_cache_iseq: true,
+        compile_cache_yaml: true
+      )
+    end
+  end
+rescue Exception => e
+  warn "[narou.rb] Bootsnap disabled (#{e.class}: #{e.message})" if ENV["NAROU_BOOTSNAP_DEBUG"] == "1"
+end
 
 require_relative "lib/extension"
 require_relative "lib/extensions/monkey_patches"
