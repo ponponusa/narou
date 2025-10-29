@@ -50,9 +50,16 @@ module Narou
             end
 
             thread = Thread.new do
-              while true
-                data = que.pop
-                ws.send(data)
+              begin
+                while true
+                  data = que.pop
+                  ws.send(data)
+                end
+              rescue Errno::ECONNRESET, Errno::EPIPE, IOError => e
+                # 接続が切れた場合、スレッドを終了
+              rescue => e
+                # その他のエラーもログに出力してスレッド終了
+                puts "[ERROR] WebSocket send thread error: #{e.class}: #{e.message}" if $DEBUG
               end
             end
 
