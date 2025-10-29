@@ -137,9 +137,6 @@ jobs:
     name: Build gem (Windows mingw-ucrt)
     runs-on: windows-latest
 
-    env:
-      BUNDLER_VERSION: "2.7.2"
-
     outputs:
       gemfile: ${{ steps.build.outputs.gemfile }}
 
@@ -153,20 +150,15 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: false
 
-      - name: Install bundler
-        run: gem install bundler:${{ env.BUNDLER_VERSION }}
-
-      - name: Bundle install
-        shell: bash
-        run: |
-          bundle _${BUNDLER_VERSION}_ install --path vendor/bundle
+      # bundler のセットアップや bundle install はスキップする
+      # release パッケージとして .gem を作るだけなので不要
 
       - name: Build gem (mingw)
         id: build
         shell: bash
         run: |
           gem build narou.gemspec
-          # Windows向け: Gem::Platform::CURRENT が mingw-ucrt なので
+          # Windows向け: Gem::Platform::CURRENT が mingw-ucrt になるので
           GEMFILE=$(ls narou-*-mingw-ucrt.gem)
           echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
 
