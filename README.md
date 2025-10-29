@@ -12,8 +12,6 @@
 
 ## 概要 - Summary
 
-![GitHub Release](https://img.shields.io/github/v/release/ponponusa/narou)
-
 このアプリは[小説家になろう](http://syosetu.com/)などで公開されている小説の管理、
 及び電子書籍データへの変換を支援します。縦書き用に特化されており、
 横書きに最適化されたWEB小説を違和感なく縦書きで読むことが出来るようになります。
@@ -43,37 +41,9 @@
 
 ## 更新履歴 - ChangeLog
 
-### [3.9.1.mod.R1.1](https://github.com/ponponusa/narou/releases/latest) : 2025-10-28
+![GitHub Release](https://img.shields.io/github/v/release/ponponusa/narou)
 
-#### <更新内容>
-
-```md
-- Windows環境におけるYAML読込エラーの修正
-- 小説一覧テーブルにおける行選択時のスタイルを修正
-- その他、細かな修正
-```
-
-### 3.9.1.mod.R1 : 2025-10-28
-
-#### <更新内容> ※[Rumia-Channel/narou](https://github.com/Rumia-Channel/narou)からの更新点を記載しています
-
-```md
-- テキスト/EPUB変換処理の高速化
-  - 主に話数の多い（1000話オーバーなど）小説で顕著に効果があります
-  - ※小説掲載サイトからの取得ロジックに変更はないため、取得速度は変化はありません（変更予定もなし）
-- JavaScriptライブラリの更新、変更
-  - update jQuery 1.11.1 -> 3.7.1
-  - update datatables.js 1.10.10 -> 2.3.4
-  - update bootstrap 3.3.5 -> 3.4.1
-  - and more...
-- Rubyパッケージの更新、変更
-  - supported Ruby version 2.3.0~ -> 3.4.0~
-  - add puma/bootsnap/and more...
-  - update sinatra/ActiveSuport/tilt/and more...
-- Digest認証からBasic認証に変更
-  - Rack3.1から[Digest認証が非対応](https://github.com/ruby-grape/grape/issues/2294)となったため
-- その他、細かな修正
-```
+[->リリースページへ](https://github.com/ponponusa/narou/releases)
 
 ## TODO
 
