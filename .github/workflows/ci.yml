@@ -1,52 +1,63 @@
 name: CI
 
 on:
-  push:
-    branches: [ "**" ]
   pull_request:
+    branches: [ "develop", "release", "test-develop", "test-release" ]
+  push:
+    branches: [ "release", "test-release" ]
 
 jobs:
-  build:
+  #
+  # 1) PR用ビルド・テストジョブ
+  #    - develop 向け PR / release 向け PR / test-develop 向け PR / test-release 向け PR で走る
+  #    - RSpec を実行
+  #
+  build-test:
+    if: github.event_name == 'pull_request'
+    name: Build / Bundle install / RSpec
     runs-on: ubuntu-latest
 
     env:
       BUNDLE_JOBS: "1"
       BUNDLE_RETRY: "3"
       BUNDLE_PATH: vendor/bundle
+      BUNDLER_VERSION: "2.7.2"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Ruby 3.4
+      - name: Set up Ruby (3.4)
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
+          bundler-cache: false
 
-      - name: Install bundler 2.7.2
-        run: gem install bundler:2.7.2
+      - name: Install bundler
+        run: gem install bundler:${{ env.BUNDLER_VERSION }}
 
       - name: Cache bundle
         uses: actions/cache@v4
         with:
           path: vendor/bundle
-          key: ${{ runner.os }}-narou-bundle-${{ hashFiles('**/Gemfile.lock') }}
+          key: ${{ runner.os }}-ruby-3.4-bundle-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            ${{ runner.os }}-narou-bundle-
+            ${{ runner.os }}-ruby-3.4-bundle-
+            ${{ runner.os }}-ruby-
+            ${{ runner.os }}-
 
       - name: Bundle install
         run: |
-          bundle _2.7.2_ config set path "${BUNDLE_PATH}"
-          bundle _2.7.2_ check || bundle _2.7.2_ install
+          bundle _${BUNDLER_VERSION}_ config set path "${BUNDLE_PATH}"
+          bundle _${BUNDLER_VERSION}_ check || bundle _${BUNDLER_VERSION}_ install
 
       - name: Run RSpec
         run: |
           mkdir -p test_results/rspec
-          # CircleCI のテスト分割は GHA ではそのまま使えないため、単純実行に置き換え
-          bundle _2.7.2_ exec rspec \
+          bundle _${BUNDLER_VERSION}_ exec rspec \
+            --format progress \
             --format RspecJunitFormatter \
-            --out test_results/rspec/results.xml \
-            --format progress
+            --out test_results/rspec/results.xml
 
       - name: Upload test results (JUnit XML)
         if: always()
@@ -61,3 +72,147 @@ jobs:
         with:
           name: coverage
           path: coverage
+
+  #
+  # 2) Linux/macOS 向けの汎用 gem をビルド
+  #    - release または test-release ブランチへの push で実行
+  #    - ここで Narou::VERSION を取得して outputs に渡す
+  #
+  build-gem-linux:
+    # push イベント かつ ブランチが release or test-release のときのみ
+    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
+    name: Build gem (generic)
+    runs-on: ubuntu-latest
+
+    env:
+      BUNDLER_VERSION: "2.7.2"
+
+    outputs:
+      gemfile: ${{ steps.build.outputs.gemfile }}
+      version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby (3.4)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: false
+
+      - name: Install bundler
+        run: gem install bundler:${{ env.BUNDLER_VERSION }}
+
+      - name: Bundle install
+        run: |
+          bundle _${BUNDLER_VERSION}_ install --path vendor/bundle
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(ruby -r ./lib/version.rb -e 'print Narou::VERSION')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Build gem (generic)
+        id: build
+        run: |
+          gem build narou.gemspec
+          # 「mingw-ucrt」を含まない方が Linux/macOS 汎用ビルドとして扱われる想定
+          GEMFILE=$(ls narou-*.gem | grep -v mingw || true)
+          echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
+
+      - name: Upload generic gem artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: narou-gem-generic
+          path: ${{ steps.build.outputs.gemfile }}
+
+  #
+  # 3) Windows (mingw-ucrt) 向け gem をビルド
+  #    - release または test-release ブランチへの push で実行
+  #
+  build-gem-windows:
+    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
+    name: Build gem (Windows mingw-ucrt)
+    runs-on: windows-latest
+
+    env:
+      BUNDLER_VERSION: "2.7.2"
+
+    outputs:
+      gemfile: ${{ steps.build.outputs.gemfile }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby (3.4 on Windows)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: false
+
+      - name: Install bundler
+        run: gem install bundler:${{ env.BUNDLER_VERSION }}
+
+      - name: Bundle install
+        shell: bash
+        run: |
+          bundle _${BUNDLER_VERSION}_ install --path vendor/bundle
+
+      - name: Build gem (mingw)
+        id: build
+        shell: bash
+        run: |
+          gem build narou.gemspec
+          # Windows向け: Gem::Platform::CURRENT が mingw-ucrt なので
+          GEMFILE=$(ls narou-*-mingw-ucrt.gem)
+          echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
+
+      - name: Upload mingw gem artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: narou-gem-windows
+          path: ${{ steps.build.outputs.gemfile }}
+
+  #
+  # 4) GitHub Release の作成/更新
+  #    - 本番の release ブランチへの push のときだけ実行
+  #    - test-release では実行しない（artifact までは build できるけど Release は作らない）
+  #
+  release:
+    if: github.event_name == 'push' && github.ref_name == 'release'
+    name: Create/Update GitHub Release
+    runs-on: ubuntu-latest
+    needs: [ build-gem-linux, build-gem-windows ]
+
+    steps:
+      - name: Download generic gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: narou-gem-generic
+
+      - name: Download mingw gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: narou-gem-windows
+
+      - name: Collect gem files
+        run: |
+          mkdir -p dist
+          mv narou-gem-generic/*.gem dist/
+          mv narou-gem-windows/*.gem dist/
+          ls -l dist
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Narou::VERSION の値そのものをタグ・リリース名に使う
+          tag_name: ${{ needs.build-gem-linux.outputs.version }}
+          name: ${{ needs.build-gem-linux.outputs.version }}
+          draft: false
+          prerelease: false
+          files: dist/*.gem
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
