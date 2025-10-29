@@ -99,7 +99,6 @@ table#novel-list {
 
   font-size: 0.8em;
   color: $default-color;
-  //border-color: darken($odd-color, 20%);
   border-color: $novel-list-border-color;
   background-color: $even-color;
 
@@ -118,7 +117,6 @@ table#novel-list {
   td {
     padding: 4px !important;
     vertical-align: middle;
-    //border-color: darken($odd-color, 20%);
     border-color: $novel-list-border-color;
     background-color: inherit;
   }
@@ -207,10 +205,9 @@ table#novel-list {
   $frozen-color: #6caddd;
   tr.frozen td {
     $frozen-background-color: mix($even-color, $frozen-color, 88%);
-    color: lighten($default-color, 25%);
+    color: color.adjust($default-color, $lightness: 25%);
     background-color: $frozen-background-color;
     &.sorting_1 {
-      //background-color: darken($frozen-background-color, 3%);
       background-color: mix($frozen-background-color, black, 97%);
     }
     &.column-id > div:before {
@@ -220,10 +217,10 @@ table#novel-list {
     }
   }
   tr.frozen.selected td {
-    color: lighten($default-color, 30%) !important;
+    color: color.adjust($default-color, $lightness: 30%) !important;
   }
   tr.frozen.selected td.column-id > div:before {
-    color: darken($frozen-color, 20%);
+    color: color.adjust($frozen-color, $lightness: -20%);
   }
   thead {
     .sorting_asc {
@@ -256,7 +253,7 @@ table#novel-list {
   .gl-60minutes {
     &::after {
       content: "1h";
-      background-color: lighten(red, 23%);
+      background-color: color.adjust(red, $lightness: 23%);
 
       position: relative;
       left: 4px;
@@ -284,7 +281,7 @@ table#novel-list {
   .gl-24hour {
     &::after {
       content: "24h";
-      background-color: lighten(blue, 30%);
+      background-color: color.adjust(blue, $lightness: 230);
 
       position: relative;
       left: 4px;
@@ -298,8 +295,8 @@ table#novel-list {
   .gl-3days {
     &::after {
       content: "3d";
-      color: darken(gray, 15%);
-      background-color: lighten(mix(gray, blue, 70%), 40%);
+      color: color.adjust(gray, $lightness: -15%);;
+      background-color: color.adjust(mix(gray, blue, 70%), $lightness: 40%);
 
       position: relative;
       left: 4px;
@@ -312,8 +309,8 @@ table#novel-list {
   .gl-1week {
     &::after {
       content: "1w";
-      color: darken(gray, 15%);
-      background-color: lighten(mix(blue, white, 30%), 50%);
+      color: color.adjust(gray, $lightness: -15%);;
+      background-color: color.adjust(mix(blue, white, 30%), $lightness: 50%);
 
       position: relative;
       left: 4px;
@@ -990,7 +987,7 @@ $console-color: white;
     font-weight: bold;
 
     .number {
-      background-color: lighten(purple, 10%);
+      background-color: color.adjust(purple, $lightness: 10%);;
       vertical-align: top;
     }
   }
