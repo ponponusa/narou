@@ -175,9 +175,9 @@ jobs:
   #    - 本番 release ブランチへの push のときだけ実行する
   #    - narou-{version}.gem と narou-{version}-x64-mingw-ucrt.gem を添付
   #
-  release:
-    if: github.event_name == 'push' && github.ref_name == 'release'
-    name: Create/Update GitHub Release
+  release-draft:
+    if: github.event_name == 'push' && github.ref_name == 'test-release'
+    name: Create/Update Draft Release (staging)
     runs-on: ubuntu-latest
     needs: [ build-gem-linux, build-gem-windows ]
 
@@ -233,14 +233,113 @@ jobs:
             echo ""
             echo "---"
             echo ""
-
             if [ -n "$PREV_TAG" ]; then
-              echo "## 🧩 変更点 (since ${PREV_TAG})"
+              echo "## 🧩 ${PREV_TAG}からの変更点"
             else
               echo "## 🧩 変更点"
             fi
             echo ""
+            RANGE="${PREV_TAG:+${PREV_TAG}..HEAD}"
+            git log ${RANGE:-HEAD} --pretty=format:'- %s (%h)' | grep -v -i "^-\s*merge" || echo "(No commits found)"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## ⚖️ ライセンス・著作権表示"
+            echo ""
+            echo "- 本ソフトウェアは [narou.rb (by whiteleaf7)](https://github.com/whiteleaf7/narou) をオリジナルとしています。"
+            echo "- 本リポジトリ ([ponponusa/narou](https://github.com/ponponusa/narou)) は、"
+            echo "  オリジナルの narou.rb をベースに改良・保守を行っている非公式フォークです。"
+            echo ""
+            echo "- ライセンス: [MIT License](https://opensource.org/licenses/MIT)"
+            echo "- 著作者: whiteleaf7 (original), Rumia-Channel (fork from), ponponusa (mod maintainer)"
+            echo ""
+            echo "この改良版はオープンソースライセンスに基づき配布されています。"
+            echo "利用・再配布・改変は自由ですが、利用者自身の責任のもとで行ってください。"
+            echo ""
+            echo "---"
+            echo ""
+            echo "_※このリリースはドラフト (テスト用) です。一般公開前の検証ステージです。_"
+            echo ""
+            echo "_自動生成: GitHub Actions (${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})_"
+          } > release_body.md
 
+          echo "----- release_body.md -----"
+          cat release_body.md
+          echo "body_path=release_body.md" >> $GITHUB_OUTPUT
+
+      - name: Create or Update Draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build-gem-linux.outputs.version }}
+          name: "${{ needs.build-gem-linux.outputs.version }} (draft)"
+          draft: true         # 👈 ドラフトにする！
+          prerelease: false
+          files: dist/*.gem
+          body_path: ${{ steps.gen_body.outputs.body_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-final:
+    if: github.event_name == 'push' && github.ref_name == 'release'
+    name: Create/Update Public Release
+    runs-on: ubuntu-latest
+    needs: [ build-gem-linux, build-gem-windows ]
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout (for git log)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download generic gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: narou-gem-generic
+          path: dist
+
+      - name: Download mingw gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: narou-gem-windows
+          path: dist
+
+      - name: List dist contents
+        run: |
+          echo "dist contains:"
+          ls -R dist
+
+      - name: Generate release body with license info
+        id: gen_body
+        run: |
+          CURRENT_TAG="${{ needs.build-gem-linux.outputs.version }}"
+          ALL_TAGS=$(git tag --sort=-creatordate)
+          PREV_TAG=$(echo "$ALL_TAGS" | grep -v "^${CURRENT_TAG}$" | head -n1)
+
+          {
+            echo "## 📦 インストール案内"
+            echo ""
+            echo "- **Windows (mingw / MSYS2 など)** の場合:"
+            echo "  → \`narou-${CURRENT_TAG}-x64-mingw-ucrt.gem\` を使用してください。"
+            echo ""
+            echo "- **macOS / Linux** の場合:"
+            echo "  → \`narou-${CURRENT_TAG}.gem\` を使用してください。"
+            echo ""
+            echo "インストール方法:"
+            echo "\`\`\`bash"
+            echo "gem install ./ダウンロードしたファイル名.gem"
+            echo "\`\`\`"
+            echo ""
+            echo "---"
+            echo ""
+            if [ -n "$PREV_TAG" ]; then
+              echo "## 🧩 ${PREV_TAG}からの変更点"
+            else
+              echo "## 🧩 変更点"
+            fi
+            echo ""
             RANGE="${PREV_TAG:+${PREV_TAG}..HEAD}"
             git log ${RANGE:-HEAD} --pretty=format:'- %s (%h)' | grep -v -i "^-\s*merge" || echo "(No commits found)"
             echo ""
@@ -263,8 +362,6 @@ jobs:
             echo "_自動生成: GitHub Actions (${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})_"
           } > release_body.md
 
-          echo "----- release_body.md -----"
-          cat release_body.md
           echo "body_path=release_body.md" >> $GITHUB_OUTPUT
 
       - name: Create or Update GitHub Release
@@ -272,9 +369,10 @@ jobs:
         with:
           tag_name: ${{ needs.build-gem-linux.outputs.version }}
           name: ${{ needs.build-gem-linux.outputs.version }}
-          draft: false
+          draft: false        # 👈 本番なので公開
           prerelease: false
           files: dist/*.gem
           body_path: ${{ steps.gen_body.outputs.body_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
