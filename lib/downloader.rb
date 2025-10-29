@@ -755,6 +755,7 @@ class Downloader
     toc_url = @setting["toc_url"]
     return nil unless toc_url
     max_retry = 5
+    retry_count = LIMIT_TO_RETRY_NETWORK
     toc_source = ""
     cookie = @setting["cookie"] || ""
     open_uri_options = make_open_uri_options("Cookie" => cookie, allow_redirections: :safe)
@@ -786,6 +787,28 @@ class Downloader
         retry
       else
         raise
+      end
+    rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError, SocketError => e
+      case e.message
+      when /^503/
+        @stream&.error "server message: #{e.message}"
+        display_hint if @stream
+        raise SuspendDownload
+      when /^404/
+        # 404は上位のget_latest_table_of_contentsで処理させるため、そのまま再raise
+        raise e
+      else
+        if retry_count == 0
+          @stream&.error "上限までリトライしましたが目次がダウンロード出来ませんでした"
+          raise SuspendDownload
+        end
+        retry_count -= 1
+        @stream&.puts <<~MSG
+          server message: #{e.message}
+          リトライ待機中...
+        MSG
+        sleep(WAIT_TIME_TO_RETRY_NETWORK)
+        retry
       end
     end
     toc_source
@@ -834,7 +857,7 @@ class Downloader
       "subtitles" => subtitles
     }
     toc_objects
-  rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError => e
+  rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError, SocketError => e
     raise if through_error   # エラー処理はしなくていいからそのまま例外を受け取りたい時用
     if e.message.include?("404")
       @stream.error "小説が削除されているか非公開な可能性があります"
@@ -1235,7 +1258,7 @@ class Downloader
       URI.open(url, "r:#{@setting["encoding"]}", open_uri_options) do |fp|
         raw = Helper.pretreatment_source(fp.read, @setting["encoding"])
       end
-    rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError => e
+    rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError, SocketError => e
       case e.message
       when /^503/
         # 503 はアクセス規制やメンテ等でリトライしてもほぼ意味がないことが多いため一度で諦める

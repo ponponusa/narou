@@ -53,7 +53,12 @@ module Device::Ibunko
 
     zipfile_path = @converted_txt_path.sub(/.txt$/, @device.ebook_file_ext)
     File.delete(zipfile_path) if File.exist?(zipfile_path)
-    Zip::File.open(zipfile_path, Zip::File::CREATE) do |zip|
+    
+    # Windowsでのスレッド内ファイル操作対策: GCを強制実行してファイルハンドルを解放
+    GC.start
+    sleep 0.1
+    
+    Zip::File.open(zipfile_path, create: true) do |zip|
       # テキスト本体（整形済み）
       zip.add(File.basename(@converted_txt_path), sanitized_txt_path) { true }
       # 挿絵（Aozora注記のまま。画像ファイルは同梱）
@@ -72,7 +77,7 @@ module Device::Ibunko
       end
     end
     FileUtils.rm_f(sanitized_txt_path)
-    output_io = (respond_to?(:stream_io) ? stream_io : nil) || $stdout
+    output_io = $stdout2
     output_io.puts File.basename(zipfile_path) + " を出力しました"
     output_io.puts "<bold><green>#{@device.display_name}用ファイルを出力しました</green></bold>".termcolor
     if Narou.economy?("cleanup_temp") && @argument_target_type == :novel
@@ -98,7 +103,12 @@ module Device::Ibunko
     translate_illust_chuki_to_img_tag
     zipfile_path = @converted_txt_path.sub(/.txt$/, @device.ebook_file_ext)
     File.delete(zipfile_path) if File.exist?(zipfile_path)
-    Zip::File.open(zipfile_path, Zip::File::CREATE) do |zip|
+    
+    # Windowsでのスレッド内ファイル操作対策: GCを強制実行してファイルハンドルを解放
+    GC.start
+    sleep 0.1
+    
+    Zip::File.open(zipfile_path, create: true) do |zip|
       # テキスト本体
       zip.add(File.basename(@converted_txt_path), @converted_txt_path) { true }
       # 挿絵
@@ -116,7 +126,7 @@ module Device::Ibunko
         zip.add(cover_name, File.join(dirpath, cover_name)) { true }
       end
     end
-    output_io = (respond_to?(:stream_io) ? stream_io : nil) || $stdout
+    output_io = $stdout2
     output_io.puts File.basename(zipfile_path) + " を出力しました"
     output_io.puts "<bold><green>#{@device.display_name}用ファイルを出力しました</green></bold>".termcolor
     if Narou.economy?("cleanup_temp") && @argument_target_type == :novel

@@ -292,6 +292,10 @@ class NovelConverter
       end
       entries[opf_name] = content
 
+      # Windowsでのスレッド内ファイル操作対策: GCを強制実行してファイルハンドルを解放
+      GC.start
+      sleep 0.1
+
       # 再Zip化 (mimetypeは無圧縮で先頭)
       File.delete(epub_path)
       Zip::OutputStream.open(epub_path) do |zos|
@@ -315,7 +319,7 @@ class NovelConverter
       stream_io.puts "dc:subjectを追加しました: #{subjects.join(', ')}"
       :success
     rescue => e
-      stream_io.error "dc:subject追加中にエラーが発生しました: #{e.message}"
+      stream_io.error "dc:subject追加中にエラーが発生しました: #{e.class} - #{e.message}"
       :error
     end
   end

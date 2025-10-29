@@ -210,7 +210,19 @@ module Command
           end
           convert_argv = [target]
           convert_argv << "--no-open" if @options["no-open"]
+          
+          # WebUI: 変換メッセージを変換コンソールに出力するため、一時的に$stdout2を切り替え
+          original_stdout2 = $stdout2
+          if $stdout2.respond_to?(:push_server) && $stdout2.respond_to?(:target_console)
+            # WebUIの場合、変換用の別コンソールに出力
+            $stdout2 = Narou::StreamingLogger.new($stdout2.push_server, $stdout2, target_console: "convert")
+          end
+          
           convert_status = Convert.execute!(convert_argv)
+          
+          # $stdout2を元に戻す
+          $stdout2 = original_stdout2 if original_stdout2
+          
           if convert_status > 0
             # 変換が失敗したか、中断された
             data["_convert_failure"] = true
