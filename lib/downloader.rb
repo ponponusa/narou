@@ -143,8 +143,8 @@ class Downloader
     subdirectory = use_subdirectory ? create_subdirecotry_name(file_title) : ""
     path = Database.archive_root_path.join(data["sitename"], subdirectory, file_title)
     return path if path.exist?
-    @@database.delete(id)
-    @@database.save_database
+    database.delete(id)
+    database.save_database
     error "#{path} が見つかりません。\n" \
           "保存フォルダが消去されていたため、データベースのインデックスを削除しました。"
     nil
@@ -168,17 +168,17 @@ class Downloader
       setting = SiteSetting.find(target)
       if setting
         toc_url = setting["toc_url"]
-        return @@database.get_data_by_toc_url(toc_url, setting)
+        return database.get_data_by_toc_url(toc_url, setting)
       end
     when :ncode
-      @@database.each_value do |data|
+      database.each_value do |data|
         return data if data["toc_url"] =~ %r!#{target}/$!
       end
     when :id
-      data = @@database[target.to_i]
+      data = database[target.to_i]
       return data if data
     when :other
-      data = @@database.get_data("title", target)
+      data = database.get_data("title", target)
       return data if data
     end
     nil
@@ -212,17 +212,17 @@ class Downloader
       setting = SiteSetting.find(target)
       return setting["toc_url"] if setting
     when :ncode
-      @@database.each_value do |data|
+      database.each_value do |data|
         if data["toc_url"] =~ %r!#{target}/$!
           return data["toc_url"]
         end
       end
       return "#{SiteSetting.narou["top_url"]}/#{target}/"
     when :id
-      data = @@database[target.to_i]
+      data = database[target.to_i]
       return data["toc_url"] if data
     when :other
-      data = @@database.get_data("title", target)
+      data = database.get_data("title", target)
       return data["toc_url"] if data
     end
     nil
@@ -230,7 +230,7 @@ class Downloader
 
   def self.novel_exists?(target)
     id = get_id_by_target(target) or return nil
-    @@database.novel_exists?(id)
+    database.novel_exists?(id)
   end
 
   def self.remove_novel(target, with_file = false)
@@ -243,8 +243,8 @@ class Downloader
       # TOCは消しておかないと再DL時に古いデータがあると誤認する
       data_dir.join(TOC_FILE_NAME).delete
     end
-    @@database.delete(data["id"])
-    @@database.save_database
+    database.delete(data["id"])
+    database.save_database
     data["title"]
   end
 
@@ -278,8 +278,8 @@ class Downloader
     name.strip
   end
 
-  if Narou.already_init?
-    @@database = Database.instance
+  def self.database
+    Database.instance
   end
 
   #
@@ -309,7 +309,7 @@ class Downloader
   end
 
   def database
-    @@database
+    self.class.database
   end
 
   def record
@@ -1526,4 +1526,3 @@ if defined?(Narou::Downloader)
 
 end
 # ==== /UTF-8 Hotfix ====
-
