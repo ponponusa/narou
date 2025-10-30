@@ -213,8 +213,13 @@ module Command
           completed_count += 1
           $stdout2.puts "[#{index}/#{total_count}] 完了: #{target}"
         rescue => e
-          $stdout2.error "[#{index}/#{total_count}] エラー: #{target} - #{e.message}"
-          # 個別のエラーでは処理を継続
+          if ENV["NAROU_ENV"] == "test"
+            # テスト時は握りつぶさずに原因を見える化
+            raise
+          else
+            $stdout2.error "[#{index}/#{total_count}] エラー: #{target} - #{e.message}"
+            # 個別のエラーでは処理を継続
+          end
         end
       end
       

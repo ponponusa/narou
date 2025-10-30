@@ -92,20 +92,33 @@ opqrstu
     end
   end
 
+  # 既存: 単語単位で区切る の前後どこでもOK（関連がわかりやすい所に）
+  context "#insert_separator_for_selection (device gating)" do
+    before do
+      @converter.instance_variable_set(:@text_type, "body")
+      setting = @converter.instance_variable_get(:@setting)
+      setting.enable_insert_word_separator = true
+      setting.enable_insert_char_separator = false
+    end
+
+    it "Kindle では ZWS を挿入する" do
+      @converter.instance_variable_set(:@device, Narou.get_device("kindle"))
+      expect(@converter.insert_separator_for_selection("今日もいい天気ですね"))
+        .to eq "今日［＃zws］もいい［＃zws］天気［＃zws］ですね［＃zws］"
+    end
+
+    it "Kindle 以外では ZWS を挿入しない" do
+      @converter.instance_variable_set(:@device, Narou.get_device("reader"))
+      expect(@converter.insert_separator_for_selection("今日もいい天気ですね"))
+        .to eq "今日もいい天気ですね"
+    end
+  end
+
   context "#insert_word_separator" do
     before do
       @converter.instance_variable_set(:@text_type, "body")
       setting = @converter.instance_variable_get(:@setting)
       setting.enable_insert_word_separator = true
-    end
-
-    describe "Kindle以外" do before do
-        @converter.instance_variable_set(:@device, Narou.get_device("reader"))
-      end
-
-      it "何も弄らない" do
-        expect(@converter.insert_separator_for_selection("今日もいい天気ですね")).to eq "今日もいい天気ですね"
-      end
     end
 
     describe "単語単位で区切る" do

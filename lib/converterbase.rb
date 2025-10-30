@@ -1191,18 +1191,64 @@ class ConverterBase
 
   WORD_SEPARATOR = "［＃zws］"   # zws = zero width space
 
+  # 端末名を小文字で返す（@device を最優先。無ければ Narou.get_device）
+  def current_device_name_for_gate
+    dev =
+      if instance_variable_defined?(:@device) && (d = instance_variable_get(:@device))
+        d
+      else
+        begin
+          Narou.get_device
+        rescue
+          nil
+        end
+      end
+    name = dev.respond_to?(:name) ? dev.name : nil
+    name.to_s.downcase.presence
+  end
+
   #
   # Kindle端末で単語選択がしやすいように０幅スペースを挿入する
   #
-  def insert_separator_for_selection(str)
-    return str unless @device && @device.kindle?
-    return str if @text_type != "body" && @text_type != "textfile"
-    if @setting.enable_insert_word_separator
-      insert_word_separator(str)
-    elsif @setting.enable_insert_char_separator
-      insert_char_separator(str)
-    else
-      str
+  def insert_separator_for_selection(str = nil)
+    # body / textfile / 以外は素通し
+    return str unless @text_type == "body" || @text_type == "textfile"
+    # nilガード
+    return "" if str.nil?
+
+    # Device gating: Kindle 以外では ZWS を入れない
+    # 端末が明示されている場合のみゲートする
+    dev_name = current_device_name_for_gate
+    if dev_name
+      # Kindle 以外なら挿入せず素通し
+      return str unless dev_name == "kindle"
+      # Kindle ならこの先の本体ロジックへ（ZWS 挿入）
+    end
+    # 端末が不明（nil）の場合は従来どおり ZWS を挿入
+
+    # 設定値を確認（true/false を区別できるようにそのまま保持）
+    word_on = @setting && @setting.respond_to?(:enable_insert_word_separator) ?
+                @setting.enable_insert_word_separator : nil
+    char_on = @setting && @setting.respond_to?(:enable_insert_char_separator) ?
+                @setting.enable_insert_char_separator : nil
+
+    # 優先順位:
+    #  1) 小説設定で明示 ON → 端末に関係なく従う
+    #  2) 未設定（nil/false の両方を未指定扱いにしたい場合は nil 判定に変えてもOK）
+    #  3) それ以外 → 何もしない
+    mode =
+      if word_on
+        :word
+      elsif char_on
+        :char
+      else
+        :none
+      end
+
+    case mode
+    when :word then insert_word_separator(str)
+    when :char then insert_char_separator(str)
+    else str
     end
   end
 

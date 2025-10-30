@@ -4,6 +4,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require_relative "../tty_helper"
+
 module Command
   class Web < CommandBase
     def self.oneline_help
@@ -53,7 +55,10 @@ module Command
         else
           puts "(何かキーを押して下さい。サーバ起動後ブラウザが立ち上がります)"
         end
-        $stdin.getch
+        # 対話環境でのみキー待ち。非対話（テスト/CI）では即時戻る
+        unless TTYHelper.non_interactive?
+          $stdin.getch
+        end
         setting["already-server-boot"] = true
         setting.save
       end
@@ -93,11 +98,7 @@ module Command
         kill_threads
         begin
           loop do
-            if $development
-              system(RbConfig.ruby, "-x", $0, "web", *argv)
-            else
-              system("narou", "web", *argv)
-            end
+            system(RbConfig.ruby, "-x", $0, "web", *argv)
             break unless $?.exitstatus == Narou::EXIT_REQUEST_REBOOT
             argv = argv_copy.dup
             argv.push("--no-browser", "--reboot")

@@ -1260,3 +1260,45 @@ $console-color: white;
   @include opacity(0.3);
   z-index: 1040;
 }
+
+// Bootsnap Status
+.zap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  border: 3px solid currentColor;
+  font-size: 1em;
+  font-weight: 900;
+  line-height: 1;
+  margin-right: -3.4px;
+  margin-left: -3.4px;
+  margin-bottom: 4.3px;
+  vertical-align: middle;
+  transition: all 0.3s ease;
+}
+
+.zap.on  {
+  color: #f5c518;
+  box-shadow: 0 0 6px rgba(245,197,24,0.6);
+}
+.zap.off {
+  color: #9aa0a6;
+  opacity: 0.85;
+  border-color: #9aa0a6;
+}
+
+.zap.on.glow {
+  animation: zapGlow 2s ease-in-out infinite;
+}
+
+@keyframes zapGlow {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(245,197,24,0.6);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(245,197,24,0.9);
+  }
+}
