@@ -370,6 +370,9 @@ class Downloader
     cache = section_hash_cache
     removed = cache.delete(id.to_s)
     cache.save if removed
+    if defined?(NovelConverter) && NovelConverter.respond_to?(:clear_section_convert_cache)
+      NovelConverter.clear_section_convert_cache(id)
+    end
   end
 
   #
@@ -438,6 +441,7 @@ class Downloader
     bucket = section_hash_bucket
     changed = bucket.delete(relative_path)
     mark_section_hash_dirty if changed
+    invalidate_section_convert_cache(relative_path)
   end
 
   def mark_section_hash_dirty
@@ -453,7 +457,11 @@ class Downloader
   def section_digest(element)
     Digest::SHA256.hexdigest(element.to_s)
   end
-
+  def invalidate_section_convert_cache(relative_path)
+    return unless relative_path.start_with?("#{SECTION_SAVE_DIR_NAME}/")
+    return unless defined?(NovelConverter) && NovelConverter.respond_to?(:clear_section_convert_cache_entry)
+    NovelConverter.clear_section_convert_cache_entry(@id, relative_path)
+  end
   def database
     self.class.database
   end
@@ -1585,6 +1593,7 @@ class Downloader
     return unless filename.start_with?("#{SECTION_SAVE_DIR_NAME}/")
     return unless object.is_a?(Hash)
     store_section_digest(filename, section_digest(object["element"]))
+    invalidate_section_convert_cache(filename)
   end
 
   #

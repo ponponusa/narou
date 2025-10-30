@@ -6,6 +6,7 @@
 
 require "fileutils"
 require "stringio"
+require "digest"
 
 begin
   require "zip"
@@ -40,6 +41,8 @@ class NovelConverter
 
   attr_reader :use_dakuten_font, :stream_io
 
+  SECTION_CONVERT_CACHE_NAME = "section_convert_cache"
+
   def self.extensions_of_converted_files(device)
     exts = [".txt"]
     if device&.kobo?
@@ -48,6 +51,24 @@ class NovelConverter
       exts.push(".epub", device&.ebook_file_ext)
     end
     exts.compact
+  end
+
+  def self.section_convert_cache
+    @section_convert_cache ||= Inventory.load(SECTION_CONVERT_CACHE_NAME)
+  end
+
+  def self.clear_section_convert_cache(id)
+    cache = section_convert_cache
+    removed = cache.delete(id.to_s)
+    cache.save if removed
+  end
+
+  def self.clear_section_convert_cache_entry(id, relative_path)
+    cache = section_convert_cache
+    bucket = cache[id.to_s]
+    return unless bucket&.delete(relative_path)
+    cache.delete(id.to_s) if bucket.empty?
+    cache.save
   end
 
   #
@@ -478,6 +499,7 @@ class NovelConverter
     @converter.output_text_dir = output_text_dir
     @data = @novel_id ? Database.instance.get_data("id", @novel_id) : {}
     @stream_io = stream_io
+    @conversion_cache_dirty = false
   end
 
   #
@@ -537,6 +559,7 @@ class NovelConverter
     array_of_output_path
   ensure
     # 変換完了後にリソースを解放（ensureで確実に実行）
+    flush_conversion_cache
     cleanup
   end
 
@@ -564,6 +587,92 @@ class NovelConverter
 
   def display_footer
     stream_io.puts "縦書用の変換が終了しました"
+  end
+
+  def caching_available?
+    !!@novel_id
+  end
+
+  def section_convert_bucket
+    return {} unless caching_available?
+    cache = self.class.section_convert_cache
+    cache[@novel_id.to_s] ||= {}
+  end
+
+  def conversion_context_signature
+    @conversion_context_signature ||= begin
+      setting_signature = Digest::SHA256.hexdigest(Marshal.dump(@setting.settings))
+      replace_signature = Digest::SHA256.hexdigest(Marshal.dump(@setting.replace_pattern))
+      Digest::SHA256.hexdigest(Marshal.dump([setting_signature, replace_signature, converter_signature]))
+    end
+  end
+
+  def converter_signature
+    @converter_signature ||= begin
+      path = File.join(@setting.archive_path, "converter.rb")
+      if File.exist?(path)
+        Digest::SHA256.file(path).hexdigest
+      else
+        klass = @converter&.class
+        klass_name = klass&.name || "blank"
+        Digest::SHA256.hexdigest(klass_name)
+      end
+    end
+  end
+
+  def conversion_digest(original_section, relative_path)
+    return nil unless caching_available?
+    Digest::SHA256.hexdigest(Marshal.dump([relative_path, original_section, conversion_context_signature]))
+  end
+
+  def fetch_cached_section(relative_path, digest)
+    return nil unless caching_available?
+    cached = section_convert_bucket[relative_path]
+    return nil unless cached
+    return nil unless cached["digest"] == digest
+    return nil unless cached["signature"] == conversion_context_signature
+    {
+      section: deep_clone(cached["section"]),
+      use_dakuten_font: cached["use_dakuten_font"] ? true : false
+    }
+  end
+
+  def store_cached_section(relative_path, digest, section, use_dakuten_font)
+    return unless caching_available?
+    payload = {
+      "digest" => digest,
+      "signature" => conversion_context_signature,
+      "section" => deep_clone(section),
+      "use_dakuten_font" => !!use_dakuten_font
+    }
+    bucket = section_convert_bucket
+    changed = bucket[relative_path] != payload
+    if changed
+      bucket[relative_path] = payload
+      mark_conversion_cache_dirty
+    end
+  end
+
+  def mark_conversion_cache_dirty
+    @conversion_cache_dirty = true if caching_available?
+  end
+
+  def flush_conversion_cache
+    return unless caching_available?
+    return unless @conversion_cache_dirty
+    self.class.section_convert_cache.save
+    @conversion_cache_dirty = false
+  end
+
+  def clear_cached_section(relative_path)
+    return unless caching_available?
+    bucket = section_convert_bucket
+    changed = bucket.delete(relative_path)
+    mark_conversion_cache_dirty if changed
+  end
+
+  def deep_clone(object)
+    Marshal.load(Marshal.dump(object))
   end
 
   def load_novel_section(subtitle_info, section_save_dir)
@@ -857,6 +966,16 @@ class NovelConverter
         @__section_cache[key] = original_section
       end
 
+      section_file_name = "#{subinfo["index"]} #{subinfo["file_subtitle"]}.yaml"
+      section_file_relative_path = File.join(Downloader::SECTION_SAVE_DIR_NAME, section_file_name)
+      digest = conversion_digest(original_section, section_file_relative_path)
+      cached = digest && fetch_cached_section(section_file_relative_path, digest)
+      if cached
+        @use_dakuten_font ||= cached[:use_dakuten_font]
+        sections << cached[:section]
+        next
+      end
+
       # キャッシュを壊さないようディープ寄りにdup
       # （chapter/subtitle/elementなど後で書き換えるので）
       section = original_section.dup
@@ -907,12 +1026,14 @@ class NovelConverter
       end
 
       sections << section
+      store_cached_section(section_file_relative_path, digest, section, @converter.use_dakuten_font) if digest
     end
 
-    @use_dakuten_font = @converter.use_dakuten_font
+    @use_dakuten_font ||= @converter.use_dakuten_font
     sections
   ensure
     trigger(:"convert_main.finish")
+    flush_conversion_cache
   end
 
 
