@@ -93,11 +93,7 @@ module Command
         kill_threads
         begin
           loop do
-            if $development
-              system(RbConfig.ruby, "-x", $0, "web", *argv)
-            else
-              system("narou", "web", *argv)
-            end
+            system(RbConfig.ruby, "-x", $0, "web", *argv)
             break unless $?.exitstatus == Narou::EXIT_REQUEST_REBOOT
             argv = argv_copy.dup
             argv.push("--no-browser", "--reboot")
