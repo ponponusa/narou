@@ -8,6 +8,7 @@ require "yaml"
 require "fileutils"
 require "ostruct"
 require "cgi"
+require "digest"
 require_relative "narou"
 require_relative "helper"
 require_relative "sitesetting"
@@ -220,6 +221,7 @@ class Downloader
     return path if path.exist?
     database.delete(id)
     database.save_database
+    clear_section_hash_cache(id)
     error "#{path} が見つかりません。\n" \
           "保存フォルダが消去されていたため、データベースのインデックスを削除しました。"
     nil
@@ -320,6 +322,7 @@ class Downloader
     end
     database.delete(data["id"])
     database.save_database
+    clear_section_hash_cache(data["id"])
     data["title"]
   end
 
@@ -353,8 +356,20 @@ class Downloader
     name.strip
   end
 
+  SECTION_HASH_CACHE_NAME = "section_hash_cache"
+
   def self.database
     Database.instance
+  end
+
+  def self.section_hash_cache
+    @section_hash_cache ||= Inventory.load(SECTION_HASH_CACHE_NAME)
+  end
+
+  def self.clear_section_hash_cache(id)
+    cache = section_hash_cache
+    removed = cache.delete(id.to_s)
+    cache.save if removed
   end
 
   #
@@ -381,6 +396,62 @@ class Downloader
     @nosave_raw = Narou.economy?("nosave_raw")
     @gurad_spoiler = Inventory.load("local_setting")["guard-spoiler"]
     initialize_wait_counter
+  end
+
+  def section_hash_cache
+    self.class.section_hash_cache
+  end
+
+  def section_hash_bucket
+    section_hash_cache[@id.to_s] ||= {}
+  end
+
+  def cached_section_digest(relative_path)
+    section_hash_bucket[relative_path]
+  end
+
+  def ensure_cached_section_digest(relative_path)
+    digest = cached_section_digest(relative_path)
+    return digest if digest
+    data = load_novel_data(relative_path)
+    return nil unless data
+    digest = section_digest(data["element"])
+    store_section_digest(relative_path, digest)
+    digest
+  end
+
+  def store_section_digest(relative_path, digest)
+    bucket = section_hash_bucket
+    key = relative_path
+    normalized = digest&.to_s
+    if normalized.nil?
+      changed = bucket.delete(key)
+    else
+      changed = bucket[key] != normalized
+      bucket[key] = normalized
+    end
+    mark_section_hash_dirty if changed
+    normalized
+  end
+
+  def clear_section_digest(relative_path)
+    bucket = section_hash_bucket
+    changed = bucket.delete(relative_path)
+    mark_section_hash_dirty if changed
+  end
+
+  def mark_section_hash_dirty
+    @section_hash_cache_dirty = true
+  end
+
+  def flush_section_hash_cache
+    return unless @section_hash_cache_dirty
+    section_hash_cache.save
+    @section_hash_cache_dirty = false
+  end
+
+  def section_digest(element)
+    Digest::SHA256.hexdigest(element.to_s)
   end
 
   def database
@@ -1026,7 +1097,7 @@ class Downloader
   #
   def update_body_check(old_subtitles, latest_subtitles)
     strong_update = Inventory.load("local_setting")["update.strong"]
-    latest_subtitles.select do |latest|
+    result = latest_subtitles.select do |latest|
       index = latest["index"]
       index_in_old_toc = __search_index_in_subtitles(old_subtitles, index)
       next true unless index_in_old_toc
@@ -1093,6 +1164,9 @@ class Downloader
         latest_subdate > old_subdate
       end
     end
+    result
+  ensure
+    flush_section_hash_cache
   end
 
   #
@@ -1232,20 +1306,22 @@ class Downloader
       @stream.puts
     end
     remove_cache_dir unless save_least_one
+  ensure
+    flush_section_hash_cache
   end
 
   #
   # すでに保存されている内容とDLした内容が違うかどうか
   #
   def different_section?(old_relative_path, new_subtitle_info)
-    path = get_novel_data_dir.join(old_relative_path)
-    return true unless path.exist?
-    begin
-      YAML.unsafe_load_file(path)["element"] != new_subtitle_info["element"]
-    rescue SystemCallError
-      # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
-      YAML.unsafe_load(File.read(path))["element"] != new_subtitle_info["element"]
-    end
+    new_digest = section_digest(new_subtitle_info["element"])
+    cached_digest = cached_section_digest(old_relative_path)
+    return cached_digest != new_digest if cached_digest
+
+    existing_digest = ensure_cached_section_digest(old_relative_path)
+    return true unless existing_digest
+
+    existing_digest != new_digest
   end
 
   #
@@ -1255,6 +1331,7 @@ class Downloader
     return if @nosave_diff
     path = get_novel_data_dir.join(relative_path)
     if path.exist? && @cache_dir
+      clear_section_digest(relative_path)
       FileUtils.mv(path, @cache_dir)
     end
   end
@@ -1488,6 +1565,7 @@ class Downloader
       FileUtils.mkdir_p(dir_path)
     end
     File.write(path, YAML.dump(object))
+    update_section_hash_after_save(filename, object)
   end
 
   #
@@ -1501,6 +1579,12 @@ class Downloader
     path = get_novel_data_dir.join(filename)
     return nil unless File.exist?(path)
     YAML.unsafe_load(File.read(path))
+  end
+
+  def update_section_hash_after_save(filename, object)
+    return unless filename.start_with?("#{SECTION_SAVE_DIR_NAME}/")
+    return unless object.is_a?(Hash)
+    store_section_digest(filename, section_digest(object["element"]))
   end
 
   #
