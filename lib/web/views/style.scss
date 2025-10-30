@@ -1,3 +1,4 @@
+@use "sass:color";
 /*! -*- coding: utf-8 -*-
  *
  * Copyright 2013 whiteleaf. All rights reserved.
@@ -95,7 +96,7 @@ table#novel-list {
   $thead-background-color: #605555;
   $odd-color: #f8f3e5;
   $even-color: #fffcef;
-  $novel-list-border-color: mix($odd-color, $thead-background-color, 80%);
+  $novel-list-border-color: color.mix($odd-color, $thead-background-color, 80%);
 
   font-size: 0.8em;
   color: $default-color;
@@ -151,7 +152,7 @@ table#novel-list {
       background-color: #f8f3e5;
     }
   }
-  $selected-color: mix($odd-color, rgba(255,212,0,0.5));
+  $selected-color: color.mix($odd-color, rgba(255,212,0,0.5));
   //$selected-color: #90cebc;
   $selected-hover-color: #ded;
   
@@ -166,7 +167,7 @@ table#novel-list {
       color: $default-color !important;
       overflow: hidden;
       &.sorting_1 {
-        background-color: mix($selected-color, black, 96%) !important;
+        background-color: color.mix($selected-color, black, 96%) !important;
       }
     }
     td > div {
@@ -192,23 +193,23 @@ table#novel-list {
     tr:hover td {
       background-color: $selected-hover-color !important;
       &.sorting_1 {
-        background-color: mix($selected-hover-color, black, 97%) !important;
+        background-color: color.mix($selected-hover-color, black, 97%) !important;
       }
     }
     tr:hover.selected td {
       background-color: $selected-color !important;
       &.sorting_1 {
-        background-color: mix($selected-color, black, 96%) !important;
+        background-color: color.mix($selected-color, black, 96%) !important;
       }
     }
   }
   $frozen-color: #6caddd;
   tr.frozen td {
-    $frozen-background-color: mix($even-color, $frozen-color, 88%);
+    $frozen-background-color: color.mix($even-color, $frozen-color, 88%);
     color: color.adjust($default-color, $lightness: 25%);
     background-color: $frozen-background-color;
     &.sorting_1 {
-      background-color: mix($frozen-background-color, black, 97%);
+      background-color: color.mix($frozen-background-color, black, 97%);
     }
     &.column-id > div:before {
       content: "＊";
@@ -281,7 +282,7 @@ table#novel-list {
   .gl-24hour {
     &::after {
       content: "24h";
-      background-color: color.adjust(blue, $lightness: 230);
+      background-color: color.adjust(blue, $lightness: 23%);
 
       position: relative;
       left: 4px;
@@ -296,7 +297,7 @@ table#novel-list {
     &::after {
       content: "3d";
       color: color.adjust(gray, $lightness: -15%);;
-      background-color: color.adjust(mix(gray, blue, 70%), $lightness: 40%);
+      background-color: color.adjust(color.mix(gray, blue, 70%), $lightness: 40%);
 
       position: relative;
       left: 4px;
@@ -310,7 +311,7 @@ table#novel-list {
     &::after {
       content: "1w";
       color: color.adjust(gray, $lightness: -15%);;
-      background-color: color.adjust(mix(blue, white, 30%), $lightness: 50%);
+      background-color: color.adjust(color.mix(blue, white, 30%), $lightness: 50%);
 
       position: relative;
       left: 4px;
@@ -757,7 +758,7 @@ $console-color: white;
   text-shadow: 1px 1px 2px #000, -1px 1px 2px #000, 1px -1px 2px #000, -1px -1px 2px #000;
 
   span:hover {
-    color: mix($console-color, red, 80%);
+    color: color.mix($console-color, red, 80%);
   }
 }
 
@@ -1068,7 +1069,7 @@ $console-color: white;
 
       &:hover {
         background-color: #eef;
-        color: mix(blue, black);
+        color: color.mix(blue, black);
       }
 
       .date {
