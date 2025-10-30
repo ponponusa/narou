@@ -27,13 +27,9 @@ end
 require_relative "lib/inventory"
 
 $development = Narou.commit_version.!
-if $development
-  begin
-    require "pry"
-    require "awesome_print"
-  rescue LoadError
-  end
-end
+# NOTE:
+# 開発用の pry / awesome_print は console コマンド内でのみ遅延ロードします。
+# ここ（narou.rb）で require しないことで通常起動を軽くします。
 
 global = Inventory.load("global_setting", :global)
 $display_backtrace = ARGV.delete("--backtrace")

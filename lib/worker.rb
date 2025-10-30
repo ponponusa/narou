@@ -5,6 +5,7 @@
 #
 
 require "singleton"
+require "forwardable"
 require_relative "mixin/all"
 
 module Narou

@@ -30,14 +30,15 @@ module Command
 
          コマンドの簡単な説明:
       HELP
-      cmd_list = Command.get_list
-      cmd_list.each do |key, command|
-        oneline = command.oneline_help.split("\n")
-        stream_io.puts "   <bold><green>#{key.ljust(12)}</green></bold> #{oneline.shift}".termcolor
-        oneline.each do |h|
-          stream_io.puts " " * 16 + h
-        end
+
+      Command.names.each do |name|
+        klass = Command.load_command(name)
+        next unless klass && klass.respond_to?(:oneline_help)
+        oneline = Array(klass.oneline_help).join("\n").split("\n")
+        stream_io.puts "   <bold><green>#{name.ljust(12)}</green></bold> #{oneline.shift}".termcolor
+        oneline.each { |h| stream_io.puts(" " * 16 + h) }
       end
+
       stream_io.puts(<<-HELP.termcolor)
 
   各コマンドの詳細は narou &lt;command&gt; -h を参照してください。

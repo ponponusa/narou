@@ -21,24 +21,27 @@ module CommandLine
       multiple_argument_extract(argv)
     end
     unless STDIN.tty?
-      # pipeで接続された場合、標準入力からIDリストを受け取って引数に繋げる
       argv += (STDIN.gets || "").split
     end
-    command = Command.get_list[cmd_name]
+
+    command_class = Command.load_command(cmd_name)
+    unless command_class
+      error "不明なコマンドです。narou help を確認してください"
+      exit Narou::EXIT_ERROR_CODE
+    end
+
     if catch_exit
-      command.execute!(argv, io: io)
+      command_class.execute!(argv, io: io)
     else
-      cmd = command.new
+      cmd = command_class.new
       cmd.stream_io = io
       cmd.execute(argv)
     end
   ensure
-    Command::Convert.display_sending_error_list
+    Command.load_command("convert")
+    Command::Convert.display_sending_error_list if defined?(Command::Convert)
   end
 
-  #
-  # exit を捕捉して終了コードを返す
-  #
   def run!(*argv, io: $stdout)
     run(*argv, catch_exit: true, io: io)
   end
@@ -50,9 +53,7 @@ module CommandLine
 
   def argv_for_windows(argv)
     return unless Helper.os_windows?
-    argv.map! do |arg|
-      arg.class == Integer ? arg : arg&.encode(Encoding::UTF_8)
-    end
+    argv.map! { |arg| arg.is_a?(Integer) ? arg : arg&.encode(Encoding::UTF_8) }
   end
 
   def take_command_name(argv)
@@ -60,19 +61,16 @@ module CommandLine
     name = argv.shift.downcase
     name = Command::Shortcuts[name] || name
     name = case name
-           when "-v", "--version"
-             "version"
-           when "-h", "--help"
-             "help"
-           else
-             name
+           when "-v", "--version" then "version"
+           when "-h", "--help"    then "help"
+           else name
            end
+
     unless Narou.already_init?
-      unless %w(help version init).include?(name)
-        name = "help"
-      end
+      name = "help" unless %w(help version init).include?(name)
     end
-    unless Command.get_list.include?(name)
+
+    unless Command.names.include?(name)
       error "不明なコマンドです。narou help を確認してください"
       exit Narou::EXIT_ERROR_CODE
     end
@@ -85,13 +83,8 @@ module CommandLine
     end
   end
 
-  #
-  # 引数をスペース以外による区切り文字で展開する
-  #
   def multiple_argument_extract(argv)
     delimiter = Inventory.load("local_setting")["multiple-delimiter"] || ","
-    argv.map! { |arg|
-      arg.split(delimiter)
-    }.flatten!
+    argv.map! { |arg| arg.split(delimiter) }.flatten!
   end
 end

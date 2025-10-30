@@ -20,12 +20,19 @@ if $development
       end
 
       def execute(argv)
+        # console は素のSTDOUTを使う
         $stdout = STDOUT
         super
-        unless defined?(Pry)
-          error "gem install pry をが必要です"
+
+        # 実行時にだけ遅延ロード（本体の起動を重くしない）
+        begin
+          require "pry"
+          require "awesome_print" rescue nil
+        rescue LoadError
+          error "pry が見つかりません。`gem install pry` を実行してください"
           exit Narou::EXIT_ERROR_CODE
         end
+
         Pry.start(TOPLEVEL_BINDING)
       end
     end

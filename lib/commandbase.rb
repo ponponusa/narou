@@ -23,12 +23,13 @@ module Command
     def initialize(postfixies = " ")
       self.stream_io = $stdout
       @opt = OptionParser.new(nil, 20)
-      command_name = self.class.to_s.scan(/::(.+)$/)[0][0].downcase
+      command_name = self.class.to_s[/::(.+)$/, 1].downcase
       banner = postfixies.split("\n").map.with_index { |postfix, i|
-        (i == 0 ? "Usage: " : "   or: ") + "narou #{command_name} #{postfix}"
+        (i.zero? ? "Usage: " : "   or: ") + "narou #{command_name} #{postfix}"
       }.join("\n")
       @opt.banner = "<bold><green>#{TermColorLight.escape(banner)}</green></bold>".termcolor
       @options = {}
+
       # ヘルプを見やすく色付け
       def @opt.help
         msg = super
@@ -37,13 +38,9 @@ module Command
           "<underline><bold>#{$1}</bold></underline>".termcolor
         end
         # Examples のコメント部分
-        msg.gsub!(/(#.+)$/) do
-          "<cyan>#{TermColorLight.escape($1)}</cyan>".termcolor
-        end
+        msg.gsub!(/(#.+)$/) { "<cyan>#{TermColorLight.escape($1)}</cyan>".termcolor }
         # 文字列部分
-        msg.gsub!(/(".+?")/) do
-          "<yellow>#{TermColorLight.escape($1)}</yellow>".termcolor
-        end
+        msg.gsub!(/(".+?")/) { "<yellow>#{TermColorLight.escape($1)}</yellow>".termcolor }
         msg
       end
     end
@@ -72,7 +69,7 @@ module Command
     end
 
     def load_local_settings
-      command_prefix = self.class.to_s.scan(/[^:]+$/)[0].downcase
+      command_prefix = self.class.to_s[/[^:]+$/].downcase
       local_settings = Inventory.load("local_setting")
       local_settings.each do |name, value|
         if name =~ /^#{command_prefix}\.(.+)$/
@@ -85,25 +82,20 @@ module Command
     # タグ情報をID情報に展開する
     #
     def tagname_to_ids(array)
-      database = Database.instance
+      database  = Database.instance
       tag_index = database.tag_indexies
-      all_ids = database.ids
+      all_ids   = database.ids
       expanded_array = array.map { |arg|
         if arg.to_s =~ /\A\d+\z/
-          # 優先度はID＞タグのため、数字のみ指定されたら
-          # そのIDが存在した場合はIDとみなす
           id = arg.to_i
           next id if database[id]
         end
         ids =
           case arg
           when /\Atag:(.+)\z/
-            # tag:タグ名 は直接タグと指定できる形式
-            # (数字タグとIDがかぶった場合にタグを指定出来るようにするもの)
             arg = $1
             tag_index[$1]
           when /\A\^tag:(.+)\z/
-            # ^tag:タグ名 は除外タグ指定
             arg = $1
             indexies = tag_index[$1]
             indexies.empty? ? [] : all_ids - indexies
@@ -117,7 +109,6 @@ module Command
 
     #
     # コマンドを実行するが、アプリケーションは終了させない
-    # (SystemExit を補足し、終了コードを返り値とする)
     #
     def execute!(*argv, io: $stdout)
       self.stream_io = io
@@ -141,13 +132,11 @@ module Command
     #
     # 指定したメソッドを呼び出す際に、フック関数があればそれ経由で呼ぶ
     #
-    # 指定したメソッドは存在しなくてもいい。存在しなければ空のProcが作られる
-    #
     def hook_call(target_method, *argv)
       hook = "hook_#{target_method}"
-      target_method_proc = self.method(target_method) rescue ->{}
+      target_method_proc = (method(target_method) rescue -> {})
       if respond_to?(hook)
-        self.__send__(hook, *argv, &target_method_proc)
+        __send__(hook, *argv, &target_method_proc)
       else
         target_method_proc.call(*argv)
       end
@@ -171,8 +160,6 @@ module Command
 
     #
     # コマンド出力のログ保存を抑制する
-    #
-    # コマンドの中で、stream_io に対して出力している必要がある
     #
     def disable_logging
       self.stream_io = stream_io.dup_with_disabled_logging

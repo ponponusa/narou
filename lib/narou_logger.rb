@@ -252,7 +252,7 @@ module Narou
 
     def write_console(str, target)
       str.each_line do |line|
-        size = Worker.size
+        size = safe_worker_size
         if size > 0 && end_with_new_line
           text = format(format_text, size: size)
           text_width = text.display_width
@@ -263,6 +263,19 @@ module Narou
         super(line, target)
       end
       self.end_with_new_line = str.end_with?("\n")
+    end
+
+    private
+
+    # Worker が未ロードでも NameError にならない安全な取得
+    def safe_worker_size
+      if defined?(::Worker) && ::Worker.respond_to?(:size)
+        ::Worker.size
+      elsif defined?(Narou::Worker) && Narou::Worker.respond_to?(:size)
+        Narou::Worker.size
+      else
+        0
+      end
     end
   end
 
