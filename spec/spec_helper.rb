@@ -108,8 +108,8 @@ RSpec.configure do |config|
     }
 
     # get_object が Hash ならそこへ投入
-    if db.respond_to?(:get_object) && db.get_object.is_a?(Hash)
-      seed.each { |id, row| db.get_object[id] = row }
+    if db.respond_to?(:[]) && db.respond_to?(:[]=)
+      seed.each { |id, row| db[id] = row }
     end
 
     # ---- tag_indexies をテスト用に固定 ----
@@ -150,4 +150,3 @@ RSpec.configure do |config|
     end
   end
 end
-

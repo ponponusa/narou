@@ -10,6 +10,7 @@ require "yaml"
 require "forwardable"
 require_relative "narou"
 require_relative "inventory"
+require_relative "database/index_store"
 
 class Database
   include Singleton
@@ -22,11 +23,13 @@ class Database
   def_delegators :@database, :[], :[]=, :each, :each_key, :each_value, :delete
 
   def initialize
+    @index_store = IndexStore.new
     refresh
   end
 
   def refresh
     @database = Inventory.load(DATABASE_NAME)
+    @index_store.reconcile(@database)
   end
 
   #
@@ -48,6 +51,7 @@ class Database
 
   def save_database
     @database.save
+    @index_store.flush
   end
 
   def get_object
@@ -64,6 +68,11 @@ class Database
   end
 
   def get_data(type, value)
+    if type == "title"
+      id = @index_store.lookup_by_title(value)
+      data = self[id] if id
+      return data if data
+    end
     @database.each_value do |data|
       return data if data[type] == value
     end
@@ -74,6 +83,15 @@ class Database
   # get_data("toc_url", url) だと、アドレスが仕様変更した場合に、
   # 古いままのデータとマッチングしなくなるため
   def get_data_by_toc_url(toc_url, site_setting)
+    if toc_url
+      id = @index_store.lookup_by_toc_url(toc_url)
+      if id
+        data = self[id]
+        if data && site_setting.multi_match_once(data["toc_url"], "url") && site_setting["toc_url"] == toc_url
+          return data
+        end
+      end
+    end
     @database.each_value do |data|
       site_setting.multi_match_once(data["toc_url"], "url") or next
       return data if site_setting["toc_url"] == toc_url
@@ -107,3 +125,14 @@ class Database
     result
   end
 end
+  def []=(key, value)
+    @database[key] = value
+    @index_store.upsert(key, value)
+  end
+
+  def delete(key)
+    data = @database[key]
+    result = @database.delete(key)
+    @index_store.delete(key, data)
+    result
+  end
