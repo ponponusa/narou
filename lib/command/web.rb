@@ -204,6 +204,7 @@ module Command
     end
 
     def load_web_dependencies
+      require_relative "../downloader"
       require_relative "../sitesetting"
       require_relative "../web/all"
     end
