@@ -7,7 +7,6 @@
 require "yaml"
 require "fileutils"
 require "ostruct"
-require "sanitize"
 require_relative "narou"
 require_relative "helper"
 require_relative "sitesetting"
@@ -18,6 +17,35 @@ require_relative "inventory"
 require_relative "eventable"
 require_relative "html"
 require_relative "input"
+
+# --- Lightweight Sanitize shim (only what we need: .fragment) ---
+unless defined?(Sanitize)
+  module Sanitize
+    module_function
+    # Roughly strip tags/entities for simple tag strings.
+    def fragment(html)
+      return "" if html.nil?
+      s = html.to_s.dup
+      # Drop script/style blocks first
+      s.gsub!(/<script[^>]*>.*?<\/script>/mi, "")
+      s.gsub!(/<style[^>]*>.*?<\/style>/mi,  "")
+      # Remove all tags
+      s.gsub!(/<[^>]+>/, "")
+      # Unescape a few common entities (keep it tiny)
+      s.gsub!("&nbsp;", " ")
+      s.tr!("\u00A0", " ")  # non-breaking space → normal space
+      s.gsub!("&lt;",  "<")
+      s.gsub!("&gt;",  ">")
+      s.gsub!("&amp;", "&")
+      s.gsub!("&quot;","\"")
+      s.gsub!("&apos;","'")
+      # Collapse spaces
+      s.gsub!(/[ \t\r\n]+/, " ")
+      s.strip
+    end
+  end
+end
+# --- /Lightweight Sanitize shim ---
 
 #
 # 小説サイトからのダウンロード
@@ -426,7 +454,7 @@ class Downloader
     if @setting["tag"] && auto_add_tags
       clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワードが設定されていません/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
       if clean_tag.length > 0
-        new_tags = clean_tag.split(/[ 　]+|&nbsp;/).uniq
+        new_tags = clean_tag.split(/[ 　]+/).uniq
         old_tags = (record && record["tags"]) ? record["tags"] : []
         if (new_tags - old_tags).any?
           @stream.puts "#{id_and_title} のタグが更新されています"
@@ -651,7 +679,7 @@ class Downloader
     if @setting["tag"] && auto_add_tags
       clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
       if clean_tag.length > 0
-        tags = clean_tag.split(/[ 　]+|&nbsp;/)
+        tags = clean_tag.split(/[ 　]+/)
         if record && record["tags"]
           old_tags = record["tags"]
           tags.concat(old_tags)

@@ -6,66 +6,82 @@
 
 require_relative "commandbase"
 
-# command/*.rb を全て読み込む
-Dir.glob(File.expand_path(File.join(File.dirname(__FILE__), "command", "*.rb"))).sort.each do |path|
-  require path
-end
-
 module Command
-  #
-  # コマンド一覧（ヘルプ表示順）
-  #
-  COMMAND_LIST = {
-    "download" => defined?(Download) ? Download : nil,
-    "update"   => defined?(Update) ? Update : nil,
-    "list"     => defined?(List) ? List : nil,
-    "convert"  => defined?(Convert) ? Convert : nil,
-    "diff"     => defined?(Diff) ? Diff : nil,
-    "setting"  => defined?(Setting) ? Setting : nil,
-    "alias"    => defined?(Alias) ? Alias : nil,
-    "inspect"  => defined?(Inspect) ? Inspect : nil,
-    "send"     => defined?(Send) ? Send : nil,
-    "folder"   => defined?(Folder) ? Folder : nil,
-    "browser"  => defined?(Browser) ? Browser : nil,
-    "remove"   => defined?(Remove) ? Remove : nil,
-    "freeze"   => defined?(Freeze) ? Freeze : nil,
-    "tag"      => defined?(Tag) ? Tag : nil,
-    "web"      => defined?(Web) ? Web : nil,
-    "mail"     => defined?(Mail) ? Mail : nil,
-    "backup"   => defined?(Backup) ? Backup : nil,
-    "csv"      => defined?(Csv) ? Csv : nil,
-    "clean"    => defined?(Clean) ? Clean : nil,
-    "log"      => defined?(Log) ? Log : nil,
-    "trace"    => defined?(Trace) ? Trace : nil,
-    "help"     => defined?(Help) ? Help : nil,
-    "version"  => defined?(Version) ? Version : nil,
-    "init"     => defined?(Init) ? Init : nil
-  }.compact.freeze
+  # コマンド名 -> ファイル相対パス
+  COMMAND_FILES = {
+    "download" => "command/download",
+    "update"   => "command/update",
+    "list"     => "command/list",
+    "convert"  => "command/convert",
+    "diff"     => "command/diff",
+    "setting"  => "command/setting",
+    "alias"    => "command/alias",
+    "inspect"  => "command/inspect",
+    "send"     => "command/send",
+    "folder"   => "command/folder",
+    "browser"  => "command/browser",
+    "remove"   => "command/remove",
+    "freeze"   => "command/freeze",
+    "tag"      => "command/tag",
+    "web"      => "command/web",
+    "mail"     => "command/mail",
+    "backup"   => "command/backup",
+    "csv"      => "command/csv",
+    "clean"    => "command/clean",
+    "log"      => "command/log",
+    "trace"    => "command/trace",
+    "help"     => "command/help",
+    "version"  => "command/version",
+    "init"     => "command/init"
+  }.freeze
 
-  #
-  # API互換用：古い呼び出しをサポート
-  #
+  # 互換API：従来の "一覧（表示順）" 相当。重いクラスは返さず、軽量に name->path を返す。
   def self.get_list
-    COMMAND_LIST
+    COMMAND_FILES
   end
 
-  # commandline.rb が呼ぶ用
+  # 名前一覧（help の表示順そのまま）
   def self.names
-    COMMAND_LIST.keys
+    COMMAND_FILES.keys
   end
 
-  # commandline.rb が呼ぶ用
+  # camelize: "convert" → "Convert", "foo-bar" → "FooBar"
+  def self.const_name(name)
+    name.to_s.split(/[-_]/).map!(&:capitalize).join
+  end
+  private_class_method :const_name
+
+  # 存在チェック（定義済みマップ上）
+  def self.exist?(name)
+    COMMAND_FILES.key?(name.to_s)
+  end
+  class << self
+    alias exists? exist?  # 互換
+  end
+
+  # 実行直前にだけ require する
+  def self.require_command(name)
+    path = COMMAND_FILES[name.to_s]
+    return false unless path
+    require_relative path
+    true
+  end
+
+  # コマンドクラスを返す（必要なときだけロード）
+  # 見つからなければ nil
   def self.load_command(name)
     key = name.to_s.downcase
-    COMMAND_LIST[key]
+    return nil unless exist?(key)
+    require_command(key)
+    const = const_name(key)
+    Command.const_get(const)
+  rescue NameError
+    nil
   end
 
-  def self.exists?(name)
-    COMMAND_LIST.key?(name)
-  end
-
-  # ショートカット定義（上から順に優先度が高い）
-  Shortcuts = Hash[*get_list.keys.reverse.flat_map { |s|
-    [s[0], s, s[0..1], s]
-  }].freeze
+  # ショートカット定義（1文字/2文字 → 本名）。後勝ち防止のため逆順で畳み込み。
+  Shortcuts = begin
+    base = names
+    Hash[*base.reverse.flat_map { |s| [s[0], s, s[0, 2], s] }]
+  end.freeze
 end
