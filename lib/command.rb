@@ -74,7 +74,8 @@ module Command
     return nil unless exist?(key)
     require_command(key)
     const = const_name(key)
-    Command.const_get(const)
+    return nil unless Command.const_defined?(const, false)
+    Command.const_get(const, false)
   rescue NameError
     nil
   end
