@@ -1,4 +1,4 @@
-#! /usr/bin/env ruby --yjit
+#! /usr/bin/env ruby
 # -*- mode: ruby -*-
 # -*- coding: utf-8 -*-
 #
@@ -6,6 +6,25 @@
 #
 # Copyright 2013 whiteleaf. All rights reserved.
 #
+
+# YJIT bootstrap (enable only when supported; never warn on unsupported)
+begin
+  require 'rbconfig'
+  host_os = RbConfig::CONFIG['host_os']
+  on_windows = !!(host_os =~ /mswin|mingw|cygwin/)
+
+  # 一応 NAROU_YJIT=0 の指定で明示的にオフにもできるように
+  want_yjit = ENV.fetch('NAROU_YJIT', '1') == '1'
+
+  if want_yjit && !on_windows && defined?(RubyVM::YJIT)
+    # Ruby 3.2+ 想定
+    if RubyVM::YJIT.respond_to?(:enabled?) && RubyVM::YJIT.respond_to?(:enable)
+      RubyVM::YJIT.enable unless RubyVM::YJIT.enabled?
+    end
+  end
+rescue => _e
+  # 何もしない（対応外/古いRubyでも静かにスルー）
+end
 
 if File.exist?("narou.rb")
   require File.join(Dir.pwd, "narou.rb")

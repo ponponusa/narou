@@ -1,4 +1,4 @@
-#! /usr/bin/env ruby --yjit
+#! /usr/bin/env ruby
 # frozen_string_literal: true
 
 #
@@ -27,6 +27,7 @@ begin
 rescue Exception => e
   warn "[narou.rb] Bootsnap disabled (#{e.class}: #{e.message})" if ENV["NAROU_BOOTSNAP_DEBUG"] == "1"
 end
+$bootsnap_enable = defined?(Bootsnap)
 
 require_relative "lib/extension"
 require_relative "lib/extensions/monkey_patches"
