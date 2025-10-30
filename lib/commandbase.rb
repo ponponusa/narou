@@ -85,26 +85,48 @@ module Command
       database  = Database.instance
       tag_index = database.tag_indexies
       all_ids   = database.ids
-      expanded_array = array.map { |arg|
-        if arg.to_s =~ /\A\d+\z/
-          id = arg.to_i
-          next id if database[id]
-        end
-        ids =
-          case arg
-          when /\Atag:(.+)\z/
-            arg = $1
-            tag_index[$1]
-          when /\A\^tag:(.+)\z/
-            arg = $1
-            indexies = tag_index[$1]
-            indexies.empty? ? [] : all_ids - indexies
-          else
-            tag_index[arg]
+
+      # 補集合はこの昇順を基準にする
+      all_sorted = Array(all_ids).map(&:to_i).sort
+      expanded = []
+
+      array.each do |arg|
+        str = arg.to_s
+
+        # 数値はID優先（存在すれば）
+        if str =~ /\A\d+\z/
+          id = str.to_i
+          if database[id]
+            expanded << id
+            next
           end
-        ids.empty? ? arg : ids
-      }.flatten.uniq
-      array.replace(expanded_array)
+        end
+
+        case str
+        when /\Atag:(.+)\z/
+          name = Regexp.last_match(1)
+          ids  = Array(tag_index[name])
+          expanded.concat(ids.empty? ? [name] : ids)
+
+        when /\A\^tag:(.+)\z/
+          name = Regexp.last_match(1)
+          ids  = tag_index[name]
+          if ids.nil? || ids.empty?
+            # 未登録の除外タグは補集合にせず、文字列として返す
+            expanded << name
+          else
+            # 補集合は昇順で安定化
+            expanded.concat(all_sorted - ids.map(&:to_i))
+          end
+
+        else
+          ids = Array(tag_index[str])
+          expanded.concat(ids.empty? ? [str] : ids)
+        end
+      end
+
+      # 入力順ベースで uniq（既存仕様を維持）
+      array.replace(expanded.uniq)
     end
 
     #

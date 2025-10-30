@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright 2013 whiteleaf. All rights reserved.
+# Copyright ...
 #
 
 require "termcolorlight"
@@ -10,60 +10,135 @@ module Narou
   module Input
     module_function
 
+    # ---- helper --------------------------------------------------------------
+    def _env_non_interactive?
+      ENV["NAROU_NONINTERACTIVE"] == "1"
+    end
+
+    def _tty?
+      $stdin.respond_to?(:tty?) ? $stdin.tty? : false
+    end
+
+    def _print(str)
+      $stdout.print(str)
+    end
+
+    def _puts(str = "")
+      $stdout.puts(str)
+    end
+
+    def _gets
+      $stdin.gets
+    end
+    # -------------------------------------------------------------------------
+
     #
-    # 肯定か否定かの確認を入力
+    # yes/no 確認
     #
-    # default: エンターを押した場合に返ってくる値
-    # nontty_default: pipe等から接続された場合に返ってくる値
-    # @return: yes = true, no = false
+    # message        : 表示文
+    # default        : 空入力(Enter)時の返値
+    # nontty_default : 入力不能(EOF等)や非TTY時の返値
     #
     def confirm(message, default = false, nontty_default = true)
-      return nontty_default unless $stdin.tty?
-      confirm_msg = "#{message} (y/n)?: "
-      print confirm_msg
-      while input = $stdin.getch
-        puts input
-        case input.downcase
-        when "y"
-          return true
-        when "n"
-          return false
+      # 非TTY（pipe等）は旧挙動どおり nontty_default を返す
+      unless _tty?
+        return nontty_default
+      end
+      # 非対話フラグが立っていても TTY なら対話（RSpecが TTY:true を渡すため）
+      # → 何もしない
+
+      prompt = "#{message} (y/n)?: "
+      _print(prompt)
+
+      # getch を優先（RSpec が stub してくる）
+      if $stdin.respond_to?(:getch)
+        ch = $stdin.getch
+        return nontty_default if ch.nil?
+        ch = ch.to_s
+        _puts(ch)
+        case ch.downcase
+        when "y" then return true
+        when "n" then return false
+        when "\r", "\n" then return default
         else
-          return default if input.strip == ""
-          print confirm_msg
+          loop do
+            _print(prompt)
+            ch = $stdin.getch
+            return nontty_default if ch.nil?
+            ch = ch.to_s
+            _puts(ch)
+            case ch.downcase
+            when "y" then return true
+            when "n" then return false
+            when "\r", "\n" then return default
+            end
+          end
+        end
+      else
+        # 行読みフォールバック
+        line = _gets
+        return nontty_default if line.nil?
+        input = line.strip
+        return default if input.empty?
+        case input.downcase
+        when "y", "yes" then true
+        when "n", "no"  then false
+        else
+          loop do
+            _print(prompt)
+            line = _gets
+            return nontty_default if line.nil?
+            input = line.strip
+            return default if input.empty?
+            case input.downcase
+            when "y", "yes" then return true
+            when "n", "no"  then return false
+            end
+          end
         end
       end
     end
 
     #
-    # 選択肢を表示して選択させる
+    # 選択肢から 1 つ選ぶ
     #
-    # choices: { 選択肢: 説明 } のハッシュ形式で渡す。選択出来ない状況(pipe等)の場合に返す
-    #          値は :default の要素を返す。:default がない場合は先頭の要素
-    # @return: 選ばれた選択肢を返す
-    #
-    # @example:
-    #   choices = { "ja" => "日本語", "en" => "English", default: "ja" }
-    #   Narou::Input.choose("Title: Select language", "Please select a language?", choices)
+    # choices: { "key" => "説明", ..., default: "key" }
     #
     def choose(title, message, choices)
-      default = choices[:default] || choices.first[0]
-      return default unless $stdin.tty?
-      puts title
-      puts message
+      default_key = choices[:default] || choices.keys.find { |k| k != :default }
+
+      # 非TTY（pipe/EOF）なら default を返す
+      unless _tty?
+        return default_key
+      end
+
+      _puts(title)
+      _puts(message)
       choices.each do |name, help|
         next if name == :default
-        puts "<bold>#{name}</bold>: #{help}".termcolor
+        _puts "<bold>#{name}</bold>: #{help}".termcolor
       end
+
       loop do
-        print "> "
-        input = $stdin.gets.strip.downcase
-        if key = choices.keys.delete(input)
-          return key
+        _print("> ")
+        line = _gets
+        return default_key if line.nil?
+        input = line.strip.downcase
+        keys = choices.keys.reject { |k| k == :default }
+        if keys.include?(input)
+          return input
         end
-        puts "選択肢の中にありません。もう一度入力して下さい"
+        _puts "選択肢の中にありません。もう一度入力して下さい"
       end
+    end
+
+    #
+    # Enter 待ち（TTY のときだけ）
+    #
+    def pause(message = "続行するには Enter を押してください…")
+      return unless _tty?
+      _puts(message)
+      _gets
     end
   end
 end
-

@@ -21,7 +21,10 @@ module CommandLine
       multiple_argument_extract(argv)
     end
     unless STDIN.tty?
-      argv += (STDIN.gets || "").split
+      # 端末からの生入力だとブロックするので、パイプ/リダイレクト時のみ読む
+      if !$stdin.tty?
+        argv += ($stdin.read || "").split
+      end
     end
 
     command_class = Command.load_command(cmd_name)

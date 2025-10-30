@@ -28,19 +28,33 @@ module Command
       end
 
       def decorate_date
-        date = novel[parent.view_date_type].strftime("%y/%m/%d")
-        new_arrivals_date = novel["new_arrivals_date"]
-        last_update = novel["last_update"]
-        if new_arrivals_date && new_arrivals_date >= last_update &&
-           new_arrivals_date + ANNOTATION_COLOR_TIME_LIMIT >= now
-          # 新着表示色
-          "<bold><magenta>#{date}</magenta></bold>"
-        elsif last_update + ANNOTATION_COLOR_TIME_LIMIT >= now
-          # 更新だけあった色
-          "<bold><green>#{date}</green></bold>"
-        else
-          date
+        key = parent.view_date_type
+        base_time =
+          novel[key] || novel[key.to_s] || novel[key.to_sym]
+
+        new_arrivals_date = novel["new_arrivals_date"] || novel[:new_arrivals_date]
+        last_update       = novel["last_update"]       || novel[:last_update]
+
+        # 表示に使う日付（デフォは view_date_type）
+        shown_time = base_time
+
+        # 新着（magenta）: new_arrivals_date を表示する
+        if new_arrivals_date && last_update &&
+          new_arrivals_date >= last_update &&
+          (new_arrivals_date + ANNOTATION_COLOR_TIME_LIMIT) >= now
+          shown_time = new_arrivals_date
+          return "<bold><magenta>#{shown_time.strftime('%y/%m/%d')}</magenta></bold>"
         end
+
+        # 更新のみ（green）: last_update を表示（表示キーが general_lastup でも緑は last_update 基準）
+        if last_update && (last_update + ANNOTATION_COLOR_TIME_LIMIT) >= now
+          shown_time ||= last_update
+          return "<bold><green>#{shown_time.strftime('%y/%m/%d')}</green></bold>"
+        end
+
+        # 通常表示
+        return "" unless shown_time.respond_to?(:strftime)
+        shown_time.strftime("%y/%m/%d")
       end
 
       def decorate_kind
@@ -70,7 +84,8 @@ module Command
       end
 
       def decorate_url
-        options["url"] ? novel["toc_url"].escape : nil
+        return nil unless options["url"]
+        (novel["toc_url"] || novel[:toc_url] || novel["url"] || novel[:url])&.to_s&.escape
       end
 
       def decorate_tags

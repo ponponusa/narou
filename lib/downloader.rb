@@ -1509,5 +1509,21 @@ if defined?(Narou::Downloader)
       end
     end
   end
+
+  private
+
+  # 互換: 旧来の make_open_uri_options を Downloader 側で吸収
+  # 呼び出し側: make_open_uri_options("Cookie" => cookie, allow_redirections: :safe)
+  def make_open_uri_options(headers = {}, allow_redirections: :safe)
+    if defined?(Helper) && Helper.respond_to?(:make_open_uri_options)
+      return Helper.make_open_uri_options(headers, allow_redirections: allow_redirections)
+    end
+    # 最低限のフォールバック
+    opts = { allow_redirections: allow_redirections }
+    headers.each { |k, v| opts[k] = v }
+    opts
+  end
+
 end
 # ==== /UTF-8 Hotfix ====
+
