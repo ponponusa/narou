@@ -7,6 +7,7 @@
 require_relative "../narou"
 require_relative "../downloader"
 require_relative "../input"
+require_relative "../tty_helper"
 
 module Command
   class Download < CommandBase
@@ -68,7 +69,10 @@ module Command
     end
 
     def print_prompt(targets)
-      print "#{targets.size}> "
+      # 確認が必要なら:
+      proceed = TTYHelper.ask_yes_no("#{targets.size}件をダウンロードしますか？", default: true)
+      return false unless proceed
+      true
     end
 
     def interactive_mode

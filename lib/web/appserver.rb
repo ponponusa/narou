@@ -77,22 +77,30 @@ class Narou::AppServer < Sinatra::Base
   # bindは自分で設定する場合は narou s server-bind=address で行う。
   # bindは設定しなかった場合は起動したPCのプライベートIPアドレスが設定される。
   # この場合はLAN内からアクセス出来る。
-  # bindがlocalhostの場合は実際には127.0.0.1で処理される。(起動したPCでしか
-  # アクセス出来ない)
-  # 0.0.0.0 を指定した場合はアクセスに制限がかからない（外部からアクセス可能）
-  # セキュリティ上オススメ出来ない。
+  # bindがlocalhostの場合は実際には127.0.0.1で処理される。(起動したPCでしかアクセス出来ない)
+  # 0.0.0.0 はDocker利用時しか許容しない。 
   #
   def self.create_address(user_port = nil)
     global_setting = Inventory.load("global_setting", :global)
     port, bind = global_setting["server-port"], global_setting["server-bind"]
     port = user_port if user_port
     ipaddress = my_ipaddress
+
+    # portが未設定なら乱数で決定
     unless port
       port = rand(4000..65000)
       global_setting["server-port"] = port
       global_setting.save
     end
-#    bind = "127.0.0.1" if bind == "localhost"
+
+    # Docker以外では 0.0.0.0 を禁止
+    if bind == "0.0.0.0" && !Helper.in_docker?
+      warn "[WARN] server-bind=0.0.0.0 is not allowed outside Docker. Forcing 127.0.0.1"
+      bind = "127.0.0.1"
+    end
+
+    # localhost は内部的に 127.0.0.1 扱いにしておく（任意）
+    # bind = "127.0.0.1" if bind == "localhost"
     host = bind ? bind : ipaddress
     set :port, port
     set :bind, host

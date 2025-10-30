@@ -69,7 +69,7 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'nkf', '~> 0.2.0'
   gem.add_runtime_dependency 'csv', '~> 3.3'
   gem.add_runtime_dependency 'rexml', '~> 3.4'
-  gem.add_runtime_dependency 'sanitize', '~> 7.0.0'
+  gem.add_runtime_dependency 'ostruct', '~> 0.6.3'
   unless is_windows
     gem.add_runtime_dependency 'bootsnap', '~> 1.18', '>= 1.18.6'
   end

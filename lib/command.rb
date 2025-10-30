@@ -5,54 +5,84 @@
 #
 
 require_relative "commandbase"
-Dir.glob(File.expand_path(File.join(File.dirname(__FILE__), "command", "*.rb"))) do |path|
-  require path
-end
 
 module Command
-  #
-  # コマンド一覧を取得
-  #
+  # コマンド名 -> ファイル相対パス
+  COMMAND_FILES = {
+    "download" => "command/download",
+    "update"   => "command/update",
+    "list"     => "command/list",
+    "convert"  => "command/convert",
+    "diff"     => "command/diff",
+    "setting"  => "command/setting",
+    "alias"    => "command/alias",
+    "inspect"  => "command/inspect",
+    "send"     => "command/send",
+    "folder"   => "command/folder",
+    "browser"  => "command/browser",
+    "remove"   => "command/remove",
+    "freeze"   => "command/freeze",
+    "tag"      => "command/tag",
+    "web"      => "command/web",
+    "mail"     => "command/mail",
+    "backup"   => "command/backup",
+    "csv"      => "command/csv",
+    "clean"    => "command/clean",
+    "log"      => "command/log",
+    "trace"    => "command/trace",
+    "help"     => "command/help",
+    "version"  => "command/version",
+    "init"     => "command/init"
+  }.freeze
+
+  # 互換API：従来の "一覧（表示順）" 相当。重いクラスは返さず、軽量に name->path を返す。
   def self.get_list
-    COMMAND_LIST
+    COMMAND_FILES
   end
 
-  # この順番がヘルプに表示される順番
-  COMMAND_LIST = {
-    "download" => Download,
-    "update" => Update,
-    "list" => List,
-    "convert" => Convert,
-    "diff" => Diff,
-    "setting" => Setting,
-    "alias" => Alias,
-    "inspect"=> Inspect,
-    "send" => Send,
-    "folder" => Folder,
-    "browser" => Browser,
-    "remove" => Remove,
-    "freeze" => Freeze,
-    "tag" => Tag,
-    "web" => Web,
-    "mail" => Mail,
-    "backup" => Backup,
-    "csv" => Csv,
-    "clean" => Clean,
-    "log" => Log,
-    "trace" => Trace,
-    "help" => Help,
-    "version" => Version,
-    "init" => Init,
-    "restore346" => Restore346
-  }
-
-  if $development
-    COMMAND_LIST["console"] = Console
+  # 名前一覧（help の表示順そのまま）
+  def self.names
+    COMMAND_FILES.keys
   end
 
-  # ショートカット定義
-  # COMMAND_LIST の上から順に優先度が高い
-  Shortcuts = Hash[*get_list.keys.reverse.map { |s|
-    [s[0], s, s[0..1], s]
-  }.flatten]
+  # camelize: "convert" → "Convert", "foo-bar" → "FooBar"
+  def self.const_name(name)
+    name.to_s.split(/[-_]/).map!(&:capitalize).join
+  end
+  private_class_method :const_name
+
+  # 存在チェック（定義済みマップ上）
+  def self.exist?(name)
+    COMMAND_FILES.key?(name.to_s)
+  end
+  class << self
+    alias exists? exist?  # 互換
+  end
+
+  # 実行直前にだけ require する
+  def self.require_command(name)
+    path = COMMAND_FILES[name.to_s]
+    return false unless path
+    require_relative path
+    true
+  end
+
+  # コマンドクラスを返す（必要なときだけロード）
+  # 見つからなければ nil
+  def self.load_command(name)
+    key = name.to_s.downcase
+    return nil unless exist?(key)
+    require_command(key)
+    const = const_name(key)
+    return nil unless Command.const_defined?(const, false)
+    Command.const_get(const, false)
+  rescue NameError
+    nil
+  end
+
+  # ショートカット定義（1文字/2文字 → 本名）。後勝ち防止のため逆順で畳み込み。
+  Shortcuts = begin
+    base = names
+    Hash[*base.reverse.flat_map { |s| [s[0], s, s[0, 2], s] }]
+  end.freeze
 end

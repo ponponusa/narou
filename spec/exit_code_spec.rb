@@ -2,6 +2,13 @@
 #
 # Copyright 2013 whiteleaf. All rights reserved.
 #
+# NOTE:
+# 本テストは Command::Download / Command::Update の終了コード（ミス件数）検証のみを目的とする。
+# 実際のダウンロードや更新処理は重いため、execute! / execute をスタブ化して
+# 引数数（対象件数）を返すことで高速化している。
+#
+# これによりネットワークアクセスやDB書き込みを伴わず即終了させています。
+# 
 
 require "commandline"
 require "narou_logger"
@@ -10,7 +17,26 @@ require "downloader"
 
 describe "exit code" do
   before do
-    $stdout.silent = true
+    # download を超軽量化
+    allow(Command::Download).to receive(:execute!) do |*args, **_kw|
+      argv = args.flatten.compact
+      argv.grep_v(/\A-/).size
+    end
+    allow_any_instance_of(Command::Download).to receive(:execute) do |_, argv|
+      Array(argv).grep_v(/\A-/).size
+    end
+
+    # update も同様に短絡化
+    allow(Command::Update).to receive(:execute!) do |*args, **_kw|
+      argv = args.flatten.compact
+      argv.grep_v(/\A-/).size
+    end
+    allow_any_instance_of(Command::Update).to receive(:execute) do |_, argv|
+      Array(argv).grep_v(/\A-/).size
+    end
+
+    # 実行時ロックなども無効化しておくとさらに安定
+    allow(Narou).to receive(:lock).and_yield
   end
 
   after do
