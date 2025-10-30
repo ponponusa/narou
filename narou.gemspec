@@ -54,6 +54,8 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'sinatra', '~> 4.2', '>= 4.2.0'
   gem.add_runtime_dependency 'sinatra-contrib', '~> 4.2', '>= 4.2.0'
   gem.add_runtime_dependency 'rackup', '~> 2.1'
+  gem.add_runtime_dependency 'rack', '>= 3.0', '< 4'
+  gem.add_runtime_dependency 'rack-session', '~> 2.1', '>= 2.1.1'
   gem.add_runtime_dependency 'puma', '~> 6.4'
   gem.add_runtime_dependency 'sass-embedded', '~> 1.93', '>= 1.93.2'
   gem.add_runtime_dependency 'tilt', '~> 2.6', '>= 2.6.1'
@@ -84,4 +86,3 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'awesome_print', '~> 1.9'
   gem.add_development_dependency 'simplecov', '~> 0.22'
 end
-

@@ -17,6 +17,8 @@ PATH
       pony (~> 1, >= 1.13)
       psych (~> 5.2)
       puma (~> 6.4)
+      rack (>= 3.0, < 4)
+      rack-session (~> 2.1, >= 2.1.1)
       rackup (~> 2.1)
       rexml (~> 3.4)
       rubyzip (~> 3.2, >= 3.2.0)
