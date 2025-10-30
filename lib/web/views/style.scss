@@ -282,7 +282,7 @@ table#novel-list {
   .gl-24hour {
     &::after {
       content: "24h";
-      background-color: color.adjust(blue, $lightness: 230);
+      background-color: color.adjust(blue, $lightness: 23%);
 
       position: relative;
       left: 4px;
