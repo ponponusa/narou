@@ -85,4 +85,5 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'pry-byebug', '~> 3.11'
   gem.add_development_dependency 'awesome_print', '~> 1.9'
   gem.add_development_dependency 'simplecov', '~> 0.22'
+  gem.add_development_dependency 'rack-test', '~> 2.1'
 end

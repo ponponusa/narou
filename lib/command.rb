@@ -67,6 +67,10 @@ module Command
     true
   end
 
+  def self.require_all
+    COMMAND_FILES.each_key { |name| require_command(name) }
+  end
+
   # コマンドクラスを返す（必要なときだけロード）
   # 見つからなければ nil
   def self.load_command(name)

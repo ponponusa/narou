@@ -204,9 +204,12 @@ module Command
     end
 
     def load_web_dependencies
-      require_relative "../command/tag"
+      Command.require_all
+      require_relative "../narou_logger"
       require_relative "../downloader"
       require_relative "../sitesetting"
+      require_relative "../database"
+      require_relative "../html"
       require_relative "../web/all"
     end
 

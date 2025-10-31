@@ -171,7 +171,13 @@ module Command
             next
           end
           interval.wait
-          downloader = Downloader.new(target)
+          begin
+            downloader = Downloader.new(target)
+          rescue Downloader::InvalidTarget => e
+            puts "<bold><red>[ERROR]</red></bold> #{e.message}".termcolor
+            mistook_count += 1
+            next
+          end
           hotentry_manager.connect(downloader)
 
           delete_modified_tag = -> do
