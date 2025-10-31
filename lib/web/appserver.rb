@@ -161,6 +161,8 @@ class Narou::AppServer < Sinatra::Base
     toc = Downloader.new(id).load_toc_file
     return nil unless toc
     toc["subtitles"].size
+  rescue Downloader::InvalidTarget
+    nil
   end
 
   # 話数の設定されていない小説の話数を取得して埋める
