@@ -65,10 +65,11 @@ module Helper
 
   def open_browser_linux(address, error_message)
     %w(xdg-open firefox w3m).each do |browser|
+      next unless command_available?(browser)
       system(%!#{browser} "#{address}"!)
       return if $?.success?
     end
-    error error_message
+    warn error_message
   end
 
   def open_directory(path, confirm_message = nil)
@@ -99,6 +100,13 @@ module Helper
       system(%!open "#{url}"!)
     else
       open_browser_linux(url, "ブラウザが見つかりませんでした")
+    end
+  end
+
+  def command_available?(command)
+    ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? do |path|
+      executable = File.join(path, command)
+      File.executable?(executable) && !File.directory?(executable)
     end
   end
 
