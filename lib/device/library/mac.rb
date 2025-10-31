@@ -7,6 +7,7 @@
 module Device::Library
   module Mac
     def get_device_root_dir(volume_name)
+      return nil if volume_name.nil? || volume_name.empty?
       %w(/Volumes).each do |mount_root|
         path = File.join(mount_root, volume_name)
         if File.directory?(path)
