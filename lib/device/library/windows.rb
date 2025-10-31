@@ -14,6 +14,7 @@ class Device
   module Library
     module Windows
       def get_device_root_dir(volume_name)
+        return nil if volume_name.nil? || volume_name.empty?
         @@FileSystemObject ||= WIN32OLE.new("Scripting.FileSystemObject")
         drives.each do |drive_letter|
           drive_info = @@FileSystemObject.GetDrive(drive_letter)
