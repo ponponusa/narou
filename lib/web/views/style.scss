@@ -390,6 +390,13 @@ table.dataTable {
       /* margin-right: 0 !important; */
     }
   }
+  
+  /* iPad等のタブレットで右側の要素が下に落ちないようにする */
+  @media (min-width:768px) and (max-width:1199px) {
+    .navbar-nav.navbar-right:last-child {
+      margin-right: 0;
+    }
+  }
   .active-ok {
     display: none;
   }
@@ -417,6 +424,14 @@ table.dataTable {
 /*
  * フォーム関係
  */
+.navbar-form.navbar-right {
+  @media (min-width:768px) and (max-width:1199px) {
+    margin-right: 0;
+    margin-top: 8px;
+    float: right;
+  }
+}
+
 #myFilter {
   width: 250px;
   border-radius: 18px;
@@ -426,11 +441,11 @@ table.dataTable {
   @media (max-width:767px) {
     width: 200px;
   }
-  @media (min-width:768px) {
-    width: 100px;
+  @media (min-width:768px) and (max-width:991px) {
+    width: 150px;
   }
-  @media (min-width:992px){
-    width: 300px;
+  @media (min-width:992px) and (max-width:1199px) {
+    width: 200px;
   }
   @media (min-width:1200px){
     width: 350px;
