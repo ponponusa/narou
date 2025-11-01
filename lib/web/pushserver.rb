@@ -27,6 +27,7 @@ module Narou
       @accepted_domains = ["*"]
       @port = 31000
       @connections = []
+      @server_thread = nil
       clear_history
     end
 
@@ -36,7 +37,7 @@ module Narou
         port: @port,
         host: @host
       })
-      Thread.new do
+      @server_thread = Thread.new do
         @server.run do |ws|
           que = nil
           thread = nil
@@ -98,7 +99,11 @@ module Narou
     # PushServer を停止させる
     #
     def quit
-      @server.quit
+      @server.quit if @server
+      if @server_thread && @server_thread.alive?
+        @server_thread.kill
+        @server_thread.join(1) # 最大1秒待つ
+      end
     end
 
     def clear_history

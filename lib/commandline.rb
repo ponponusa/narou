@@ -9,6 +9,9 @@ require_relative "command"
 require_relative "helper"
 require_relative "inventory"
 
+# 全コマンドを事前ロード（遅延ロードの NameError 回避）
+Command.require_all
+
 module CommandLine
   module_function
 
