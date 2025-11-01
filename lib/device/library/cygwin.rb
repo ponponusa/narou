@@ -7,6 +7,7 @@
 module Device::Library
   module Cygwin
     def get_device_root_dir(volume_name)
+      return nil if volume_name.nil? || volume_name.empty?
       # cygwinのドライブマウント先のpath prefixを取得する。
       # 1.7.28では二行目の行頭
       mount_root = `mount -p`.split("\n").last.split(/\s+/).first

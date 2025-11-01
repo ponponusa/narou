@@ -14,25 +14,24 @@ module Command
 
     def initialize
       super("[options...]")
-      @opt.separator <<-EOS
+      @opt.separator <<~HELP
+        ・WEBアプリケーション用サーバを起動します
+        ・小説の管理及び設定をブラウザで行うことができます
+        ・--port を指定しない場合、ポートは初回起動時にランダムで設定します
+          (以降同じ設定を引き継ぎます)
+        ・サーバ起動後にブラウザを立ち上げます
+        ・サーバの停止はコンソールで Ctrl+C を入力します
 
-  ・WEBアプリケーション用サーバを起動します
-  ・小説の管理及び設定をブラウザで行うことができます
-  ・--port を指定しない場合、ポートは初回起動時にランダムで設定します
-    (以降同じ設定を引き継ぎます)
-  ・サーバ起動後にブラウザを立ち上げます
-  ・サーバの停止はコンソールで Ctrl+C を入力します
+        Examples:
+          narou web   # サーバ起動(ポートはランダム。ポート設定保存)
+          narou web -p 4567   # ポート4567で起動(保存はされない)
 
-  Examples:
-    narou web   # サーバ起動(ポートはランダム。ポート設定保存)
-    narou web -p 4567   # ポート4567で起動(保存はされない)
+          # 先に決めておく
+          narou s server-port=8000
+          narou web   # ポート8000で起動
 
-    # 先に決めておく
-    narou s server-port=8000
-    narou web   # ポート8000で起動
-
-  Options:
-      EOS
+        Options:
+      HELP
       @opt.on("-p", "--port PORT", Integer, "起動するポートを指定") { |port|
         @options["port"] = port
       }
@@ -45,11 +44,10 @@ module Command
       setting = Inventory.load("server_setting", :global)
       is_first = !setting["already-server-boot"]
       if is_first
-        puts <<-EOS
-初めてサーバを起動します。ファイアウォールのアクセス許可を尋ねられた場合、許可をして下さい。
-また、起動したサーバを止めるにはコンソール上で Ctrl+C を入力するか、ブラウザ上で「設定(歯車マーク)→サーバをシャットダウン」を実行して下さい。
-
-        EOS
+        puts <<~FIRST_BOOT
+          初めてサーバを起動します。ファイアウォールのアクセス許可を尋ねられた場合、許可をして下さい。
+          また、起動したサーバを止めるにはコンソール上で Ctrl+C を入力するか、ブラウザ上で「設定(歯車マーク)→サーバをシャットダウン」を実行して下さい。
+        FIRST_BOOT
         if @options["no-browser"]
           puts "(何かキーを押して下さい)"
         else
@@ -66,7 +64,8 @@ module Command
     end
 
     def create_push_server(params)
-      host, port = params[:host], params[:port]
+      host = params[:host]
+      port = params[:port]
       push_server = Narou::PushServer.instance
       accepted_domains = (host == "0.0.0.0" ? "*" : host)
       if accepted_domains != "*"
@@ -103,7 +102,7 @@ module Command
             argv = argv_copy.dup
             argv.push("--no-browser", "--reboot")
           end
-        rescue Interrupt => e
+        rescue Interrupt
           # 中断されてコンソールへの入力が可能になってから、WEBrick が終了するまで
           # タイムラグがあって表示がごちゃまぜになるので、終わるのを少し待つ
           sleep 1
@@ -112,11 +111,13 @@ module Command
     end
 
     def kill_threads
+      return unless worker_available?
       Narou::Worker.stop
     end
 
+    # rubocop:disable Metrics/AbcSize
     def boot
-      require_relative "../web/all"
+      load_web_dependencies
       confirm_of_first
       params = Narou::AppServer.create_address(@options["port"])
       push_server = create_push_server(params)
@@ -139,37 +140,40 @@ module Command
                    $stdout
                  end
       ProgressBar.push_server = push_server
-      Narou::Worker.push_server = push_server
+      if worker_available?
+        Narou::Worker.push_server = push_server
+      end
       Narou::AppServer.push_server = push_server
       Narou::WebWorker.run
-      
+
       # 自動アップデートスケジューラーを開始
       require_relative "update/scheduler"
       Command::Update::Scheduler.start
-      
+
       Narou::AppServer.run!
-      
+
       # 自動アップデートスケジューラーを停止
       Command::Update::Scheduler.stop
-      
+
       push_server.quit
       Narou::WebWorker.stop
-      Narou::Worker.stop
+      Narou::Worker.stop if worker_available?
       if Narou::AppServer.request_reboot?
         exit Narou::EXIT_REQUEST_REBOOT
       end
     rescue Errno::EADDRINUSE => e
       Helper.open_browser(address) unless @options["no-browser"]
-      STDOUT.puts <<-EOS
-#{e}
-ポートが使われています。サーバがすでに立ち上がっているかどうか確認して下さい。
-他のアプリケーションが使っているポートだった場合、ポートを変更して下さい。
+      $stdout.puts <<~PORT_IN_USE
+        #{e}
+        ポートが使われています。サーバがすでに立ち上がっているかどうか確認して下さい。
+        他のアプリケーションが使っているポートだった場合、ポートを変更して下さい。
 
-ポートの変更方法
-  $ narou s server-port=5678
-      EOS
+        ポートの変更方法
+          $ narou s server-port=5678
+      PORT_IN_USE
       exit Narou::EXIT_ERROR_CODE
     end
+    # rubocop:enable Metrics/AbcSize
 
     def open_browser_when_server_boot(address)
       return if @options["no-browser"]
@@ -193,6 +197,21 @@ module Command
       end
     end
 
+    private
+
+    def worker_available?
+      defined?(Narou::Worker)
+    end
+
+    def load_web_dependencies
+      Command.require_all
+      require_relative "../narou_logger"
+      require_relative "../downloader"
+      require_relative "../sitesetting"
+      require_relative "../database"
+      require_relative "../html"
+      require_relative "../web/all"
+    end
+
   end
 end
-
