@@ -100,11 +100,12 @@ module Narou
     def http_download(uri, destination, limit = 5)
       raise Error, "ダウンロードがリダイレクト回数上限を超えました" if limit <= 0
 
-      response = perform_download_request(uri)
-      response.value
-      File.open(destination, "wb") do |file|
-        response.read_body do |chunk|
-          file.write(chunk)
+      perform_download_request(uri) do |response|
+        response.value
+        File.open(destination, "wb") do |file|
+          response.read_body do |chunk|
+            file.write(chunk)
+          end
         end
       end
     rescue Net::HTTPRedirection => e
@@ -123,6 +124,7 @@ module Narou
         token = ENV["GITHUB_TOKEN"]
         request["Authorization"] = "Bearer #{token}" if token && !token.empty?
         http.request(request) do |response|
+          return yield response if block_given?
           return response
         end
       end
