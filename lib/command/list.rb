@@ -32,35 +32,35 @@ module Command
   ・現在管理している小説の一覧を表示します
   ・表示されるIDは各コマンドで指定することで小説名等を入力する手間を省けます
   ・個数を与えることで、最大表示数を制限できます(デフォルトは全て表示)
-  ・narou listのデフォルト動作を narou s default_arg.list= で設定すると便利です
-  ・パイプで他のnarouコマンドに繋ぐとID入力の代わりにできます
+  ・narou-mod listのデフォルト動作を narou-mod s default_arg.list= で設定すると便利です
+  ・パイプで他のnarou-modコマンドに繋ぐとID入力の代わりにできます
 
   Examples:
-    narou list             # IDの小さい順に全て表示
-    narou list 10 -r       # IDの大きい順に10件表示
-    narou list 5 -l        # 最近更新のあった5件表示
-    narou list 10 -rl      # 古い順に10件表示
-    narou list -f ss       # 短編小説だけ表示
-    narou list -f "ss frozen"   # 凍結している短編だけ表示
+    narou-mod list             # IDの小さい順に全て表示
+    narou-mod list 10 -r       # IDの大きい順に10件表示
+    narou-mod list 5 -l        # 最近更新のあった5件表示
+    narou-mod list 10 -rl      # 古い順に10件表示
+    narou-mod list -f ss       # 短編小説だけ表示
+    narou-mod list -f "ss frozen"   # 凍結している短編だけ表示
 
     # 小説家になろうの小説のみを表示
-    narou list --site --grep 小説家になろう
-    narou l -sg 小説家になろう    # 上記と同じ意味
+    narou-mod list --site --grep 小説家になろう
+    narou-mod l -sg 小説家になろう    # 上記と同じ意味
     # 作者“紫炎”を含む小説を表示
-    narou list --author --grep 紫炎
-    narou l -ag 紫炎              # 上記と同じ意味
+    narou-mod list --author --grep 紫炎
+    narou-mod l -ag 紫炎              # 上記と同じ意味
     # “紫炎”と“なろう”を含む小説を表示(AND検索)
-    narou l -asg "紫炎 なろう"
+  narou-mod l -asg "紫炎 なろう"
     # “なろう”を含まない小説を表示(NOT検索)
-    narou l -sg "-なろう"
+  narou-mod l -sg "-なろう"
 
     # ハーメルンを含む小説にhamelnタグを付ける
-    narou l -sg ハーメルン | narou t -a hameln
+  narou-mod l -sg ハーメルン | narou-mod t -a hameln
     # 短編を全て凍結する
-    narou l -f ss | narou freeze --on
+  narou-mod l -f ss | narou-mod freeze --on
 
     # リストをそのまま保存したい時(echoオプション)
-    narou l -e > list.txt
+  narou-mod l -e > list.txt
 
   Options:
       EOS

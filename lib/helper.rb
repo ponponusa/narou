@@ -35,6 +35,16 @@ module Helper
     @@os_is_cygwin ||= HOST_OS =~ /cygwin/i
   end
 
+  def os_wsl?
+    return @@os_is_wsl if defined?(@@os_is_wsl)
+    @@os_is_wsl = begin
+      return true if ENV.key?("WSL_DISTRO_NAME")
+      File.read("/proc/version").include?("Microsoft")
+    rescue Errno::ENOENT, Errno::EACCES
+      false
+    end
+  end
+
   def determine_os
     case
     when in_docker?
@@ -45,6 +55,8 @@ module Helper
       :mac
     when os_cygwin?
       :cygwin
+    when os_wsl?
+      :wsl
     else
       :other
     end
@@ -83,6 +95,8 @@ module Helper
       system(%!cygstart "#{path}"!)
     when :mac
       system(%!open "#{path}"!)
+    when :wsl
+      open_directory_wsl(path, "フォルダが開けませんでした")
     else
       open_browser_linux(path, "フォルダが開けませんでした")
     end
@@ -98,9 +112,47 @@ module Helper
       system(%!cygstart #{url}!)
     when :mac
       system(%!open "#{url}"!)
+    when :wsl
+      open_browser_wsl(url, "ブラウザが見つかりませんでした")
     else
       open_browser_linux(url, "ブラウザが見つかりませんでした")
     end
+  end
+
+  def open_browser_wsl(url, error_message)
+    if command_available?("wslview")
+      system("wslview", url)
+      return if $?.success?
+    end
+    escaped = url.gsub("'", "''")
+    begin
+      system("powershell.exe", "-NoProfile", "-Command", "Start-Process '#{escaped}'")
+      return if $?.success?
+    rescue Errno::ENOENT
+      # powershell.exe が見つからない場合は警告にフォールバック
+    end
+    warn error_message
+  end
+
+  def open_directory_wsl(path, error_message)
+    if command_available?("wslview")
+      system("wslview", path)
+      return if $?.success?
+    end
+    begin
+      windows_path = `wslpath -w "#{path}"`.strip
+      windows_path = path if windows_path.empty?
+    rescue Errno::ENOENT
+      windows_path = path
+    end
+    escaped = windows_path.gsub("'", "''")
+    begin
+      system("powershell.exe", "-NoProfile", "-Command", "Start-Process '#{escaped}'")
+      return if $?.success?
+    rescue Errno::ENOENT
+      # powershell.exe が見つからない場合は警告にフォールバック
+    end
+    warn error_message
   end
 
   def command_available?(command)

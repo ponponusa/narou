@@ -24,6 +24,7 @@ require_relative "web_worker"
 require_relative "pushserver"
 require_relative "settingmessages"
 require_relative "server_helpers"
+require_relative "../narou/system_updater"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -329,15 +330,30 @@ class Narou::AppServer < Sinatra::Base
 
   post "/update_system" do
     Thread.new do
-      buffer = `gem update --no-document narou`
-      @@gem_update_last_log = buffer.strip!
-      if buffer =~ /Nothing to update\z/
-        @@push_server.send_all("server.update.nothing" => buffer)
-      elsif buffer.include?("Gems updated: narou")
-        @@already_update_system = true
-        @@push_server.send_all("server.update.success" => buffer)
-      else
-        @@push_server.send_all("server.update.failure" => buffer)
+      begin
+        result = Narou::SystemUpdater.update_from_github
+        @@gem_update_last_log = result.log
+
+        case result.status
+        when :success
+          @@already_update_system = true
+          @@push_server.send_all("server.update.success" => result.log)
+        when :nothing
+          @@push_server.send_all("server.update.nothing" => result.log)
+        else
+          @@push_server.send_all("server.update.failure" => result.log)
+        end
+      rescue Narou::SystemUpdater::Error => e
+        log = "更新に失敗しました: #{e.message}"
+        @@gem_update_last_log = log
+        @@push_server.send_all("server.update.failure" => log)
+      rescue StandardError => e
+        log = <<~LOG.strip
+          予期しないエラーが発生しました: #{e.class} #{e.message}
+          #{Array(e.backtrace).join("\n")}
+        LOG
+        @@gem_update_last_log = log
+        @@push_server.send_all("server.update.failure" => log)
       end
     end
   end
@@ -487,7 +503,12 @@ class Narou::AppServer < Sinatra::Base
   end
 
   not_found do
-    "not found"
+    existing_body = Array(response.body).join
+    if response.content_type == "application/json" && existing_body && !existing_body.empty?
+      existing_body
+    else
+      "not found"
+    end
   end
 
   # -------------------------------------------------------------------------------
@@ -1191,10 +1212,14 @@ class Narou::AppServer < Sinatra::Base
 
   post "/api/download" do
     headers "Access-Control-Allow-Origin" => "*"
-    targets = params["targets"] or error("need a parameter: `targets'")
-    targets = targets.kind_of?(Array) ? targets : targets.split
+    targets_param = params["targets"]
+    bad_request!("ダウンロード対象が指定されていません") if targets_param.nil?
+
+    targets = targets_param.is_a?(Array) ? targets_param : targets_param.to_s.split
+    targets = targets.map(&:to_s).reject(&:empty?)
+    bad_request!("ダウンロード対象が指定されていません") if targets.empty?
+
     opt_mail = "--mail" if query_to_boolean(params["mail"])
-    pass if targets.size == 0
     Narou::WebWorker.push do
       CommandLine.run!("download", targets, opt_mail)
       Narou::AppServer.clear_all_cache # 全キャッシュ無効化
@@ -1203,7 +1228,8 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/download_force" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    ids = select_valid_novel_ids(params["ids"])
+    bad_request!("小説が選択されていません") unless ids
     Narou::WebWorker.push do
       CommandLine.run!("download", "--force", ids)
       Narou::AppServer.clear_all_cache # 全キャッシュ無効化
@@ -1297,7 +1323,7 @@ class Narou::AppServer < Sinatra::Base
     tag_params += exclusion_tags.map do |tag|
       "^tag:#{tag}"
     end
-    pass if tag_params.empty?
+    bad_request!("タグが指定されていません") if tag_params.empty?
     Narou::WebWorker.push do
       cmd = Command::Update.new
       if table_reload_timing == "every"
@@ -1375,7 +1401,8 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/remove" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    ids = select_valid_novel_ids(params["ids"])
+    bad_request!("小説が選択されていません") unless ids
     
     # remove実行時点でのソート状態が渡された場合はそれを使用
     if params["sort_state"] && params["timestamp"]
@@ -1410,7 +1437,8 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/remove_with_file" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    ids = select_valid_novel_ids(params["ids"])
+    bad_request!("小説が選択されていません") unless ids
     
     # remove実行時点でのソート状態が渡された場合はそれを使用
     if params["sort_state"] && params["timestamp"]
@@ -1440,7 +1468,8 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/diff" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    ids = select_valid_novel_ids(params["ids"])
+    bad_request!("小説が選択されていません") unless ids
     number = params["number"] || "1"
     disabled_log_io = $stdout.dup_with_disabled_logging
     Narou::WebWorker.push do
@@ -1461,27 +1490,30 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/diff_clean" do
-    target = params["target"] or pass
-    id = Downloader.get_id_by_target(target) or pass
+    target = params["target"] or bad_request!("target が指定されていません")
+    id = Downloader.get_id_by_target(target) or bad_request!("対象の小説が見つかりません")
     Narou::WebWorker.push do
       CommandLine.run!("diff", "--clean", id)
     end
   end
 
   post "/api/inspect" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    ids = select_valid_novel_ids(params["ids"])
+    bad_request!("小説が選択されていません") unless ids
     Narou::WebWorker.push do
       CommandLine.run!("inspect", ids)
     end
   end
 
   post "/api/folder" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    ids = select_valid_novel_ids(params["ids"])
+    bad_request!("小説が選択されていません") unless ids
     CommandLine.run!("folder", ids)
   end
 
   post "/api/backup" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    ids = select_valid_novel_ids(params["ids"])
+    bad_request!("小説が選択されていません") unless ids
     Narou::WebWorker.push do
       CommandLine.run!("backup", ids)
     end
@@ -1516,7 +1548,8 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/taginfo.json" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    ids = select_valid_novel_ids(params["ids"])
+    bad_request!("小説が選択されていません") unless ids
     ids.map!(&:to_i)
     
     # tag情報取得時点でのソート状態が渡された場合はそれを使用
@@ -1562,11 +1595,37 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/edit_tag" do
-    # JSONリクエストボディをパース
     request.body.rewind
-    request_payload = JSON.parse(request.body.read)
-    
-    ids = select_valid_novel_ids(request_payload["ids"]) or pass
+    raw_body = request.body.read.to_s
+
+    unless request.media_type == "application/json"
+      debug_puts "[ERROR] Unsupported Content-Type for tag edit: #{request.media_type.inspect}"
+      halt 415, json({
+        success: false,
+        error: "Unsupported Media Type",
+        message: "このエンドポイントは application/json のみ受け付けます"
+      })
+    end
+
+    if raw_body.empty?
+      debug_puts "[ERROR] Empty request body for tag edit"
+      halt 400, json({ success: false, error: "Empty request body" })
+    end
+
+    begin
+      request_payload = JSON.parse(raw_body)
+    rescue JSON::ParserError => e
+      debug_puts "[ERROR] Failed to parse JSON payload: #{e.message}"
+      halt 400, json({ success: false, error: "Invalid JSON payload" })
+    end
+
+    unless request_payload.is_a?(Hash)
+      debug_puts "[ERROR] Tag edit payload must be a JSON object: #{request_payload.class.name}"
+      halt 400, json({ success: false, error: "JSON object required" })
+    end
+
+  ids = select_valid_novel_ids(request_payload["ids"])
+  bad_request!("小説が選択されていません") unless ids
     
     # tag編集実行時点でのソート状態が渡された場合はそれを使用
     if request_payload["sort_state"] && request_payload["timestamp"]
@@ -1577,7 +1636,7 @@ class Narou::AppServer < Sinatra::Base
       sorted_ids = ids
     end
     
-    debug_puts "[DEBUG] Tag edit processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
+  debug_puts "[DEBUG] Tag edit processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
     debug_puts "[DEBUG] Received payload: #{request_payload.inspect}"
     debug_puts "[DEBUG] Received states param: #{request_payload["states"].inspect}"
     debug_puts "[DEBUG] Received states class: #{request_payload["states"]&.class&.name || 'nil'}"
@@ -1660,15 +1719,16 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/setting_burn" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    ids = select_valid_novel_ids(params["ids"])
+    bad_request!("小説が選択されていません") unless ids
     Narou::WebWorker.push do
       CommandLine.run!("setting", "--burn", ids)
     end
   end
 
   post "/api/change_tag_color" do
-    tag = params["tag"] or pass
-    color = params["color"] or pass
+    tag = params["tag"] or bad_request!("タグが指定されていません")
+    color = params["color"] or bad_request!("カラーが指定されていません")
     tag_colors = Inventory.load("tag_colors")
     tag_colors[tag] = color
     tag_colors.save
@@ -1701,13 +1761,17 @@ class Narou::AppServer < Sinatra::Base
 
   post "/api/csv/import" do
     begin
-      files = params["files"] or pass
+  raw_files = params["files"]
+  bad_request!("CSVファイルが指定されていません") if raw_files.nil?
+  files = raw_files.is_a?(Array) ? raw_files.compact : [raw_files].compact
+  bad_request!("CSVファイルが指定されていません") if files.empty?
       csv = Command::Csv.new
       imported_count = 0
       files.each do |file|
         csv.import(file[:tempfile])
         imported_count += 1
       end
+      bad_request!("CSVファイルが指定されていません") if imported_count.zero?
       puts "CSVファイルをインポートしました (#{imported_count}件)"
       ""
     rescue StandardError => e
@@ -1792,8 +1856,13 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/api/story" do
-    id = params["id"] or pass
-    toc = Downloader.get_toc_by_target(id)
+    target_id = params["id"]
+    bad_request!("小説IDが指定されていません") if target_id.nil? || target_id.to_s.empty?
+    toc = Downloader.get_toc_by_target(target_id)
+    unless toc
+      status 404
+      return json({ success: false, error: "対象の小説が見つかりません" })
+    end
     story = toc["story"] || ""
     html = HTML.new
     json title: toc["title"], story: html.ln_to_br(story.strip)

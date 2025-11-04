@@ -22,11 +22,11 @@ module Command
 
   ・引数を指定しなかった場合は直前に変換した小説の状態調査状況ログを表示します。
   ・小説を指定した場合はその小説のログを表示します。
-  ・narou setting convert.inspect=true とすれば変換時に常に表示されるようになります。
+  ・narou-mod setting convert.inspect=true とすれば変換時に常に表示されるようになります。
 
   Examples:
-    narou inspect     # 直前の変換時のログを表示
-    narou inspect 6   # ログを表示したい小説を指定する
+    narou-mod inspect     # 直前の変換時のログを表示
+    narou-mod inspect 6   # ログを表示したい小説を指定する
       EOS
     end
 

@@ -27,7 +27,7 @@ rescue => _e
 end
 
 begin
-  # narouコマンド前に下記のように環境変数を定義すればbootsnapは無効にする
+  # narou-modコマンド前に下記のように環境変数を定義すればbootsnapは無効にする
   # > set NAROU_NO_BOOTSNAP=1
   unless ENV["NAROU_NO_BOOTSNAP"] == "1"
     # 念のためWindows系のプラットフォームではないことを確認しておく
@@ -44,7 +44,7 @@ begin
     end
   end
 rescue Exception => e
-  warn "[narou.rb] Bootsnap disabled (#{e.class}: #{e.message})" if ENV["NAROU_BOOTSNAP_DEBUG"] == "1"
+  warn "[narou-mod] Bootsnap disabled (#{e.class}: #{e.message})" if ENV["NAROU_BOOTSNAP_DEBUG"] == "1"
 end
 $bootsnap_enable = defined?(Bootsnap)
 

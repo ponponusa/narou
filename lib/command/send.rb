@@ -20,23 +20,23 @@ module Command
 
   ・<target>で指定した小説の電子書籍データを<device>で指定した端末に送信します
   ・<device>には現在 #{Device::DEVICES.keys.join(", ")} が指定出来ます
-  ・narou setting device=<device>としておけば、<device>の入力を省略できます
+  ・narou-mod setting device=<device>としておけば、<device>の入力を省略できます
     また、convertコマンドで変換時に(端末がPCに接続されていれば)自動でデータを送信するようになります
   ・送信時はファイルのタイムスタンプを端末のものと比べて新しければ送信します
   ・<target>を省略した場合、管理している小説全てが送信対象になります
   ・<target>にhotentryを指定した場合、最新のhotnetryを送信します
 
   Examples:
-    narou send kindle 6
-    narou send kobo 6
+    narou-mod send kindle 6
+    narou-mod send kobo 6
 
     # <device>の省略
-    narou setting device=kindle
-    narou send 6
+    narou-mod setting device=kindle
+    narou-mod send 6
 
-    narou send      # 端末のファイルより新しいファイルがあれば送信
-    narou send --without-freeze   # 凍結済は対象外に
-    narou s send.without-freeze=true   # 常に凍結済みを対象外に設定
+    narou-mod send      # 端末のファイルより新しいファイルがあれば送信
+    narou-mod send --without-freeze   # 凍結済は対象外に
+    narou-mod s send.without-freeze=true   # 常に凍結済みを対象外に設定
 
   Options:
       EOS
@@ -68,7 +68,7 @@ module Command
       unless device
         stream_io.error <<~ERR
           デバイス名が指定されていないか、間違っています。
-          narou setting device=デバイス名 で指定出来ます。
+          narou-mod setting device=デバイス名 で指定出来ます。
           指定出来るデバイス名：#{Device::DEVICES.keys.join(", ")}
         ERR
         exit Narou::EXIT_ERROR_CODE

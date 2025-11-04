@@ -6,6 +6,8 @@
 
 # rubocop:disable Style/ClassAndModuleChildren
 
+require "json"
+
 module Narou::ServerHelpers
   RELOAD_TIMING_DEFAULT = "every"
 
@@ -195,6 +197,15 @@ module Narou::ServerHelpers
 
   def debug_puts(message)
     puts message if ENV["NAROU_DEBUG"] == "1"
+  end
+
+  def json_error!(status_code, message, extra = {})
+    payload = { success: false, error: message }.merge(extra)
+    halt status_code, { "Content-Type" => "application/json" }, JSON.generate(payload)
+  end
+
+  def bad_request!(message = "不正なリクエストです")
+    json_error!(400, message)
   end
 
   #

@@ -22,9 +22,9 @@ module Command
   ・インポートするCSVファイルには最低限 url というヘッダーが必要です
 
   Examples:
-    narou csv                 # CSV形式でそのまま表示
-    narou csv -o novels.csv   # novels.csv というファイル名で保存
-    narou csv -i novels.csv   # ファイルから小説をインポート
+    narou-mod csv                 # CSV形式でそのまま表示
+    narou-mod csv -o novels.csv   # novels.csv というファイル名で保存
+    narou-mod csv -i novels.csv   # ファイルから小説をインポート
 
   Options:
       EOS
