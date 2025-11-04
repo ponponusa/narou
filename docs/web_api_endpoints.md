@@ -1,9 +1,10 @@
 # Web UI REST API Endpoints
 
-Narou.rb の Web インターフェイスが利用する REST 形式の API 一覧です。  
+Narou.rb MOD の Web インターフェイスが利用する REST 形式の API 一覧です。  
 各エンドポイントの用途と、内部で呼び出される主なコマンド／モジュール依存関係を整理しています。
 
 > 備考  
+>
 > - ここに記載のコマンドは `Narou.web` 起動時に `Command.require_all` により事前ロードされます。  
 > - `CommandLine.run!` は Narou CLI と同一のサブコマンド実装を呼び出します。  
 > - 末尾が `*` の項目は非同期 (`Narou::WebWorker`) で実行され、完了後 PushServer 経由でイベントが配信されます。

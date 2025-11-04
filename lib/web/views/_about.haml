@@ -157,17 +157,18 @@
   %a.btn.btn-default.btn-sm{ href: "https://jbbs.shitaraba.net/computer/44668/", target: "_blank" }
     掲示板
     %span.glyphicon.glyphicon-new-window
-  %a.btn.btn-default.btn-sm(href="https://github.com/whiteleaf7/narou/blob/master/ChangeLog.md" target="_blank")
+  %a.btn.btn-default.btn-sm(href="https://github.com/ponponusa/narou-mod/releases" target="_blank")
     更新履歴
     %span.glyphicon.glyphicon-new-window
 
 .text-center
   %h1
-    %strong Narou.rb
+    %strong Narou.rb MOD
   %div
     Version #{@narourb_version}
   %div
     Copyright © 2013-#{Narou.last_commit_year} whiteleaf. All rights reserved.
+    %small (Modified by ponponusa)
   #result-of-version-checking(style="margin-top:10px")
     .checking
       %p.rotate-progress
@@ -176,14 +177,14 @@
     .version-is-latest
       %p
         %span.glyphicon.glyphicon-thumbs-up.text-primary
-        Narou.rb は最新版です。
+        Narou.rb MOD は最新版です。
     .need-an-update
       %p
         %span#latest-version-found
           %span.glyphicon.glyphicon-exclamation-sign.text-primary
           新しいバージョン(<span id="latest-version"></span>)が見つかりました。<br>
         %a#version-update-button.btn.btn-primary.btn-sm
-          %b Narou.rb を更新する
+          %b Narou.rb MOD を更新する
         %span#version-updating
           %span.rotate-progress
             %span.icon
@@ -191,9 +192,9 @@
         %a#reboot-button.btn.btn-success.btn-sm
           %b 再起動して更新を反映する
         %span#nothing-to-update.text-success
-          Narou.rb はすでに最新版です。
+          Narou.rb MOD はすでに最新版です。
       %p#fail-update-system.text-danger
-        Narou.rb の更新に失敗しました。
+        Narou.rb MOD の更新に失敗しました。
     .error
       %span.text-danger
         最新バージョンの取得に失敗しました。

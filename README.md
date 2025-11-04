@@ -1,4 +1,4 @@
-# Narou.rb_MOD - 小説家になろうのダウンローダ＆縦書き整形＆管理アプリ。
+# Narou.rb MOD - 小説家になろうのダウンローダ＆縦書き整形＆管理アプリ
 
 > [!NOTE]
 > このプロジェクトは下記プロジェクトの派生です。
@@ -21,23 +21,46 @@
 
 | サイト名 | URL | 備考 |
 |----------|----------|----------|
-| 小説家になろう | http://syosetu.com/ | |
-| ノクターンノベルズ | http://noc.syosetu.com/ | |
-| ムーンライトノベルズ | http://mnlt.syosetu.com/ | |
-| ミッドナイトノベルズ | http://mid.syosetu.com/ | |
-| ハーメルン | https://syosetu.org/ | |
-| Arcadia | http://www.mai-net.net/ | |
-| 暁 | http://www.akatsuki-novels.com/ | （※300話以上ある作品は未対応） |
-| カクヨム | https://kakuyomu.jp/ | |
+| 小説家になろう | <http://syosetu.com/> | |
+| ノクターンノベルズ | <http://noc.syosetu.com/> | |
+| ムーンライトノベルズ | <http://mnlt.syosetu.com/> | |
+| ミッドナイトノベルズ | <http://mid.syosetu.com/> | |
+| ハーメルン | <https://syosetu.org/> | |
+| Arcadia | <http://www.mai-net.net/> | |
+| 暁 | <http://www.akatsuki-novels.com/> | （※300話以上ある作品は未対応） |
+| カクヨム | <https://kakuyomu.jp/> | |
 
 主な機能は小説家になろうの小説のダウンロード、更新管理、テキスト整形、AozoraEpub3・kindlegen連携によるEPUB/MOBI出力です。  
 その他にも変換したデータを直接電子書籍端末へ送信する機能は、メールで送信する機能などもあります。
 
 ~~詳細な説明やインストール方法は **[Narou.rb_MOD説明書](https://github.com/ponponusa/narou/wiki)** を御覧ください。~~（準備中）
 
+## オリジナルプロジェクトからの変更点 - Changes from Original Project
+
+> 現リリース晩時点での変更点です。
+
+### 機能面
+
+- テキスト変換処理の安定化・高速化
+- TOCチェック速度の高速化
+- 認証機能をBasic認証への変更
+
+### システム面
+
+- コマンド名を `narou` から `narou-mod` に変更
+- Ruby 3.4以降を動作要件に変更
+- システム全体の高速化
+  - YJIT/Bootsnap対応（Windows環境では無効になります）
+  - コマンド実行のモジュール読込最適化
+  - 不要な外部依存ライブラリを削除
+- 一部機能の修正・改善
+- セキュリティリスクのある実装の修正
+- その他、細かなバグ修正や改善
+
 ## 動作要件 - Requirements
 
 - Ruby 3.4以上（※元プロジェクトから変更されています）
+- MSYS2環境（Windowsの場合）
 
 ## 更新履歴 - ChangeLog
 
@@ -49,12 +72,12 @@
 
 - 外部Webサーバを利用しない形でのHTTPS対応
 - bootstrap5への移行
-    - bootstrap3系では、jQuery3系に対応していないため
-    - jQuery migrateを削除したい
+  - bootstrap3系では、jQuery3系に対応していないため
+  - jQuery migrateを削除したい
 - 小説タイトルの自動整形
 - セキュリティリスクのある実装の修正
 - 変換処理の並列化による高速化
-    - 今後の最適化のためにもスレッドセーフにする
+  - 今後の最適化のためにもスレッドセーフにする
 
 ----
 

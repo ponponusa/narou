@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 #
-# Narou.rb ― 小説家になろうダウンロード＆整形スクリプト
+# Narou.rb MOD ― 小説家になろうダウンロード＆整形スクリプト
 #
 # Copyright 2013 whiteleaf. All rights reserved.
 #
