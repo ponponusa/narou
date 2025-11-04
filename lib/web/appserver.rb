@@ -24,6 +24,7 @@ require_relative "web_worker"
 require_relative "pushserver"
 require_relative "settingmessages"
 require_relative "server_helpers"
+require_relative "../narou/system_updater"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -329,15 +330,30 @@ class Narou::AppServer < Sinatra::Base
 
   post "/update_system" do
     Thread.new do
-      buffer = `gem update --no-document narou`
-      @@gem_update_last_log = buffer.strip!
-      if buffer =~ /Nothing to update\z/
-        @@push_server.send_all("server.update.nothing" => buffer)
-      elsif buffer.include?("Gems updated: narou")
-        @@already_update_system = true
-        @@push_server.send_all("server.update.success" => buffer)
-      else
-        @@push_server.send_all("server.update.failure" => buffer)
+      begin
+        result = Narou::SystemUpdater.update_from_github
+        @@gem_update_last_log = result.log
+
+        case result.status
+        when :success
+          @@already_update_system = true
+          @@push_server.send_all("server.update.success" => result.log)
+        when :nothing
+          @@push_server.send_all("server.update.nothing" => result.log)
+        else
+          @@push_server.send_all("server.update.failure" => result.log)
+        end
+      rescue Narou::SystemUpdater::Error => e
+        log = "更新に失敗しました: #{e.message}"
+        @@gem_update_last_log = log
+        @@push_server.send_all("server.update.failure" => log)
+      rescue StandardError => e
+        log = <<~LOG.strip
+          予期しないエラーが発生しました: #{e.class} #{e.message}
+          #{Array(e.backtrace).join("\n")}
+        LOG
+        @@gem_update_last_log = log
+        @@push_server.send_all("server.update.failure" => log)
       end
     end
   end
