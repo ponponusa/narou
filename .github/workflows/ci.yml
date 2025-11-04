@@ -119,7 +119,7 @@ jobs:
       - name: Build gem (generic)
         id: build
         run: |
-          gem build narou.gemspec
+          gem build narou-mod.gemspec
           # 「mingw-ucrt」を含まないほうを汎用ビルド扱いにする
           GEMFILE=$(ls narou-mod-*.gem | grep -v mingw || true)
           echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
@@ -159,7 +159,7 @@ jobs:
         id: build
         shell: bash
         run: |
-          gem build narou.gemspec
+          gem build narou-mod.gemspec
           # Windows向け: Gem::Platform::CURRENT が mingw-ucrt の .gem をpick
           GEMFILE=$(ls narou-mod-*-mingw-ucrt.gem)
           echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
