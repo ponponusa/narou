@@ -1562,35 +1562,39 @@ class Narou::AppServer < Sinatra::Base
   end
 
   post "/api/edit_tag" do
-    ids = select_valid_novel_ids(params["ids"]) or pass
+    # JSONリクエストボディをパース
+    request.body.rewind
+    request_payload = JSON.parse(request.body.read)
+    
+    ids = select_valid_novel_ids(request_payload["ids"]) or pass
     
     # tag編集実行時点でのソート状態が渡された場合はそれを使用
-    if params["sort_state"] && params["timestamp"]
-      debug_puts "[DEBUG] Tag edit with fixed sort state (timestamp: #{params["timestamp"]})"
-      sorted_ids = sort_ids_with_fixed_state(ids, params["sort_state"])
+    if request_payload["sort_state"] && request_payload["timestamp"]
+      debug_puts "[DEBUG] Tag edit with fixed sort state (timestamp: #{request_payload["timestamp"]})"
+      sorted_ids = sort_ids_with_fixed_state(ids, request_payload["sort_state"])
     else
       debug_puts "[DEBUG] Tag edit with current sort state"
       sorted_ids = ids
     end
     
     debug_puts "[DEBUG] Tag edit processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
-    debug_puts "[DEBUG] Received params: #{params.inspect}"
-    debug_puts "[DEBUG] Received states param: #{params["states"].inspect}"
-    debug_puts "[DEBUG] Received states class: #{params["states"]&.class&.name || 'nil'}"
+    debug_puts "[DEBUG] Received payload: #{request_payload.inspect}"
+    debug_puts "[DEBUG] Received states param: #{request_payload["states"].inspect}"
+    debug_puts "[DEBUG] Received states class: #{request_payload["states"]&.class&.name || 'nil'}"
     
     # states パラメータの存在チェック
-    if params["states"].nil? || params["states"].empty?
+    if request_payload["states"].nil? || request_payload["states"].empty?
       debug_puts "[ERROR] States parameter is nil or empty"
       return { success: false, error: "No tag states provided" }.to_json
     end
     
     # key と value を重複を維持したまま反転
     begin
-      invert_states = params["states"].inject({}) { |h,(k,v)| (h[v] ||= []) << k; h }
+      invert_states = request_payload["states"].inject({}) { |h,(k,v)| (h[v] ||= []) << k; h }
       debug_puts "[DEBUG] Inverted states: #{invert_states.inspect}"
     rescue => e
       debug_puts "[ERROR] Failed to invert states: #{e.message}"
-      debug_puts "[ERROR] States param details: #{params["states"].inspect}"
+      debug_puts "[ERROR] States param details: #{request_payload["states"].inspect}"
       return { success: false, error: e.message }.to_json
     end
     
