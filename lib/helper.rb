@@ -4,6 +4,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require "erb"
 require "open3"
 require "time"
 require "systemu"
