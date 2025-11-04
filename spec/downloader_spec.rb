@@ -3,6 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require "tmpdir"
 require_relative "../lib/downloader"
 
 describe Downloader do
@@ -41,6 +42,22 @@ describe Downloader do
       it { expect(Downloader.create_subdirecotry_name("n")).to eq "" }
       it { expect(Downloader.create_subdirecotry_name("1")).to eq "1" }
       it { expect(Downloader.create_subdirecotry_name("a")).to eq "a" }
+    end
+  end
+
+  describe ".get_toc_data" do
+    it "raises when YAML includes unsupported objects" do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, Downloader::TOC_FILE_NAME)
+        File.write(path, <<~YAML)
+          --- !ruby/object:Kernel
+          foo: bar
+        YAML
+
+        expect {
+          Downloader.get_toc_data(dir)
+        }.to raise_error(Narou::YAMLLoader::Error)
+      end
     end
   end
 end

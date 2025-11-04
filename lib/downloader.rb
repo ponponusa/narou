@@ -19,6 +19,7 @@ require_relative "inventory"
 require_relative "eventable"
 require_relative "html"
 require_relative "input"
+require_relative "narou/yaml_loader"
 
 # --- Sanitize shim (fragment only) ---
 unless defined?(Sanitize)
@@ -265,10 +266,10 @@ class Downloader
   #
   def self.get_toc_data(archive_path)
     path = File.join(archive_path, TOC_FILE_NAME)
-    YAML.unsafe_load_file(path)
+    Narou::YAMLLoader.load_file(path)
   rescue SystemCallError
-    # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
-    YAML.unsafe_load(File.read(path))
+    # bootsnap on Windows can raise Errno::E01 errors, fallback to standard IO read
+    Narou::YAMLLoader.load(File.read(path), filename: path)
   end
 
   def self.get_toc_by_target(target)
@@ -1242,10 +1243,13 @@ class Downloader
     path = get_novel_data_dir.join(old_relative_path)
     return true unless path.exist?
     begin
-      YAML.unsafe_load_file(path)["element"] != new_subtitle_info["element"]
+      Narou::YAMLLoader.load_file(path)["element"] != new_subtitle_info["element"]
     rescue SystemCallError
-      # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
-      YAML.unsafe_load(File.read(path))["element"] != new_subtitle_info["element"]
+      # bootsnap on Windows can raise Errno::E01 errors, fallback to standard IO read
+      Narou::YAMLLoader.load(File.read(path), filename: path)["element"] != new_subtitle_info["element"]
+    rescue Narou::YAMLLoader::Error => e
+      warn "[warn] YAML load failed for #{path}: #{e.message}"
+      true
     end
   end
 
@@ -1494,14 +1498,17 @@ class Downloader
   #
   # 小説データの格納ディレクトリから読み込む
   def load_novel_data(filename)
-    YAML.unsafe_load_file(get_novel_data_dir.join(filename))
+    path = get_novel_data_dir.join(filename)
+    Narou::YAMLLoader.load_file(path)
   rescue Errno::ENOENT
     nil
   rescue SystemCallError => e
     # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
-    path = get_novel_data_dir.join(filename)
     return nil unless File.exist?(path)
-    YAML.unsafe_load(File.read(path))
+    Narou::YAMLLoader.load(File.read(path), filename: path)
+  rescue Narou::YAMLLoader::Error => e
+    warn "[warn] YAML load failed for #{filename}: #{e.message}"
+    nil
   end
 
   #
