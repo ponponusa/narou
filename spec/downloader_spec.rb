@@ -60,5 +60,36 @@ describe Downloader do
       end
     end
   end
+
+  describe ".get_data_by_target" do
+    before do
+      allow(Narou).to receive(:alias_to_id) { |value| value }
+    end
+
+    it "matches toc_url for ncode targets using literal comparison" do
+      target = "n1234ab"
+      data_entry = { "toc_url" => "https://example.com/#{target}/" }
+      fake_db = double("database")
+      allow(fake_db).to receive(:each_value).and_yield(data_entry)
+      allow(fake_db).to receive(:[]).and_return(nil)
+      allow(fake_db).to receive(:get_data)
+      allow(Downloader).to receive(:database).and_return(fake_db)
+
+      expect(Downloader.get_data_by_target(target)).to eq(data_entry)
+    end
+
+    it "escapes regex metacharacters when matching ncode" do
+      target = "n1234ab+"
+      data_entry = { "toc_url" => "https://example.com/#{target}/" }
+      fake_db = double("database")
+      allow(fake_db).to receive(:each_value).and_yield(data_entry)
+      allow(fake_db).to receive(:[]).and_return(nil)
+      allow(fake_db).to receive(:get_data)
+      allow(Downloader).to receive(:database).and_return(fake_db)
+      allow(Downloader).to receive(:get_target_type).and_return(:ncode)
+
+      expect(Downloader.get_data_by_target(target)).to eq(data_entry)
+    end
+  end
 end
 

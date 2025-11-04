@@ -249,7 +249,7 @@ class Downloader
       end
     when :ncode
       database.each_value do |data|
-        return data if data["toc_url"] =~ %r!#{target}/$!
+        return data if data["toc_url"] =~ %r!#{Regexp.escape(target)}/$!
       end
     when :id
       data = database[target.to_i]
