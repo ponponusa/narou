@@ -43,7 +43,7 @@ Template.write: Invalid or unsafe file path ...***.yaml
 ## 🖥 実行環境（CLI利用時）
 - OS：例）Ubuntu 24.04 / macOS 15 / Windows 11 (WSL2)
 - Ruby バージョン：`ruby -v` の結果
-- narou.rb バージョン：`narou --version` の結果
+- narou.rb バージョン：`narou-mod --version` の結果
 - 実行方法：`gem install` / `bundle exec` / Docker 等
 - 設定変更・カスタマイズがある場合は概要を記載
 
@@ -51,7 +51,7 @@ Template.write: Invalid or unsafe file path ...***.yaml
 
 ## 🌐 実行環境（WebUI利用時）
 - ブラウザ：例）Chrome 131 / Firefox 132 / Safari 18  
-- アクセス方法：ローカルで `narou web` 起動 / リモートサーバ経由 など  
+- アクセス方法：ローカルで `narou-mod web` 起動 / リモートサーバ経由 など  
 - Web UI のポート番号や HTTPS の有無（例：`https://localhost:9200`）
 
 ---

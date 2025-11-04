@@ -19,10 +19,10 @@ module Command
   ・指定した小説の保存フォルダを開きます。
 
   Examples:
-    narou folder n9669bk
-    narou folder musyoku
-    narou folder 0
-    narou f 0
+    narou-mod folder n9669bk
+    narou-mod folder musyoku
+    narou-mod folder 0
+    narou-mod f 0
 
   Options:
       EOS

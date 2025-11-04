@@ -25,12 +25,12 @@ module Command
   ・<target>にhotentryを指定した場合、最新のhotnetryを送信します
 
   Examples:
-    narou mail 6         # 新着関係なくメール(送信済みフラグは立つ)
+    narou-mod mail 6         # 新着関係なくメール(送信済みフラグは立つ)
 
-    narou update
-    narou mail           # updateで新着があった小説を全てメール
+    narou-mod update
+    narou-mod mail           # updateで新着があった小説を全てメール
 
-    narou mail --force   # 凍結済以外の全ての小説を強制的にメール(使い方に注意)
+    narou-mod mail --force   # 凍結済以外の全ての小説を強制的にメール(使い方に注意)
 
   Options:
       EOS

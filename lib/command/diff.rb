@@ -28,24 +28,24 @@ module Command
   ・もし自分の好きな差分表示プログラムを使いたい場合、difftoolを設定して変更することが出来ます(下記参照)
 
   Examples:
-    narou diff          # 直前に更新した小説の差分を表示
-    narou diff 6
-    narou diff 6 -n 2   # 最新から2番目の差分との比較
-    narou diff 6 -2     # -n 2 の省略した記述方法
-    narou diff 6 2013.02.21@01.39.46   # 差分を直接指定
-    narou diff 6 -l     # 過去にどの話数の差分があるのかを確認
+    narou-mod diff          # 直前に更新した小説の差分を表示
+    narou-mod diff 6
+    narou-mod diff 6 -n 2   # 最新から2番目の差分との比較
+    narou-mod diff 6 -2     # -n 2 の省略した記述方法
+    narou-mod diff 6 2013.02.21@01.39.46   # 差分を直接指定
+    narou-mod diff 6 -l     # 過去にどの話数の差分があるのかを確認
 
     # 自分の好きな差分表示プログラムを使う場合
-    narou s difftool="C:\\Program Files\\WinMerge\\WinMergeU.exe"
-    narou s difftool=colordiff      # コマンドラインツールを指定したり
+    narou-mod s difftool="C:\\Program Files\\WinMerge\\WinMergeU.exe"
+    narou-mod s difftool=colordiff      # コマンドラインツールを指定したり
     # Narou.rbオリジナルの差分表示に戻す場合は設定を削除する
-    narou s difftool=
+    narou-mod s difftool=
 
     # difftoolに渡す引数(指定しなければ単純に新旧ファイルを引数に呼び出す)
     # 特殊な変数 %NEW : 最新データの差分用ファイルパス
     #            %OLD : 古い方の差分用ファイルパス
-    narou s difftool.arg='-e -x -ub -dl "OLD" -dr "NEW" %OLD %NEW'
-    narou s difftool.arg="-u %OLD %NEW"
+    narou-mod s difftool.arg='-e -x -ub -dl "OLD" -dr "NEW" %OLD %NEW'
+    narou-mod s difftool.arg="-u %OLD %NEW"
 
   Options:
       EOS

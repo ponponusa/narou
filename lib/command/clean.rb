@@ -23,11 +23,11 @@ module Command
   ・対象小説を指定しなかった場合は直前に変換した小説について検査します。
 
   Examples:
-    narou clean          # 直前に変換した小説について検査
-    narou clean 6
-    narou clean 6 -f     # 実際に削除
-    narou clean --all    # 全小説について検査
-    narou clean -af      # 全小説について検査して、実際に削除
+    narou-mod clean          # 直前に変換した小説について検査
+    narou-mod clean 6
+    narou-mod clean 6 -f     # 実際に削除
+    narou-mod clean --all    # 全小説について検査
+    narou-mod clean -af      # 全小説について検査して、実際に削除
   Options:
       EOS
 

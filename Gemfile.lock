@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    narou (2.0.251031.1)
+    narou-mod (1.6.1)
       activesupport (~> 8.0, >= 8.1.0)
       bootsnap (~> 1.18, >= 1.18.6)
       csv (~> 3.3)
@@ -226,7 +226,7 @@ PLATFORMS
 
 DEPENDENCIES
   awesome_print (~> 1.9)
-  narou!
+  narou-mod!
   pry (~> 0.15)
   pry-byebug (~> 3.11)
   rack-test (~> 2.1)

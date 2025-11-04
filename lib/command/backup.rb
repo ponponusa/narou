@@ -24,9 +24,9 @@ module Command
   ・バックアップ対象は、バックアップファイル以外の小説保存フォルダにあるファイル全てが対象です。
 
   Examples:
-    narou backup 0
-    narou backup n9669bk
-    narou backup 0 1 musyoku
+    narou-mod backup 0
+    narou-mod backup n9669bk
+    narou-mod backup 0 1 musyoku
       EOS
     end
 

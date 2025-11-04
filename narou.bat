@@ -1,14 +1,9 @@
 @echo off
 REM -*- mode: ruby -*-
-@if not "%~d0" == "~d0" goto WinNT
-ruby -x narou.bat %1 %2 %3 %4 %5 %6 %7 %8 %9
-@goto endofruby
-:WinNT
-ruby -x "%~f0" %*
-@goto endofruby
-#! ruby
-
-require_relative "narou.rb"
-
-__END__
-:endofruby
+echo narou コマンドは narou-mod に名称変更されました。narou-mod.bat をご利用ください。
+@if exist "narou-mod.bat" (
+	call narou-mod.bat %*
+) else (
+	ruby -e "warn 'narou-mod.bat が見つかりません'; exit 1"
+	exit /b 1
+)

@@ -37,6 +37,7 @@ commitversion
 .test_novel_data/
 mail_setting.yaml
 .byebug_history
+*.log
 
 #
 # for gem

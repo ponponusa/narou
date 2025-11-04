@@ -48,6 +48,51 @@ RSpec.describe "Narou::AppServer REST API" do
     end
   end
 
+  describe "POST /api/taginfo.json" do
+    it "returns 400 when ids are missing" do
+      post "/api/taginfo.json"
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body).to include("success" => false, "error" => "小説が選択されていません")
+    end
+  end
+
+  describe "POST /api/edit_tag" do
+    let(:json_headers) { { "CONTENT_TYPE" => "application/json" } }
+
+    it "returns 400 when ids are invalid" do
+      payload = {
+        ids: ["invalid"],
+        states: { "tag" => 2 }
+      }.to_json
+
+      post "/api/edit_tag", payload, json_headers
+
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body).to include("success" => false, "error" => "小説が選択されていません")
+    end
+  end
+
+  describe "GET /api/story" do
+    it "returns 400 when id is missing" do
+      get "/api/story"
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body).to include("success" => false, "error" => "小説IDが指定されていません")
+    end
+
+    it "returns 404 when the specified novel does not exist" do
+      allow(Downloader).to receive(:get_toc_by_target).and_return(nil)
+
+      get "/api/story", id: "999"
+
+      expect(last_response.status).to eq(404)
+      body = JSON.parse(last_response.body)
+      expect(body).to include("success" => false, "error" => "対象の小説が見つかりません")
+    end
+  end
+
   describe "POST /api/download" do
     it "queues download command with the provided targets" do
       expect(CommandLine).to receive(:run!).with("download", %w(22), nil)

@@ -5,5 +5,5 @@
 #
 
 module Narou
-  VERSION = "3.9.1.mod.R1.6"
+  VERSION = "1.6.1"
 end
