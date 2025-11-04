@@ -48,4 +48,31 @@ describe Narou do
       end
     end
   end
+
+  describe ".latest_version" do
+    let(:release_client) { instance_double(Narou::GitHubRelease) }
+    let(:release) do
+      Narou::GitHubRelease::Release.new(
+        tag_name: "v9.9.9",
+        version: "9.9.9",
+        name: "v9.9.9",
+        html_url: "https://example.com",
+        assets: []
+      )
+    end
+
+    it "GitHub Releases のバージョンを返す" do
+      allow(Narou::GitHubRelease).to receive(:new).and_return(release_client)
+      allow(release_client).to receive(:latest_release).and_return(release)
+
+      expect(Narou.latest_version).to eq "9.9.9"
+    end
+
+    it "取得に失敗したら nil を返す" do
+      allow(Narou::GitHubRelease).to receive(:new).and_return(release_client)
+      allow(release_client).to receive(:latest_release).and_raise(Narou::GitHubRelease::Error.new("fail"))
+
+      expect(Narou.latest_version).to be_nil
+    end
+  end
 end

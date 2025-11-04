@@ -132,7 +132,7 @@ module Command
       chuki_tag_path = File.join(aozora_path, "chuki_tag.txt")
       custom_chuki_tag = File.read(custom_chuki_tag_path, mode: "r:BOM|UTF-8")
       chuki_tag = File.read(chuki_tag_path, mode: "r:BOM|UTF-8")
-      embedded_mark = "### Narou.rb embedded custom chuki ###"
+      embedded_mark = "### Narou.rb MOD embedded custom chuki ###"
       if chuki_tag =~ /#{embedded_mark}/
         chuki_tag.gsub!(/#{embedded_mark}.+#{embedded_mark}/m, custom_chuki_tag)
       else

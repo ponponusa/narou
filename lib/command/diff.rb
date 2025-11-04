@@ -38,7 +38,7 @@ module Command
     # 自分の好きな差分表示プログラムを使う場合
     narou-mod s difftool="C:\\Program Files\\WinMerge\\WinMergeU.exe"
     narou-mod s difftool=colordiff      # コマンドラインツールを指定したり
-    # Narou.rbオリジナルの差分表示に戻す場合は設定を削除する
+    # Narou.rb オリジナルの差分表示に戻す場合は設定を削除する
     narou-mod s difftool=
 
     # difftoolに渡す引数(指定しなければ単純に新旧ファイルを引数に呼び出す)
