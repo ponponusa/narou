@@ -33,8 +33,8 @@ Gem::Specification.new do |gem|
     ============================================================
      Narou.rb_MOD v#{::Narou::VERSION} がインストールされました 🎉
 
-    コマンドヘルプ:   narou-mod help
-    Webサーバー起動:  narou-mod web
+      コマンドヘルプ:   narou-mod help
+      Webサーバー起動:  narou-mod web
 
      更新情報: https://github.com/ponponusa/narou/releases
     ============================================================
