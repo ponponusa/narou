@@ -5,5 +5,12 @@
 #
 
 module Narou
-  VERSION = "3.9.1.mod.R1.6"
+  VERSION = "2.0.0"
+
+  commit_path = File.expand_path("../commitversion", __dir__)
+  commit_value = if File.exist?(commit_path)
+                   content = File.read(commit_path).strip
+                   content.empty? ? nil : content
+                 end
+  COMMIT = commit_value&.freeze
 end

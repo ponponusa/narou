@@ -19,9 +19,9 @@ module Command
   ・指定した小説の掲載ページをブラウザで開きます。
 
   Examples:
-    narou browser n9669bk
-    narou browser musyoku -v
-    narou b 0
+    narou-mod browser n9669bk
+    narou-mod browser musyoku -v
+    narou-mod b 0
 
   Options:
       EOS

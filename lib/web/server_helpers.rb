@@ -6,8 +6,12 @@
 
 # rubocop:disable Style/ClassAndModuleChildren
 
+require "json"
+require_relative "../novelsetting"
+
 module Narou::ServerHelpers
   RELOAD_TIMING_DEFAULT = "every"
+  FORCE_SETTING_DEFAULT_HINT = "未設定時：個別設定や default.* の値がそのまま利用されます".freeze
 
   #
   # タグをHTMLで装飾する
@@ -197,6 +201,15 @@ module Narou::ServerHelpers
     puts message if ENV["NAROU_DEBUG"] == "1"
   end
 
+  def json_error!(status_code, message, extra = {})
+    payload = { success: false, error: message }.merge(extra)
+    halt status_code, { "Content-Type" => "application/json" }, JSON.generate(payload)
+  end
+
+  def bad_request!(message = "不正なリクエストです")
+    json_error!(400, message)
+  end
+
   #
   # フォーム情報の真偽値データを実際のデータに変換
   #
@@ -264,6 +277,81 @@ module Narou::ServerHelpers
 
   def table_reload_timing
     Inventory.load("local_setting")["webui.table.reload-timing"] || RELOAD_TIMING_DEFAULT
+  end
+
+  def default_hint_for_setting(name, definition)
+    hint_map = if Narou.const_defined?(:SETTING_VARIABLES_WEBUI_DEFAULT_HINTS)
+                 Narou::SETTING_VARIABLES_WEBUI_DEFAULT_HINTS
+               else
+                 {}
+               end
+    hint = hint_map[name]
+    return hint if hint
+
+    if name.start_with?("default_args.")
+      command_name = name.split(".", 2).last
+      return "未設定時：#{command_name} コマンドに追加の既定オプションは付与されません"
+    end
+
+    case definition[:tab]
+    when :default
+      if name == "default.enable_promo_tag_filter"
+        return "未設定時：いいえ"
+      end
+      original_key = name.sub(/^default\./, "")
+      original = original_setting_definition(original_key)
+      return nil unless original
+      formatted = format_setting_value(original[:value], original)
+      "未設定時：#{formatted}"
+    when :force
+      FORCE_SETTING_DEFAULT_HINT
+    else
+      nil
+    end
+  end
+
+  def format_setting_value(value, definition = nil)
+    case definition && definition[:type]
+    when :select
+      summary = select_summary(definition, value)
+      return summary if summary
+    when :multiple
+      values = Array(value)
+      return "未設定" if values.empty?
+      formatted_values = values.map do |entry|
+        select_summary(definition, entry) || format_setting_value(entry)
+      end
+      return formatted_values.join(", ")
+    when :boolean
+      return value_to_msg(value)
+    end
+
+    case value
+    when TrueClass, FalseClass
+      value_to_msg(value)
+    when Array
+      return "未設定" if value.empty?
+      value.map { |entry| format_setting_value(entry) }.join(", ")
+    when NilClass
+      "未設定"
+    else
+      str = value.to_s
+      str.empty? ? "（空文字）" : str
+    end
+  end
+
+  def select_summary(definition, value)
+    keys = definition[:select_keys]
+    summaries = definition[:select_summaries]
+    return nil unless keys && summaries
+    index = keys.index(value)
+    index ? summaries[index] : nil
+  end
+
+  def original_setting_definition(setting_name)
+    index = NovelSetting::ORIGINAL_SETTINGS_KEY_INDEXES[setting_name]
+    return nil unless index
+    NovelSetting::ORIGINAL_SETTINGS[index]
   end
 
   def partial(template, *args)

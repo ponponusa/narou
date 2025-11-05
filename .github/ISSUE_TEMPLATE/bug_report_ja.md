@@ -7,6 +7,7 @@ assignees: []
 ---
 
 ## 🐛 バグの概要
+
 発生している問題について、簡潔で明確に説明してください。
 
 例：  
@@ -16,6 +17,7 @@ assignees: []
 ---
 
 ## 🔁 再現手順
+
 問題を再現する手順をできるだけ具体的に書いてください。
 
 1. 実行したコマンドまたは操作手順（例：`narou download 12345`）  
@@ -26,6 +28,7 @@ assignees: []
 ---
 
 ## 📖 期待していた動作
+
 本来どのように動作することを期待していたか、簡潔に書いてください。
 
 例：  
@@ -34,6 +37,7 @@ assignees: []
 ---
 
 ## 📝 実際のログ / エラーメッセージ
+
 例：
 terminated with exception (report_on_exception is true):
 Template.write: Invalid or unsafe file path ...***.yaml
@@ -41,22 +45,25 @@ Template.write: Invalid or unsafe file path ...***.yaml
 ---
 
 ## 🖥 実行環境（CLI利用時）
+
 - OS：例）Ubuntu 24.04 / macOS 15 / Windows 11 (WSL2)
 - Ruby バージョン：`ruby -v` の結果
-- narou.rb バージョン：`narou --version` の結果
+- narou.rb mod バージョン：`narou-mod --version` の結果
 - 実行方法：`gem install` / `bundle exec` / Docker 等
 - 設定変更・カスタマイズがある場合は概要を記載
 
 ---
 
 ## 🌐 実行環境（WebUI利用時）
+
 - ブラウザ：例）Chrome 131 / Firefox 132 / Safari 18  
-- アクセス方法：ローカルで `narou web` 起動 / リモートサーバ経由 など  
+- アクセス方法：ローカルで `narou-mod web` 起動 / リモートサーバ経由 など  
 - Web UI のポート番号や HTTPS の有無（例：`https://localhost:9200`）
 
 ---
 
 ## 📚 対象の小説・サイト
+
 - どの小説サイトで発生しましたか？（例：小説家になろう / カクヨム / ノクターン など）  
 - 特定作品のみで発生しますか？（作品IDなど分かる範囲で）  
 
@@ -65,5 +72,6 @@ Template.write: Invalid or unsafe file path ...***.yaml
 ---
 
 ## 🧩 補足情報
+
 再現に関係しそうな情報があれば記載してください。  
-例）3.9.1.mod.R1.1への更新後から発生、2025.1.1以降でのみ再現、など。
+例）narou-mod 1.6.1への更新後から発生、2025.1.1以降でのみ再現、など。

@@ -26,7 +26,7 @@ module Command
       @opt.separator <<-EOS
 
   ・各コマンドの設定の変更が出来ます。
-  ・Global な設定はユーザープロファイルに保存され、すべての narou コマンドで使われます
+  ・Global な設定はユーザープロファイルに保存され、すべての narou-mod コマンドで使われます
   ・下の一覧は一部です。すべてを確認するには -a オプションを付けて確認して下さい
   ・default. で始まる設定は、setting.ini で未設定時の項目の挙動を指定することが出来ます
   ・force. で始まる設定は、setting.ini や default.* 等の指定を全て無視して項目の挙動を強制出来ます
@@ -41,18 +41,18 @@ module Command
 
       @opt.separator <<-EOS
 
-    これ以外にも設定出来る項目があります。確認する場合は
-    narou setting -a コマンドを参照して下さい
+  これ以外にも設定出来る項目があります。確認する場合は
+  narou-mod setting -a コマンドを参照して下さい
 
   Examples:
-    narou setting --list                 # 現在の設置値一覧を表示
-    narou setting convert.no-open=true   # 値を設定する
-    narou setting convert.no-epub=       # 右辺に何も書かないとその設定を削除出来る
-    narou setting device                 # 変数名だけ書くと現在の値を確認出来る
+    narou-mod setting --list                 # 現在の設置値一覧を表示
+    narou-mod setting convert.no-open=true   # 値を設定する
+    narou-mod setting convert.no-epub=       # 右辺に何も書かないとその設定を削除出来る
+    narou-mod setting device                 # 変数名だけ書くと現在の値を確認出来る
 
-    narou s convert.copy-to=C:/dropbox/mobi
+    narou-mod s convert.copy-to=C:/dropbox/mobi
     # パスにスペースが含まれる場合はダブルクウォーテーションで囲う
-    narou s convert.copy-to="C:\\Documents and Settings\\user\\epub"
+  narou-mod s convert.copy-to="C:\\Documents and Settings\\user\\epub"
 
   Options:
       EOS
@@ -272,7 +272,7 @@ module Command
         exit Narou::EXIT_ERROR_CODE
       end
       msg = "指定された小説のsetting.iniの未項目設定に共通設定を焼き付けます。\n" \
-            "(共通設定とはsetting.iniの項目が未設定時に使用される default.* 系設定およびNarou.rbオリジナル設定のこと)\n" \
+            "(共通設定とはsetting.iniの項目が未設定時に使用される default.* 系設定およびNarou.rb MODオリジナル設定のこと)\n" \
             "よろしいですか"
       return unless Narou::Input.confirm(msg)
 
@@ -328,7 +328,7 @@ module Command
 
     SETTING_TAB_INFO = {
       webui: "WEB UI 専用の設定です",
-      global: "Global な設定はユーザープロファイルに保存され、すべての narou コマンドで使われます",
+  global: "Global な設定はユーザープロファイルに保存され、すべての narou-mod コマンドで使われます",
       default: "default.* 系の設定は個別の変換設定で未設定の項目の挙動を指定することが出来ます",
       force: "force.* 系の設定は個別設定、default.* 等の設定を無視して反映されるようになります",
       command: "default_args.* 系の設定は、各種コマンドのオプションを省略した場合に使用されるオプションを指定出来ます",
@@ -535,6 +535,16 @@ module Command
           help: "サイトから取得したタグを自動的に小説データに追加する",
           tab: :general
         },
+        "promo-tag.enable" => {
+          type: :boolean,
+          help: "タイトルや作者から宣伝タグを除去する",
+          tab: :global
+        },
+        "promo-tag.keywords" => {
+          type: :string,
+          help: "追加で除去する宣伝タグをカンマまたは改行で指定する",
+          tab: :global
+        },
         "normalize-filename" => {
           type: :boolean,
           help: "ファイル名の文字列をNFCで正規化する。※既存データとの互換性が無くなる可能性があるので、" \
@@ -611,7 +621,7 @@ module Command
           type: :directory, help: "AozoraEpub3のあるフォルダを指定", invisible: true
         },
         "line-height" => {
-          type: :float, help: "行間サイズ(narou init から指定しないと反映されません)", invisible: true
+          type: :float, help: "行間サイズ(narou-mod init から指定しないと反映されません)", invisible: true
         },
         "difftool" => {
           type: :string, help: "diffで使うツールのパスを指定する",
@@ -628,9 +638,9 @@ module Command
         "color-parser" => {
           type: :select,
           help: "コンソール上でのANSIカラーを表示する方法の選択(Windowsのみ)。" \
-                "system: システムに任せる(デフォルト) / self: Narou.rbで処理",
+                "system: システムに任せる(デフォルト) / self: Narou.rb MODで処理",
           select_keys: %w(system self),
-          select_summaries: %w(システムに任せる Narou.rbで処理),
+          select_summaries: %w(システムに任せる Narou.rb MODで処理),
           tab: :global
         },
         "server-port" => {

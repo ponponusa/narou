@@ -49,12 +49,12 @@ module Command
 
 #{description}
   Examples:
-    narou init
-    narou init -p /opt/narou/aozora    # AozoraEpub3 のフォルダを直接指定
-    narou init -p :keep                # 設定済みと同じ場所を指定(既に初期化済の場合)
+    narou-mod init
+    narou-mod init -p /opt/narou/aozora    # AozoraEpub3 のフォルダを直接指定
+    narou-mod init -p :keep                # 設定済みと同じ場所を指定(既に初期化済の場合)
 
     # 行の高さの調整
-    narou init --line-height 1.8       # 行の高さを1.8emに設定(1.8文字分相当)
+    narou-mod init --line-height 1.8       # 行の高さを1.8emに設定(1.8文字分相当)
     # 行の高さなので、行間を1文字分あけたいという場合は 1+1 で 2 を指定する
     # (未設定のまま小説変換すると 1.6 で計算される)
     # 参考情報：Kindle Voyage で文字サイズ４番目の大きさの場合、
@@ -62,8 +62,8 @@ module Command
     #   1.8em : 1ページに13行
     # の表示行数になる
 
-    # 入力を省略したい場合、-p と -l を両方指定してやる必要あり
-    narou init -p /path/to/aozora -l 1.8
+  # 入力を省略したい場合、-p と -l を両方指定してやる必要あり
+  narou-mod init -p /path/to/aozora -l 1.8
 
   Options:
       MSG
@@ -79,7 +79,7 @@ module Command
         init_aozoraepub3
         puts "初期化が完了しました！"
         puts "現在のフォルダ下で各種コマンドが使用出来るようになりました。"
-        puts "まずは narou help で簡単な説明を御覧ください。"
+  puts "まずは narou-mod help で簡単な説明を御覧ください。"
       end
     end
 
@@ -91,7 +91,7 @@ module Command
       puts "<bold><green>AozoraEpub3の設定を行います</green></bold>".termcolor
       unless @global_setting["aozoraepub3dir"]
         puts "<bold><red>#{"!!!WARNING!!!".center(70)}</red></bold>".termcolor
-        puts "AozoraEpub3の構成ファイルを書き換えます。narouコマンド用に別途新規インストールしておくことをオススメします"
+  puts "AozoraEpub3の構成ファイルを書き換えます。narou-mod コマンド用に別途新規インストールしておくことをオススメします"
       end
 
       path = nil
@@ -111,7 +111,7 @@ module Command
         end
 
       unless aozora_path
-        puts "設定をスキップしました。あとで " + "<bold><yellow>narou init</yellow></bold>".termcolor + " で再度設定出来ます"
+  puts "設定をスキップしました。あとで " + "<bold><yellow>narou-mod init</yellow></bold>".termcolor + " で再度設定出来ます"
         return
       end
 
@@ -132,7 +132,7 @@ module Command
       chuki_tag_path = File.join(aozora_path, "chuki_tag.txt")
       custom_chuki_tag = File.read(custom_chuki_tag_path, mode: "r:BOM|UTF-8")
       chuki_tag = File.read(chuki_tag_path, mode: "r:BOM|UTF-8")
-      embedded_mark = "### Narou.rb embedded custom chuki ###"
+      embedded_mark = "### Narou.rb MOD embedded custom chuki ###"
       if chuki_tag =~ /#{embedded_mark}/
         chuki_tag.gsub!(/#{embedded_mark}.+#{embedded_mark}/m, custom_chuki_tag)
       else

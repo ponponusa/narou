@@ -3,6 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require "tmpdir"
 require_relative "../lib/downloader"
 
 describe Downloader do
@@ -41,6 +42,53 @@ describe Downloader do
       it { expect(Downloader.create_subdirecotry_name("n")).to eq "" }
       it { expect(Downloader.create_subdirecotry_name("1")).to eq "1" }
       it { expect(Downloader.create_subdirecotry_name("a")).to eq "a" }
+    end
+  end
+
+  describe ".get_toc_data" do
+    it "raises when YAML includes unsupported objects" do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, Downloader::TOC_FILE_NAME)
+        File.write(path, <<~YAML)
+          --- !ruby/object:Kernel
+          foo: bar
+        YAML
+
+        expect {
+          Downloader.get_toc_data(dir)
+        }.to raise_error(Narou::YAMLLoader::Error)
+      end
+    end
+  end
+
+  describe ".get_data_by_target" do
+    before do
+      allow(Narou).to receive(:alias_to_id) { |value| value }
+    end
+
+    it "matches toc_url for ncode targets using literal comparison" do
+      target = "n1234ab"
+      data_entry = { "toc_url" => "https://example.com/#{target}/" }
+      fake_db = double("database")
+      allow(fake_db).to receive(:each_value).and_yield(data_entry)
+      allow(fake_db).to receive(:[]).and_return(nil)
+      allow(fake_db).to receive(:get_data)
+      allow(Downloader).to receive(:database).and_return(fake_db)
+
+      expect(Downloader.get_data_by_target(target)).to eq(data_entry)
+    end
+
+    it "escapes regex metacharacters when matching ncode" do
+      target = "n1234ab+"
+      data_entry = { "toc_url" => "https://example.com/#{target}/" }
+      fake_db = double("database")
+      allow(fake_db).to receive(:each_value).and_yield(data_entry)
+      allow(fake_db).to receive(:[]).and_return(nil)
+      allow(fake_db).to receive(:get_data)
+      allow(Downloader).to receive(:database).and_return(fake_db)
+      allow(Downloader).to receive(:get_target_type).and_return(:ncode)
+
+      expect(Downloader.get_data_by_target(target)).to eq(data_entry)
     end
   end
 end

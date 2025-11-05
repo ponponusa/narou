@@ -5,7 +5,7 @@ AllCops:
   Exclude:
     - "小説データ/**/*"
     - "trash/**/*"
-    - "narou.gemspec"
+    - "narou-mod.gemspec"
     - "spec/**/*"
   DisplayCopNames: true
   TargetRubyVersion: 2.5

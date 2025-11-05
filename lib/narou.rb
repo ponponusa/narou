@@ -11,6 +11,7 @@ require "active_support/core_ext/object/blank"
 require_relative "helper"
 require_relative "inventory"
 require_relative "mixin/all"
+require_relative "narou/github_release"
 if Helper.engine_jruby?
   require_relative "extensions/jruby"
 end
@@ -32,7 +33,7 @@ module Narou
   LINE_HEIGHT_DEFAULT = 1.6 # 単位em
 
   UPDATE_SORT_KEYS = {
-    "id" => "ID", "last_update" => "更新日", "title" => "タイトル", "author" => "作者名",
+    "id" => "ID", "last_update" => "更新日", "title" => "タイトル", "author" => "著者名",
     "new_arrivals_date" => "新着日", "general_lastup" => "最新話掲載日"
   }
 
@@ -326,16 +327,16 @@ module Narou
     end
 
     #
-    # Narou.rb gem の最新バージョン番号を取得する
+    # Narou.rb MOD の最新バージョン番号を取得する
     #
-    # rubygems公式APIによる取得は、WindowsでのSSL証明書問題で取得出来ない
-    # 環境があるため、gemコマンド経由で取得する
+    # @param release_client [Narou::GitHubRelease] GitHub Release クライアント
+    # @return [String, nil] 最新バージョン番号
     #
-    def latest_version
-      response = `gem search ^narou$`.split("\n")
-      if response.last =~ /\Anarou \(([0-9.]+).*?\)\z/
-        $1
-      end
+    def latest_version(release_client: Narou::GitHubRelease.new)
+      release = release_client.latest_release
+      release&.version
+    rescue Narou::GitHubRelease::Error
+      nil
     end
 
     def commit_version

@@ -11,30 +11,25 @@ module Narou
     "commitversion"
   end
 end
-at_exit do
-  if File.exist?("commitversion")
-    FileUtils.rm("commitversion")
-  end
-end
 Encoding.default_external = Encoding::UTF_8
 Gem::Specification.new do |gem|
-  gem.name          = "narou"
+  gem.name          = "narou-mod"
   gem.version       = ::Narou::VERSION
   if is_windows
       gem.platform  = Gem::Platform::CURRENT
   end
   gem.license       = "MIT"
   gem.authors       = ["whiteleaf7 (original)", "Rumia-Channel (fork from)", "ponponusa (mod maintainer)"]
-  gem.email         = ["2nd.leaf@gmail.com"]
+  gem.email         = ["init0531.usa@gmail.com"]
   gem.homepage      = "https://github.com/ponponusa/narou"
-  gem.summary       = "Narou.rb ― 小説家になろうダウンローダ＆縦書用整形スクリプト"
+  gem.summary       = "Narou.rb MOD ― 小説家になろうダウンローダ＆縦書用整形スクリプト"
   gem.description   = "小説家になろうで公開されている小説を管理し電子書籍データへ変換します。"
   install_message   = <<~MSG
     ============================================================
      Narou.rb_MOD v#{::Narou::VERSION} がインストールされました 🎉
 
-     コマンドヘルプ:   narou help
-     Webサーバー起動:  narou web
+      コマンドヘルプ:   narou-mod help
+      Webサーバー起動:  narou-mod web
 
      更新情報: https://github.com/ponponusa/narou/releases
     ============================================================
@@ -43,7 +38,8 @@ Gem::Specification.new do |gem|
 
   gem.required_ruby_version = ">=3.4.0"
 
-  gem.files = `git ls-files`.split("\n").reject { |fn| fn =~ %r!^spec/|^"spec! } << Narou.create_git_commit_version
+  tracked_files = `git ls-files`.split("\n").select { |fn| File.exist?(fn) }
+  gem.files = tracked_files.reject { |fn| fn =~ %r!^spec/|^"spec! } << Narou.create_git_commit_version
   gem.executables = gem.files.grep(%r!^bin/!).map { |f| File.basename(f) }
 
   gem.add_runtime_dependency 'termcolorlight', '~> 1.0', '>= 1.1.1'

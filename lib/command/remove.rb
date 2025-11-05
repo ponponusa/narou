@@ -25,14 +25,14 @@ module Command
   ・削除するのはデータベースのインデックスだけで、変換済みテキストファイルやMOBIファイル等はそのまま残ります。ファイルをすべて削除する場合は --with-file オプションを指定して下さい。
 
   Examples:
-    narou remove n9669bk
-    narou remove http://ncode.syosetu.com/n9669bk/
-    narou remove n9669bk http://ncode.syosetu.com/n4259s/
-    narou remove 0 1 -y
-    narou remove n9669bk --with-file   # ファイルも完全に削除する
-    narou remove --all-ss              # 連載小説をすべて削除する
-    narou remove --all-ss --with-file  # 短編小説をファイルも含めてすべて削除
-    narou r 0 -wy    # ID:0を確認メッセージなしにファイルも含めて完全に削除する
+    narou-mod remove n9669bk
+    narou-mod remove http://ncode.syosetu.com/n9669bk/
+    narou-mod remove n9669bk http://ncode.syosetu.com/n4259s/
+    narou-mod remove 0 1 -y
+    narou-mod remove n9669bk --with-file   # ファイルも完全に削除する
+    narou-mod remove --all-ss              # 連載小説をすべて削除する
+    narou-mod remove --all-ss --with-file  # 短編小説をファイルも含めてすべて削除
+    narou-mod r 0 -wy    # ID:0を確認メッセージなしにファイルも含めて完全に削除する
 
   Options:
       EOS

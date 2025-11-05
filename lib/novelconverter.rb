@@ -917,7 +917,7 @@ class NovelConverter
 
 
   #
-  # テキストデータ先頭二行からタイトルと作者名を取得
+  # テキストデータ先頭二行からタイトルと著者名を取得
   #
   def get_title_and_author_by_text(text)
     title, author = text.split("\n", 3)

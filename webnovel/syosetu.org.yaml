@@ -12,7 +12,7 @@ append_title_to_folder_name: yes
 title_strip_pattern: null
 cookie: over18=off
 sitename: *name
-version: 1.2
+version: 1.3
 
 # ------------------------------------------------------------
 # 目次取得設定
@@ -68,7 +68,7 @@ nu: null
 # general_lastup 最終掲載日
 gl: 最新投稿</td><td.*?>(?<general_lastup>.+?)</td>
 
-# writer 作者名
+# writer 著者名
 w: 作者</td><td.*?>(?:<a href=.+?>)?(?<writer>.+?)(?:</a>)?</td>
 
 # length 文字数
@@ -76,4 +76,4 @@ l: 合計文字数</td><td.*?>(?<length>.+?)文字
 
 # tags タグ
 tags: |-
-  <tr><td class="label">タグ</td><td colspan=3 >(?<tag>.+?)</td></tr>
+  <tr><td class="label">タグ</td><td[^>]*colspan[^>]*>(?:\s*<a[^>]*>(?<tag>[^<]+?)</a>\s*)+</td></tr>

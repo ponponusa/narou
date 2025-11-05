@@ -311,6 +311,18 @@ class NovelSetting
       help: "作者コメントを検出する（テキストファイルを直接変換する場合のみの設定）"
     },
     {
+      name: "enable_promo_tag_filter",
+      type: :boolean,
+      value: false,
+      help: "タイトルや作者から宣伝用語を除去する"
+    },
+    {
+      name: "promo_tag_additional_keywords",
+      type: :string,
+      value: "",
+      help: "追加で除去したい宣伝用語を改行またはカンマ区切りで指定する（正規表現可）"
+    },
+    {
       name: "enable_erase_introduction",
       type: :boolean,
       value: false,
@@ -374,7 +386,7 @@ class NovelSetting
       name: "enable_dakuten_font",
       type: :boolean,
       value: false,
-      help: "濁点表現をNarou.rbで処理する(濁点フォントを使用する)。false の場合はAozoraEpub3に任せる"
+      help: "濁点表現をNarou.rb MODで処理する(濁点フォントを使用する)。false の場合はAozoraEpub3に任せる"
     },
     {
       name: "enable_display_end_of_book",
@@ -394,7 +406,7 @@ class NovelSetting
       value: "(%-m/%-d)",
       help: <<~HELP
         enable_add_date_to_title で付与する日付のフォーマット。書式は http://bit.ly/date_format を参照。
-        Narou.rb専用の書式として下記のものも使用可能。
+        Narou.rb 専用の書式として下記のものも使用可能。
         $t 小説のタイトル($tを使った場合はtitle_date_alignは無視される)
         $s 2045年までの残り時間(10分単位の4桁の36進数)
         $ns 小説が掲載されているサイト名

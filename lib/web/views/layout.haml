@@ -7,22 +7,22 @@
     %meta{:content => "whiteleaf", :name => "author"}/
     %meta{:content => "none", :name => "robots"}/
     %title
-      = [@title, "Narou.rb WEB UI"].compact.join(" - ")
+      = [@title, "Narou.rb MOD WEB UI"].compact.join(" - ")
     %link{:href => "/favicon.ico", :rel => "shortcut icon"}/
     - if @bootstrap_theme
-      %link{:href => "/theme/#{@bootstrap_theme}/bootstrap.min.css", :rel => "stylesheet"}/
-      %link{:href => "/theme/#{@bootstrap_theme}/style.css", :rel => "stylesheet"}/
+      %link{:href => "/theme/#{@bootstrap_theme}/bootstrap.min.css?_=#{Narou::VERSION}.#{Narou::COMMIT}", :rel => "stylesheet"}/
+      %link{:href => "/theme/#{@bootstrap_theme}/style.css?_=#{Narou::VERSION}.#{Narou::COMMIT}", :rel => "stylesheet"}/
     - else
       %link{:href => "//cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css", :rel => "stylesheet"}/
-      %link{:href => "/resources/css/default-style.css?_=#{Narou::VERSION}", :rel => "stylesheet"}/
+      %link{:href => "/resources/css/default-style.css?_=#{Narou::VERSION}.#{Narou::COMMIT}", :rel => "stylesheet"}/
     %link{:href => "//cdn.datatables.net/2.3.4/css/dataTables.bootstrap.css", :rel => "stylesheet"}/
     %link{:href => "//cdn.datatables.net/colreorder/2.1.2/css/colReorder.bootstrap.css", :rel => "stylesheet"}/
     %link{:href => "//cdn.datatables.net/buttons/3.2.5/css/buttons.bootstrap.css", :rel => "stylesheet"}
     %link{:href => "//cdn.datatables.net/colvis/1.1.1/css/dataTables.colVis.css", :rel => "stylesheet"}/
     %link{:href => "//cdn.jsdelivr.net/npm/bootstrap-select@1.13.18/dist/css/bootstrap-select.min.css", :rel => "stylesheet"}/
     %link{:href => "//cdn.jsdelivr.net/npm/perfect-scrollbar@1.5.6/css/perfect-scrollbar.min.css", :rel => "stylesheet"}/
-    %link{:href => "/resources/css/toggle-switch.css", :rel => "stylesheet"}/
-    %link{:href => "/style.css?_=#{Narou::VERSION}", :rel => "stylesheet"}/
+    %link{:href => "/resources/css/toggle-switch.css?_=#{Narou::VERSION}.#{Narou::COMMIT}", :rel => "stylesheet"}/
+    %link{:href => "/style.css?_=#{Narou::VERSION}.#{Narou::COMMIT}", :rel => "stylesheet"}/
     :javascript
       var local_initialize_functions = [];
       var slideNavbar;
@@ -50,15 +50,15 @@
     %script{:src => "//cdn.jsdelivr.net/npm/bootstrap-select@1.13.18/js/bootstrap-select.min.js"}
     %script{:src => "//cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"}
     %script{:src => "//cdn.jsdelivr.net/npm/perfect-scrollbar@0.8.1/dist/js/perfect-scrollbar.jquery.min.js"}
-    %script{:src => "/resources/js/bootbox.js"}
-    %script{:src => "/resources/js/sprintf.js"}
-    %script{:src => "/resources/js/shortcut.js"}
-    %script{:src => "/resources/js/jquery.outerclick.js"}
-    %script{:src => "/resources/js/jquery.slidenavbar.js"}
-    %script{:src => "/resources/js/jquery.moveto.js"}
-    %script{:src => "/resources/js/narou.library.js?_=#{Narou::VERSION}"}
-    %script{:src => "/resources/js/narou.queue.js?_=#{Narou::VERSION}"}
-    %script{:src => "/resources/js/common.ui.js?_=#{Narou::VERSION}"}
+    %script{:src => "/resources/js/bootbox.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
+    %script{:src => "/resources/js/sprintf.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
+    %script{:src => "/resources/js/shortcut.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
+    %script{:src => "/resources/js/jquery.outerclick.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
+    %script{:src => "/resources/js/jquery.slidenavbar.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
+    %script{:src => "/resources/js/jquery.moveto.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
+    %script{:src => "/resources/js/narou.library.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
+    %script{:src => "/resources/js/narou.queue.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
+    %script{:src => "/resources/js/common.ui.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
     :javascript
       $(document).ready(function($) {
         slideNavbar = $(".navbar-collapse").slideNavbar();
@@ -67,5 +67,5 @@
         });
       });
     - if env["PATH_INFO"] == "/"
-      %script{:src => "/resources/js/narou.ui.js?_=#{Narou::VERSION}"}
+      %script{:src => "/resources/js/narou.ui.js?_=#{Narou::VERSION}.#{Narou::COMMIT}"}
 

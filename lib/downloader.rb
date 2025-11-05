@@ -9,8 +9,10 @@ require "fileutils"
 require "ostruct"
 require "cgi"
 require_relative "narou"
+require_relative "narou/promo_tag_extractor"
 require_relative "helper"
 require_relative "sitesetting"
+require_relative "novelsetting"
 require_relative "template"
 require_relative "progressbar"
 require_relative "database"
@@ -18,6 +20,7 @@ require_relative "inventory"
 require_relative "eventable"
 require_relative "html"
 require_relative "input"
+require_relative "narou/yaml_loader"
 
 # --- Sanitize shim (fragment only) ---
 unless defined?(Sanitize)
@@ -247,7 +250,7 @@ class Downloader
       end
     when :ncode
       database.each_value do |data|
-        return data if data["toc_url"] =~ %r!#{target}/$!
+        return data if data["toc_url"] =~ %r!#{Regexp.escape(target)}/$!
       end
     when :id
       data = database[target.to_i]
@@ -264,10 +267,10 @@ class Downloader
   #
   def self.get_toc_data(archive_path)
     path = File.join(archive_path, TOC_FILE_NAME)
-    YAML.unsafe_load_file(path)
+    Narou::YAMLLoader.load_file(path)
   rescue SystemCallError
-    # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
-    YAML.unsafe_load(File.read(path))
+    # bootsnap on Windows can raise Errno::E01 errors, fallback to standard IO read
+    Narou::YAMLLoader.load(File.read(path), filename: path)
   end
 
   def self.get_toc_by_target(target)
@@ -518,8 +521,8 @@ class Downloader
         @stream.puts "#{id_and_title} のあらすじが更新されています"
         :ok
       when old_toc["author"] != latest_toc["author"]
-        # 作者名が更新されている場合
-        @stream.puts "#{id_and_title} の作者名が更新されています"
+        # 著者名が更新されている場合
+        @stream.puts "#{id_and_title} の著者名が更新されています"
         update_database
       else
         :none
@@ -750,6 +753,17 @@ class Downloader
       "length" => novel_length,
       "suspend" => suspend
     }
+
+  data["title_raw_latest"] = data["title"]&.dup
+  data["title_original"] = data["title_raw_latest"] || data["title"]
+    data["author_original"] = data["author"]
+
+    promo_config = Narou::PromoTagExtractor.resolve_config(novel_id: @id)
+    Narou::PromoTagExtractor.normalize_entry!(data, config: promo_config)
+    @setting["title"] = data["title"]
+    @setting["author"] = data["author"]
+    @title = data["title"]
+
     auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
     if @setting["tag"] && auto_add_tags
       clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
@@ -768,6 +782,22 @@ class Downloader
       database[@id] = data
     end
     database.save_database
+  end
+
+  def apply_promo_tag_preferences!
+    data = record
+    return false unless data
+
+    promo_config = Narou::PromoTagExtractor.resolve_config(novel_id: @id)
+    changed = Narou::PromoTagExtractor.normalize_entry!(data, config: promo_config)
+
+    if @setting
+      @setting["title"] = data["title"]
+      @setting["author"] = data["author"]
+    end
+    @title = data["title"]
+
+    changed
   end
 
   def get_novel_status
@@ -1241,10 +1271,13 @@ class Downloader
     path = get_novel_data_dir.join(old_relative_path)
     return true unless path.exist?
     begin
-      YAML.unsafe_load_file(path)["element"] != new_subtitle_info["element"]
+      Narou::YAMLLoader.load_file(path)["element"] != new_subtitle_info["element"]
     rescue SystemCallError
-      # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
-      YAML.unsafe_load(File.read(path))["element"] != new_subtitle_info["element"]
+      # bootsnap on Windows can raise Errno::E01 errors, fallback to standard IO read
+      Narou::YAMLLoader.load(File.read(path), filename: path)["element"] != new_subtitle_info["element"]
+    rescue Narou::YAMLLoader::Error => e
+      warn "[warn] YAML load failed for #{path}: #{e.message}"
+      true
     end
   end
 
@@ -1493,14 +1526,17 @@ class Downloader
   #
   # 小説データの格納ディレクトリから読み込む
   def load_novel_data(filename)
-    YAML.unsafe_load_file(get_novel_data_dir.join(filename))
+    path = get_novel_data_dir.join(filename)
+    Narou::YAMLLoader.load_file(path)
   rescue Errno::ENOENT
     nil
   rescue SystemCallError => e
     # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
-    path = get_novel_data_dir.join(filename)
     return nil unless File.exist?(path)
-    YAML.unsafe_load(File.read(path))
+    Narou::YAMLLoader.load(File.read(path), filename: path)
+  rescue Narou::YAMLLoader::Error => e
+    warn "[warn] YAML load failed for #{filename}: #{e.message}"
+    nil
   end
 
   #

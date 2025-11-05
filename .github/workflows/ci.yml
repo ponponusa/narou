@@ -113,15 +113,15 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(ruby -r ./lib/version.rb -e 'print Narou::VERSION')
+          VERSION=$(ruby -r ./lib/version.rb -e 'print Narou::VERSION + (Narou::COMMIT ? "-#{Narou::COMMIT}" : "")')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build gem (generic)
         id: build
         run: |
-          gem build narou.gemspec
+          gem build narou-mod.gemspec
           # 「mingw-ucrt」を含まないほうを汎用ビルド扱いにする
-          GEMFILE=$(ls narou-*.gem | grep -v mingw || true)
+          GEMFILE=$(ls narou-mod-*.gem | grep -v mingw || true)
           echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
 
       - name: Upload generic gem artifact
@@ -159,9 +159,9 @@ jobs:
         id: build
         shell: bash
         run: |
-          gem build narou.gemspec
+          gem build narou-mod.gemspec
           # Windows向け: Gem::Platform::CURRENT が mingw-ucrt の .gem をpick
-          GEMFILE=$(ls narou-*-mingw-ucrt.gem)
+          GEMFILE=$(ls narou-mod-*-mingw-ucrt.gem)
           echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
 
       - name: Upload mingw gem artifact
@@ -173,7 +173,7 @@ jobs:
   #
   # 4) GitHub Release の作成/更新
   #    - 本番 release ブランチへの push のときだけ実行する
-  #    - narou-{version}.gem と narou-{version}-x64-mingw-ucrt.gem を添付
+  #    - narou-mod-{version}.gem と narou-mod-{version}-x64-mingw-ucrt.gem を添付
   #
   release-draft:
     if: github.event_name == 'push' && github.ref_name == 'test-release'
@@ -221,10 +221,10 @@ jobs:
             echo "## 📦 インストール案内"
             echo ""
             echo "- **Windows (mingw / MSYS2 など)** の場合:"
-            echo "  → \`narou-${CURRENT_TAG}-x64-mingw-ucrt.gem\` を使用してください。"
+            echo "  → `narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem` を使用してください。"
             echo ""
             echo "- **macOS / Linux** の場合:"
-            echo "  → \`narou-${CURRENT_TAG}.gem\` を使用してください。"
+            echo "  → `narou-mod-${CURRENT_TAG}.gem` を使用してください。"
             echo ""
             echo "インストール方法:"
             echo "\`\`\`bash"
@@ -251,7 +251,7 @@ jobs:
             echo "  オリジナルの narou.rb をベースに改良・保守を行っている非公式フォークです。"
             echo ""
             echo "- ライセンス: [MIT License](https://opensource.org/licenses/MIT)"
-            echo "- 著作者: whiteleaf7 (original), Rumia-Channel (fork from), ponponusa (mod maintainer)"
+            echo "- 著作者: [whiteleaf7](https://github.com/whiteleaf7) (original), [Rumia-Channel](https://github.com/Rumia-Channel) (fork from), [ponponusa](https://github.com/ponponusa) (mod maintainer)"
             echo ""
             echo "この改良版はオープンソースライセンスに基づき配布されています。"
             echo "利用・再配布・改変は自由ですが、利用者自身の責任のもとで行ってください。"
@@ -322,10 +322,10 @@ jobs:
             echo "## 📦 インストール案内"
             echo ""
             echo "- **Windows (mingw / MSYS2 など)** の場合:"
-            echo "  → \`narou-${CURRENT_TAG}-x64-mingw-ucrt.gem\` を使用してください。"
+            echo "  → `narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem` を使用してください。"
             echo ""
             echo "- **macOS / Linux** の場合:"
-            echo "  → \`narou-${CURRENT_TAG}.gem\` を使用してください。"
+            echo "  → `narou-mod-${CURRENT_TAG}.gem` を使用してください。"
             echo ""
             echo "インストール方法:"
             echo "\`\`\`bash"
@@ -352,7 +352,7 @@ jobs:
             echo "  オリジナルの narou.rb をベースに改良・保守を行っている非公式フォークです。"
             echo ""
             echo "- ライセンス: [MIT License](https://opensource.org/licenses/MIT)"
-            echo "- 著作者: whiteleaf7 (original), Rumia-Channel (fork from), ponponusa (mod maintainer)"
+            echo "- 著作者: [whiteleaf7](https://github.com/whiteleaf7) (original), [Rumia-Channel](https://github.com/Rumia-Channel) (fork from), [ponponusa](https://github.com/ponponusa) (mod maintainer)"
             echo ""
             echo "この改良版はオープンソースライセンスに基づき配布されています。"
             echo "利用・再配布・改変は自由ですが、利用者自身の責任のもとで行ってください。"

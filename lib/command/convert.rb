@@ -51,19 +51,19 @@ module Command
   ・変換したい小説のNコード、URL、タイトルもしくはIDを指定して下さい。
     IDは #{@opt.program_name} list を参照して下さい。
   ・一度に複数の小説を指定する場合は空白で区切って下さい。
-  ※-oオプションがない場合、[作者名] 小説名.txtが小説の保存フォルダに出力されます
+  ※-oオプションがない場合、[著者名] 小説名.txtが小説の保存フォルダに出力されます
   ・管理小説以外にもテキストファイルを変換出来ます。
     テキストファイルのファイルパスを指定します。
   ※複数指定した場合に-oオプションがあった場合、ファイル名に連番がつきます。
-  ・MOBI化する場合は narou setting device=kindle をして下さい。
+  ・MOBI化する場合は narou-mod setting device=kindle をして下さい。
   ・device=kobo の場合、.kepub.epub を出力します。
 
   Examples:
-    narou convert n9669bk
-    narou convert http://ncode.syosetu.com/n9669bk/
-    narou convert 異世界迷宮で奴隷ハーレムを
-    narou convert 1 -o "ハーレム -変換済み-.txt"
-    narou convert mynovel.txt --enc sjis
+    narou-mod convert n9669bk
+    narou-mod convert http://ncode.syosetu.com/n9669bk/
+    narou-mod convert 異世界迷宮で奴隷ハーレムを
+    narou-mod convert 1 -o "ハーレム -変換済み-.txt"
+    narou-mod convert mynovel.txt --enc sjis
 
   Options:
       EOS
@@ -108,10 +108,10 @@ module Command
       @opt.separator <<-EOS
 
   Configuration:
-    --make-zip, --no-epub, --no-mobi, --no-strip, --no-zip, --no-open , --inspect は narou setting コマンドで恒常的な設定にすることが可能です。
+  --make-zip, --no-epub, --no-mobi, --no-strip, --no-zip, --no-open , --inspect は narou-mod setting コマンドで恒常的な設定にすることが可能です。
     convert.copy-to を設定すれば変換したEPUB/MOBIを指定のフォルダに自動でコピー出来ます。
     device で設定した端末が接続されていた場合、対応するデータを自動送信します。
-    詳しくは narou setting --help を参照して下さい。
+  詳しくは narou-mod setting --help を参照して下さい。
       EOS
     end
 

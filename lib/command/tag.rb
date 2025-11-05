@@ -34,21 +34,21 @@ module Command
   ・設定したタグは他のコマンドで指定することで、小説ID指定の代わりにすることができます(一部タグを使えないコマンドも存在します。またaliasでつけた別名よりもタグのほうが優先されます)
 
   Examples:
-    narou tag --add fav 0 2     # ID:0と2の小説にfavタグを設定(追加)
-    narou t -a fav 0 2          # もしくはこの様に書けます
-    narou t -a "fav later" 0 2  # 一度に複数のタグを指定出来ます
-    narou t -a fav -c red 0     # favというタグを赤色で設定する
-    narou tag --delete fav 2    # ID:2の小説のfavタグを外す
-    narou t -d fav 2
+    narou-mod tag --add fav 0 2     # ID:0と2の小説にfavタグを設定(追加)
+    narou-mod t -a fav 0 2          # もしくはこの様に書けます
+    narou-mod t -a "fav later" 0 2  # 一度に複数のタグを指定出来ます
+    narou-mod t -a fav -c red 0     # favというタグを赤色で設定する
+    narou-mod tag --delete fav 2    # ID:2の小説のfavタグを外す
+    narou-mod t -d fav 2
 
-    narou tag end               # endタグ(完結)の付いている小説の一覧を表示
-    narou tag fav later         # fav,laterタグ両方付いている小説を表示
-    narou list -t "fav later" -rl   # listコマンドでもタグで検索出来ます
-    narou tag                   # 何も指定しない場合、存在するタグ一覧を表示
+    narou-mod tag end               # endタグ(完結)の付いている小説の一覧を表示
+    narou-mod tag fav later         # fav,laterタグ両方付いている小説を表示
+    narou-mod list -t "fav later" -rl   # listコマンドでもタグで検索出来ます
+    narou-mod tag                   # 何も指定しない場合、存在するタグ一覧を表示
 
     # 他のコマンドでタグを使う
-    narou freeze --on end       # end(完結タグ)が付いた小説を一括で凍結
-    narou update tag:404        # 404タグを明示する
+    narou-mod freeze --on end       # end(完結タグ)が付いた小説を一括で凍結
+    narou-mod update tag:404        # 404タグを明示する
                                 # ID:404 が存在しなければ明示する必要はない
 
   Options:

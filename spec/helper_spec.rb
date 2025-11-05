@@ -93,16 +93,16 @@ describe Helper do
       subject do
         described_class.truncate_path(filename, 10)
       end
-      let(:filename) { "[作者名] 長い文字列ほげほげ.mobi" }
-      it { is_expected.to eq "[作者名] 長い文字.mobi" }
+      let(:filename) { "[著者名] 長い文字列ほげほげ.mobi" }
+      it { is_expected.to eq "[著者名] 長い文字.mobi" }
     end
 
     context "if ext is kepub.epub with extname" do
       subject do
         described_class.truncate_path(filename, 10, extname: ".kepub.epub")
       end
-      let(:filename) { "[作者名] 長い文字列ほげほげ.kepub.epub" }
-      it { is_expected.to eq "[作者名] 長い文字.kepub.epub" }
+      let(:filename) { "[著者名] 長い文字列ほげほげ.kepub.epub" }
+      it { is_expected.to eq "[著者名] 長い文字.kepub.epub" }
     end
   end
 end
