@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "tempfile"
 require_relative "../../lib/narou/system_updater"
 
 RSpec.describe Narou::SystemUpdater do
@@ -87,6 +88,47 @@ RSpec.describe Narou::SystemUpdater do
       result = updater.update_from_github
 
       expect(result.asset_name).to eq("narou-mod-999.0.0-x64-mingw-ucrt.gem")
+    end
+  end
+
+  describe "#http_download" do
+    let(:source_uri) { URI("https://example.com/narou-mod.gem") }
+    let(:tempfile) do
+      file = Tempfile.new("narou-system-updater")
+      file.close
+      file
+    end
+    let(:destination) { tempfile.path }
+
+    after do
+      tempfile.unlink
+    rescue StandardError
+      # noop
+    end
+
+    it "follows HTTP redirects" do
+      redirect_uri = "https://cdn.example.com/narou-mod.gem"
+      redirect_response = Net::HTTPFound.new("1.1", "302", "Found")
+      redirect_response["location"] = redirect_uri
+
+      success_response = Net::HTTPOK.new("1.1", "200", "OK")
+      allow(success_response).to receive(:value).and_return(success_response)
+      allow(success_response).to receive(:read_body).and_yield("chunk")
+
+      expect(updater).to receive(:perform_download_request).with(source_uri).ordered.and_yield(redirect_response)
+      expect(updater).to receive(:perform_download_request).with(URI(redirect_uri)).ordered.and_yield(success_response)
+
+      updater.send(:http_download, source_uri, destination)
+
+      expect(File.binread(destination)).to eq("chunk")
+    end
+
+    it "raises error when redirect location is missing" do
+      redirect_response = Net::HTTPFound.new("1.1", "302", "Found")
+      expect(updater).to receive(:perform_download_request).with(source_uri).and_yield(redirect_response)
+
+      expect { updater.send(:http_download, source_uri, destination) }
+        .to raise_error(Narou::SystemUpdater::Error, /リダイレクト先の URL が不正/)
     end
   end
 end
