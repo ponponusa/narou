@@ -46,14 +46,20 @@ module Command
     end
 
     def display_help!
-      STDOUT.puts @opt.help
+      emit_help_output(@opt.help)
       exit
     end
 
     def execute(argv)
+      if help_token?(argv)
+        handle_help(argv)
+      end
       @options.clear
       load_local_settings
       @opt.parse!(argv)
+      if help_token?(argv)
+        handle_help(argv)
+      end
     rescue OptionParser::InvalidOption => e
       error "不明なオプションです(#{e})"
       exit Narou::EXIT_ERROR_CODE
@@ -185,6 +191,33 @@ module Command
     #
     def disable_logging
       self.stream_io = stream_io.dup_with_disabled_logging
+    end
+
+    protected
+
+    def emit_help_output(text)
+      return if text.nil? || text.empty?
+      streams = [STDOUT]
+      streams << $stdout unless $stdout.equal?(STDOUT)
+      streams.each do |io|
+        io.write(text)
+        io.flush if io.respond_to?(:flush)
+      end
+    end
+
+    private
+
+    def handle_help(argv)
+      if respond_to?(:print_help, true)
+        hook_call(:print_help, argv)
+        exit
+      else
+        display_help!
+      end
+    end
+
+    def help_token?(argv)
+      argv.any? { |arg| arg.to_s.casecmp("help").zero? }
     end
   end
 end

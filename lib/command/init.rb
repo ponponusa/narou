@@ -309,5 +309,41 @@ module Command
         output(:summary, format("行の高さ: %.1f", line_height))
       end
     end
+
+    def print_help(argv)
+      topics = Array(argv).map(&:to_s).reject { |arg| arg.casecmp("help").zero? }
+      buffer = String.new
+      buffer << @opt.help
+      buffer << <<~DETAIL.termcolor
+
+<bold><green>詳細ヘルプ:</green></bold>
+  --non-interactive / 環境変数 NAROU_NONINTERACTIVE
+    対話なしで初期化を完了します。AozoraEpub3 の場所と行の高さを必ず指定してください。
+
+  --output-mode verbose|summary|silent
+    verbose : 進行ログをすべて表示します。
+    summary : 初期化結果だけを表示します。
+    silent  : 標準出力へ一切出力しません。
+
+  AozoraEpub3 の設定
+    既存の設定を使いたい場合は --path :keep を指定してください。
+    新しい場所を指定する場合は --path /path/to/AozoraEpub3 を使います。
+
+  行の高さの変更
+    --line-height で数値(em)を指定するとプリセットを上書きできます。
+
+  組み合わせ例
+    narou-mod init --non-interactive --output-mode summary \
+      --path /opt/narou/AozoraEpub3 --line-height 1.8
+
+DETAIL
+      unless topics.empty?
+        buffer << <<~TOPIC.termcolor
+
+<bold><yellow>未対応のヘルプトピック:</yellow></bold> #{topics.join(", ")}
+TOPIC
+      end
+      emit_help_output(buffer)
+    end
   end
 end

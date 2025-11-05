@@ -54,4 +54,28 @@ RSpec.describe Command::Init do
                       .and(include("行の高さ: 1.9"))).to_stdout
     end
   end
+
+  describe "help output" do
+    it "prints extended guidance when help is requested" do
+      command = Command::Init.new
+
+      expect do
+        begin
+          command.execute(["help"])
+        rescue SystemExit
+        end
+      end.to output(a_string_including("詳細ヘルプ").and(include("--non-interactive"))).to_stdout
+    end
+
+    it "reports unknown help topics" do
+      command = Command::Init.new
+
+      expect do
+        begin
+          command.execute(["help", "mystery"])
+        rescue SystemExit
+        end
+      end.to output(a_string_including("未対応のヘルプトピック").and(include("mystery"))).to_stdout
+    end
+  end
 end
