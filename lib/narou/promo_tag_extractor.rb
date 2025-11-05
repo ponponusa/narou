@@ -301,11 +301,14 @@ module Narou
       stripped = text.dup
 
       loop do
-        matched = stripped.match(/(.+?)[＠@]\s*(.+)\z/)
-        break unless matched
+        at_index = stripped.rindex(/[＠@]/)
+        break unless at_index
 
-        head = matched[1]
-        tail = matched[2]
+        head = stripped[0...at_index]
+        tail = stripped[(at_index + 1)..-1]
+        tail = tail&.lstrip
+        break unless tail && !tail.empty?
+
         segment_tags = extract_segment_tags(tail, promo_regexes: promo_regexes)
         break if segment_tags.empty?
 
