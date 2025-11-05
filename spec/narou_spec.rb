@@ -4,6 +4,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require "tmpdir"
 require "narou"
 
 describe Narou do
@@ -14,6 +15,33 @@ describe Narou do
   describe ".last_commit_year" do
     it "should be commited year" do
       expect(Narou.last_commit_year).to eq Time.now.year
+    end
+  end
+
+  describe ".init" do
+    around do |example|
+      Dir.mktmpdir do |dir|
+        Dir.chdir(dir) { example.run }
+      end
+    end
+
+    it "loads Database before initializing" do
+      original_database = Object.const_get(:Database)
+      database_feature = original_database.method(:init).source_location&.first
+      feature_removed = false
+      if database_feature
+        feature_removed = $LOADED_FEATURES.delete(database_feature)
+      end
+      Object.send(:remove_const, :Database)
+      begin
+        expect { Narou.init }.not_to raise_error
+        expect(Dir).to exist(Narou::LOCAL_SETTING_DIR_NAME)
+      ensure
+        Object.send(:remove_const, :Database) if defined?(Database)
+        Object.const_set(:Database, original_database)
+        $LOADED_FEATURES << database_feature if feature_removed && database_feature && !$LOADED_FEATURES.include?(database_feature)
+        Narou.flush_cache
+      end
     end
   end
 
