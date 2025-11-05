@@ -101,6 +101,14 @@ module Narou
       raise Error, "ダウンロードがリダイレクト回数上限を超えました" if limit <= 0
 
       perform_download_request(uri) do |response|
+        if response.is_a?(Net::HTTPRedirection)
+          location = response["location"]
+          raise Error, "リダイレクト先の URL が不正です" unless location && !location.empty?
+
+          new_uri = build_redirect_uri(uri, location)
+          return http_download(new_uri, destination, limit - 1)
+        end
+
         response.value
         File.open(destination, "wb") do |file|
           response.read_body do |chunk|
@@ -108,13 +116,18 @@ module Narou
           end
         end
       end
-    rescue Net::HTTPRedirection => e
-      new_uri = URI(e.response["location"])
-      http_download(new_uri, destination, limit - 1)
     rescue Net::HTTPRetriableError => e
       raise Error, "HTTP #{e.response.code} #{e.response.message}"
     rescue Net::HTTPExceptions => e
       raise Error, "HTTP #{e.response.code} #{e.response.message}"
+    end
+
+    def build_redirect_uri(current_uri, location)
+      new_uri = URI.parse(location)
+      new_uri = current_uri.merge(new_uri) if new_uri.relative?
+      new_uri
+    rescue URI::InvalidURIError
+      raise Error, "リダイレクト先の URL が不正です"
     end
 
     def perform_download_request(uri)
