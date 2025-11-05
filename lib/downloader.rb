@@ -9,6 +9,7 @@ require "fileutils"
 require "ostruct"
 require "cgi"
 require_relative "narou"
+require_relative "narou/promo_tag_extractor"
 require_relative "helper"
 require_relative "sitesetting"
 require_relative "novelsetting"
@@ -752,6 +753,17 @@ class Downloader
       "length" => novel_length,
       "suspend" => suspend
     }
+
+    extracted = Narou::PromoTagExtractor.extract(title: data["title"], author: data["author"])
+    data["title"] = extracted.title
+    data["author"] = extracted.author
+    data["promo_tags"] = extracted.promo_tags
+    data["promo_tags_title"] = extracted.title_tags
+    data["promo_tags_author"] = extracted.author_tags
+    @setting["title"] = extracted.title
+    @setting["author"] = extracted.author
+    @title = extracted.title
+
     auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
     if @setting["tag"] && auto_add_tags
       clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
