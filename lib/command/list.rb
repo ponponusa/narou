@@ -82,7 +82,7 @@ module Command
       @opt.on("-s", "--site", "掲載小説サイト名も表示する") {
         @options["site"] = true
       }
-      @opt.on("-a", "--author", "作者名も表示する") {
+      @opt.on("-a", "--author", "著者名も表示する") {
         @options["author"] = true
       }
       @opt.on("-f", "--filter VAL", String,
@@ -147,7 +147,7 @@ module Command
         " ID ",
         @options["general-lastup"] ? " 掲載日 " : " 更新日 ",
         @options["kind"] ? "種別" : nil,
-        @options["author"] ? "作者名" : nil,
+        @options["author"] ? "著者名" : nil,
         @options["site"] ? "サイト名" : nil,
         "     タイトル"
       ].compact.join(" | ")

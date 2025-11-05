@@ -93,7 +93,7 @@ module Command
 
     def self.create_version_string
       postfix = (Narou.commit_version ? "" : " (develop)")
-      "#{Narou::VERSION}#{postfix}"
+      "#{Narou::VERSION} (#{Narou::COMMIT})#{postfix}"
     end
   end
 end

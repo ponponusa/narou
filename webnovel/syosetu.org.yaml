@@ -68,7 +68,7 @@ nu: null
 # general_lastup 最終掲載日
 gl: 最新投稿</td><td.*?>(?<general_lastup>.+?)</td>
 
-# writer 作者名
+# writer 著者名
 w: 作者</td><td.*?>(?:<a href=.+?>)?(?<writer>.+?)(?:</a>)?</td>
 
 # length 文字数

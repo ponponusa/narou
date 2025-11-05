@@ -11,11 +11,6 @@ module Narou
     "commitversion"
   end
 end
-at_exit do
-  if File.exist?("commitversion")
-    FileUtils.rm("commitversion")
-  end
-end
 Encoding.default_external = Encoding::UTF_8
 Gem::Specification.new do |gem|
   gem.name          = "narou-mod"
@@ -33,8 +28,8 @@ Gem::Specification.new do |gem|
     ============================================================
      Narou.rb_MOD v#{::Narou::VERSION} がインストールされました 🎉
 
-    コマンドヘルプ:   narou-mod help
-    Webサーバー起動:  narou-mod web
+      コマンドヘルプ:   narou-mod help
+      Webサーバー起動:  narou-mod web
 
      更新情報: https://github.com/ponponusa/narou/releases
     ============================================================

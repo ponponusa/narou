@@ -135,7 +135,7 @@ nu: ^editedAt::(?<novelupdated_at>.+?)$
 # general_lastup 最新話掲載日
 gl: ^lastEpisodePublishedAt::(?<general_lastup>.+?)$
 
-# writer 作者名
+# writer 著者名
 w: ^author::(?<writer>.+?)$
 
 # length 文字数
