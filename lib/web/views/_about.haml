@@ -3,8 +3,11 @@
     var action = new Narou.Action;
 
     function checkVersionIsUpdated(latest, current) {
-      var latestNumbers = latest.split(".");
-      var currentNumbers = current.split(".");
+      if (!latest || !current) {
+        return false;
+      }
+      var latestNumbers = String(latest).split(".");
+      var currentNumbers = String(current).split(".");
       var maxVersionLength = Math.max(latestNumbers.length, currentNumbers.length);
       for (var i = 0; i < maxVersionLength; i++) {
         var leftNum = latestNumbers[i] | 0;
@@ -166,9 +169,6 @@
     %strong Narou.rb MOD
   %div
     Version #{@narourb_version}
-  %div
-    Copyright © 2013-#{Narou.last_commit_year} whiteleaf. All rights reserved.
-    %small (Modified by ponponusa)
   #result-of-version-checking(style="margin-top:10px")
     .checking
       %p.rotate-progress
@@ -200,6 +200,10 @@
         最新バージョンの取得に失敗しました。
 
   %pre#gem-result-log.log-box
+
+  %div
+    Copyright © 2013-#{Narou.last_commit_year} whiteleaf. All rights reserved.
+    %small (Modified by ponponusa)
 
   .well.well-sm(style="font-size:80%; margin-top: 10px")
     #{@ruby_version}<br>

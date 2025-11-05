@@ -207,6 +207,7 @@ module Command
             next
           when :none
             delete_modified_tag.call
+            downloader.apply_promo_tag_preferences!
             puts "#{data["title"]} に更新はありません"
             next unless data["_convert_failure"]
           end

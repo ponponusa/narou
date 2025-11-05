@@ -535,6 +535,16 @@ module Command
           help: "サイトから取得したタグを自動的に小説データに追加する",
           tab: :general
         },
+        "promo-tag.enable" => {
+          type: :boolean,
+          help: "タイトルや作者から宣伝タグを除去する",
+          tab: :global
+        },
+        "promo-tag.keywords" => {
+          type: :string,
+          help: "追加で除去する宣伝タグをカンマまたは改行で指定する",
+          tab: :global
+        },
         "normalize-filename" => {
           type: :boolean,
           help: "ファイル名の文字列をNFCで正規化する。※既存データとの互換性が無くなる可能性があるので、" \

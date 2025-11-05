@@ -55,11 +55,7 @@ a:hover {
   overflow: hidden;
   outline: none;
 }
-
 .centering {
-  left: 0;
-  right: 0;
-  margin-left: auto;
   margin-right: auto;
 }
 
@@ -113,6 +109,7 @@ table#novel-list {
     color: #ddd0cc;
     th {
       background-color: $thead-background-color;
+      text-align: left;
     }
   }
   td {
@@ -203,6 +200,111 @@ table#novel-list {
       }
     }
   }
+
+  .novel-title-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .novel-title-link {
+    font-weight: inherit;
+    color: inherit;
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+      text-decoration: underline;
+    }
+  }
+
+  .external-link-icon {
+    margin-left: 4px;
+    font-size: 0.78em;
+    line-height: 1;
+    vertical-align: baseline;
+    font-weight: 400;
+    opacity: 0.75;
+  }
+
+  .author-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .author-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .author-link {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+      text-decoration: underline;
+    }
+  }
+
+  .author-filter-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      color: #1e3f6f;
+      text-decoration: none;
+    }
+
+    .glyphicon {
+      font-size: 11px;
+      line-height: 1;
+    }
+  }
+
+  .promo-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .promo-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    background-color: rgba(32, 74, 135, 0.16);
+    color: #1e3f6f;
+    text-decoration: none;
+    line-height: 1.4;
+
+    &:hover,
+    &:focus {
+      background-color: rgba(32, 74, 135, 0.28);
+      text-decoration: none;
+    }
+  }
+
+  .column-actions {
+    .action-button-group {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .btn {
+      padding: 2px 6px;
+    }
+  }
   $frozen-color: #6caddd;
   tr.frozen td {
     $frozen-background-color: color.mix($even-color, $frozen-color, 88%);
@@ -224,6 +326,7 @@ table#novel-list {
     color: color.adjust($frozen-color, $lightness: -20%);
   }
   thead {
+    white-space: nowrap;
     .sorting_asc {
       @include dataTableSortingHeader("/resources/images/sort_asc.png");
     }
@@ -248,8 +351,6 @@ table#novel-list {
   }
 
   /* 最新話更新日 */
-  .general-lastup {
-  }
   /* 60分以内 */
   .gl-60minutes {
     &::after {
@@ -321,8 +422,6 @@ table#novel-list {
     }
   }
   /* 上記の日付以上を過ぎている */
-  .gl-other {
-  }
 
   .hint-new-arrival {
     position: relative;
@@ -408,11 +507,7 @@ table.dataTable {
       a {
         padding-left: 4px !important;
       }
-      a:hover {
-      }
       @media (max-width:767px) {
-        a:hover {
-        }
       }
       span.active-ok {
         display: inline;
@@ -939,12 +1034,6 @@ $console-color: white;
   top: -3px;
 }
 
-.queue__size {
-}
-
-.queue__size--default {
-}
-
 .queue__size--divider {
   padding-right: 1px;
   padding-left: 1px;
@@ -954,9 +1043,6 @@ $console-color: white;
   &::before {
     content: ':';
   }
-}
-
-.queue__size--convert {
 }
 
 /*

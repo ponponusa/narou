@@ -24,6 +24,7 @@ require_relative "web_worker"
 require_relative "pushserver"
 require_relative "settingmessages"
 require_relative "server_helpers"
+require_relative "../narou/promo_tag_extractor"
 require_relative "../narou/system_updater"
 
 class Narou::AppServer < Sinatra::Base
@@ -656,10 +657,11 @@ class Narou::AppServer < Sinatra::Base
             else
               # 通常の検索フィルタリング
               search_regex = Regexp.new(Regexp.escape(word), Regexp::IGNORECASE)
-              item[:title].to_s.match?(search_regex) || 
-              item[:author].to_s.match?(search_regex) ||
+              item[:title_plain].to_s.match?(search_regex) || 
+              item[:author_plain].to_s.match?(search_regex) ||
               item[:sitename].to_s.match?(search_regex) ||
               item[:status].to_s.match?(search_regex) ||
+              item[:promo_tags].any? { |tag| tag.match?(search_regex) } ||
               item[:raw_tags].any? { |tag| tag.match?(search_regex) }
             end
           end
@@ -737,12 +739,18 @@ class Narou::AppServer < Sinatra::Base
       cached_data = @@api_list_cache[cache_key]
     else
       # キャッシュが無い場合は新規作成
-      database_values = Database.instance.get_object.values
+      database = Database.instance
+      database_values = database.get_object.values
+
       cached_data = database_values.map do |data|
         id = data["id"]
         is_frozen = Narou.novel_frozen?(id)
         tags = data["tags"] || []
-        
+        promo_tags = data["promo_tags"].is_a?(Array) ? data["promo_tags"] : []
+        promo_tags_title = data["promo_tags_title"].is_a?(Array) ? data["promo_tags_title"] : []
+        promo_tags_author = data["promo_tags_author"].is_a?(Array) ? data["promo_tags_author"] : []
+        author_url = data["author_url"]
+
         # 軽量モードではタグ処理を簡素化（表示のみ）
         tags_html = if lightweight_mode
                       if tags.empty?
@@ -751,21 +759,21 @@ class Narou::AppServer < Sinatra::Base
                         # 軽量表示だが、data-tag属性は保持
                         visible_tags = tags.first(3)
                         hidden_count = tags.size > 3 ? tags.size - 3 : 0
-                        
+
                         tag_spans = visible_tags.map { |tag| %!<span class="tag-simple" data-tag="#{tag}">#{tag}</span>! }
                         result = tag_spans.join(", ")
-                        
+
                         if hidden_count > 0
                           result += %! <span class="tag-more">... (+#{hidden_count}個)</span>!
                         end
-                        
+
                         # 隠されたタグもdata-tag属性として保持（検索用）
                         if tags.size > 3
                           hidden_tags = tags[3..-1]
                           hidden_spans = hidden_tags.map { |tag| %!<span class="tag-hidden" data-tag="#{tag}" style="display:none;"></span>! }
                           result += hidden_spans.join
                         end
-                        
+
                         result + %!&nbsp;<span class="tag tag-reset label label-white" data-tag="" data-toggle="tooltip" title="タグ検索を解除">&nbsp;</span>!
                       end
                     else
@@ -776,12 +784,17 @@ class Narou::AppServer < Sinatra::Base
                         %!data-tag="" data-toggle="tooltip" title="タグ検索を解除">&nbsp;</span>!
                       end
                     end
-        
+
+        title_text = data["title"].to_s
+        author_text = data["author"].to_s
+
         {
           id: id,
           last_update: data["last_update"].to_i,
-          title: h(data["title"]),
-          author: h(data["author"]),
+          title: title_text,
+          title_plain: title_text,
+          author: h(author_text),
+          author_plain: author_text,
           sitename: data["sitename"],
           toc_url: data["toc_url"],
           novel_type: data["novel_type"] == 2 ? "短編" : "連載",
@@ -793,7 +806,12 @@ class Narou::AppServer < Sinatra::Base
             tags.include?("404") ? "削除" : nil,
             data["suspend"] ? "中断" : nil
           ].compact.join(", "),
-          download: %!<a href="/novels/#{id}/download" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span></a>!,
+          promo_tags: promo_tags,
+          promo_tags_title: promo_tags_title,
+          promo_tags_author: promo_tags_author,
+          promo_tags_text: promo_tags.join(" "),
+          author_url: author_url,
+          actions: nil,
           frozen: is_frozen,
           new_arrivals_date: data["new_arrivals_date"].tap { |m| break m.to_i if m },
           general_lastup: data["general_lastup"].tap { |m| break m.to_i if m },
@@ -878,7 +896,12 @@ class Narou::AppServer < Sinatra::Base
     
     # ソート処理
     if order_column && order_dir
-      column_names = ["id", "last_update", "general_lastup", "last_check_date", "title", "author", "sitename", "novel_type", "tags", "general_all_no", "length", "status", "toc_url"]
+      column_names = [
+        "id", "last_update", "general_lastup", "last_check_date",
+        "title", "author", "sitename", "novel_type",
+        "tags", "general_all_no", "length", "average_length",
+        "status", "actions", "frozen", "new_arrivals_date"
+      ]
       sort_column = column_names[order_column]
       if sort_column
         filtered_data.sort! do |a, b|

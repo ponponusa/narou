@@ -311,6 +311,18 @@ class NovelSetting
       help: "作者コメントを検出する（テキストファイルを直接変換する場合のみの設定）"
     },
     {
+      name: "enable_promo_tag_filter",
+      type: :boolean,
+      value: false,
+      help: "タイトルや作者から宣伝用語を除去する"
+    },
+    {
+      name: "promo_tag_additional_keywords",
+      type: :string,
+      value: "",
+      help: "追加で除去したい宣伝用語を改行またはカンマ区切りで指定する（正規表現可）"
+    },
+    {
       name: "enable_erase_introduction",
       type: :boolean,
       value: false,

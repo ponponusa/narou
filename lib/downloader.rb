@@ -9,6 +9,7 @@ require "fileutils"
 require "ostruct"
 require "cgi"
 require_relative "narou"
+require_relative "narou/promo_tag_extractor"
 require_relative "helper"
 require_relative "sitesetting"
 require_relative "novelsetting"
@@ -752,6 +753,17 @@ class Downloader
       "length" => novel_length,
       "suspend" => suspend
     }
+
+  data["title_raw_latest"] = data["title"]&.dup
+  data["title_original"] = data["title_raw_latest"] || data["title"]
+    data["author_original"] = data["author"]
+
+    promo_config = Narou::PromoTagExtractor.resolve_config(novel_id: @id)
+    Narou::PromoTagExtractor.normalize_entry!(data, config: promo_config)
+    @setting["title"] = data["title"]
+    @setting["author"] = data["author"]
+    @title = data["title"]
+
     auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
     if @setting["tag"] && auto_add_tags
       clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
@@ -770,6 +782,22 @@ class Downloader
       database[@id] = data
     end
     database.save_database
+  end
+
+  def apply_promo_tag_preferences!
+    data = record
+    return false unless data
+
+    promo_config = Narou::PromoTagExtractor.resolve_config(novel_id: @id)
+    changed = Narou::PromoTagExtractor.normalize_entry!(data, config: promo_config)
+
+    if @setting
+      @setting["title"] = data["title"]
+      @setting["author"] = data["author"]
+    end
+    @title = data["title"]
+
+    changed
   end
 
   def get_novel_status
