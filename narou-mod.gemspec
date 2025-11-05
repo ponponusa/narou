@@ -11,11 +11,6 @@ module Narou
     "commitversion"
   end
 end
-at_exit do
-  if File.exist?("commitversion")
-    FileUtils.rm("commitversion")
-  end
-end
 Encoding.default_external = Encoding::UTF_8
 Gem::Specification.new do |gem|
   gem.name          = "narou-mod"

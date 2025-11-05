@@ -113,7 +113,7 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(ruby -r ./lib/version.rb -e 'print Narou::VERSION')
+          VERSION=$(ruby -r ./lib/version.rb -e 'print Narou::VERSION (Narou::COMMIT ? "-#{Narou::COMMIT}" : "")')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build gem (generic)
