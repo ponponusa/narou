@@ -326,6 +326,7 @@ table#novel-list {
     color: color.adjust($frozen-color, $lightness: -20%);
   }
   thead {
+    white-space: nowrap;
     .sorting_asc {
       @include dataTableSortingHeader("/resources/images/sort_asc.png");
     }

@@ -741,12 +741,8 @@ class Narou::AppServer < Sinatra::Base
       # キャッシュが無い場合は新規作成
       database = Database.instance
       database_values = database.get_object.values
-      database_modified = false
 
       cached_data = database_values.map do |data|
-        entry_modified = Narou::PromoTagExtractor.normalize_entry!(data)
-        database_modified ||= entry_modified
-
         id = data["id"]
         is_frozen = Narou.novel_frozen?(id)
         tags = data["tags"] || []
@@ -824,8 +820,6 @@ class Narou::AppServer < Sinatra::Base
           length: data["length"],
         }
       end
-
-      database.save_database if database_modified
 
       # キャッシュを更新
       @@api_list_cache ||= {}

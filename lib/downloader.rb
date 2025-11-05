@@ -754,15 +754,15 @@ class Downloader
       "suspend" => suspend
     }
 
-    extracted = Narou::PromoTagExtractor.extract(title: data["title"], author: data["author"])
-    data["title"] = extracted.title
-    data["author"] = extracted.author
-    data["promo_tags"] = extracted.promo_tags
-    data["promo_tags_title"] = extracted.title_tags
-    data["promo_tags_author"] = extracted.author_tags
-    @setting["title"] = extracted.title
-    @setting["author"] = extracted.author
-    @title = extracted.title
+  data["title_raw_latest"] = data["title"]&.dup
+  data["title_original"] = data["title_raw_latest"] || data["title"]
+    data["author_original"] = data["author"]
+
+    promo_config = Narou::PromoTagExtractor.resolve_config(novel_id: @id)
+    Narou::PromoTagExtractor.normalize_entry!(data, config: promo_config)
+    @setting["title"] = data["title"]
+    @setting["author"] = data["author"]
+    @title = data["title"]
 
     auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
     if @setting["tag"] && auto_add_tags
@@ -782,6 +782,22 @@ class Downloader
       database[@id] = data
     end
     database.save_database
+  end
+
+  def apply_promo_tag_preferences!
+    data = record
+    return false unless data
+
+    promo_config = Narou::PromoTagExtractor.resolve_config(novel_id: @id)
+    changed = Narou::PromoTagExtractor.normalize_entry!(data, config: promo_config)
+
+    if @setting
+      @setting["title"] = data["title"]
+      @setting["author"] = data["author"]
+    end
+    @title = data["title"]
+
+    changed
   end
 
   def get_novel_status
