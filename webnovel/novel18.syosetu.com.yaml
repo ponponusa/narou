@@ -103,7 +103,7 @@ gl: |-
   <dt class="p-infotop-data__title">(?:最新掲載日|最終掲載日)</dt>
   <dd class="p-infotop-data__value">(?<general_lastup>.+?)</dd>
 
-# writer 作者名
+# writer 著者名
 w: |-
   <dt class="p-infotop-data__title">作者名</dt>
   <dd class="p-infotop-data__value">(?:<a href=".+?">)?(?<writer>.+?)(?:</a>)?.?</dd>

@@ -33,7 +33,7 @@ module Narou
   LINE_HEIGHT_DEFAULT = 1.6 # 単位em
 
   UPDATE_SORT_KEYS = {
-    "id" => "ID", "last_update" => "更新日", "title" => "タイトル", "author" => "作者名",
+    "id" => "ID", "last_update" => "更新日", "title" => "タイトル", "author" => "著者名",
     "new_arrivals_date" => "新着日", "general_lastup" => "最新話掲載日"
   }
 
