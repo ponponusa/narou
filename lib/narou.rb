@@ -106,6 +106,7 @@ module Narou
       return nil if already_init?
       FileUtils.mkdir(LOCAL_SETTING_DIR_NAME)
       puts "#{LOCAL_SETTING_DIR_NAME}/ を作成しました"
+      require_relative "database"
       Database.init
     end
 
