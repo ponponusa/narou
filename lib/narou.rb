@@ -102,12 +102,12 @@ module Narou
       root_dir.present?
     end
 
-    def init
+    def init(silent: false)
       return nil if already_init?
       FileUtils.mkdir(LOCAL_SETTING_DIR_NAME)
-      puts "#{LOCAL_SETTING_DIR_NAME}/ を作成しました"
+      puts "#{LOCAL_SETTING_DIR_NAME}/ を作成しました" unless silent
       require_relative "database"
-      Database.init
+      Database.init(silent: silent)
     end
 
     #
