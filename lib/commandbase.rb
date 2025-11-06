@@ -51,9 +51,6 @@ module Command
     end
 
     def execute(argv)
-      if help_token?(argv)
-        handle_help(argv)
-      end
       @options.clear
       load_local_settings
       @opt.parse!(argv)
@@ -217,7 +214,8 @@ module Command
     end
 
     def help_token?(argv)
-      argv.any? { |arg| arg.to_s.casecmp("help").zero? }
+      first = argv.first
+      first && first.to_s.casecmp("help").zero?
     end
   end
 end

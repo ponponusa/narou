@@ -23,9 +23,9 @@ RSpec.describe Command::Init do
 
   let(:aozora_dir) { File.join(Dir.pwd, "AozoraEpub3") }
 
-  def prepare_aozora_dir
-    FileUtils.mkdir_p(aozora_dir)
-    File.write(File.join(aozora_dir, "AozoraEpub3.jar"), "")
+  def prepare_aozora_dir(path = aozora_dir)
+    FileUtils.mkdir_p(path)
+    File.write(File.join(path, "AozoraEpub3.jar"), "")
   end
 
   def build_command
@@ -76,6 +76,16 @@ RSpec.describe Command::Init do
         rescue SystemExit
         end
       end.to output(a_string_including("未対応のヘルプトピック").and(include("mystery"))).to_stdout
+    end
+
+    it "allows using the literal string help as an option value" do
+      help_dir = File.join(Dir.pwd, "help")
+      prepare_aozora_dir(help_dir)
+      command = build_command
+
+      expect do
+        command.execute(["--non-interactive", "--output-mode", "summary", "--path", help_dir, "--line-height", "1.9"])
+      end.to output(a_string_including("AozoraEpub3 フォルダ: #{help_dir}")).to_stdout
     end
   end
 end
