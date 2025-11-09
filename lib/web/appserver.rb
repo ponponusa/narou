@@ -1584,6 +1584,19 @@ class Narou::AppServer < Sinatra::Base
     result
   end
 
+  get "/api/tag_list.json" do
+    headers "Access-Control-Allow-Origin" => "*"
+    tag_list = Command::Tag.get_tag_list
+    result = tag_list.map do |tagname, count|
+      {
+        name: tagname,
+        count: count,
+        color: Command::Tag.get_color(tagname)
+      }
+    end
+    json(result.sort_by { |tag| tag[:name] })
+  end
+
   post "/api/taginfo.json" do
     ids = select_valid_novel_ids(params["ids"])
     bad_request!("小説が選択されていません") unless ids

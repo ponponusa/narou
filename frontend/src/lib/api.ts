@@ -176,17 +176,20 @@ export async function toggleFreeze(ids: number[]): Promise<void> {
  * タグリストを取得
  */
 export async function getTagList(): Promise<TagInfo[]> {
-  return fetchApi<TagInfo[]>('/api/tag_list');
+  return fetchApi<TagInfo[]>('/api/tag_list.json');
 }
 
 /**
  * タグを編集
  */
 export async function editTag(ids: number[], tag: string, action: 'add' | 'remove'): Promise<void> {
-  await fetchApiForm('/api/edit_tag', { 
-    ids: ids.map(String),
-    tag,
-    action 
+  await fetchApi('/api/edit_tag', {
+    method: 'POST',
+    body: JSON.stringify({
+      ids: ids.map(String),
+      tag,
+      action
+    }),
   });
 }
 
