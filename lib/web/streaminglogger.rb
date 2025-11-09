@@ -38,7 +38,8 @@ module Narou
     end
 
     def tty?
-      false
+      # プログレスバーを表示するためtrueを返す
+      true
     end
 
     def copy_instance
