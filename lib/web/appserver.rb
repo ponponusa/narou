@@ -56,6 +56,20 @@ class Narou::AppServer < Sinatra::Base
     end
   end
 
+  # CORS設定（新しいフロントエンドとの連携用）
+  before do
+    # プリフライトリクエストとAPIエンドポイントにCORSヘッダーを追加
+    if request.path.start_with?('/api') || request.request_method == 'OPTIONS'
+      headers['Access-Control-Allow-Origin'] = '*'
+      headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+      headers['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization'
+      headers['Access-Control-Max-Age'] = '86400'
+      
+      # OPTIONSリクエスト（プリフライト）の場合は200を返して終了
+      halt 200 if request.request_method == 'OPTIONS'
+    end
+  end
+
   def self.push_server=(server)
     @@push_server = server
   end
