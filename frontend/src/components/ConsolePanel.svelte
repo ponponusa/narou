@@ -291,9 +291,8 @@
   });
 
   onDestroy(() => {
-    if (unsubscribe) {
-      unsubscribe();
-    }
+    const pushServer = getPushServer();
+    pushServer.disconnect();
   });
 </script>
 
