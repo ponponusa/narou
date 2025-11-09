@@ -192,8 +192,12 @@
     const baseProgressKey = isProgress ? extractProgressKey(cleanMessage) : undefined;
     const progressKey = baseProgressKey && novelId ? `${baseProgressKey}-novel-${novelId}` : baseProgressKey;
     
+    // プログレスバーは上書きせず、すべての状態を保持する
+    const isProgressBar = /\[[#*]+[\s.-]*\]/.test(cleanMessage) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(cleanMessage);
+    
     // コンパクトモードで進捗メッセージの場合、既存のエントリを更新
-    if (compactProgress && isProgress && progressKey) {
+    // ただし、プログレスバーは除外（すべての状態を表示するため）
+    if (compactProgress && isProgress && progressKey && !isProgressBar) {
       const existingIndex = logs.findIndex(
         log => log.isProgress && log.progressKey === progressKey
       );
@@ -255,6 +259,12 @@
       return true;
     }
     
+    // 章データ（「第一章」「第二章」など）も進捗メッセージとして扱う
+    // 第○部分と同じキーで上書き更新される
+    if (/^第[一二三四五六七八九十百千壱弐参]+章\s*$/.test(decoded)) {
+      return true;
+    }
+    
     // 章タイトル + (n/m) パターン
     // "第一話", "第二十話" などの漢数字パターンも検出
     return /\(\d+\/\d+\)|第[一二三四五六七八九十百千]+話/.test(decoded);
@@ -272,14 +282,20 @@
     
     // プログレスバー: [###...] または [*  ] を含むパターン
     // 0%[###...]100% や [***   ] 50% などに対応
+    // 小説IDと組み合わせて固有のキーにする
     if (/\[[#*]+[\s.-]*\]/.test(decoded) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(decoded)) {
+      // プログレスバーは1つのキーで最新のものだけを保持
       return 'progress-bar';
     }
     
-    // 「第n部分」だけのメッセージと「章タイトル (n/m)」を同じグループにまとめる
-    // 「第n部分」→「章タイトル (n/m)」の順で来るので、章タイトルで上書きされる
-    // 結果: 章タイトルのみが表示される（第n部分は隠れる）
+    // 「第n部分」と「第n章」を同じグループにまとめる
+    // プログレスバー → 第n部分 → 第n章 → 章タイトル (n/m) の順で来るので
+    // 最終的に章タイトルのみが表示される（第n部分と第n章は上書きされて隠れる）
     if (/^第\d+部分\s*$/.test(decoded)) {
+      return 'progress-chapter-download';
+    }
+    
+    if (/^第[一二三四五六七八九十百千壱弐参]+章\s*$/.test(decoded)) {
       return 'progress-chapter-download';
     }
     
@@ -389,14 +405,8 @@
    * コンパクト表示用: 進捗メッセージの重複を除外し最新のみ返す
    */
   function compactLogs(logList: LogEntry[]): LogEntry[] {
-    // 「第n部分」だけのメッセージは常に除外（コンパクト表示ON/OFF関係なく）
-    const withoutBubunLogs = logList.filter(log => {
-      const decoded = decodeMessage(log.message).trim();
-      return !/^第\d+部分\s*$/.test(decoded);
-    });
-    
     // 空のメッセージを除外
-    const filtered = withoutBubunLogs.filter(log => {
+    const filtered = logList.filter(log => {
       const decoded = decodeMessage(log.message).trim();
       return decoded.length > 0;
     });
@@ -409,19 +419,22 @@
     const nonProgressLogs: LogEntry[] = [];
 
     for (const log of filtered) {
-      if (log.isProgress && log.progressKey) {
-        // 進捗メッセージは progressKey ごとに最新のものだけ保持
+      // プログレスバーかどうかを判定
+      const isProgressBar = /\[[#*]+[\s.-]*\]/.test(log.message) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(log.message);
+      
+      if (log.isProgress && log.progressKey && !isProgressBar) {
+        // 進捗メッセージ（プログレスバー以外）は progressKey ごとに最新のものだけ保持
         const existing = progressMap.get(log.progressKey);
         if (!existing || log.timestamp > existing.timestamp) {
           progressMap.set(log.progressKey, log);
         }
       } else {
-        // 非進捗メッセージはそのまま保持
+        // 非進捗メッセージとプログレスバーはすべて保持
         nonProgressLogs.push(log);
       }
     }
 
-    // 非進捗 + 最新の進捗メッセージを結合し、タイムスタンプ順にソート
+    // 非進捗 + プログレスバー + 最新の進捗メッセージを結合し、タイムスタンプ順にソート
     return [...nonProgressLogs, ...Array.from(progressMap.values())]
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
