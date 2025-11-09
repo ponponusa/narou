@@ -3,9 +3,9 @@
 > [!NOTE]
 > このプロジェクトは下記プロジェクトの派生です。
 >
-> - **Original Project : [whiteleaf7/narou](https://github.com/whiteleaf7/narou) --** <sub>![GitHub last commit](https://img.shields.io/github/last-commit/whiteleaf7/narou?style=flat&labelColor=blue&color=white)</sub>
+> - **Original Project : [whiteleaf7/narou](https://github.com/whiteleaf7/narou) --**[GitHub last commit](https://img.shields.io/github/last-commit/whiteleaf7/narou?style=flat&labelColor=blue&color=white)
 >
-> - **Forked from : [Rumia-Channel/narou](https://github.com/Rumia-Channel/narou) --** <sub>![GitHub last commit](https://img.shields.io/github/last-commit/Rumia-Channel/narou?style=flat&labelColor=gold&color=pink&link=https%3A%2F%2Fgithub.com%2FRumia-Channel%2Fnarou)</sub>
+> - **Forked from : [Rumia-Channel/narou](https://github.com/Rumia-Channel/narou) --**[GitHub last commit](https://img.shields.io/github/last-commit/Rumia-Channel/narou?style=flat&labelColor=gold&color=pink&link=https%3A%2F%2Fgithub.com%2FRumia-Channel%2Fnarou)
 >
 
 素晴らしいプロジェクトを作成していただいた、[whiteleaf7](https://github.com/whiteleaf7) さん、[Rumia-Channel](https://github.com/Rumia-Channel) さんに多大なる感謝を。
