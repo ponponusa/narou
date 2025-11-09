@@ -5,11 +5,15 @@
  */
 
 import type { 
-  Novel, 
+  Novel,
+  ApiV2Response,
+  NovelsListData,
   NovelsListResponse, 
   ApiError,
+  QueueData,
   QueueSizeResponse,
   TagInfo,
+  VersionData,
   VersionInfo,
   LogMessage
 } from '../types/api';
@@ -17,7 +21,49 @@ import type {
 const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:33000';
 
 /**
- * APIリクエストの基本関数
+ * API v2 レスポンスの処理
+ */
+function handleApiV2Response<T>(response: ApiV2Response<T>): T {
+  if (!response.success) {
+    throw new Error(response.error || response.message || 'Unknown error');
+  }
+  if (response.data === undefined) {
+    throw new Error('No data in response');
+  }
+  return response.data;
+}
+
+/**
+ * API v2 リクエストの基本関数
+ */
+async function fetchApiV2<T>(
+  endpoint: string, 
+  options: RequestInit = {}
+): Promise<T> {
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error: ApiError = await response.json().catch(() => ({
+      error: 'HTTP Error',
+      message: `${response.status} ${response.statusText}`,
+    }));
+    throw new Error(error.message || error.error);
+  }
+
+  const apiResponse: ApiV2Response<T> = await response.json();
+  return handleApiV2Response(apiResponse);
+}
+
+/**
+ * APIリクエストの基本関数（Legacy API用）
  */
 async function fetchApi<T>(
   endpoint: string, 
@@ -88,40 +134,35 @@ async function fetchApiForm<T>(
 }
 
 /**
- * 小説リストを取得
+ * 小説リストを取得（API v2）
  */
 export async function getNovels(params?: {
-  draw?: number;
-  start?: number;
-  length?: number;
+  page?: number;
+  per_page?: number;
   filter?: string;
-}): Promise<NovelsListResponse> {
+}): Promise<NovelsListData> {
   const searchParams = new URLSearchParams();
   if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        searchParams.append(key, String(value));
-      }
-    });
+    if (params.page !== undefined) searchParams.append('page', String(params.page));
+    if (params.per_page !== undefined) searchParams.append('per_page', String(params.per_page));
+    if (params.filter) searchParams.append('filter', params.filter);
   }
 
-  const response = await fetchApi<any>(
-    `/api/list?${searchParams.toString()}`
-  );
-
-  // raw_tags を tags にマッピング（バックエンドの後方互換性のため）
-  if (response.data) {
-    response.data = response.data.map((novel: any) => ({
-      ...novel,
-      tags: novel.raw_tags || []
-    }));
-  }
-
-  return response as NovelsListResponse;
+  const query = searchParams.toString();
+  const endpoint = query ? `/api/v2/novels?${query}` : '/api/v2/novels';
+  
+  return fetchApiV2<NovelsListData>(endpoint);
 }
 
 /**
- * 小説の総数を取得
+ * 小説の詳細を取得（API v2）
+ */
+export async function getNovel(id: number): Promise<Novel> {
+  return fetchApiV2<Novel>(`/api/v2/novels/${id}`);
+}
+
+/**
+ * 小説の総数を取得（Legacy API）
  */
 export async function getNovelsCount(): Promise<number> {
   const result = await fetchApi<{ count: number }>('/api/novels/count');
@@ -129,33 +170,34 @@ export async function getNovelsCount(): Promise<number> {
 }
 
 /**
- * 全小説IDを取得
+ * 全小説IDを取得（Legacy API）
  */
 export async function getAllNovelIds(): Promise<number[]> {
   return fetchApi<number[]>('/api/novels/all_ids');
 }
 
 /**
- * 小説をダウンロード
+ * 小説をダウンロード（API v2）
  */
-export async function downloadNovels(targets: string[], force = false): Promise<void> {
-  const endpoint = force ? '/api/download_force' : '/api/download';
-  await fetchApiForm(endpoint, { 
-    targets: Array.isArray(targets) ? targets : [targets] 
+export async function downloadNovels(ids: number[], force = false): Promise<void> {
+  await fetchApiV2<null>('/api/v2/novels/download', {
+    method: 'POST',
+    body: JSON.stringify({ ids, force }),
   });
 }
 
 /**
- * 小説を変換
+ * 小説を変換（API v2）
  */
 export async function convertNovels(ids: number[]): Promise<void> {
-  await fetchApiForm('/api/convert', { 
-    ids: ids.map(String) 
+  await fetchApiV2<null>('/api/v2/novels/convert', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
   });
 }
 
 /**
- * 小説を更新
+ * 小説を更新（Legacy API - API v2 未実装）
  */
 export async function updateNovels(ids?: number[]): Promise<void> {
   await fetchApiForm('/api/update', { 
@@ -164,89 +206,129 @@ export async function updateNovels(ids?: number[]): Promise<void> {
 }
 
 /**
- * 小説を削除
+ * 小説を削除（API v2）
  */
 export async function removeNovels(ids: number[], withFile = false): Promise<void> {
-  const endpoint = withFile ? '/api/remove_with_file' : '/api/remove';
-  await fetchApiForm(endpoint, { 
-    ids: ids.map(String) 
+  await fetchApiV2<null>('/api/v2/novels/remove', {
+    method: 'POST',
+    body: JSON.stringify({ ids, with_file: withFile }),
   });
 }
 
 /**
- * 凍結状態をトグル
+ * 凍結状態をトグル（API v2）
  */
 export async function toggleFreeze(ids: number[]): Promise<void> {
-  await fetchApiForm('/api/freeze', { 
-    ids: ids.map(String) 
+  await fetchApiV2<null>('/api/v2/novels/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
   });
 }
 
 /**
- * タグリストを取得
+ * タグリストを取得（API v2）
  */
 export async function getTagList(): Promise<TagInfo[]> {
-  return fetchApi<TagInfo[]>('/api/tag_list.json');
+  interface TagsData {
+    tags: TagInfo[];
+  }
+  const data = await fetchApiV2<TagsData>('/api/v2/tags');
+  return data.tags;
 }
 
 /**
- * タグを編集
+ * タグを追加（API v2）
  */
-export async function editTag(ids: number[], tag: string, action: 'add' | 'remove'): Promise<void> {
-  await fetchApi('/api/edit_tag', {
+export async function addTags(ids: number[], tag: string): Promise<void> {
+  await fetchApiV2<null>('/api/v2/tags/add', {
     method: 'POST',
-    body: JSON.stringify({
-      ids: ids.map(String),
-      tag,
-      action
-    }),
+    body: JSON.stringify({ ids, tag }),
   });
 }
 
 /**
- * キューサイズを取得
+ * タグを削除（API v2）
  */
-export async function getQueueSize(): Promise<QueueSizeResponse> {
-  return fetchApi<QueueSizeResponse>('/api/get_queue_size');
+export async function removeTags(ids: number[], tag: string): Promise<void> {
+  await fetchApiV2<null>('/api/v2/tags/delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids, tag }),
+  });
 }
 
 /**
- * キューをキャンセル
+ * タグを編集（addTags/removeTags のラッパー）
+ */
+export async function editTag(ids: number[], tag: string, action: 'add' | 'remove'): Promise<void> {
+  if (action === 'add') {
+    await addTags(ids, tag);
+  } else {
+    await removeTags(ids, tag);
+  }
+}
+
+/**
+ * キューサイズを取得（API v2）
+ */
+export async function getQueueSize(): Promise<QueueData> {
+  return fetchApiV2<QueueData>('/api/v2/system/queue');
+}
+
+/**
+ * システムステータスを取得（API v2）
+ */
+export async function getSystemStatus(): Promise<{
+  queue: QueueData;
+  push_server: { running: boolean; port: number };
+  version: VersionData;
+}> {
+  return fetchApiV2('/api/v2/system/status');
+}
+
+/**
+ * バージョン情報を取得（API v2）
+ */
+export async function getVersion(): Promise<VersionData> {
+  return fetchApiV2<VersionData>('/api/v2/system/version');
+}
+
+/**
+ * キューをキャンセル（Legacy API - API v2 未実装）
  */
 export async function cancelQueue(): Promise<void> {
   await fetchApiForm('/api/cancel', {});
 }
 
 /**
- * バージョン情報を取得
+ * 現在のバージョンを取得（Legacy API用）
  */
 export async function getCurrentVersion(): Promise<VersionInfo> {
   return fetchApi<VersionInfo>('/api/version/current.json');
 }
 
 /**
- * 最新バージョンを取得
+ * 最新バージョンを取得（Legacy API用）
  */
 export async function getLatestVersion(): Promise<VersionInfo> {
   return fetchApi<VersionInfo>('/api/version/latest.json');
 }
 
 /**
- * ログ履歴を取得
+ * ログ履歴を取得（Legacy API - API v2 未実装）
  */
 export async function getHistory(): Promise<LogMessage[]> {
   return fetchApi<LogMessage[]>('/api/history');
 }
 
 /**
- * ログ履歴をクリア
+ * ログ履歴をクリア（Legacy API - API v2 未実装）
  */
 export async function clearHistory(): Promise<void> {
   await fetchApiForm('/api/clear_history', {});
 }
 
 /**
- * CSV形式でダウンロード
+ * CSV形式でダウンロード（Legacy API - API v2 未実装）
  */
 export function downloadAsCSV(): string {
   return `${API_BASE_URL}/api/csv/download`;

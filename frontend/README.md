@@ -58,12 +58,14 @@ npm run preview -- --host 0.0.0.0 --port 4321
 このフロントエンドは、Narou.rb の Ruby/Sinatra バックエンドAPI（デフォルト: `http://localhost:33000`）と連携して動作します。
 
 1. バックエンドを起動:
+
    ```bash
    cd /mnt/c/git/narou
    bundle exec ruby narou.rb web -p 33000
    ```
 
 2. フロントエンドを起動:
+
    ```bash
    cd /mnt/c/git/narou/frontend
    npm run dev
@@ -84,7 +86,7 @@ npm run preview -- --host 0.0.0.0 --port 4321
 
 ## プロジェクト構造
 
-```
+```text
 frontend/
 ├── src/
 │   ├── components/       # Svelteコンポーネント
@@ -116,6 +118,7 @@ frontend/
 ### NovelList.svelte
 
 小説リストをテーブル形式で表示し、以下の操作を提供:
+
 - 小説の選択
 - ダウンロード
 - 変換
@@ -132,6 +135,7 @@ frontend/
 `src/lib/api.ts` にバックエンドAPIとの通信用の関数が定義されています。
 
 主要なAPI関数:
+
 - `getNovels()`: 小説リスト取得
 - `downloadNovels()`: 小説ダウンロード
 - `convertNovels()`: 小説変換
@@ -159,4 +163,3 @@ frontend/
 - [Astro Documentation](https://docs.astro.build)
 - [Svelte Documentation](https://svelte.dev)
 - [Tailwind CSS Documentation](https://tailwindcss.com)
-

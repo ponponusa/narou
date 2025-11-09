@@ -27,11 +27,13 @@ npm run preview -- --host 0.0.0.0 --port 4321
 ```
 
 **利点**:
+
 - 起動が安定している
 - プロダクション環境に近い状態でテスト可能
 - パフォーマンスが良い
 
 **欠点**:
+
 - コード変更時に手動でリビルドが必要（HMRなし）
 
 #### 方法2: WSLのホームディレクトリに移動
@@ -48,10 +50,12 @@ npm run dev
 ```
 
 **利点**:
+
 - `npm run dev`が高速に動作
 - HMRが正常に機能
 
 **欠点**:
+
 - Windowsエクスプローラーからのアクセスが少し不便
 - 同期が必要
 
@@ -74,6 +78,7 @@ ip addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
 ```
 
 **設定ファイル**:
+
 - `frontend/.env`: `PUBLIC_API_BASE_URL`にIPアドレスを設定
 - `frontend/astro.config.mjs`: `server.host`を`'0.0.0.0'`に設定
 
@@ -99,6 +104,7 @@ npm run preview -- --host 0.0.0.0 --port 4321
 ```
 
 **アクセスURL**:
+
 - フロントエンド: `http://<WSL_IP>:4321/`
 - バックエンド API: `http://<WSL_IP>:33000/`
 

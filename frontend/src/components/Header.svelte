@@ -4,7 +4,7 @@
   ナビゲーションバーとアクションボタンを提供
 -->
 <script lang="ts">
-  import { getCurrentVersion } from '../lib/api';
+  import { getVersion } from '../lib/api';
   import { onMount } from 'svelte';
 
   let version = $state('...');
@@ -12,8 +12,8 @@
 
   onMount(async () => {
     try {
-      const versionInfo = await getCurrentVersion();
-      version = versionInfo.version;
+      const versionData = await getVersion();
+      version = versionData.narou;
       // Bootsnap情報は環境変数やAPIから取得
       // 仮実装
       bootsnap = false;

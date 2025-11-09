@@ -26,6 +26,12 @@ require_relative "settingmessages"
 require_relative "server_helpers"
 require_relative "../narou/promo_tag_extractor"
 require_relative "../narou/system_updater"
+require_relative "../narou/tag_manager"
+require_relative "api_v2"
+require_relative "api_v2_novels"
+require_relative "api_v2_system"
+require_relative "api_v2_tags"
+require_relative "api_v2_settings"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -56,6 +62,13 @@ class Narou::AppServer < Sinatra::Base
     end
   end
 
+  # API v2 エンドポイント登録
+  include Narou::ApiV2::Base
+  Narou::ApiV2::Novels.register(self)
+  Narou::ApiV2::System.register(self)
+  Narou::ApiV2::Tags.register(self)
+  Narou::ApiV2::Settings.register(self)
+
   # CORS設定（新しいフロントエンドとの連携用）
   before do
     # プリフライトリクエストとAPIエンドポイントにCORSヘッダーを追加
@@ -76,6 +89,14 @@ class Narou::AppServer < Sinatra::Base
 
   def self.push_server
     @@push_server
+  end
+
+  def self.legacy_mode=(enabled)
+    @@legacy_mode = enabled
+  end
+
+  def self.legacy_mode?
+    @@legacy_mode ||= false
   end
 
   def self.request_reboot
@@ -230,17 +251,60 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/" do
-    setting = Inventory.load("server_setting", :global)
-    @is_first_access = !setting["already-accessed"]
-    if @is_first_access
-      setting["already-accessed"] = true
-      setting.save
+    if self.class.legacy_mode?
+      # Legacy Haml UI
+      setting = Inventory.load("server_setting", :global)
+      @is_first_access = !setting["already-accessed"]
+      if @is_first_access
+        setting["already-accessed"] = true
+        setting.save
+      end
+      haml :index, layout: true
+    else
+      # New Astro UI
+      frontend_index = File.join(__dir__, "../../frontend/dist/index.html")
+      if File.exist?(frontend_index)
+        send_file frontend_index
+      else
+        halt 500, "Frontend not built. Run 'cd frontend && npm run build' first."
+      end
     end
-    haml :index, layout: true
   end
 
   get "/style.css" do
-    scss :style
+    if self.class.legacy_mode?
+      scss :style
+    else
+      # Astro UI では使用しない
+      halt 404
+    end
+  end
+
+  # Astro ビルド済みアセット配信
+  get "/_astro/*" do
+    unless self.class.legacy_mode?
+      asset_path = File.join(__dir__, "../../frontend/dist/_astro", params['splat'].first)
+      if File.exist?(asset_path)
+        send_file asset_path
+      else
+        halt 404
+      end
+    else
+      halt 404
+    end
+  end
+
+  get "/favicon.svg" do
+    unless self.class.legacy_mode?
+      favicon_path = File.join(__dir__, "../../frontend/dist/favicon.svg")
+      if File.exist?(favicon_path)
+        send_file favicon_path
+      else
+        halt 404
+      end
+    else
+      halt 404
+    end
   end
 
   before "/settings" do
@@ -1586,12 +1650,12 @@ class Narou::AppServer < Sinatra::Base
 
   get "/api/tag_list.json" do
     headers "Access-Control-Allow-Origin" => "*"
-    tag_list = Command::Tag.get_tag_list
+    tag_list = Narou::TagManager.get_tag_list
     result = tag_list.map do |tagname, count|
       {
         name: tagname,
         count: count,
-        color: Command::Tag.get_color(tagname)
+        color: Narou::TagManager.get_color(tagname)
       }
     end
     json(result.sort_by { |tag| tag[:name] })
@@ -1697,49 +1761,31 @@ class Narou::AppServer < Sinatra::Base
       return { success: false, error: "No tag states provided" }.to_json
     end
     
-    # key と value を重複を維持したまま反転
+    # TagManager を使ってタグ編集を実行
     begin
-      invert_states = request_payload["states"].inject({}) { |h,(k,v)| (h[v] ||= []) << k; h }
-      debug_puts "[DEBUG] Inverted states: #{invert_states.inspect}"
-    rescue => e
-      debug_puts "[ERROR] Failed to invert states: #{e.message}"
-      debug_puts "[ERROR] States param details: #{request_payload["states"].inspect}"
-      return { success: false, error: e.message }.to_json
-    end
-    
-    has_additions = false
-    has_deletions = false
-    
-    invert_states.each do |state, tags|
-      case state.to_i
-      when 0
-        # タグを削除
-        debug_puts "タグ削除実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
-        Command::Tag.execute!("--delete", tags.join(" "), sorted_ids, io: Narou::NullIO.new)
-        has_deletions = true
-      when 1
-        # 現状を維持(何もしない)
-      when 2
-        # タグを追加
-        debug_puts "タグ追加実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
-        Command::Tag.execute!("--add", tags.join(" "), sorted_ids, io: Narou::NullIO.new)
-        has_additions = true
+      result = Narou::TagManager.edit_tags(request_payload["states"], sorted_ids.map(&:to_i))
+      
+      if result[:success]
+        debug_puts "タグ編集完了 (追加: #{result[:added].join(', ')}, 削除: #{result[:deleted].join(', ')})"
+        
+        # キャッシュをクリアしてからイベント送信
+        Narou::AppServer.clear_all_cache 
+        debug_puts "全キャッシュクリア後にリロードイベントを送信"
+        
+        # テーブルリロードとタグキャンバス更新を順次実行
+        @@push_server.send_all(:"table.reload")
+        @@push_server.send_all(:"tag.updateCanvas")
+        
+        { success: true }.to_json
+      else
+        debug_puts "[ERROR] Tag edit failed: #{result[:error]}"
+        { success: false, error: result[:error] }.to_json
       end
+    rescue => e
+      debug_puts "[ERROR] Failed to edit tags: #{e.message}"
+      debug_puts "[ERROR] States param details: #{request_payload["states"].inspect}"
+      { success: false, error: e.message }.to_json
     end
-    
-    # タグ追加がある場合は、データベース書き込み完了を待つ
-    if has_additions
-      debug_puts "タグ追加処理のためデータベース同期を待機中..."
-      sleep(0.5)  # データベース書き込み完了を待つ
-    end
-    
-    # キャッシュを確実にクリアしてからイベント送信
-    Narou::AppServer.clear_all_cache 
-    debug_puts "タグ編集完了 (追加: #{has_additions}, 削除: #{has_deletions}): 全キャッシュクリア後にリロードイベントを送信"
-    
-    # テーブルリロードとタグキャンバス更新を順次実行
-    @@push_server.send_all(:"table.reload")
-    @@push_server.send_all(:"tag.updateCanvas")
   end
 
   get "/api/get_queue_size" do
