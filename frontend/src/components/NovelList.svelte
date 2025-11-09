@@ -10,6 +10,7 @@
   import { getPushServer } from '../lib/pushserver';
   import AddNovelModal from './AddNovelModal.svelte';
   import TagModal from './TagModal.svelte';
+  import ConsolePanel from './ConsolePanel.svelte';
 
   let novels = $state<Novel[]>([]);
   let loading = $state(true);
@@ -20,6 +21,7 @@
   let pushServer = getPushServer();
   let addNovelModal: AddNovelModal;
   let tagModal: TagModal;
+  let consolePanel: ConsolePanel;
 
   // フィルター・ソート設定
   let currentPage = $state(0);
@@ -628,3 +630,6 @@
 
 <!-- タグ編集モーダル -->
 <TagModal bind:this={tagModal} />
+
+<!-- コンソールパネル -->
+<ConsolePanel bind:this={consolePanel} />
