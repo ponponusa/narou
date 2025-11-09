@@ -5,15 +5,20 @@
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getTagInfo, editTags, type TagInfo } from '../lib/api';
+  import { getTagInfo, editTags, setTagColors, type TagInfo } from '../lib/api';
 
   let isOpen = $state(false);
   let selectedIds = $state<number[]>([]);
   let tagStates = $state<Record<string, number>>({});
+  let tagColors = $state<Record<string, string>>({});
   let newTagName = $state('');
+  let newTagColor = $state('green');
   let isLoading = $state(false);
   let isSaving = $state(false);
   let error = $state<string | null>(null);
+  
+  // 利用可能な色
+  const AVAILABLE_COLORS = ['green', 'yellow', 'blue', 'magenta', 'cyan', 'red', 'white'] as const;
 
   /**
    * タグ状態の定義
@@ -62,15 +67,14 @@
     try {
       const tagInfo = await getTagInfo(selectedIds);
       
-      // タグ状態を初期化
+      // タグ状態を初期化 - すべてのタグを表示
       tagStates = {};
+      tagColors = {};
       Object.entries(tagInfo).forEach(([tagName, info]) => {
-        // count === selectedIds.length なら全選択中の小説が持っている = KEEP
-        // count > 0 なら一部の小説が持っている = KEEP（部分的）
-        // count === 0 なら持っていない = DELETE（表示しない）
-        if (info.count > 0) {
-          tagStates[tagName] = TAG_STATE.KEEP;
-        }
+        // count > 0: 選択された小説の一部または全部が持っている = KEEP
+        // count === 0: 選択された小説は持っていない（でも他の小説が持っている）= DELETE
+        tagStates[tagName] = info.count > 0 ? TAG_STATE.KEEP : TAG_STATE.DELETE;
+        tagColors[tagName] = info.color;
       });
       
     } catch (err) {
@@ -113,6 +117,7 @@
     }
     
     tagStates[trimmed] = TAG_STATE.ADD;
+    tagColors[trimmed] = newTagColor;
     newTagName = '';
     error = null;
   }
@@ -127,7 +132,11 @@
     error = null;
     
     try {
+      // タグ状態の保存
       const result = await editTags(selectedIds, tagStates);
+      
+      // タグ色の保存（色が変更されたタグのみ）
+      await setTagColors(tagColors);
       
       // 成功メッセージ（後でトースト通知に置き換え）
       const messages = [];
@@ -200,6 +209,50 @@
     };
     return colorMap[color] || colorMap.white;
   }
+  
+  /**
+   * 背景色から適切なテキスト色を計算（コントラスト考慮）
+   */
+  function getTextColorForBackground(bgColor: string): string {
+    const colorLuminance: Record<string, number> = {
+      red: 0.3,
+      blue: 0.2,
+      green: 0.4,
+      yellow: 0.8,
+      magenta: 0.4,
+      cyan: 0.7,
+      white: 0.9,
+    };
+    
+    const luminance = colorLuminance[bgColor] || 0.5;
+    return luminance > 0.6 ? '#000000' : '#FFFFFF';
+  }
+  
+  /**
+   * タグ色の背景スタイルを取得
+   */
+  function getColorStyle(color: string): string {
+    const colorHex: Record<string, string> = {
+      red: '#EF4444',
+      blue: '#3B82F6',
+      green: '#10B981',
+      yellow: '#F59E0B',
+      magenta: '#EC4899',
+      cyan: '#06B6D4',
+      white: '#F3F4F6',
+    };
+    
+    const bg = colorHex[color] || colorHex.white;
+    const text = getTextColorForBackground(color);
+    return `background-color: ${bg}; color: ${text};`;
+  }
+  
+  /**
+   * タグの色を変更
+   */
+  function changeTagColor(tagName: string, newColor: string) {
+    tagColors[tagName] = newColor;
+  }
 
   /**
    * 変更があるかチェック
@@ -253,19 +306,36 @@
             <label for="new-tag" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               新しいタグを追加
             </label>
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-wrap">
               <input
                 id="new-tag"
                 type="text"
                 bind:value={newTagName}
                 onkeydown={(e) => e.key === 'Enter' && addNewTag()}
                 placeholder="タグ名を入力..."
-                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isSaving}
               />
+              <select
+                bind:value={newTagColor}
+                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isSaving}
+              >
+                {#each AVAILABLE_COLORS as color}
+                  <option value={color}>
+                    {color === 'green' ? '緑' : 
+                     color === 'yellow' ? '黄' : 
+                     color === 'blue' ? '青' : 
+                     color === 'magenta' ? 'マゼンタ' : 
+                     color === 'cyan' ? 'シアン' : 
+                     color === 'red' ? '赤' : 
+                     '白'}
+                  </option>
+                {/each}
+              </select>
               <button
                 onclick={addNewTag}
-                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                 disabled={isSaving || !newTagName.trim()}
               >
                 追加
@@ -286,21 +356,49 @@
             {:else}
               <div class="space-y-2">
                 {#each Object.entries(tagStates) as [tagName, state]}
-                  <button
-                    onclick={() => toggleTagState(tagName)}
-                    class="w-full flex items-center justify-between px-4 py-3 border-2 rounded-lg transition-all hover:shadow-md {getStateClass(state)}"
-                    disabled={isSaving}
-                  >
-                    <span class="font-medium text-gray-900 dark:text-gray-100">{tagName}</span>
-                    <div class="flex items-center gap-3">
-                      <span class="state-badge">
-                        {getStateLabel(state)}
-                      </span>
-                      <span class="text-xs text-gray-500 dark:text-gray-400">
-                        クリックで切り替え
-                      </span>
-                    </div>
-                  </button>
+                  <div class="flex items-center gap-2">
+                    <button
+                      onclick={() => toggleTagState(tagName)}
+                      class="flex-1 flex items-center justify-between px-4 py-3 border-2 rounded-lg transition-all hover:shadow-md {getStateClass(state)}"
+                      disabled={isSaving}
+                    >
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="px-2 py-1 rounded text-xs font-semibold"
+                          style={getColorStyle(tagColors[tagName] || 'white')}
+                        >
+                          {tagName}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="state-badge">
+                          {getStateLabel(state)}
+                        </span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                          クリックで切り替え
+                        </span>
+                      </div>
+                    </button>
+                    <select
+                      value={tagColors[tagName] || 'white'}
+                      onchange={(e) => changeTagColor(tagName, e.currentTarget.value)}
+                      class="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      disabled={isSaving}
+                      title="タグの色を変更"
+                    >
+                      {#each AVAILABLE_COLORS as color}
+                        <option value={color}>
+                          {color === 'green' ? '緑' : 
+                           color === 'yellow' ? '黄' : 
+                           color === 'blue' ? '青' : 
+                           color === 'magenta' ? 'マゼンタ' : 
+                           color === 'cyan' ? 'シアン' : 
+                           color === 'red' ? '赤' : 
+                           '白'}
+                        </option>
+                      {/each}
+                    </select>
+                  </div>
                 {/each}
               </div>
             {/if}

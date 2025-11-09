@@ -45,9 +45,24 @@ module Narou
       # @param tagname [String] タグ名
       # @return [String] タグの色（CSSクラス名）
       #
-      def get_color(tagname)
+      def self.get_color(tagname)
         require_relative "../command/tag"
         Command::Tag.get_color(tagname)
+      end
+
+      #
+      # タグの色を一括設定
+      #
+      # @param colors [Hash<String, String>] { "タグ名" => "色", ... }
+      # @return [void]
+      #
+      def self.set_colors(colors)
+        require_relative "../command/tag"
+        tag_colors = Inventory.load("tag_colors")
+        colors.each do |tagname, color|
+          tag_colors[tagname] = color if Command::Tag::COLORS.include?(color)
+        end
+        tag_colors.save
       end
 
       #

@@ -206,6 +206,38 @@ module Narou
               json error_response('TAG_DELETE_ERROR', e.message)
             end
           end
+
+          # POST /api/v2/tags/color
+          # タグの色を設定
+          post '/api/v2/tags/color' do
+            set_cors_headers
+            
+            body = parse_json_body
+            colors = body['colors']
+            
+            unless colors && colors.is_a?(Hash) && !colors.empty?
+              status 400
+              return json error_response('INVALID_PARAMS', 'Colors hash is required')
+            end
+            
+            begin
+              require_relative '../narou/tag_manager'
+              Narou::TagManager.set_colors(colors)
+              
+              # PushServerでイベント送信
+              if defined?(@@push_server) && @@push_server
+                @@push_server.send_all(:'tag.updateCanvas')
+              end
+              
+              json success_response(
+                { colors: colors },
+                message: 'Tag colors updated successfully'
+              )
+            rescue StandardError => e
+              status 500
+              json error_response('TAG_COLOR_ERROR', e.message)
+            end
+          end
         end
       end
     end

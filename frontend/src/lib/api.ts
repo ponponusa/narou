@@ -298,6 +298,20 @@ export async function editTags(ids: number[], states: Record<string, number>): P
 }
 
 /**
+ * タグの色を設定（API v2）
+ * @param colors - タグ名と色のマッピング { tagName: color }
+ */
+export async function setTagColors(colors: Record<string, string>): Promise<{ colors: Record<string, string> }> {
+  interface ColorResult {
+    colors: Record<string, string>;
+  }
+  return fetchApiV2<ColorResult>('/api/v2/tags/color', {
+    method: 'POST',
+    body: JSON.stringify({ colors }),
+  });
+}
+
+/**
  * タグを追加（API v2）
  * @param ids - 対象の小説ID配列
  * @param tags - 追加するタグ名の配列
