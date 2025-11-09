@@ -91,6 +91,14 @@ class Narou::AppServer < Sinatra::Base
     @@push_server
   end
 
+  def self.legacy_mode=(enabled)
+    @@legacy_mode = enabled
+  end
+
+  def self.legacy_mode?
+    @@legacy_mode ||= false
+  end
+
   def self.request_reboot
     @@request_reboot = true
   end
@@ -243,17 +251,60 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/" do
-    setting = Inventory.load("server_setting", :global)
-    @is_first_access = !setting["already-accessed"]
-    if @is_first_access
-      setting["already-accessed"] = true
-      setting.save
+    if self.class.legacy_mode?
+      # Legacy Haml UI
+      setting = Inventory.load("server_setting", :global)
+      @is_first_access = !setting["already-accessed"]
+      if @is_first_access
+        setting["already-accessed"] = true
+        setting.save
+      end
+      haml :index, layout: true
+    else
+      # New Astro UI
+      frontend_index = File.join(__dir__, "../../frontend/dist/index.html")
+      if File.exist?(frontend_index)
+        send_file frontend_index
+      else
+        halt 500, "Frontend not built. Run 'cd frontend && npm run build' first."
+      end
     end
-    haml :index, layout: true
   end
 
   get "/style.css" do
-    scss :style
+    if self.class.legacy_mode?
+      scss :style
+    else
+      # Astro UI では使用しない
+      halt 404
+    end
+  end
+
+  # Astro ビルド済みアセット配信
+  get "/_astro/*" do
+    unless self.class.legacy_mode?
+      asset_path = File.join(__dir__, "../../frontend/dist/_astro", params['splat'].first)
+      if File.exist?(asset_path)
+        send_file asset_path
+      else
+        halt 404
+      end
+    else
+      halt 404
+    end
+  end
+
+  get "/favicon.svg" do
+    unless self.class.legacy_mode?
+      favicon_path = File.join(__dir__, "../../frontend/dist/favicon.svg")
+      if File.exist?(favicon_path)
+        send_file favicon_path
+      else
+        halt 404
+      end
+    else
+      halt 404
+    end
   end
 
   before "/settings" do

@@ -38,6 +38,9 @@ module Command
       @opt.on("-n", "--no-browser", "起動時にブラウザは開かない") {
         @options["no-browser"] = true
       }
+      @opt.on("-l", "--legacy", "旧 Haml UI を使用する (デフォルトは新 Astro UI)") {
+        @options["legacy"] = true
+      }
     end
 
     def confirm_of_first
@@ -124,9 +127,17 @@ module Command
       Narou.web = true
       Thread.abort_on_exception = true
 
+      # Legacy モードの設定
+      Narou::AppServer.legacy_mode = @options["legacy"] || false
+
       address = "http://#{params[:host]}:#{params[:port]}/"
       puts address
       puts "サーバを止めるには Ctrl+C を入力"
+      if @options["legacy"]
+        puts "(Legacy Haml UI モード)"
+      else
+        puts "(New Astro UI モード)"
+      end
       puts
 
       push_server.run
