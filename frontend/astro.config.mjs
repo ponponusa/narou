@@ -1,0 +1,30 @@
+// @ts-check
+import { defineConfig } from 'astro/config';
+
+import svelte from '@astrojs/svelte';
+
+import tailwindcss from '@tailwindcss/vite';
+
+// https://astro.build/config
+export default defineConfig({
+  integrations: [svelte()],
+
+  vite: {
+    plugins: [tailwindcss()],
+    server: {
+      proxy: {
+        // バックエンドAPIへのプロキシ設定
+        '/api': {
+          target: 'http://localhost:33000',
+          changeOrigin: true,
+        },
+      },
+    },
+  },
+
+  // 開発サーバーの設定
+  server: {
+    port: 4321,
+    host: true,
+  },
+});

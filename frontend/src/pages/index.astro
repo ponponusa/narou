@@ -1,0 +1,25 @@
+---
+/**
+ * メインページ
+ * 
+ * 小説リストを表示するメインビュー
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.svelte';
+import NovelList from '../components/NovelList.svelte';
+---
+
+<BaseLayout title="Narou.rb MOD - ホーム">
+  <div class="min-h-screen flex flex-col">
+    <Header client:load />
+    <main class="flex-1">
+      <NovelList client:load />
+    </main>
+    <footer class="bg-gray-100 dark:bg-gray-800 py-4 mt-8">
+      <div class="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
+        <p>&copy; 2024 Narou.rb MOD - 小説家になろうダウンロードツール</p>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
