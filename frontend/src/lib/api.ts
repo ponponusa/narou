@@ -45,6 +45,48 @@ async function fetchApi<T>(
 }
 
 /**
+ * フォームデータでAPIリクエストを送信
+ */
+async function fetchApiForm<T>(
+  endpoint: string, 
+  params: Record<string, string | string[]>,
+  options: RequestInit = {}
+): Promise<T | void> {
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  
+  const formData = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach(v => formData.append(key, v));
+    } else {
+      formData.append(key, value);
+    }
+  });
+
+  const response = await fetch(url, {
+    ...options,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      ...options.headers,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error: ApiError = await response.json().catch(() => ({
+      error: 'Unknown error',
+      message: response.statusText,
+    }));
+    throw new Error(error.message || error.error);
+  }
+
+  // レスポンスが空の場合はvoidを返す
+  const text = await response.text();
+  return text ? JSON.parse(text) : undefined;
+}
+
+/**
  * 小説リストを取得
  */
 export async function getNovels(params?: {
@@ -85,11 +127,10 @@ export async function getAllNovelIds(): Promise<number[]> {
 /**
  * 小説をダウンロード
  */
-export async function downloadNovels(ids: number[], force = false): Promise<void> {
+export async function downloadNovels(targets: string[], force = false): Promise<void> {
   const endpoint = force ? '/api/download_force' : '/api/download';
-  await fetchApi(endpoint, {
-    method: 'POST',
-    body: JSON.stringify({ ids }),
+  await fetchApiForm(endpoint, { 
+    targets: Array.isArray(targets) ? targets : [targets] 
   });
 }
 
@@ -97,9 +138,8 @@ export async function downloadNovels(ids: number[], force = false): Promise<void
  * 小説を変換
  */
 export async function convertNovels(ids: number[]): Promise<void> {
-  await fetchApi('/api/convert', {
-    method: 'POST',
-    body: JSON.stringify({ ids }),
+  await fetchApiForm('/api/convert', { 
+    ids: ids.map(String) 
   });
 }
 
@@ -107,9 +147,8 @@ export async function convertNovels(ids: number[]): Promise<void> {
  * 小説を更新
  */
 export async function updateNovels(ids?: number[]): Promise<void> {
-  await fetchApi('/api/update', {
-    method: 'POST',
-    body: JSON.stringify({ ids }),
+  await fetchApiForm('/api/update', { 
+    ids: ids ? ids.map(String) : [] 
   });
 }
 
@@ -118,9 +157,8 @@ export async function updateNovels(ids?: number[]): Promise<void> {
  */
 export async function removeNovels(ids: number[], withFile = false): Promise<void> {
   const endpoint = withFile ? '/api/remove_with_file' : '/api/remove';
-  await fetchApi(endpoint, {
-    method: 'POST',
-    body: JSON.stringify({ ids }),
+  await fetchApiForm(endpoint, { 
+    ids: ids.map(String) 
   });
 }
 
@@ -128,9 +166,8 @@ export async function removeNovels(ids: number[], withFile = false): Promise<voi
  * 凍結状態をトグル
  */
 export async function toggleFreeze(ids: number[]): Promise<void> {
-  await fetchApi('/api/freeze', {
-    method: 'POST',
-    body: JSON.stringify({ ids }),
+  await fetchApiForm('/api/freeze', { 
+    ids: ids.map(String) 
   });
 }
 
@@ -145,9 +182,10 @@ export async function getTagList(): Promise<TagInfo[]> {
  * タグを編集
  */
 export async function editTag(ids: number[], tag: string, action: 'add' | 'remove'): Promise<void> {
-  await fetchApi('/api/edit_tag', {
-    method: 'POST',
-    body: JSON.stringify({ ids, tag, action }),
+  await fetchApiForm('/api/edit_tag', { 
+    ids: ids.map(String),
+    tag,
+    action 
   });
 }
 
@@ -162,9 +200,7 @@ export async function getQueueSize(): Promise<QueueSizeResponse> {
  * キューをキャンセル
  */
 export async function cancelQueue(): Promise<void> {
-  await fetchApi('/api/cancel', {
-    method: 'POST',
-  });
+  await fetchApiForm('/api/cancel', {});
 }
 
 /**
@@ -192,9 +228,7 @@ export async function getHistory(): Promise<LogMessage[]> {
  * ログ履歴をクリア
  */
 export async function clearHistory(): Promise<void> {
-  await fetchApi('/api/clear_history', {
-    method: 'POST',
-  });
+  await fetchApiForm('/api/clear_history', {});
 }
 
 /**
