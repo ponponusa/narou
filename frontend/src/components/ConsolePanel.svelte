@@ -144,12 +144,12 @@
   }  /**
    * ログエントリを追加
    */
-  function addLog(console: 'stdout' | 'stdout2', message: string) {
+  function addLog(consoleType: 'stdout' | 'stdout2', message: string) {
     const now = Date.now();
     
     // スロットリング: 指定間隔内は追加をペンディング
     if (now - lastUpdateTime < updateThrottle && pendingLogs.length > 0) {
-      pendingLogs.push({ console, message });
+      pendingLogs.push({ console: consoleType, message });
       return;
     }
     
@@ -159,7 +159,7 @@
       pendingLogs = [];
     }
     
-    processLog(console, message);
+    processLog(consoleType, message);
     lastUpdateTime = now;
   }
 
@@ -542,6 +542,7 @@
 
     // echoイベント
     pushServer.on('echo', (data: EchoMessage) => {
+      window.console.log('[DEBUG] WebSocket echo received:', data);
       if (!data.no_history) {
         addLog(data.target_console, data.body);
       }
