@@ -195,10 +195,22 @@
       return false;
     }
     
+    // プログレスバー単体は進捗メッセージとして扱わない（そのまま表示）
+    // ただし、テキスト + プログレスバーは進捗メッセージ
+    const decoded = decodeMessage(message).trim();
+    if (/^\[#+[.\s]*\]$/.test(decoded)) {
+      return false; // プログレスバーだけの行は通常メッセージ
+    }
+    
+    // 「第n部分」だけの行は進捗メッセージ（後で章タイトルで上書きされる）
+    if (/^第\d+部分\s*$/.test(decoded)) {
+      return true;
+    }
+    
     // プログレスバー風のパターン: [####...] や 50% や (n/m) を含む
     // ダウンロード中の "第n部分" パターンも検出
     // "第一話", "第二十話" などの漢数字パターンも検出
-    return /\[#+[.\s]*\]|\d+%|\(\d+\/\d+\)|第\d+部分|部分.*\(\d+\/\d+\)|第[一二三四五六七八九十百千]+話/.test(message);
+    return /\d+%|\(\d+\/\d+\)|部分.*\(\d+\/\d+\)|第[一二三四五六七八九十百千]+話/.test(decoded);
   }
 
   /**
@@ -210,20 +222,21 @@
     const idMatch = message.match(/ID[:：]\s*(\d+)/i);
     if (idMatch) return `progress-id-${idMatch[1]}`;
     
-    // 「第n部分」パターン: 全て同じキー "chapter-download" にまとめる
-    if (/第\d+部分/.test(message)) {
+    // 「第n部分」だけのメッセージと「章タイトル (n/m)」を同じグループにまとめる
+    // 「第n部分」→「章タイトル (n/m)」の順で来るので、章タイトルで上書きされる
+    // 結果: 章タイトルのみが表示される（第n部分は隠れる）
+    if (/^第\d+部分\s*$/.test(message.trim())) {
       return 'progress-chapter-download';
     }
     
-    // 「第一話」「第二十話」などの漢数字パターン: 全て同じキー "chapter-title" にまとめる
-    if (/第[一二三四五六七八九十百千]+話/.test(message)) {
-      return 'progress-chapter-title';
+    // 章タイトル + (n/m) パターンも同じキー
+    if (/.*\(\d+\/\d+\)/.test(message)) {
+      return 'progress-chapter-download';
     }
     
-    // 章タイトル + (n/m) パターン: 全て同じキー "chapter-progress" にまとめる
-    // 例: "01．温め鳥 (1/31)" -> "chapter-progress"
-    if (/.*\(\d+\/\d+\)/.test(message)) {
-      return 'progress-chapter-progress';
+    // 「第一話」「第二十話」などの漢数字パターン
+    if (/第[一二三四五六七八九十百千]+話/.test(message)) {
+      return 'progress-chapter-title';
     }
     
     // (n/m) 形式のパターンがある場合、その前の文字列をキーにする
