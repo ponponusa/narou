@@ -7,6 +7,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.svelte';
 import NovelList from '../components/NovelList.svelte';
+import ProgressMonitor from '../components/ProgressMonitor.svelte';
 ---
 
 <BaseLayout title="Narou.rb MOD - ホーム">
@@ -20,6 +21,9 @@ import NovelList from '../components/NovelList.svelte';
         <p>&copy; 2024 Narou.rb MOD - 小説家になろうダウンロードツール</p>
       </div>
     </footer>
+    
+    <!-- 進捗モニター -->
+    <ProgressMonitor client:load />
   </div>
 </BaseLayout>
 

@@ -91,7 +91,7 @@ RSpec.describe Command::Web do
 
     app_server_class = Class.new do
       class << self
-        attr_accessor :push_server, :request_reboot_flag, :running_flag, :next_address
+        attr_accessor :push_server, :request_reboot_flag, :running_flag, :next_address, :legacy_mode
 
         def create_address(_port)
           next_address
@@ -105,6 +105,14 @@ RSpec.describe Command::Web do
 
         def running?
           !!running_flag
+        end
+
+        def legacy_mode=(enabled)
+          @legacy_mode = enabled
+        end
+
+        def legacy_mode?
+          !!@legacy_mode
         end
       end
     end

@@ -18,7 +18,7 @@ import type {
   LogMessage
 } from '../types/api';
 
-const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:33000';
+const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || 'http://172.26.39.220:33000';
 
 /**
  * API v2 レスポンスの処理
@@ -178,11 +178,39 @@ export async function getAllNovelIds(): Promise<number[]> {
 
 /**
  * 小説をダウンロード（API v2）
+ * @param targets - 小説ID配列または小説情報配列（IDまたはURLを含む）
+ * @param force - 強制ダウンロードフラグ
  */
-export async function downloadNovels(ids: number[], force = false): Promise<void> {
+export async function downloadNovels(targets: (number | string | { id?: number; toc_url?: string })[], force = false): Promise<void> {
+  // targetsを文字列配列に変換
+  const targetStrings = targets.map(target => {
+    if (typeof target === 'number') {
+      return String(target);
+    } else if (typeof target === 'string') {
+      return target;
+    } else if (target.toc_url) {
+      return target.toc_url;
+    } else if (target.id !== undefined) {
+      return String(target.id);
+    }
+    return String(target);
+  });
+
   await fetchApiV2<null>('/api/v2/novels/download', {
     method: 'POST',
-    body: JSON.stringify({ ids, force }),
+    body: JSON.stringify({ targets: targetStrings, force }),
+  });
+}
+
+/**
+ * URLまたはIDから小説を追加してダウンロード（API v2）
+ * @param url - 小説のURL または ncode
+ * @param force - 強制ダウンロードフラグ
+ */
+export async function addNovel(url: string, force = false): Promise<void> {
+  await fetchApiV2<null>('/api/v2/novels/download', {
+    method: 'POST',
+    body: JSON.stringify({ targets: [url], force }),
   });
 }
 
@@ -332,4 +360,81 @@ export async function clearHistory(): Promise<void> {
  */
 export function downloadAsCSV(): string {
   return `${API_BASE_URL}/api/csv/download`;
+}
+
+/**
+ * 設定データの型定義
+ */
+export interface SettingValue {
+  value: string | boolean | number | null;
+  type?: string;
+  help?: string;
+}
+
+export interface SettingVariable {
+  type: string;
+  help: string;
+  select_keys?: string[];
+  select_summaries?: string[];
+  tab?: string;
+  invisible?: boolean;
+}
+
+export interface SettingsData {
+  local: Record<string, SettingValue>;
+  global: Record<string, SettingValue>;
+  variables?: {
+    local: Record<string, SettingVariable>;
+    global: Record<string, SettingVariable>;
+  };
+}
+
+export interface SettingVariablesData {
+  variables: {
+    local: Record<string, SettingVariable>;
+    global: Record<string, SettingVariable>;
+  };
+  tab_names: Record<string, string>; // タブキー → タブ表示名のマッピング
+  tab_info: Record<string, string>; // タブキー → タブ説明のマッピング
+}
+
+export interface SettingsUpdateResult {
+  updated_count: number;
+  validation_errors?: string[];
+}
+
+/**
+ * 設定一覧を取得（API v2）
+ */
+export async function getSettings(): Promise<SettingsData> {
+  return fetchApiV2<SettingsData>('/api/v2/settings');
+}
+
+/**
+ * 設定変数の定義を取得（API v2）
+ */
+export async function getSettingVariables(): Promise<SettingVariablesData> {
+  return fetchApiV2<SettingVariablesData>('/api/v2/settings/variables');
+}
+
+/**
+ * 設定を更新（API v2）
+ * @param settings - 更新する設定のキーと値
+ */
+export async function updateSettings(settings: Record<string, string | boolean | number | null>): Promise<SettingsUpdateResult> {
+  return fetchApiV2<SettingsUpdateResult>('/api/v2/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ settings }),
+  });
+}
+
+/**
+ * 設定を部分更新（API v2）
+ * @param settings - 更新する設定のキーと値（差分のみ）
+ */
+export async function patchSettings(settings: Record<string, string | boolean | number | null>): Promise<SettingsUpdateResult> {
+  return fetchApiV2<SettingsUpdateResult>('/api/v2/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ settings }),
+  });
 }
