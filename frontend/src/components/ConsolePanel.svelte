@@ -450,10 +450,8 @@
     // HTMLエスケープされているのでデコード
     let text = decodeMessage(message);
     
-    // 章タイトルの進捗メッセージには「Current DL:」プレフィックスを追加
-    if (progressKey === 'progress-chapter-download' && /\(\d+\/\d+\)/.test(text)) {
-      text = `Current DL: ${text}`;
-    }
+    // 改行を含むメッセージを1行にまとめる（調査ログのサマリなど）
+    text = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
     
     // TermColorタグをHTMLクラスに変換
     // <red>text</red> -> <span class="tc-red">text</span>
@@ -644,6 +642,11 @@
                       ID:{log.novelId}
                     </span>
                   {/if}
+                  {#if log.progressKey === 'progress-chapter-download'}
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50" title="章ダウンロード中">
+                      READ
+                    </span>
+                  {/if}
                   <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
                     {@html formatMessage(log.message, log.progressKey)}
                   </span>
@@ -699,6 +702,11 @@
                       ID:{log.novelId}
                     </span>
                   {/if}
+                  {#if log.progressKey === 'progress-chapter-download'}
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50" title="章ダウンロード中">
+                      READ
+                    </span>
+                  {/if}
                   <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
                     {@html formatMessage(log.message, log.progressKey)}
                   </span>
@@ -739,6 +747,11 @@
               {#if log.novelId}
                 <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600" title="小説ID">
                   ID:{log.novelId}
+                </span>
+              {/if}
+              {#if log.progressKey === 'progress-chapter-download'}
+                <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50" title="章ダウンロード中">
+                  READ
                 </span>
               {/if}
               <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
