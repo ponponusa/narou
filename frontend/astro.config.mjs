@@ -15,7 +15,7 @@ export default defineConfig({
       proxy: {
         // バックエンドAPIへのプロキシ設定
         '/api': {
-          target: 'http://localhost:33000',
+          target: 'http://172.26.39.220:33000',
           changeOrigin: true,
         },
       },
@@ -25,6 +25,6 @@ export default defineConfig({
   // 開発サーバーの設定
   server: {
     port: 4321,
-    host: true,
+    host: '0.0.0.0', // 全インターフェースでリッスン
   },
 });
