@@ -31,6 +31,7 @@
         if (typeof settings.compactProgress === 'boolean') compactProgress = settings.compactProgress;
         if (typeof settings.autoScroll === 'boolean') autoScroll = settings.autoScroll;
         if (typeof settings.updateThrottle === 'number') updateThrottle = settings.updateThrottle;
+        if (typeof settings.splitRatio === 'number') splitRatio = settings.splitRatio;
       }
     } catch (e) {
       console.error('Failed to load console settings:', e);
@@ -44,7 +45,8 @@
         splitView,
         compactProgress,
         autoScroll,
-        updateThrottle
+        updateThrottle,
+        splitRatio
       }));
     } catch (e) {
       console.error('Failed to save console settings:', e);
@@ -57,6 +59,8 @@
   let compactProgress = $state(true); // 進捗を1行で表示するか
   let updateThrottle = $state(100); // 更新頻度（ms）
   let splitView = $state(true); // 左右分割表示
+  let splitRatio = $state(60); // 左ペインの幅（%）
+  let isResizing = $state(false); // リサイズ中かどうか
   let logContainer: HTMLDivElement | undefined;
   let leftPaneContainer: HTMLDivElement | undefined;
   let rightPaneContainer: HTMLDivElement | undefined;
@@ -105,10 +109,39 @@
    */
   function clearLogs() {
     logs = [];
-    nextId = 0;
   }
 
   /**
+   * リサイズ開始
+   */
+  function startResize(e: MouseEvent) {
+    isResizing = true;
+    e.preventDefault();
+  }
+
+  /**
+   * リサイズ中
+   */
+  function handleResize(e: MouseEvent) {
+    if (!isResizing) return;
+    
+    const consoleEl = document.querySelector('.console-split-view') as HTMLElement;
+    if (!consoleEl) return;
+    
+    const rect = consoleEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const ratio = (x / rect.width) * 100;
+    
+    // 20% ～ 80% の範囲に制限
+    splitRatio = Math.max(20, Math.min(80, ratio));
+  }
+
+  /**
+   * リサイズ終了
+   */
+  function stopResize() {
+    isResizing = false;
+  }  /**
    * ログエントリを追加
    */
   function addLog(console: 'stdout' | 'stdout2', message: string) {
@@ -197,13 +230,13 @@
     
     const decoded = decodeMessage(message).trim();
     
-    // プログレスバー（パーセンテージ付き）: 0%[###...]100%
-    // これは進捗メッセージとして扱い、更新する
-    if (/\d+%\s*\[#+[.\s]*\]\s*\d+%/.test(decoded)) {
+    // プログレスバー: [###...] を含むパターン
+    // 0%[###...]100% や [###...] だけでもOK
+    if (/\[#+[-.\s]*\]/.test(decoded)) {
       return true;
     }
     
-    // 「第n部分」だけの行は進捗メッセージ（後で章タイトルで上書きされる）
+    // 「第n部分」だけの行は進捗メッセージ（常に非表示にする）
     if (/^第\d+部分\s*$/.test(decoded)) {
       return true;
     }
@@ -223,8 +256,9 @@
     const idMatch = decoded.match(/ID[:：]\s*(\d+)/i);
     if (idMatch) return `progress-id-${idMatch[1]}`;
     
-    // プログレスバー（パーセンテージ付き）: 専用キーで管理
-    if (/\d+%\s*\[#+[.\s]*\]\s*\d+%/.test(decoded)) {
+    // プログレスバー: [###...] を含むパターン
+    // 0%[###...]100% や [###...] だけでもOK
+    if (/\[#+[-.\s]*\]/.test(decoded)) {
       return 'progress-bar';
     }
     
@@ -249,10 +283,6 @@
     // 例: "処理中 (1/10)" -> "処理中"
     const progressMatch = decoded.match(/^(.+?)\s*\(\d+\/\d+\)/);
     if (progressMatch) return `progress-${progressMatch[1].trim()}`;
-    
-    // プログレスバーを除いた部分をキーにする
-    const barMatch = decoded.match(/^(.+?)\s*\[#+/);
-    if (barMatch) return `progress-${barMatch[1].trim()}`;
     
     // それ以外は先頭20文字をキーにする
     const titleMatch = decoded.match(/^(.{0,20})/);
@@ -345,8 +375,14 @@
    * コンパクト表示用: 進捗メッセージの重複を除外し最新のみ返す
    */
   function compactLogs(logList: LogEntry[]): LogEntry[] {
+    // 「第n部分」だけのメッセージは常に除外（コンパクト表示ON/OFF関係なく）
+    const withoutBubunLogs = logList.filter(log => {
+      const decoded = decodeMessage(log.message).trim();
+      return !/^第\d+部分\s*$/.test(decoded);
+    });
+    
     // 空のメッセージを除外
-    const filtered = logList.filter(log => {
+    const filtered = withoutBubunLogs.filter(log => {
       const decoded = decodeMessage(log.message).trim();
       return decoded.length > 0;
     });
@@ -565,9 +601,15 @@
     <!-- ログ表示エリア -->
     {#if splitView}
       <!-- 左右分割表示 -->
-      <div class="flex h-64">
+      <div 
+        class="console-split-view flex h-64 relative" 
+        role="group"
+        onmousemove={handleResize} 
+        onmouseup={stopResize} 
+        onmouseleave={stopResize}
+      >
         <!-- 左ペイン: ダウンロード・その他 -->
-        <div class="flex-1 flex flex-col border-r border-gray-700">
+        <div class="flex flex-col border-r border-gray-700" style="width: {splitRatio}%">
           <div class="px-3 py-1 bg-gray-800 border-b border-gray-700 text-xs font-semibold text-blue-300">
             📥 ダウンロード・フェッチ
           </div>
@@ -611,8 +653,18 @@
           </div>
         </div>
 
+        <!-- リサイザー -->
+        <div 
+          class="w-1 bg-gray-700 hover:bg-blue-500 cursor-col-resize transition-colors absolute top-0 bottom-0 {isResizing ? 'bg-blue-500' : ''}" 
+          style="left: {splitRatio}%"
+          onmousedown={startResize}
+          role="separator"
+          aria-label="リサイズ"
+          tabindex="0"
+        ></div>
+
         <!-- 右ペイン: 変換 -->
-        <div class="flex-1 flex flex-col">
+        <div class="flex flex-col" style="width: {100 - splitRatio}%">
           <div class="px-3 py-1 bg-gray-800 border-b border-gray-700 text-xs font-semibold text-green-300">
             ⚙️ 変換・EPUB生成
           </div>
