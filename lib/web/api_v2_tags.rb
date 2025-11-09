@@ -38,9 +38,9 @@ module Narou
             end
           end
 
-          # GET /api/v2/tags/info
+          # POST /api/v2/tags/info
           # タグ詳細情報取得（選択された小説のタグ状態）
-          get '/api/v2/tags/info' do
+          post '/api/v2/tags/info' do
             set_cors_headers
             
             body = parse_json_body
