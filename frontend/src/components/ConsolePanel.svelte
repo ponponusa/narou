@@ -10,7 +10,7 @@
   interface LogEntry {
     id: number;
     timestamp: Date;
-    console: 'stdout' | 'stdout2';
+    console: 'stdout' | 'stdout2' | 'convert';
     message: string;
     isProgress?: boolean; // 進捗メッセージかどうか
     progressKey?: string; // 進捗を識別するキー
@@ -72,7 +72,7 @@
   
   // プログレスバーの状態
   let currentProgressBar: {
-    console: 'stdout' | 'stdout2';
+    console: 'stdout' | 'stdout2' | 'convert';
     percent: number;
     logId?: number;
   } | null = null;
@@ -151,7 +151,7 @@
   }  /**
    * ログエントリを追加
    */
-  function addLog(consoleType: 'stdout' | 'stdout2', message: string) {
+  function addLog(consoleType: 'stdout' | 'stdout2' | 'convert', message: string) {
     const now = Date.now();
     
     // スロットリング: 指定間隔内は追加をペンディング
@@ -274,10 +274,10 @@
       return true;
     }
     
-    // 章データ（「第一章」「第二章」「第１章」「第２章」など）も進捗メッセージとして扱う
+    // 章データ（「第一章」「第二章」「第１章」「第２章」「１章」「2章」など）も進捗メッセージとして扱う
     // 第○部分と同じキーで上書き更新される
-    // 漢数字、全角数字、半角数字すべてに対応
-    if (/^第[一二三四五六七八九十百千壱弐参０-９\d]+章\s*$/.test(decoded)) {
+    // 漢数字、全角数字、半角数字すべてに対応、「第」の有無も対応
+    if (/^第?[一二三四五六七八九十百千壱弐参０-９\d]+章\s*$/.test(decoded)) {
       return true;
     }
     
@@ -311,8 +311,8 @@
       return 'progress-chapter-download';
     }
     
-    // 章データ: 漢数字、全角数字、半角数字すべてに対応
-    if (/^第[一二三四五六七八九十百千壱弐参０-９\d]+章\s*$/.test(decoded)) {
+    // 章データ: 漢数字、全角数字、半角数字すべてに対応、「第」の有無も対応
+    if (/^第?[一二三四五六七八九十百千壱弐参０-９\d]+章\s*$/.test(decoded)) {
       return 'progress-chapter-download';
     }
     
@@ -394,8 +394,10 @@
    */
   function getDownloadLogs(): LogEntry[] {
     return logs.filter(log => 
-      log.processType === 'download' || 
-      (!log.processType && /ダウンロード|download|DL|フェッチ|fetch/i.test(log.message))
+      log.console !== 'convert' && (
+        log.processType === 'download' || 
+        (!log.processType && /ダウンロード|download|DL|フェッチ|fetch/i.test(log.message))
+      )
     );
   }
 
@@ -404,6 +406,7 @@
    */
   function getConvertLogs(): LogEntry[] {
     return logs.filter(log => 
+      log.console === 'convert' ||
       log.processType === 'convert' ||
       (!log.processType && /変換|convert|epub/i.test(log.message))
     );
@@ -414,7 +417,8 @@
    */
   function getOtherLogs(): LogEntry[] {
     return logs.filter(log => 
-      !log.processType || log.processType === 'other'
+      log.console !== 'convert' &&
+      (!log.processType || log.processType === 'other')
     );
   }
 
@@ -462,7 +466,7 @@
   function exportLogs() {
     const text = logs.map(log => {
       const time = formatTime(log.timestamp);
-      const consoleType = log.console === 'stdout2' ? 'stderr' : 'stdout';
+      const consoleType = formatConsoleType(log.console);
       const message = decodeMessage(log.message);
       return `[${time}] [${consoleType}] ${message}`;
     }).join('\n');
@@ -530,6 +534,15 @@
     return `${h}:${m}:${s}`;
   }
 
+  /**
+   * コンソールタイプを表示用にフォーマット
+   */
+  function formatConsoleType(console: 'stdout' | 'stdout2' | 'convert'): string {
+    if (console === 'stdout2') return 'stderr';
+    if (console === 'convert') return 'convert';
+    return 'stdout';
+  }
+
   onMount(() => {
     window.console.log('[DEBUG] ConsolePanel onMount started');
     
@@ -563,19 +576,37 @@
     // プログレスバーイベント
     pushServer.on('progressbar.init', (data: any) => {
       window.console.log('[DEBUG] Progress bar init:', data);
-      const consoleType = data.target_console || 'stdout';
-      currentProgressBar = { console: consoleType, percent: 0 };
+      const consoleType = (data.target_console || 'stdout') as 'stdout' | 'stdout2' | 'convert';
+      
+      // 進捗開始のログエントリを作成
+      const newLog: LogEntry = {
+        id: nextId++,
+        timestamp: new Date(),
+        console: consoleType,
+        message: '[          ] 0%',
+        isProgress: false, // プログレスバーは個別表示
+      };
+      
+      currentProgressBar = { 
+        console: consoleType, 
+        percent: 0,
+        logId: newLog.id
+      };
+      
+      logs = [...logs, newLog];
+      window.console.log('[DEBUG] Progress bar log created (init):', newLog);
+      scrollIfNeeded();
     });
 
     pushServer.on('progressbar.step', (data: any) => {
       window.console.log('[DEBUG] Progress bar step:', data);
       if (currentProgressBar) {
         currentProgressBar.percent = data.percent || 0;
-        const consoleType = data.target_console || currentProgressBar.console;
+        const consoleType = (data.target_console || currentProgressBar.console) as 'stdout' | 'stdout2' | 'convert';
         
         // プログレスバーの表示を生成
         const percent = Math.round(currentProgressBar.percent);
-        const barLength = 20;
+        const barLength = 10;
         const filled = Math.round((percent / 100) * barLength);
         const empty = barLength - filled;
         const bar = '[' + '#'.repeat(filled) + ' '.repeat(empty) + ']';
@@ -591,6 +622,7 @@
               timestamp: new Date(),
             };
             logs = [...logs];
+            window.console.log('[DEBUG] Progress bar log updated:', logs[index]);
           } else {
             // ログが見つからない場合は新規作成
             const newLog: LogEntry = {
@@ -602,6 +634,7 @@
             };
             currentProgressBar.logId = newLog.id;
             logs = [...logs, newLog];
+            window.console.log('[DEBUG] Progress bar log created (not found):', newLog);
           }
         } else {
           // 初回のプログレスバー表示
@@ -614,9 +647,12 @@
           };
           currentProgressBar.logId = newLog.id;
           logs = [...logs, newLog];
+          window.console.log('[DEBUG] Progress bar log created (initial):', newLog);
         }
         
         scrollIfNeeded();
+      } else {
+        window.console.warn('[DEBUG] Progress bar step received but no currentProgressBar');
       }
     });
 
@@ -743,7 +779,7 @@
                     {formatTime(log.timestamp)}
                   </span>
                   <span class="text-gray-400 shrink-0 w-16">
-                    {log.console === 'stdout2' ? 'stderr' : 'stdout'}
+                    {formatConsoleType(log.console)}
                   </span>
                   {#if log.processType}
                     <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
@@ -803,7 +839,7 @@
                     {formatTime(log.timestamp)}
                   </span>
                   <span class="text-gray-400 shrink-0 w-16">
-                    {log.console === 'stdout2' ? 'stderr' : 'stdout'}
+                    {formatConsoleType(log.console)}
                   </span>
                   {#if log.processType}
                     <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
@@ -850,7 +886,7 @@
                 {formatTime(log.timestamp)}
               </span>
               <span class="text-gray-400 shrink-0 w-16">
-                {log.console === 'stdout2' ? 'stderr' : 'stdout'}
+                {formatConsoleType(log.console)}
               </span>
               {#if log.processType}
                 <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
