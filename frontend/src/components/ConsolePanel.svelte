@@ -166,7 +166,7 @@
   /**
    * ログを処理して追加
    */
-  function processLog(console: 'stdout' | 'stdout2', message: string) {
+  function processLog(consoleType: 'stdout' | 'stdout2', message: string) {
     let cleanMessage = message.replace(/\n$/, ''); // 末尾の改行を削除
     
     // ANSI escape sequence（プログレスバーのclear()）を無視
@@ -229,7 +229,7 @@
     logs = [...logs, {
       id: nextId++,
       timestamp: new Date(),
-      console,
+      console: consoleType,
       message: cleanMessage,
       isProgress,
       progressKey,
