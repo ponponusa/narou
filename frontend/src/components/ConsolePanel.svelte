@@ -195,11 +195,12 @@
       return false;
     }
     
-    // プログレスバー単体は進捗メッセージとして扱わない（そのまま表示）
-    // ただし、テキスト + プログレスバーは進捗メッセージ
     const decoded = decodeMessage(message).trim();
-    if (/^\[#+[.\s]*\]$/.test(decoded)) {
-      return false; // プログレスバーだけの行は通常メッセージ
+    
+    // プログレスバー（パーセンテージ付き）: 0%[###...]100%
+    // これは進捗メッセージとして扱い、更新する
+    if (/\d+%\s*\[#+[.\s]*\]\s*\d+%/.test(decoded)) {
+      return true;
     }
     
     // 「第n部分」だけの行は進捗メッセージ（後で章タイトルで上書きされる）
@@ -207,49 +208,54 @@
       return true;
     }
     
-    // プログレスバー風のパターン: [####...] や 50% や (n/m) を含む
-    // ダウンロード中の "第n部分" パターンも検出
+    // 章タイトル + (n/m) パターン
     // "第一話", "第二十話" などの漢数字パターンも検出
-    return /\d+%|\(\d+\/\d+\)|部分.*\(\d+\/\d+\)|第[一二三四五六七八九十百千]+話/.test(decoded);
+    return /\(\d+\/\d+\)|第[一二三四五六七八九十百千]+話/.test(decoded);
   }
 
   /**
    * 進捗メッセージから識別キーを抽出
    */
   function extractProgressKey(message: string): string {
+    const decoded = decodeMessage(message).trim();
+    
     // 小説IDがある場合は、それを最優先でキーにする
-    // これにより「第1部分」「第2部分」などが同じキーでまとめられる
-    const idMatch = message.match(/ID[:：]\s*(\d+)/i);
+    const idMatch = decoded.match(/ID[:：]\s*(\d+)/i);
     if (idMatch) return `progress-id-${idMatch[1]}`;
+    
+    // プログレスバー（パーセンテージ付き）: 専用キーで管理
+    if (/\d+%\s*\[#+[.\s]*\]\s*\d+%/.test(decoded)) {
+      return 'progress-bar';
+    }
     
     // 「第n部分」だけのメッセージと「章タイトル (n/m)」を同じグループにまとめる
     // 「第n部分」→「章タイトル (n/m)」の順で来るので、章タイトルで上書きされる
     // 結果: 章タイトルのみが表示される（第n部分は隠れる）
-    if (/^第\d+部分\s*$/.test(message.trim())) {
+    if (/^第\d+部分\s*$/.test(decoded)) {
       return 'progress-chapter-download';
     }
     
     // 章タイトル + (n/m) パターンも同じキー
-    if (/.*\(\d+\/\d+\)/.test(message)) {
+    if (/.*\(\d+\/\d+\)/.test(decoded)) {
       return 'progress-chapter-download';
     }
     
     // 「第一話」「第二十話」などの漢数字パターン
-    if (/第[一二三四五六七八九十百千]+話/.test(message)) {
+    if (/第[一二三四五六七八九十百千]+話/.test(decoded)) {
       return 'progress-chapter-title';
     }
     
     // (n/m) 形式のパターンがある場合、その前の文字列をキーにする
     // 例: "処理中 (1/10)" -> "処理中"
-    const progressMatch = message.match(/^(.+?)\s*\(\d+\/\d+\)/);
+    const progressMatch = decoded.match(/^(.+?)\s*\(\d+\/\d+\)/);
     if (progressMatch) return `progress-${progressMatch[1].trim()}`;
     
     // プログレスバーを除いた部分をキーにする
-    const barMatch = message.match(/^(.+?)\s*\[#+/);
+    const barMatch = decoded.match(/^(.+?)\s*\[#+/);
     if (barMatch) return `progress-${barMatch[1].trim()}`;
     
     // それ以外は先頭20文字をキーにする
-    const titleMatch = message.match(/^(.{0,20})/);
+    const titleMatch = decoded.match(/^(.{0,20})/);
     if (titleMatch) return `progress-${titleMatch[1].trim()}`;
     
     return 'progress-unknown';
@@ -404,9 +410,14 @@
   /**
    * TermColorタグをHTMLに変換
    */
-  function formatMessage(message: string): string {
+  function formatMessage(message: string, progressKey?: string): string {
     // HTMLエスケープされているのでデコード
     let text = decodeMessage(message);
+    
+    // 章タイトルの進捗メッセージには「Current DL:」プレフィックスを追加
+    if (progressKey === 'progress-chapter-download' && /\(\d+\/\d+\)/.test(text)) {
+      text = `Current DL: ${text}`;
+    }
     
     // TermColorタグをHTMLクラスに変換
     // <red>text</red> -> <span class="tc-red">text</span>
@@ -425,7 +436,7 @@
     // ネストされたタグを処理するため、再帰的に適用
     // 例: <bold><green>text</green></bold>
     if (/<(red|green|blue|yellow|cyan|magenta|white|black|bold|underline)>/.test(text)) {
-      text = formatMessage(text);
+      text = formatMessage(text, progressKey);
     }
     
     return text;
@@ -592,7 +603,7 @@
                     </span>
                   {/if}
                   <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
-                    {@html formatMessage(log.message)}
+                    {@html formatMessage(log.message, log.progressKey)}
                   </span>
                 </div>
               {/each}
@@ -637,7 +648,7 @@
                     </span>
                   {/if}
                   <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
-                    {@html formatMessage(log.message)}
+                    {@html formatMessage(log.message, log.progressKey)}
                   </span>
                 </div>
               {/each}
@@ -679,7 +690,7 @@
                 </span>
               {/if}
               <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
-                {@html formatMessage(log.message)}
+                {@html formatMessage(log.message, log.progressKey)}
               </span>
             </div>
           {/each}
