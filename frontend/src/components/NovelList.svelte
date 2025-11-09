@@ -43,17 +43,18 @@
   }
 
   function toggleSelection(id: number) {
-    if (selectedIds.has(id)) {
-      selectedIds.delete(id);
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
     } else {
-      selectedIds.add(id);
+      newSet.add(id);
     }
-    selectedIds = selectedIds; // reactivityのトリガー
+    selectedIds = newSet;
   }
 
   function selectAll() {
-    if (selectedIds.size === novels.length) {
-      selectedIds.clear();
+    if (selectedIds.size === novels.length && novels.length > 0) {
+      selectedIds = new Set();
     } else {
       selectedIds = new Set(novels.map(n => n.id));
     }
@@ -67,7 +68,8 @@
     try {
       await downloadNovels(Array.from(selectedIds));
       alert('ダウンロードを開始しました');
-      selectedIds.clear();
+      selectedIds = new Set();
+      await loadNovels();
     } catch (err) {
       alert('ダウンロードに失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
     }
@@ -81,7 +83,8 @@
     try {
       await convertNovels(Array.from(selectedIds));
       alert('変換を開始しました');
-      selectedIds.clear();
+      selectedIds = new Set();
+      await loadNovels();
     } catch (err) {
       alert('変換に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
     }
@@ -98,7 +101,7 @@
     try {
       await removeNovels(Array.from(selectedIds));
       alert('削除しました');
-      selectedIds.clear();
+      selectedIds = new Set();
       await loadNovels();
     } catch (err) {
       alert('削除に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
