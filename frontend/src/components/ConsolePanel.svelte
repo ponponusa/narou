@@ -183,6 +183,11 @@
     // キャリッジリターン(\r)を削除（プログレスバーの上書き制御文字）
     cleanMessage = cleanMessage.replace(/\r/g, '');
     
+    // デバッグ: プログレスバーパターンを検出
+    if (/\[[#*]+[\s.-]*\]/.test(cleanMessage)) {
+      console.log('[DEBUG] Progress bar detected:', cleanMessage);
+    }
+    
     // 処理タイプと小説IDを抽出
     const { processType, novelId } = extractProcessInfo(cleanMessage);
     
@@ -254,14 +259,15 @@
       return true;
     }
     
-    // 「第n部分」だけの行は進捗メッセージ（常に非表示にする）
-    if (/^第\d+部分\s*$/.test(decoded)) {
+    // 「第n部分」だけの行は進捗メッセージ
+    if (/^第[\d０-９]+部分\s*$/.test(decoded)) {
       return true;
     }
     
-    // 章データ（「第一章」「第二章」など）も進捗メッセージとして扱う
+    // 章データ（「第一章」「第二章」「第１章」「第２章」など）も進捗メッセージとして扱う
     // 第○部分と同じキーで上書き更新される
-    if (/^第[一二三四五六七八九十百千壱弐参]+章\s*$/.test(decoded)) {
+    // 漢数字、全角数字、半角数字すべてに対応
+    if (/^第[一二三四五六七八九十百千壱弐参０-９\d]+章\s*$/.test(decoded)) {
       return true;
     }
     
@@ -291,11 +297,12 @@
     // 「第n部分」と「第n章」を同じグループにまとめる
     // プログレスバー → 第n部分 → 第n章 → 章タイトル (n/m) の順で来るので
     // 最終的に章タイトルのみが表示される（第n部分と第n章は上書きされて隠れる）
-    if (/^第\d+部分\s*$/.test(decoded)) {
+    if (/^第[\d０-９]+部分\s*$/.test(decoded)) {
       return 'progress-chapter-download';
     }
     
-    if (/^第[一二三四五六七八九十百千壱弐参]+章\s*$/.test(decoded)) {
+    // 章データ: 漢数字、全角数字、半角数字すべてに対応
+    if (/^第[一二三四五六七八九十百千壱弐参０-９\d]+章\s*$/.test(decoded)) {
       return 'progress-chapter-download';
     }
     
