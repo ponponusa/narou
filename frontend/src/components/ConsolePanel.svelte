@@ -14,6 +14,8 @@
     message: string;
     isProgress?: boolean; // 進捗メッセージかどうか
     progressKey?: string; // 進捗を識別するキー
+    processType?: 'download' | 'convert' | 'other'; // 処理タイプ
+    novelId?: string; // 小説ID
   }
 
   let logs = $state<LogEntry[]>([]);
@@ -89,6 +91,9 @@
     const isProgress = isProgressMessage(cleanMessage);
     const progressKey = isProgress ? extractProgressKey(cleanMessage) : undefined;
     
+    // 処理タイプと小説IDを抽出
+    const { processType, novelId } = extractProcessInfo(cleanMessage);
+    
     // コンパクトモードで進捗メッセージの場合、既存のエントリを更新
     if (compactProgress && isProgress && progressKey) {
       const existingIndex = logs.findIndex(
@@ -101,6 +106,8 @@
           ...logs[existingIndex],
           message: cleanMessage,
           timestamp: new Date(),
+          processType,
+          novelId,
         };
         logs = [...logs]; // リアクティビティをトリガー
         scrollIfNeeded();
@@ -116,6 +123,8 @@
       message: cleanMessage,
       isProgress,
       progressKey,
+      processType,
+      novelId,
     }];
 
     // 最大1000件まで保持
@@ -148,6 +157,28 @@
     if (titleMatch) return `title-${titleMatch[1].trim()}`;
     
     return 'unknown';
+  }
+
+  /**
+   * ログメッセージから処理タイプと小説IDを抽出
+   */
+  function extractProcessInfo(message: string): { processType?: 'download' | 'convert' | 'other', novelId?: string } {
+    // 小説IDを抽出
+    const idMatch = message.match(/ID[:：]\s*(\d+)/i);
+    const novelId = idMatch ? idMatch[1] : undefined;
+    
+    // 処理タイプを判定
+    let processType: 'download' | 'convert' | 'other' | undefined;
+    
+    if (/ダウンロード|download|DL/i.test(message)) {
+      processType = 'download';
+    } else if (/変換|convert|epub/i.test(message)) {
+      processType = 'convert';
+    } else if (novelId || /処理|progress/i.test(message)) {
+      processType = 'other';
+    }
+    
+    return { processType, novelId };
   }
 
   /**
@@ -195,15 +226,31 @@
   }
 
   /**
-   * TermColorタグをHTMLに変換（簡易実装）
+   * TermColorタグをHTMLに変換
    */
   function formatMessage(message: string): string {
     // HTMLエスケープされているのでデコード
     let text = decodeMessage(message);
     
-    // TermColorタグを除去（簡易実装、本格的にはCSSクラスに変換）
-    text = text.replace(/<color ([^>]+)>([^<]*)<\/color>/g, '$2');
-    text = text.replace(/<bold>([^<]*)<\/bold>/g, '<strong>$1</strong>');
+    // TermColorタグをHTMLクラスに変換
+    // <red>text</red> -> <span class="tc-red">text</span>
+    const colorTags = ['red', 'green', 'blue', 'yellow', 'cyan', 'magenta', 'white', 'black'];
+    colorTags.forEach(color => {
+      const regex = new RegExp(`<${color}>([^<]*)</${color}>`, 'g');
+      text = text.replace(regex, `<span class="tc-${color}">$1</span>`);
+    });
+    
+    // <bold>text</bold> -> <strong>text</strong>
+    text = text.replace(/<bold>([\s\S]*?)<\/bold>/g, '<strong>$1</strong>');
+    
+    // <underline>text</underline> -> <u>text</u>
+    text = text.replace(/<underline>([\s\S]*?)<\/underline>/g, '<u>$1</u>');
+    
+    // ネストされたタグを処理するため、再帰的に適用
+    // 例: <bold><green>text</green></bold>
+    if (/<(red|green|blue|yellow|cyan|magenta|white|black|bold|underline)>/.test(text)) {
+      text = formatMessage(text);
+    }
     
     return text;
   }
@@ -329,13 +376,27 @@
         </div>
       {:else}
         {#each logs as log (log.id)}
-          <div class="flex gap-3 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
+          <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
             <span class="text-gray-500 shrink-0">
               {formatTime(log.timestamp)}
             </span>
             <span class="text-gray-400 shrink-0 w-16">
               {log.console === 'stdout2' ? 'stderr' : 'stdout'}
             </span>
+            {#if log.processType}
+              <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
+                log.processType === 'download' ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50' :
+                log.processType === 'convert' ? 'bg-green-900/50 text-green-300 border border-green-700/50' :
+                'bg-purple-900/50 text-purple-300 border border-purple-700/50'
+              }" title="処理タイプ">
+                {log.processType === 'download' ? 'DL' : log.processType === 'convert' ? '変換' : '他'}
+              </span>
+            {/if}
+            {#if log.novelId}
+              <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600" title="小説ID">
+                ID:{log.novelId}
+              </span>
+            {/if}
             <span class="flex-1 whitespace-pre-wrap break-all {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
               {@html formatMessage(log.message)}
             </span>
@@ -362,3 +423,15 @@
     {/if}
   </button>
 {/if}
+
+<style>
+  /* TermColor タグのスタイル */
+  :global(.tc-red) { color: #ef4444; }
+  :global(.tc-green) { color: #22c55e; }
+  :global(.tc-blue) { color: #3b82f6; }
+  :global(.tc-yellow) { color: #eab308; }
+  :global(.tc-cyan) { color: #06b6d4; }
+  :global(.tc-magenta) { color: #d946ef; }
+  :global(.tc-white) { color: #f3f4f6; }
+  :global(.tc-black) { color: #1f2937; }
+</style>
