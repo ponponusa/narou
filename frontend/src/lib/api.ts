@@ -57,7 +57,8 @@ async function fetchApiForm<T>(
   const formData = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      value.forEach(v => formData.append(key, v));
+      // 配列の場合はキーに[]を付加（Sinatraが配列として認識するため）
+      value.forEach(v => formData.append(`${key}[]`, v));
     } else {
       formData.append(key, value);
     }
