@@ -524,18 +524,23 @@
   }
 
   onMount(() => {
+    window.console.log('[DEBUG] ConsolePanel onMount started');
+    
     // 設定を読み込み
     loadSettings();
     
     const pushServer = getPushServer();
+    window.console.log('[DEBUG] PushServer instance:', pushServer);
     
     // 接続イベント
     pushServer.on('connected', () => {
+      window.console.log('[DEBUG] Connected event triggered');
       isConnected = true;
       addLog('stdout', '[PushServer] Connected');
     });
 
     pushServer.on('disconnected', () => {
+      window.console.log('[DEBUG] Disconnected event triggered');
       isConnected = false;
       addLog('stdout', '[PushServer] Disconnected');
     });
@@ -548,6 +553,7 @@
       }
     });
 
+    window.console.log('[DEBUG] Event handlers registered, calling connect()');
     // 接続開始
     pushServer.connect();
   });
