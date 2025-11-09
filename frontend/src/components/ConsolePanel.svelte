@@ -18,9 +18,42 @@
     novelId?: string; // 小説ID
   }
 
+  // localStorageから設定を読み込む
+  const STORAGE_KEY = 'narou-console-settings';
+  
+  function loadSettings() {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const settings = JSON.parse(saved);
+        if (typeof settings.splitView === 'boolean') splitView = settings.splitView;
+        if (typeof settings.compactProgress === 'boolean') compactProgress = settings.compactProgress;
+        if (typeof settings.autoScroll === 'boolean') autoScroll = settings.autoScroll;
+        if (typeof settings.updateThrottle === 'number') updateThrottle = settings.updateThrottle;
+      }
+    } catch (e) {
+      console.error('Failed to load console settings:', e);
+    }
+  }
+
+  function saveSettings() {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        splitView,
+        compactProgress,
+        autoScroll,
+        updateThrottle
+      }));
+    } catch (e) {
+      console.error('Failed to save console settings:', e);
+    }
+  }
+
   let logs = $state<LogEntry[]>([]);
   let isOpen = $state(false);
-  let autoScroll = $state(true);
+  let autoScroll = $state(true); // 進捗を1行で表示するか
   let compactProgress = $state(true); // 進捗を1行で表示するか
   let updateThrottle = $state(100); // 更新頻度（ms）
   let splitView = $state(true); // 左右分割表示
@@ -33,11 +66,19 @@
   let lastUpdateTime = 0;
   let pendingLogs: Array<{console: 'stdout' | 'stdout2', message: string}> = [];
 
+  // 設定変更時に保存
+  $effect(() => {
+    saveSettings();
+  });
   /**
    * コンソールを開く
    */
   export function open() {
     isOpen = true;
+    // 開いた直後に最下部にスクロール
+    setTimeout(() => {
+      scrollToBottom();
+    }, 50);
   }
 
   /**
@@ -52,6 +93,11 @@
    */
   export function toggle() {
     isOpen = !isOpen;
+    if (isOpen) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    }
   }
 
   /**
@@ -142,8 +188,9 @@
    * 進捗メッセージかどうかを判定
    */
   function isProgressMessage(message: string): boolean {
-    // プログレスバー風のパターン: [####...] や 50% などを含む
-    return /\[#+[.\s]*\]|\d+%|\(\d+\/\d+\)/.test(message);
+    // プログレスバー風のパターン: [####...] や 50% や (n/m) を含む
+    // ダウンロード中の "第n部分" パターンも検出
+    return /\[#+[.\s]*\]|\d+%|\(\d+\/\d+\)|第\d+部分|部分.*\(\d+\/\d+\)/.test(message);
   }
 
   /**
@@ -185,24 +232,31 @@
   }
 
   /**
-   * 自動スクロール
+   * 最下部にスクロール（強制）
+   */
+  function scrollToBottom() {
+    setTimeout(() => {
+      if (splitView) {
+        if (leftPaneContainer) {
+          leftPaneContainer.scrollTop = leftPaneContainer.scrollHeight;
+        }
+        if (rightPaneContainer) {
+          rightPaneContainer.scrollTop = rightPaneContainer.scrollHeight;
+        }
+      } else {
+        if (logContainer) {
+          logContainer.scrollTop = logContainer.scrollHeight;
+        }
+      }
+    }, 10);
+  }
+
+  /**
+   * 自動スクロール（autoScrollがtrueの場合のみ）
    */
   function scrollIfNeeded() {
     if (autoScroll) {
-      setTimeout(() => {
-        if (splitView) {
-          if (leftPaneContainer) {
-            leftPaneContainer.scrollTop = leftPaneContainer.scrollHeight;
-          }
-          if (rightPaneContainer) {
-            rightPaneContainer.scrollTop = rightPaneContainer.scrollHeight;
-          }
-        } else {
-          if (logContainer) {
-            logContainer.scrollTop = logContainer.scrollHeight;
-          }
-        }
-      }, 10);
+      scrollToBottom();
     }
   }
 
@@ -307,6 +361,9 @@
   }
 
   onMount(() => {
+    // 設定を読み込み
+    loadSettings();
+    
     const pushServer = getPushServer();
     
     // 接続イベント
@@ -453,7 +510,7 @@
                       ID:{log.novelId}
                     </span>
                   {/if}
-                  <span class="flex-1 whitespace-pre-wrap break-all {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
+                  <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
                     {@html formatMessage(log.message)}
                   </span>
                 </div>
@@ -498,7 +555,7 @@
                       ID:{log.novelId}
                     </span>
                   {/if}
-                  <span class="flex-1 whitespace-pre-wrap break-all {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
+                  <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
                     {@html formatMessage(log.message)}
                   </span>
                 </div>
@@ -540,7 +597,7 @@
                   ID:{log.novelId}
                 </span>
               {/if}
-              <span class="flex-1 whitespace-pre-wrap break-all {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
+              <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
                 {@html formatMessage(log.message)}
               </span>
             </div>
