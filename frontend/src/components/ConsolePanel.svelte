@@ -167,7 +167,21 @@
    * ログを処理して追加
    */
   function processLog(console: 'stdout' | 'stdout2', message: string) {
-    const cleanMessage = message.replace(/\n$/, ''); // 末尾の改行を削除
+    let cleanMessage = message.replace(/\n$/, ''); // 末尾の改行を削除
+    
+    // ANSI escape sequence（プログレスバーのclear()）を無視
+    // \e[2K\r（行削除+行頭移動）などのエスケープシーケンスを除去
+    if (/\x1b\[[\d;]*[A-Za-z]/.test(cleanMessage)) {
+      // エスケープシーケンスのみのメッセージは無視
+      if (cleanMessage.replace(/\x1b\[[\d;]*[A-Za-z]/g, '').replace(/\r/g, '').trim() === '') {
+        return;
+      }
+      // エスケープシーケンスを削除
+      cleanMessage = cleanMessage.replace(/\x1b\[[\d;]*[A-Za-z]/g, '');
+    }
+    
+    // キャリッジリターン(\r)を削除（プログレスバーの上書き制御文字）
+    cleanMessage = cleanMessage.replace(/\r/g, '');
     
     // 処理タイプと小説IDを抽出
     const { processType, novelId } = extractProcessInfo(cleanMessage);
@@ -230,9 +244,9 @@
     
     const decoded = decodeMessage(message).trim();
     
-    // プログレスバー: [###...] を含むパターン
-    // 0%[###...]100% や [###...] だけでもOK
-    if (/\[#+[-.\s]*\]/.test(decoded)) {
+    // プログレスバー: [###...] または [*  ] を含むパターン
+    // 0%[###...]100% や [***   ] 50% などに対応
+    if (/\[[#*]+[\s.-]*\]/.test(decoded) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(decoded)) {
       return true;
     }
     
@@ -256,9 +270,9 @@
     const idMatch = decoded.match(/ID[:：]\s*(\d+)/i);
     if (idMatch) return `progress-id-${idMatch[1]}`;
     
-    // プログレスバー: [###...] を含むパターン
-    // 0%[###...]100% や [###...] だけでもOK
-    if (/\[#+[-.\s]*\]/.test(decoded)) {
+    // プログレスバー: [###...] または [*  ] を含むパターン
+    // 0%[###...]100% や [***   ] 50% などに対応
+    if (/\[[#*]+[\s.-]*\]/.test(decoded) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(decoded)) {
       return 'progress-bar';
     }
     
