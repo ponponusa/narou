@@ -18,7 +18,9 @@ import type {
   LogMessage
 } from '../types/api';
 
-const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || 'http://172.26.39.220:33000';
+// 開発時はViteのプロキシを使用するため空文字列
+// 本番時は環境変数で指定されたURLを使用
+const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || '';
 
 /**
  * API v2 レスポンスの処理
