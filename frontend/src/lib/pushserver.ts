@@ -203,8 +203,10 @@ let globalPushServer: PushServerClient | null = null;
  */
 export function getPushServer(): PushServerClient {
   if (!globalPushServer) {
-    // 環境変数またはデフォルト値を使用
-    const host = import.meta.env.PUBLIC_API_BASE_URL?.replace(/^https?:\/\//, '').split(':')[0] || '172.26.39.220';
+    // ブラウザのホスト名を使用（localhostでも172.26.39.220でも動作）
+    const host = typeof window !== 'undefined' 
+      ? window.location.hostname 
+      : (import.meta.env.PUBLIC_API_BASE_URL?.replace(/^https?:\/\//, '').split(':')[0] || '172.26.39.220');
     const port = parseInt(import.meta.env.PUBLIC_PUSH_SERVER_PORT || '33001');
     
     globalPushServer = new PushServerClient(host, port);
