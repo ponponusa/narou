@@ -26,6 +26,8 @@ require_relative "settingmessages"
 require_relative "server_helpers"
 require_relative "../narou/promo_tag_extractor"
 require_relative "../narou/system_updater"
+require_relative "api_v2"
+require_relative "api_v2_novels"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -55,6 +57,10 @@ class Narou::AppServer < Sinatra::Base
       BetterErrors.application_root = Narou.script_dir
     end
   end
+
+  # API v2 エンドポイント登録
+  include Narou::ApiV2::Base
+  Narou::ApiV2::Novels.register(self)
 
   # CORS設定（新しいフロントエンドとの連携用）
   before do
