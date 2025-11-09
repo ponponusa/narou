@@ -5,6 +5,7 @@
 #
 
 require_relative "../database"
+require_relative "../inventory"
 
 module Narou
   #
@@ -45,7 +46,7 @@ module Narou
       # @param tagname [String] タグ名
       # @return [String] タグの色（CSSクラス名）
       #
-      def self.get_color(tagname)
+      def get_color(tagname)
         require_relative "../command/tag"
         Command::Tag.get_color(tagname)
       end
@@ -56,7 +57,7 @@ module Narou
       # @param colors [Hash<String, String>] { "タグ名" => "色", ... }
       # @return [void]
       #
-      def self.set_colors(colors)
+      def set_colors(colors)
         require_relative "../command/tag"
         tag_colors = Inventory.load("tag_colors")
         colors.each do |tagname, color|
