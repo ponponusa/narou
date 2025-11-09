@@ -9,6 +9,7 @@
   import type { Novel, TagInfo } from '../types/api';
   import { getPushServer } from '../lib/pushserver';
   import AddNovelModal from './AddNovelModal.svelte';
+  import TagModal from './TagModal.svelte';
 
   let novels = $state<Novel[]>([]);
   let loading = $state(true);
@@ -18,6 +19,7 @@
   let allTags = $state<TagInfo[]>([]);
   let pushServer = getPushServer();
   let addNovelModal: AddNovelModal;
+  let tagModal: TagModal;
 
   // フィルター・ソート設定
   let currentPage = $state(0);
@@ -192,6 +194,14 @@
     }
   }
 
+  function handleTagEdit() {
+    if (selectedIds.size === 0) {
+      alert('小説を選択してください');
+      return;
+    }
+    tagModal.open(Array.from(selectedIds));
+  }
+
   function handleSearch() {
     currentPage = 0;
     loadNovels();
@@ -341,7 +351,7 @@
   <!-- アクションバー -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
     <div class="flex flex-wrap gap-4 items-center justify-between">
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
         <button
           onclick={openAddNovelModal}
           class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
@@ -361,6 +371,13 @@
           class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           📖 変換 ({selectedIds.size})
+        </button>
+        <button
+          onclick={handleTagEdit}
+          disabled={selectedIds.size === 0}
+          class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        >
+          🏷️ タグ編集 ({selectedIds.size})
         </button>
         <button
           onclick={handleRemove}
@@ -608,3 +625,6 @@
 
 <!-- 小説追加モーダル -->
 <AddNovelModal bind:this={addNovelModal} />
+
+<!-- タグ編集モーダル -->
+<TagModal bind:this={tagModal} />

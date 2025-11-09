@@ -265,33 +265,71 @@ export async function getTagList(): Promise<TagInfo[]> {
 }
 
 /**
- * タグを追加（API v2）
+ * タグ詳細情報を取得（選択された小説のタグ状態）（API v2）
+ * @param ids - 対象の小説ID配列
+ * @returns タグごとの状態情報 { tagName: { count, total_count, tag, color } }
  */
-export async function addTags(ids: number[], tag: string): Promise<void> {
+export async function getTagInfo(ids: number[]): Promise<Record<string, { count: number; total_count: number; tag: string; color: string }>> {
+  interface TagInfoData {
+    tag_info: Record<string, { count: number; total_count: number; tag: string; color: string }>;
+  }
+  const data = await fetchApiV2<TagInfoData>('/api/v2/tags/info', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+  return data.tag_info;
+}
+
+/**
+ * タグを一括編集（API v2）
+ * @param ids - 対象の小説ID配列
+ * @param states - タグごとの状態 { tagName: 0=削除, 1=維持, 2=追加 }
+ */
+export async function editTags(ids: number[], states: Record<string, number>): Promise<{ added: string[]; deleted: string[]; novel_count: number }> {
+  interface EditResult {
+    added: string[];
+    deleted: string[];
+    novel_count: number;
+  }
+  return fetchApiV2<EditResult>('/api/v2/tags/edit', {
+    method: 'POST',
+    body: JSON.stringify({ ids, states }),
+  });
+}
+
+/**
+ * タグを追加（API v2）
+ * @param ids - 対象の小説ID配列
+ * @param tags - 追加するタグ名の配列
+ */
+export async function addTags(ids: number[], tags: string[]): Promise<void> {
   await fetchApiV2<null>('/api/v2/tags/add', {
     method: 'POST',
-    body: JSON.stringify({ ids, tag }),
+    body: JSON.stringify({ ids, tags }),
   });
 }
 
 /**
  * タグを削除（API v2）
+ * @param ids - 対象の小説ID配列
+ * @param tags - 削除するタグ名の配列
  */
-export async function removeTags(ids: number[], tag: string): Promise<void> {
+export async function removeTags(ids: number[], tags: string[]): Promise<void> {
   await fetchApiV2<null>('/api/v2/tags/delete', {
     method: 'POST',
-    body: JSON.stringify({ ids, tag }),
+    body: JSON.stringify({ ids, tags }),
   });
 }
 
 /**
- * タグを編集（addTags/removeTags のラッパー）
+ * 単一タグを編集（addTags/removeTags のラッパー）
+ * @deprecated editTags() の使用を推奨
  */
 export async function editTag(ids: number[], tag: string, action: 'add' | 'remove'): Promise<void> {
   if (action === 'add') {
-    await addTags(ids, tag);
+    await addTags(ids, [tag]);
   } else {
-    await removeTags(ids, tag);
+    await removeTags(ids, [tag]);
   }
 }
 
