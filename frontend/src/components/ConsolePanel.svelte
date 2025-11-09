@@ -136,12 +136,14 @@
   function processLog(console: 'stdout' | 'stdout2', message: string) {
     const cleanMessage = message.replace(/\n$/, ''); // 末尾の改行を削除
     
-    // 進捗メッセージかどうかを判定
-    const isProgress = isProgressMessage(cleanMessage);
-    const progressKey = isProgress ? extractProgressKey(cleanMessage) : undefined;
-    
     // 処理タイプと小説IDを抽出
     const { processType, novelId } = extractProcessInfo(cleanMessage);
+    
+    // 進捗メッセージかどうかを判定
+    const isProgress = isProgressMessage(cleanMessage);
+    // novelIdがある場合はそれを含めたprogressKeyを生成
+    const baseProgressKey = isProgress ? extractProgressKey(cleanMessage) : undefined;
+    const progressKey = baseProgressKey && novelId ? `${baseProgressKey}-novel-${novelId}` : baseProgressKey;
     
     // コンパクトモードで進捗メッセージの場合、既存のエントリを更新
     if (compactProgress && isProgress && progressKey) {
@@ -197,16 +199,36 @@
    * 進捗メッセージから識別キーを抽出
    */
   function extractProgressKey(message: string): string {
-    // タイトルやIDなど、進捗を識別できる文字列を抽出
-    // 例: "ID:123 ダウンロード中..." -> "ID:123"
+    // 小説IDがある場合は、それを最優先でキーにする
+    // これにより「第1部分」「第2部分」などが同じキーでまとめられる
     const idMatch = message.match(/ID[:：]\s*(\d+)/i);
-    if (idMatch) return `id-${idMatch[1]}`;
+    if (idMatch) return `progress-id-${idMatch[1]}`;
     
-    // タイトルから最初の数文字を使用
+    // 「第n部分」パターン: 全て同じキー "chapter-download" にまとめる
+    if (/第\d+部分/.test(message)) {
+      return 'progress-chapter-download';
+    }
+    
+    // 章タイトル + (n/m) パターン: 全て同じキー "chapter-progress" にまとめる
+    // 例: "01．温め鳥 (1/31)" -> "chapter-progress"
+    if (/.*\(\d+\/\d+\)/.test(message)) {
+      return 'progress-chapter-progress';
+    }
+    
+    // (n/m) 形式のパターンがある場合、その前の文字列をキーにする
+    // 例: "処理中 (1/10)" -> "処理中"
+    const progressMatch = message.match(/^(.+?)\s*\(\d+\/\d+\)/);
+    if (progressMatch) return `progress-${progressMatch[1].trim()}`;
+    
+    // プログレスバーを除いた部分をキーにする
+    const barMatch = message.match(/^(.+?)\s*\[#+/);
+    if (barMatch) return `progress-${barMatch[1].trim()}`;
+    
+    // それ以外は先頭20文字をキーにする
     const titleMatch = message.match(/^(.{0,20})/);
-    if (titleMatch) return `title-${titleMatch[1].trim()}`;
+    if (titleMatch) return `progress-${titleMatch[1].trim()}`;
     
-    return 'unknown';
+    return 'progress-unknown';
   }
 
   /**
@@ -287,6 +309,35 @@
     return logs.filter(log => 
       !log.processType || log.processType === 'other'
     );
+  }
+
+  /**
+   * コンパクト表示用: 進捗メッセージの重複を除外し最新のみ返す
+   */
+  function compactLogs(logList: LogEntry[]): LogEntry[] {
+    if (!compactProgress) {
+      return logList;
+    }
+
+    const progressMap = new Map<string, LogEntry>();
+    const nonProgressLogs: LogEntry[] = [];
+
+    for (const log of logList) {
+      if (log.isProgress && log.progressKey) {
+        // 進捗メッセージは progressKey ごとに最新のものだけ保持
+        const existing = progressMap.get(log.progressKey);
+        if (!existing || log.timestamp > existing.timestamp) {
+          progressMap.set(log.progressKey, log);
+        }
+      } else {
+        // 非進捗メッセージはそのまま保持
+        nonProgressLogs.push(log);
+      }
+    }
+
+    // 非進捗 + 最新の進捗メッセージを結合し、タイムスタンプ順にソート
+    return [...nonProgressLogs, ...Array.from(progressMap.values())]
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
 
   /**
@@ -488,7 +539,7 @@
                 ログがありません
               </div>
             {:else}
-              {#each [...getDownloadLogs(), ...getOtherLogs()] as log (log.id)}
+              {#each compactLogs([...getDownloadLogs(), ...getOtherLogs()]) as log (log.id)}
                 <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
                   <span class="text-gray-500 shrink-0">
                     {formatTime(log.timestamp)}
@@ -533,7 +584,7 @@
                 ログがありません
               </div>
             {:else}
-              {#each getConvertLogs() as log (log.id)}
+              {#each compactLogs(getConvertLogs()) as log (log.id)}
                 <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
                   <span class="text-gray-500 shrink-0">
                     {formatTime(log.timestamp)}
@@ -575,7 +626,7 @@
             ログがありません
           </div>
         {:else}
-          {#each logs as log (log.id)}
+          {#each compactLogs(logs) as log (log.id)}
             <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
               <span class="text-gray-500 shrink-0">
                 {formatTime(log.timestamp)}
