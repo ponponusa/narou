@@ -183,6 +183,9 @@
     // キャリッジリターン(\r)を削除（プログレスバーの上書き制御文字）
     cleanMessage = cleanMessage.replace(/\r/g, '');
     
+    // デバッグ: すべてのメッセージを出力
+    console.log('[DEBUG] Raw message:', JSON.stringify(cleanMessage));
+    
     // デバッグ: プログレスバーパターンを検出
     if (/\[[#*]+[\s.-]*\]/.test(cleanMessage)) {
       console.log('[DEBUG] Progress bar detected:', cleanMessage);
@@ -452,9 +455,9 @@
   function exportLogs() {
     const text = logs.map(log => {
       const time = formatTime(log.timestamp);
-      const console = log.console === 'stdout2' ? 'stderr' : 'stdout';
+      const consoleType = log.console === 'stdout2' ? 'stderr' : 'stdout';
       const message = decodeMessage(log.message);
-      return `[${time}] [${console}] ${message}`;
+      return `[${time}] [${consoleType}] ${message}`;
     }).join('\n');
     
     const blob = new Blob([text], { type: 'text/plain' });
