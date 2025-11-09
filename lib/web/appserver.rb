@@ -31,6 +31,7 @@ require_relative "api_v2"
 require_relative "api_v2_novels"
 require_relative "api_v2_system"
 require_relative "api_v2_tags"
+require_relative "api_v2_settings"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -66,6 +67,7 @@ class Narou::AppServer < Sinatra::Base
   Narou::ApiV2::Novels.register(self)
   Narou::ApiV2::System.register(self)
   Narou::ApiV2::Tags.register(self)
+  Narou::ApiV2::Settings.register(self)
 
   # CORS設定（新しいフロントエンドとの連携用）
   before do
