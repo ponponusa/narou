@@ -44,6 +44,15 @@ npm run dev
 
 ブラウザで `http://localhost:4321` にアクセスしてください。
 
+**WSL環境での注意**: WSL2環境では`npm run dev`の起動が遅い場合があります。その場合は以下を推奨します：
+
+```bash
+npm run build
+npm run preview -- --host 0.0.0.0 --port 4321
+```
+
+詳細は [WSL_NOTES.md](WSL_NOTES.md) を参照してください。
+
 ### バックエンドとの連携
 
 このフロントエンドは、Narou.rb の Ruby/Sinatra バックエンドAPI（デフォルト: `http://localhost:33000`）と連携して動作します。
