@@ -78,10 +78,10 @@
 ## TODO
 
 - 外部Webサーバを利用しない形でのHTTPS対応
-- bootstrap5への移行
-  - bootstrap3系では、jQuery3系に対応していないため
-  - jQuery migrateを削除したい
-  - bootstrap4で我慢する可能性......
+- ~~bootstrap5への移行~~（新フロントエンドでAstro + Svelte + Tailwind CSSに移行）
+  - ~~bootstrap3系では、jQuery3系に対応していないため~~
+  - ~~jQuery migrateを削除したい~~
+  - ~~bootstrap4で我慢する可能性......~~
 - ~~小説タイトルの自動整形~~（プロモタグの実装で対応済み）
 - セキュリティリスクのある実装の修正
 - 変換処理の並列化による高速化
@@ -93,6 +93,27 @@
 - 保存容量の改善
   - 圧縮保存の検討
   - Yaml DatabaseからSQLite等への移行検討
+
+## フロントエンド開発 - Frontend Development
+
+このプロジェクトには、モダンなフロントエンド実装が含まれています（`frontend/` ディレクトリ）。
+
+### 技術スタック
+
+- **Astro 5.x** - 静的サイトジェネレーター
+- **Svelte 5.x** - リアクティブUIフレームワーク
+- **Tailwind CSS 4.x** - ユーティリティファーストCSS
+- **TypeScript** - 型安全な開発
+
+### セットアップ
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+詳細は [frontend/README.md](frontend/README.md) を参照してください。
 
 ----
 
