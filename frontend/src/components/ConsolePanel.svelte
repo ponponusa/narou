@@ -190,9 +190,15 @@
    * 進捗メッセージかどうかを判定
    */
   function isProgressMessage(message: string): boolean {
+    // 空のメッセージは進捗メッセージではない
+    if (decodeMessage(message).trim().length === 0) {
+      return false;
+    }
+    
     // プログレスバー風のパターン: [####...] や 50% や (n/m) を含む
     // ダウンロード中の "第n部分" パターンも検出
-    return /\[#+[.\s]*\]|\d+%|\(\d+\/\d+\)|第\d+部分|部分.*\(\d+\/\d+\)/.test(message);
+    // "第一話", "第二十話" などの漢数字パターンも検出
+    return /\[#+[.\s]*\]|\d+%|\(\d+\/\d+\)|第\d+部分|部分.*\(\d+\/\d+\)|第[一二三四五六七八九十百千]+話/.test(message);
   }
 
   /**
@@ -207,6 +213,11 @@
     // 「第n部分」パターン: 全て同じキー "chapter-download" にまとめる
     if (/第\d+部分/.test(message)) {
       return 'progress-chapter-download';
+    }
+    
+    // 「第一話」「第二十話」などの漢数字パターン: 全て同じキー "chapter-title" にまとめる
+    if (/第[一二三四五六七八九十百千]+話/.test(message)) {
+      return 'progress-chapter-title';
     }
     
     // 章タイトル + (n/m) パターン: 全て同じキー "chapter-progress" にまとめる
@@ -315,14 +326,20 @@
    * コンパクト表示用: 進捗メッセージの重複を除外し最新のみ返す
    */
   function compactLogs(logList: LogEntry[]): LogEntry[] {
+    // 空のメッセージを除外
+    const filtered = logList.filter(log => {
+      const decoded = decodeMessage(log.message).trim();
+      return decoded.length > 0;
+    });
+
     if (!compactProgress) {
-      return logList;
+      return filtered;
     }
 
     const progressMap = new Map<string, LogEntry>();
     const nonProgressLogs: LogEntry[] = [];
 
-    for (const log of logList) {
+    for (const log of filtered) {
       if (log.isProgress && log.progressKey) {
         // 進捗メッセージは progressKey ごとに最新のものだけ保持
         const existing = progressMap.get(log.progressKey);
