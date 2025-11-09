@@ -23,7 +23,10 @@
   let autoScroll = $state(true);
   let compactProgress = $state(true); // 進捗を1行で表示するか
   let updateThrottle = $state(100); // 更新頻度（ms）
-  let logContainer: HTMLDivElement;
+  let splitView = $state(true); // 左右分割表示
+  let logContainer: HTMLDivElement | undefined;
+  let leftPaneContainer: HTMLDivElement | undefined;
+  let rightPaneContainer: HTMLDivElement | undefined;
   let nextId = 0;
   let unsubscribe: (() => void) | null = null;
   let isConnected = $state(false);
@@ -187,11 +190,49 @@
   function scrollIfNeeded() {
     if (autoScroll) {
       setTimeout(() => {
-        if (logContainer) {
-          logContainer.scrollTop = logContainer.scrollHeight;
+        if (splitView) {
+          if (leftPaneContainer) {
+            leftPaneContainer.scrollTop = leftPaneContainer.scrollHeight;
+          }
+          if (rightPaneContainer) {
+            rightPaneContainer.scrollTop = rightPaneContainer.scrollHeight;
+          }
+        } else {
+          if (logContainer) {
+            logContainer.scrollTop = logContainer.scrollHeight;
+          }
         }
       }, 10);
     }
+  }
+
+  /**
+   * ダウンロード系のログをフィルタ
+   */
+  function getDownloadLogs(): LogEntry[] {
+    return logs.filter(log => 
+      log.processType === 'download' || 
+      (!log.processType && /ダウンロード|download|DL|フェッチ|fetch/i.test(log.message))
+    );
+  }
+
+  /**
+   * 変換系のログをフィルタ
+   */
+  function getConvertLogs(): LogEntry[] {
+    return logs.filter(log => 
+      log.processType === 'convert' ||
+      (!log.processType && /変換|convert|epub/i.test(log.message))
+    );
+  }
+
+  /**
+   * その他のログをフィルタ（分割時は左ペインに表示）
+   */
+  function getOtherLogs(): LogEntry[] {
+    return logs.filter(log => 
+      !log.processType || log.processType === 'other'
+    );
   }
 
   /**
@@ -322,6 +363,14 @@
           />
           コンパクト
         </label>
+        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer" title="ダウンロードと変換を分割表示">
+          <input
+            type="checkbox"
+            bind:checked={splitView}
+            class="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+          />
+          分割表示
+        </label>
         <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
           <input
             type="checkbox"
@@ -365,44 +414,140 @@
     </div>
 
     <!-- ログ表示エリア -->
-    <div
-      bind:this={logContainer}
-      class="overflow-y-auto h-64 px-4 py-2 font-mono text-xs bg-gray-900 dark:bg-black text-gray-300"
-    >
-      {#if logs.length === 0}
-        <div class="text-gray-500 text-center py-8">
-          ログがありません
-        </div>
-      {:else}
-        {#each logs as log (log.id)}
-          <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
-            <span class="text-gray-500 shrink-0">
-              {formatTime(log.timestamp)}
-            </span>
-            <span class="text-gray-400 shrink-0 w-16">
-              {log.console === 'stdout2' ? 'stderr' : 'stdout'}
-            </span>
-            {#if log.processType}
-              <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
-                log.processType === 'download' ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50' :
-                log.processType === 'convert' ? 'bg-green-900/50 text-green-300 border border-green-700/50' :
-                'bg-purple-900/50 text-purple-300 border border-purple-700/50'
-              }" title="処理タイプ">
-                {log.processType === 'download' ? 'DL' : log.processType === 'convert' ? '変換' : '他'}
-              </span>
-            {/if}
-            {#if log.novelId}
-              <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600" title="小説ID">
-                ID:{log.novelId}
-              </span>
-            {/if}
-            <span class="flex-1 whitespace-pre-wrap break-all {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
-              {@html formatMessage(log.message)}
-            </span>
+    {#if splitView}
+      <!-- 左右分割表示 -->
+      <div class="flex h-64">
+        <!-- 左ペイン: ダウンロード・その他 -->
+        <div class="flex-1 flex flex-col border-r border-gray-700">
+          <div class="px-3 py-1 bg-gray-800 border-b border-gray-700 text-xs font-semibold text-blue-300">
+            📥 ダウンロード・フェッチ
           </div>
-        {/each}
-      {/if}
-    </div>
+          <div
+            bind:this={leftPaneContainer}
+            class="flex-1 overflow-y-auto px-4 py-2 font-mono text-xs bg-gray-900 dark:bg-black text-gray-300"
+          >
+            {#if getDownloadLogs().length === 0 && getOtherLogs().length === 0}
+              <div class="text-gray-500 text-center py-8">
+                ログがありません
+              </div>
+            {:else}
+              {#each [...getDownloadLogs(), ...getOtherLogs()] as log (log.id)}
+                <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
+                  <span class="text-gray-500 shrink-0">
+                    {formatTime(log.timestamp)}
+                  </span>
+                  <span class="text-gray-400 shrink-0 w-16">
+                    {log.console === 'stdout2' ? 'stderr' : 'stdout'}
+                  </span>
+                  {#if log.processType}
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
+                      log.processType === 'download' ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50' :
+                      log.processType === 'convert' ? 'bg-green-900/50 text-green-300 border border-green-700/50' :
+                      'bg-purple-900/50 text-purple-300 border border-purple-700/50'
+                    }" title="処理タイプ">
+                      {log.processType === 'download' ? 'DL' : log.processType === 'convert' ? '変換' : '他'}
+                    </span>
+                  {/if}
+                  {#if log.novelId}
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600" title="小説ID">
+                      ID:{log.novelId}
+                    </span>
+                  {/if}
+                  <span class="flex-1 whitespace-pre-wrap break-all {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
+                    {@html formatMessage(log.message)}
+                  </span>
+                </div>
+              {/each}
+            {/if}
+          </div>
+        </div>
+
+        <!-- 右ペイン: 変換 -->
+        <div class="flex-1 flex flex-col">
+          <div class="px-3 py-1 bg-gray-800 border-b border-gray-700 text-xs font-semibold text-green-300">
+            ⚙️ 変換・EPUB生成
+          </div>
+          <div
+            bind:this={rightPaneContainer}
+            class="flex-1 overflow-y-auto px-4 py-2 font-mono text-xs bg-gray-900 dark:bg-black text-gray-300"
+          >
+            {#if getConvertLogs().length === 0}
+              <div class="text-gray-500 text-center py-8">
+                ログがありません
+              </div>
+            {:else}
+              {#each getConvertLogs() as log (log.id)}
+                <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
+                  <span class="text-gray-500 shrink-0">
+                    {formatTime(log.timestamp)}
+                  </span>
+                  <span class="text-gray-400 shrink-0 w-16">
+                    {log.console === 'stdout2' ? 'stderr' : 'stdout'}
+                  </span>
+                  {#if log.processType}
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
+                      log.processType === 'download' ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50' :
+                      log.processType === 'convert' ? 'bg-green-900/50 text-green-300 border border-green-700/50' :
+                      'bg-purple-900/50 text-purple-300 border border-purple-700/50'
+                    }" title="処理タイプ">
+                      {log.processType === 'download' ? 'DL' : log.processType === 'convert' ? '変換' : '他'}
+                    </span>
+                  {/if}
+                  {#if log.novelId}
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600" title="小説ID">
+                      ID:{log.novelId}
+                    </span>
+                  {/if}
+                  <span class="flex-1 whitespace-pre-wrap break-all {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
+                    {@html formatMessage(log.message)}
+                  </span>
+                </div>
+              {/each}
+            {/if}
+          </div>
+        </div>
+      </div>
+    {:else}
+      <!-- 統合表示 -->
+      <div
+        bind:this={logContainer}
+        class="overflow-y-auto h-64 px-4 py-2 font-mono text-xs bg-gray-900 dark:bg-black text-gray-300"
+      >
+        {#if logs.length === 0}
+          <div class="text-gray-500 text-center py-8">
+            ログがありません
+          </div>
+        {:else}
+          {#each logs as log (log.id)}
+            <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
+              <span class="text-gray-500 shrink-0">
+                {formatTime(log.timestamp)}
+              </span>
+              <span class="text-gray-400 shrink-0 w-16">
+                {log.console === 'stdout2' ? 'stderr' : 'stdout'}
+              </span>
+              {#if log.processType}
+                <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
+                  log.processType === 'download' ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50' :
+                  log.processType === 'convert' ? 'bg-green-900/50 text-green-300 border border-green-700/50' :
+                  'bg-purple-900/50 text-purple-300 border border-purple-700/50'
+                }" title="処理タイプ">
+                  {log.processType === 'download' ? 'DL' : log.processType === 'convert' ? '変換' : '他'}
+                </span>
+              {/if}
+              {#if log.novelId}
+                <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600" title="小説ID">
+                  ID:{log.novelId}
+                </span>
+              {/if}
+              <span class="flex-1 whitespace-pre-wrap break-all {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
+                {@html formatMessage(log.message)}
+              </span>
+            </div>
+          {/each}
+        {/if}
+      </div>
+    {/if}
   </div>
 {/if}
 
