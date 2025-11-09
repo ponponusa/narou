@@ -5,6 +5,17 @@
  */
 
 /**
+ * API v2 統一レスポンス型
+ */
+export interface ApiV2Response<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string | null;
+  timestamp: string;
+}
+
+/**
  * 小説データの基本型
  */
 export interface Novel {
@@ -26,7 +37,17 @@ export interface Novel {
 }
 
 /**
- * 小説リスト取得のレスポンス型（DataTables形式）
+ * 小説リスト取得のレスポンス型（API v2）
+ */
+export interface NovelsListData {
+  novels: Novel[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+/**
+ * 小説リスト取得のレスポンス型（DataTables形式 - Legacy API用）
  */
 export interface NovelsListResponse {
   draw: number;
@@ -44,7 +65,17 @@ export interface ApiError {
 }
 
 /**
- * キューサイズレスポンス型
+ * キューサイズレスポンス型（API v2）
+ */
+export interface QueueData {
+  total: number;
+  web_worker: number;
+  worker: number;
+  running: boolean;
+}
+
+/**
+ * キューサイズレスポンス型（Legacy API用）
  */
 export interface QueueSizeResponse {
   worker: number;
@@ -61,7 +92,16 @@ export interface TagInfo {
 }
 
 /**
- * バージョン情報型
+ * バージョン情報型（API v2）
+ */
+export interface VersionData {
+  narou: string;
+  ruby: string;
+  latest: string | null;
+}
+
+/**
+ * バージョン情報型（Legacy API用）
  */
 export interface VersionInfo {
   version: string;

@@ -28,12 +28,12 @@
     error = null;
     try {
       const response = await getNovels({
-        start: currentPage * pageSize,
-        length: pageSize,
+        page: currentPage + 1, // API v2 は 1-indexed
+        per_page: pageSize,
         filter: filterText,
       });
-      novels = response.data;
-      totalCount = response.recordsFiltered;
+      novels = response.novels;
+      totalCount = response.total;
     } catch (err) {
       error = err instanceof Error ? err.message : '小説リストの取得に失敗しました';
       console.error('小説リストの取得エラー:', err);
