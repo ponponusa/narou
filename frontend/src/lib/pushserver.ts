@@ -15,12 +15,20 @@ export type PushServerEvent =
   | 'echo'
   | 'show.modal'
   | 'hide.modal'
-  | 'ping.modal';
+  | 'ping.modal'
+  | 'progressbar.init'
+  | 'progressbar.step'
+  | 'progressbar.clear';
 
 export interface EchoMessage {
   target_console: 'stdout' | 'stdout2';
   body: string;
   no_history?: boolean;
+}
+
+export interface ProgressBarMessage {
+  target_console?: 'stdout' | 'stdout2';
+  percent?: number;
 }
 
 export interface ModalMessage {

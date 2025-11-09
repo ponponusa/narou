@@ -69,6 +69,13 @@
   let isConnected = $state(false);
   let lastUpdateTime = 0;
   let pendingLogs: Array<{console: 'stdout' | 'stdout2', message: string}> = [];
+  
+  // プログレスバーの状態
+  let currentProgressBar: {
+    console: 'stdout' | 'stdout2';
+    percent: number;
+    logId?: number;
+  } | null = null;
 
   // 設定変更時に保存
   $effect(() => {
@@ -551,6 +558,72 @@
       if (!data.no_history) {
         addLog(data.target_console, data.body);
       }
+    });
+
+    // プログレスバーイベント
+    pushServer.on('progressbar.init', (data: any) => {
+      window.console.log('[DEBUG] Progress bar init:', data);
+      const consoleType = data.target_console || 'stdout';
+      currentProgressBar = { console: consoleType, percent: 0 };
+    });
+
+    pushServer.on('progressbar.step', (data: any) => {
+      window.console.log('[DEBUG] Progress bar step:', data);
+      if (currentProgressBar) {
+        currentProgressBar.percent = data.percent || 0;
+        const consoleType = data.target_console || currentProgressBar.console;
+        
+        // プログレスバーの表示を生成
+        const percent = Math.round(currentProgressBar.percent);
+        const barLength = 20;
+        const filled = Math.round((percent / 100) * barLength);
+        const empty = barLength - filled;
+        const bar = '[' + '#'.repeat(filled) + ' '.repeat(empty) + ']';
+        const message = `${bar} ${percent}%`;
+        
+        // 既存のプログレスバーログを更新、なければ新規作成
+        if (currentProgressBar.logId !== undefined) {
+          const index = logs.findIndex(log => log.id === currentProgressBar!.logId);
+          if (index !== -1) {
+            logs[index] = {
+              ...logs[index],
+              message,
+              timestamp: new Date(),
+            };
+            logs = [...logs];
+          } else {
+            // ログが見つからない場合は新規作成
+            const newLog: LogEntry = {
+              id: nextId++,
+              timestamp: new Date(),
+              console: consoleType,
+              message,
+              isProgress: false, // プログレスバーは個別表示
+            };
+            currentProgressBar.logId = newLog.id;
+            logs = [...logs, newLog];
+          }
+        } else {
+          // 初回のプログレスバー表示
+          const newLog: LogEntry = {
+            id: nextId++,
+            timestamp: new Date(),
+            console: consoleType,
+            message,
+            isProgress: false, // プログレスバーは個別表示
+          };
+          currentProgressBar.logId = newLog.id;
+          logs = [...logs, newLog];
+        }
+        
+        scrollIfNeeded();
+      }
+    });
+
+    pushServer.on('progressbar.clear', (data: any) => {
+      window.console.log('[DEBUG] Progress bar clear:', data);
+      // clearイベントは無視（プログレスバーを残す）
+      currentProgressBar = null;
     });
 
     window.console.log('[DEBUG] Event handlers registered, calling connect()');
