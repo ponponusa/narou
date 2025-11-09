@@ -105,9 +105,19 @@ export async function getNovels(params?: {
     });
   }
 
-  return fetchApi<NovelsListResponse>(
+  const response = await fetchApi<any>(
     `/api/list?${searchParams.toString()}`
   );
+
+  // raw_tags を tags にマッピング（バックエンドの後方互換性のため）
+  if (response.data) {
+    response.data = response.data.map((novel: any) => ({
+      ...novel,
+      tags: novel.raw_tags || []
+    }));
+  }
+
+  return response as NovelsListResponse;
 }
 
 /**
