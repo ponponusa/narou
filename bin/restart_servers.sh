@@ -9,10 +9,11 @@ echo "Stopping all existing server processes..."
 pkill -9 -f "npm.*dev" 2>/dev/null || true
 pkill -9 -f "astro" 2>/dev/null || true
 
-# Stop backend processes (narou.rb web)
+# Stop backend processes (narou.rb web, puma)
 pkill -9 -f "narou.rb web" 2>/dev/null || true
 pkill -9 -f "ruby.*narou.rb.*web" 2>/dev/null || true
 pkill -9 -f "narou-mod web" 2>/dev/null || true
+pkill -9 -f "puma.*narou" 2>/dev/null || true
 
 echo "Waiting for processes to terminate..."
 sleep 3
