@@ -196,7 +196,10 @@
     // タイトルは常に表示（非表示にできない）
     if (column === 'title') return;
     
-    columnVisibility[column] = !columnVisibility[column];
+    columnVisibility = {
+      ...columnVisibility,
+      [column]: !columnVisibility[column]
+    };
     saveColumnVisibility();
   }
 
@@ -777,8 +780,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              checked={columnVisibility.id}
-              onchange={() => toggleColumn('id')}
+              bind:checked={columnVisibility.id}
+              onchange={saveColumnVisibility}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">ID</span>
@@ -797,8 +800,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              checked={columnVisibility.author}
-              onchange={() => toggleColumn('author')}
+              bind:checked={columnVisibility.author}
+              onchange={saveColumnVisibility}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">著者</span>
@@ -807,8 +810,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              checked={columnVisibility.sitename}
-              onchange={() => toggleColumn('sitename')}
+              bind:checked={columnVisibility.sitename}
+              onchange={saveColumnVisibility}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">掲載サイト</span>
@@ -817,8 +820,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              checked={columnVisibility.status}
-              onchange={() => toggleColumn('status')}
+              bind:checked={columnVisibility.status}
+              onchange={saveColumnVisibility}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">状態</span>
@@ -827,8 +830,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              checked={columnVisibility.updated_at}
-              onchange={() => toggleColumn('updated_at')}
+              bind:checked={columnVisibility.updated_at}
+              onchange={saveColumnVisibility}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">更新日</span>
@@ -837,8 +840,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              checked={columnVisibility.tags}
-              onchange={() => toggleColumn('tags')}
+              bind:checked={columnVisibility.tags}
+              onchange={saveColumnVisibility}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">タグ</span>
