@@ -11,6 +11,7 @@
   import { progressStore } from '../lib/progressStore';
   import AddNovelModal from './AddNovelModal.svelte';
   import TagModal from './TagModal.svelte';
+  import ConversionSettingsModal from './ConversionSettingsModal.svelte';
   import ConsolePanel from './ConsolePanel.svelte';
   import Toast from './Toast.svelte';
   import TaskQueue from './TaskQueue.svelte';
@@ -25,6 +26,7 @@
   let pushServer = getPushServer();
   let addNovelModal: AddNovelModal;
   let tagModal: TagModal;
+  let conversionSettingsModal: ConversionSettingsModal;
   let consolePanel: ConsolePanel;
   let taskQueue: TaskQueue;
 
@@ -266,6 +268,11 @@
     // 設定を復元
     loadSettings();
     loadColumnVisibility();
+    
+    // ConversionSettingsModalにToast参照を渡す
+    if (conversionSettingsModal && toast) {
+      conversionSettingsModal.setToast(toast);
+    }
     
     await Promise.all([loadNovels(), loadTags()]);
     
@@ -592,6 +599,14 @@
   function handleSingleTagEdit(novelId: number) {
     const novel = novels.find((n: Novel) => n.id === novelId);
     tagModal?.open([novelId], novel?.title || null, () => loadNovels());
+  }
+
+  /**
+   * 個別変換設定モーダルを開く
+   */
+  function handleConversionSettings(novelId: number) {
+    const novel = novels.find((n: Novel) => n.id === novelId);
+    conversionSettingsModal?.open(novelId, novel?.title || '');
   }
 
   /**
@@ -1485,6 +1500,12 @@
                             <i class="fas fa-tags"></i> タグ編集
                           </button>
                           <button
+                            onclick={(e) => { e.stopPropagation(); handleConversionSettings(novel.id); }}
+                            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                          >
+                            <i class="fas fa-cog"></i> 個別設定
+                          </button>
+                          <button
                             onclick={() => handleFreezeNovel(novel.id, novel.frozen, novel.title)}
                             class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                           >
@@ -1627,6 +1648,9 @@
 
 <!-- タグ編集モーダル -->
 <TagModal bind:this={tagModal} />
+
+<!-- 個別変換設定モーダル -->
+<ConversionSettingsModal bind:this={conversionSettingsModal} />
 
 <!-- 確認ダイアログ -->
 {#if showConfirmDialog && confirmDialogConfig}

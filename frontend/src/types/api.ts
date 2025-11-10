@@ -122,3 +122,50 @@ export interface LogMessage {
   level: string;
   message: string;
 }
+
+/**
+ * 小説設定項目の型
+ */
+export type NovelSettingType = 'boolean' | 'integer' | 'string' | 'select' | 'multiple';
+
+/**
+ * 個別小説設定項目
+ */
+export interface NovelSettingItem {
+  name: string;
+  type: NovelSettingType;
+  value: any;
+  original_value: any;
+  default_value: any;
+  help: string;
+  is_forced: boolean;
+  select_keys?: string[];
+  select_summaries?: string[];
+}
+
+/**
+ * 置換パターン
+ */
+export interface ReplacePattern {
+  left: string;
+  right: string;
+}
+
+/**
+ * 小説設定取得レスポンス型
+ */
+export interface NovelSettingsData {
+  novel_id: number;
+  novel_title: string;
+  settings: NovelSettingItem[];
+  replace_pattern: [string, string][];
+}
+
+/**
+ * 小説設定更新リクエスト型
+ */
+export interface NovelSettingsUpdateRequest {
+  settings: Record<string, any>;
+  replace_pattern?: ReplacePattern[];
+}
+

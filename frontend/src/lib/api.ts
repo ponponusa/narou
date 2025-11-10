@@ -18,6 +18,8 @@ import type {
   LogMessage
 } from '../types/api';
 
+export type { TagInfo };
+
 // 開発時はViteのプロキシを使用するため空文字列
 // 本番時は環境変数で指定されたURLを使用
 const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || '';

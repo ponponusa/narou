@@ -619,13 +619,13 @@
   }
 
   :global(.dark) .input-field {
-    background-color: #1f2937;
+    background-color: #374151;
     border-color: #4b5563;
     color: #f9fafb;
   }
 
   :global(.dark) .input-field::placeholder {
-    color: #6b7280;
+    color: #9ca3af;
   }
 
   .input-field:focus {

@@ -6,12 +6,12 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.svelte';
-import Settings from '../components/Settings.svelte';
+import SettingsComponent from '../components/Settings.svelte';
 ---
 
 <BaseLayout title="設定 - Narou">
   <Header client:load />
   <main class="container mx-auto px-4 py-6">
-    <Settings client:load />
+    <SettingsComponent client:load />
   </main>
 </BaseLayout>
