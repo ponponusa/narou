@@ -39,8 +39,34 @@
   let sortOrder = $state<'asc' | 'desc'>('desc');
   let availableSites = $state<string[]>([]);
 
+  // 列表示設定の型定義
+  interface ColumnVisibility {
+    id: boolean;
+    title: boolean;
+    author: boolean;
+    sitename: boolean;
+    status: boolean;
+    updated_at: boolean;
+    tags: boolean;
+  }
+
+  // 列表示設定（デフォルト：すべて表示）
+  let columnVisibility = $state<ColumnVisibility>({
+    id: true,
+    title: true,
+    author: true,
+    sitename: true,
+    status: true,
+    updated_at: true,
+    tags: true,
+  });
+
+  // 列表示設定モーダルの開閉状態
+  let showColumnSettings = $state(false);
+
   // 設定の保存キー
   const SETTINGS_KEY = 'narou-novel-list-settings';
+  const COLUMN_VISIBILITY_KEY = 'narou-column-visibility';
 
   // 設定をlocalStorageに保存
   function saveSettings() {
@@ -56,6 +82,15 @@
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (err) {
       console.error('設定の保存に失敗しました:', err);
+    }
+  }
+
+  // 列表示設定をlocalStorageに保存
+  function saveColumnVisibility() {
+    try {
+      localStorage.setItem(COLUMN_VISIBILITY_KEY, JSON.stringify(columnVisibility));
+    } catch (err) {
+      console.error('列表示設定の保存に失敗しました:', err);
     }
   }
 
@@ -77,9 +112,103 @@
     }
   }
 
+  // 列表示設定をlocalStorageから復元
+  function loadColumnVisibility() {
+    try {
+      const saved = localStorage.getItem(COLUMN_VISIBILITY_KEY);
+      if (saved) {
+        const savedVisibility = JSON.parse(saved);
+        columnVisibility = { ...columnVisibility, ...savedVisibility };
+      } else {
+        // 初回起動時：デバイスサイズに応じたデフォルト設定を適用
+        applyResponsiveDefaults();
+      }
+    } catch (err) {
+      console.error('列表示設定の読み込みに失敗しました:', err);
+      applyResponsiveDefaults();
+    }
+  }
+
+  // デバイスサイズに応じたデフォルト設定を適用
+  function applyResponsiveDefaults() {
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      // スマホ向け：ID、タイトル、著者、状態のみ表示
+      columnVisibility = {
+        id: true,
+        title: true,
+        author: true,
+        sitename: false,
+        status: true,
+        updated_at: false,
+        tags: false,
+      };
+    } else {
+      // PC/タブレット向け：すべて表示
+      columnVisibility = {
+        id: true,
+        title: true,
+        author: true,
+        sitename: true,
+        status: true,
+        updated_at: true,
+        tags: true,
+      };
+    }
+    saveColumnVisibility();
+  }
+
+  // 列表示設定をリセット
+  function resetColumnVisibility() {
+    applyResponsiveDefaults();
+  }
+
+  // すべての列を表示
+  function showAllColumns() {
+    columnVisibility = {
+      id: true,
+      title: true,
+      author: true,
+      sitename: true,
+      status: true,
+      updated_at: true,
+      tags: true,
+    };
+    saveColumnVisibility();
+  }
+
+  // すべての列を非表示（タイトルは常に表示）
+  function hideAllColumns() {
+    columnVisibility = {
+      id: false,
+      title: true, // タイトルは常に表示
+      author: false,
+      sitename: false,
+      status: false,
+      updated_at: false,
+      tags: false,
+    };
+    saveColumnVisibility();
+  }
+
+  // 列の表示/非表示を切り替え
+  function toggleColumn(column: keyof ColumnVisibility) {
+    // タイトルは常に表示（非表示にできない）
+    if (column === 'title') return;
+    
+    columnVisibility[column] = !columnVisibility[column];
+    saveColumnVisibility();
+  }
+
+  // 表示中の列数を取得
+  const visibleColumnCount = $derived(
+    Object.values(columnVisibility).filter(v => v).length
+  );
+
   onMount(async () => {
     // 設定を復元
     loadSettings();
+    loadColumnVisibility();
     
     await Promise.all([loadNovels(), loadTags()]);
     
@@ -354,7 +483,7 @@
     loadNovels();
   }
   
-  function handleSort(column: 'id' | 'title' | 'author' | 'sitename' | 'updated_at') {
+  function handleSort(column: 'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags') {
     if (sortBy === column) {
       sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
     } else {
@@ -608,14 +737,141 @@
         </button>
       </div>
       
-      <div class="text-sm text-gray-600 dark:text-gray-400">
-        {selectedIds.size > 0 ? `${selectedIds.size}件選択中` : `${totalCount}件の小説`}
+      <div class="flex items-center gap-3">
+        <button
+          onclick={() => showColumnSettings = !showColumnSettings}
+          class="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors text-sm"
+          title="列の表示設定"
+        >
+          ⚙️ 列表示設定
+        </button>
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+          {selectedIds.size > 0 ? `${selectedIds.size}件選択中` : `${totalCount}件の小説`}
+        </div>
       </div>
     </div>
   </div>
 
   <!-- タスクキュー -->
   <TaskQueue bind:this={taskQueue} />
+
+  <!-- 列表示設定モーダル -->
+  {#if showColumnSettings}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick={() => showColumnSettings = false}>
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4" onclick={(e) => e.stopPropagation()}>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">列の表示設定</h3>
+          <button
+            onclick={() => showColumnSettings = false}
+            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="space-y-3 mb-6">
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.id}
+              onchange={() => toggleColumn('id')}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">ID</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 rounded cursor-not-allowed">
+            <input
+              type="checkbox"
+              checked={true}
+              disabled
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">タイトル <span class="text-xs text-gray-500">（必須）</span></span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.author}
+              onchange={() => toggleColumn('author')}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">著者</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.sitename}
+              onchange={() => toggleColumn('sitename')}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">掲載サイト</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.status}
+              onchange={() => toggleColumn('status')}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">状態</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.updated_at}
+              onchange={() => toggleColumn('updated_at')}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">更新日</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.tags}
+              onchange={() => toggleColumn('tags')}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">タグ</span>
+          </label>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+          <button
+            onclick={showAllColumns}
+            class="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            すべて表示
+          </button>
+          <button
+            onclick={hideAllColumns}
+            class="flex-1 px-3 py-2 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+          >
+            最小限
+          </button>
+          <button
+            onclick={resetColumnVisibility}
+            class="flex-1 px-3 py-2 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors"
+          >
+            リセット
+          </button>
+        </div>
+
+        <div class="text-xs text-gray-500 dark:text-gray-400 text-center">
+          表示中: {visibleColumnCount}列 / 選択: {selectedIds.size}件
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <!-- 小説リストテーブル -->
   {#if loading}
@@ -646,6 +902,7 @@
                   class="rounded"
                 />
               </th>
+              {#if columnVisibility.id}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('id')}
@@ -657,6 +914,7 @@
                   {/if}
                 </button>
               </th>
+              {/if}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('title')}
@@ -668,6 +926,7 @@
                   {/if}
                 </button>
               </th>
+              {#if columnVisibility.author}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('author')}
@@ -679,6 +938,8 @@
                   {/if}
                 </button>
               </th>
+              {/if}
+              {#if columnVisibility.sitename}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('sitename')}
@@ -690,7 +951,9 @@
                   {/if}
                 </button>
               </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+              {/if}
+              {#if columnVisibility.status}
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('status')}
                   class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
@@ -701,6 +964,8 @@
                   {/if}
                 </button>
               </th>
+              {/if}
+              {#if columnVisibility.updated_at}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('updated_at')}
@@ -712,6 +977,8 @@
                   {/if}
                 </button>
               </th>
+              {/if}
+              {#if columnVisibility.tags}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('tags')}
@@ -723,6 +990,7 @@
                   {/if}
                 </button>
               </th>
+              {/if}
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -747,7 +1015,9 @@
                     class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
                   />
                 </td>
+                {#if columnVisibility.id}
                 <td class="px-4 py-3 text-sm">{novel.id}</td>
+                {/if}
                 <td class="px-4 py-3 text-sm font-medium max-w-md">
                   <div class="flex flex-col gap-1">
                     <div class="flex items-center gap-2">
@@ -777,8 +1047,13 @@
                     {/if}
                   </div>
                 </td>
+                {#if columnVisibility.author}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{novel.author}</td>
+                {/if}
+                {#if columnVisibility.sitename}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{novel.sitename}</td>
+                {/if}
+                {#if columnVisibility.status}
                 <td class="px-4 py-3 text-sm">
                   {#if novel.status}
                     <span class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 whitespace-nowrap">
@@ -786,16 +1061,20 @@
                     </span>
                   {/if}
                 </td>
+                {/if}
+                {#if columnVisibility.updated_at}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                   {#if novel.last_update}
                     <div class="flex flex-col">
-                      <span>{new Date(novel.last_update * 1000).toLocaleDateString('ja-JP')}</span>
-                      <span class="text-xs text-gray-500 dark:text-gray-500">{new Date(novel.last_update * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>{new Date(Number(novel.last_update) * 1000).toLocaleDateString('ja-JP')}</span>
+                      <span class="text-xs text-gray-500 dark:text-gray-500">{new Date(Number(novel.last_update) * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   {:else}
                     -
                   {/if}
                 </td>
+                {/if}
+                {#if columnVisibility.tags}
                 <td class="px-4 py-3 text-sm">
                   <div class="flex flex-wrap gap-1">
                     {#each novel.tags || [] as tag}
@@ -808,6 +1087,7 @@
                     {/each}
                   </div>
                 </td>
+                {/if}
               </tr>
             {/each}
           </tbody>
