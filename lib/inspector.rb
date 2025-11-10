@@ -60,17 +60,24 @@ class Inspector
   end
 
   def display_summary(target = $stdout)
-    # 文字列補間を使わず、明示的に結合して1つの文字列にする
-    summary = String.new
-    summary << "小説状態の調査結果を "
-    summary << Inspector::INSPECT_LOG_NAME
-    summary << " に出力しました（"
-    summary << KLASS_TAG.values.map { |klass_type|
+    # 配列で構築してからjoinする方式（最も確実）
+    parts = []
+    parts << "小説状態の調査結果を "
+    parts << Inspector::INSPECT_LOG_NAME
+    parts << " に出力しました（"
+    parts << KLASS_TAG.values.map { |klass_type|
       num = @messages.count { |msg| msg =~ /^\[#{klass_type}\]/ }
       "#{klass_type}：#{num}件"
     }.join("、")
-    summary << "）\n"
-    # putsではなくwriteを直接呼ぶ
+    parts << "）"
+    
+    # 1つの文字列として結合
+    summary = parts.join + "\n"
+    
+    # デバッグ: summaryの内容を確認
+    STDERR.puts "[DEBUG] display_summary: summary=#{summary.inspect}"
+    
+    # writeを直接呼ぶ
     target.write(summary)
   end
 
