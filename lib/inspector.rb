@@ -60,6 +60,9 @@ class Inspector
   end
 
   def display_summary(target = $stdout)
+    # 一時的に無効化してサーバー起動問題を解決
+    return
+    
     # 配列で構築してからjoinする方式（最も確実）
     parts = []
     parts << "小説状態の調査結果を "
@@ -73,9 +76,6 @@ class Inspector
     
     # 1つの文字列として結合
     summary = parts.join + "\n"
-    
-    # デバッグログは削除（パフォーマンスのため）
-    # STDERR.puts "[DEBUG] display_summary: summary=#{summary.inspect}"
     
     # writeを直接呼ぶ
     target.write(summary)
