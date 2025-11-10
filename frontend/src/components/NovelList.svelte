@@ -191,7 +191,20 @@
     saveColumnVisibility();
   }
 
-  // 列の表示/非表示を切り替え
+  // 列の表示/非表示を切り替え（モーダルから）
+  function handleColumnToggle(column: keyof ColumnVisibility, value: boolean) {
+    // タイトルは常に表示（非表示にできない）
+    if (column === 'title') return;
+    
+    // オブジェクト全体を再代入してリアクティビティを確保
+    columnVisibility = {
+      ...columnVisibility,
+      [column]: value
+    };
+    saveColumnVisibility();
+  }
+
+  // 列の表示/非表示を切り替え（レガシー用）
   function toggleColumn(column: keyof ColumnVisibility) {
     // タイトルは常に表示（非表示にできない）
     if (column === 'title') return;
@@ -758,6 +771,24 @@
   <!-- タスクキュー -->
   <TaskQueue bind:this={taskQueue} />
 
+  <!-- テーブルコントロール -->
+  <div class="flex justify-end items-center gap-3 mb-3">
+    <button
+      onclick={selectAll}
+      class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+      title="全ての小説を選択"
+    >
+      ☑️ 全て選択
+    </button>
+    <button
+      onclick={() => showColumnSettings = !showColumnSettings}
+      class="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors text-sm"
+      title="列の表示設定"
+    >
+      ⚙️ カラム設定表示
+    </button>
+  </div>
+
   <!-- 列表示設定モーダル -->
   {#if showColumnSettings}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -780,8 +811,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              bind:checked={columnVisibility.id}
-              onchange={saveColumnVisibility}
+              checked={columnVisibility.id}
+              onchange={(e) => handleColumnToggle('id', (e.target as HTMLInputElement).checked)}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">ID</span>
@@ -800,8 +831,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              bind:checked={columnVisibility.author}
-              onchange={saveColumnVisibility}
+              checked={columnVisibility.author}
+              onchange={(e) => handleColumnToggle('author', (e.target as HTMLInputElement).checked)}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">著者</span>
@@ -810,8 +841,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              bind:checked={columnVisibility.sitename}
-              onchange={saveColumnVisibility}
+              checked={columnVisibility.sitename}
+              onchange={(e) => handleColumnToggle('sitename', (e.target as HTMLInputElement).checked)}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">掲載サイト</span>
@@ -820,8 +851,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              bind:checked={columnVisibility.status}
-              onchange={saveColumnVisibility}
+              checked={columnVisibility.status}
+              onchange={(e) => handleColumnToggle('status', (e.target as HTMLInputElement).checked)}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">状態</span>
@@ -830,8 +861,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              bind:checked={columnVisibility.updated_at}
-              onchange={saveColumnVisibility}
+              checked={columnVisibility.updated_at}
+              onchange={(e) => handleColumnToggle('updated_at', (e.target as HTMLInputElement).checked)}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">更新日</span>
@@ -840,8 +871,8 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
-              bind:checked={columnVisibility.tags}
-              onchange={saveColumnVisibility}
+              checked={columnVisibility.tags}
+              onchange={(e) => handleColumnToggle('tags', (e.target as HTMLInputElement).checked)}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">タグ</span>
@@ -877,6 +908,7 @@
   {/if}
 
   <!-- 小説リストテーブル -->
+  <div class="md:mx-12">
   {#if loading}
     <div class="text-center py-12">
       <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -895,16 +927,8 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
       <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+          <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th class="px-4 py-3 text-left">
-                <input
-                  type="checkbox"
-                  onchange={selectAll}
-                  checked={selectedIds.size === novels.length && novels.length > 0}
-                  class="rounded"
-                />
-              </th>
               {#if columnVisibility.id}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
@@ -999,7 +1023,7 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {#each novels as novel (novel.id)}
               <tr 
-                class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                class="transition-colors cursor-pointer {selectedIds.has(novel.id) ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}"
                 onclick={(e) => {
                   // リンクやボタンのクリックは除外
                   if (e.target instanceof HTMLElement && 
@@ -1010,14 +1034,6 @@
                   toggleSelection(novel.id);
                 }}
               >
-                <td class="px-4 py-3" onclick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(novel.id)}
-                    onchange={() => toggleSelection(novel.id)}
-                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
-                  />
-                </td>
                 {#if columnVisibility.id}
                 <td class="px-4 py-3 text-sm">{novel.id}</td>
                 {/if}
@@ -1208,6 +1224,7 @@
       </div>
     </div>
   {/if}
+  </div>
 </div>
 
 <!-- 小説追加モーダル -->
