@@ -42,23 +42,33 @@
   // 列表示設定の型定義
   interface ColumnVisibility {
     id: boolean;
+    updated_at: boolean;          // 更新日
+    newest_article_date: boolean;  // 最新話掲載日
+    last_update: boolean;          // 更新チェック日
     title: boolean;
     author: boolean;
     sitename: boolean;
     status: boolean;
-    updated_at: boolean;
     tags: boolean;
+    episode_count: boolean;        // 話数
+    total_chars: boolean;          // 文字数
+    avg_chars_per_episode: boolean; // 平均文字数
   }
 
-  // 列表示設定（デフォルト：すべて表示）
+  // 列表示設定（デフォルト：レスポンシブ対応）
   let columnVisibility = $state<ColumnVisibility>({
     id: true,
+    updated_at: true,
+    newest_article_date: true,
+    last_update: false,
     title: true,
     author: true,
     sitename: true,
     status: true,
-    updated_at: true,
     tags: true,
+    episode_count: false,
+    total_chars: false,
+    avg_chars_per_episode: false,
   });
 
   // 列表示設定モーダルの開閉状態
@@ -136,23 +146,33 @@
       // スマホ向け：ID、タイトル、著者、状態のみ表示
       columnVisibility = {
         id: true,
+        updated_at: false,
+        newest_article_date: false,
+        last_update: false,
         title: true,
         author: true,
         sitename: false,
         status: true,
-        updated_at: false,
         tags: false,
+        episode_count: false,
+        total_chars: false,
+        avg_chars_per_episode: false,
       };
     } else {
-      // PC/タブレット向け：すべて表示
+      // PC/タブレット向け：ID、更新日、最新話掲載日、タイトル、著者、掲載サイト、タグ、状態を表示
       columnVisibility = {
         id: true,
+        updated_at: true,
+        newest_article_date: true,
+        last_update: false,
         title: true,
         author: true,
         sitename: true,
         status: true,
-        updated_at: true,
         tags: true,
+        episode_count: false,
+        total_chars: false,
+        avg_chars_per_episode: false,
       };
     }
     saveColumnVisibility();
@@ -167,26 +187,36 @@
   function showAllColumns() {
     columnVisibility = {
       id: true,
+      updated_at: true,
+      newest_article_date: true,
+      last_update: true,
       title: true,
       author: true,
       sitename: true,
       status: true,
-      updated_at: true,
       tags: true,
+      episode_count: true,
+      total_chars: true,
+      avg_chars_per_episode: true,
     };
     saveColumnVisibility();
   }
 
-  // すべての列を非表示（タイトルは常に表示）
+  // すべての列を非表示（必須カラムのみ表示）
   function hideAllColumns() {
     columnVisibility = {
-      id: false,
-      title: true, // タイトルは常に表示
-      author: false,
-      sitename: false,
-      status: false,
+      id: true,          // 必須
       updated_at: false,
+      newest_article_date: false,
+      last_update: false,
+      title: true,       // 必須
+      author: true,      // 必須
+      sitename: true,    // 必須
+      status: false,
       tags: false,
+      episode_count: false,
+      total_chars: false,
+      avg_chars_per_episode: false,
     };
     saveColumnVisibility();
   }
@@ -574,7 +604,7 @@
 
 <div class="container mx-auto px-4 py-6">
   <!-- フィルター・検索バー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 md:mx-12">
     <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
       <!-- テキスト検索 -->
       <div class="lg:col-span-2">
@@ -707,7 +737,7 @@
   </div>
 
   <!-- アクションバー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 md:mx-12">
     <div class="flex flex-wrap gap-4 items-center justify-between">
       <div class="flex gap-2 flex-wrap">
         <button
@@ -753,17 +783,8 @@
         </button>
       </div>
       
-      <div class="flex items-center gap-3">
-        <button
-          onclick={() => showColumnSettings = !showColumnSettings}
-          class="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors text-sm"
-          title="列の表示設定"
-        >
-          ⚙️ 列表示設定
-        </button>
-        <div class="text-sm text-gray-600 dark:text-gray-400">
-          {selectedIds.size > 0 ? `${selectedIds.size}件選択中` : `${totalCount}件の小説`}
-        </div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">
+        {selectedIds.size > 0 ? `${selectedIds.size}件選択中` : `${totalCount}件の小説`}
       </div>
     </div>
   </div>
@@ -772,7 +793,7 @@
   <TaskQueue bind:this={taskQueue} />
 
   <!-- テーブルコントロール -->
-  <div class="flex justify-end items-center gap-3 mb-3">
+  <div class="flex justify-end items-center gap-3 mb-3 md:mx-12">
     <button
       onclick={selectAll}
       class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
@@ -808,16 +829,6 @@
         </div>
 
         <div class="space-y-3 mb-6">
-          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
-            <input
-              type="checkbox"
-              checked={columnVisibility.id}
-              onchange={(e) => handleColumnToggle('id', (e.target as HTMLInputElement).checked)}
-              class="w-4 h-4 rounded"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">ID</span>
-          </label>
-
           <label class="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 rounded cursor-not-allowed">
             <input
               type="checkbox"
@@ -825,37 +836,7 @@
               disabled
               class="w-4 h-4 rounded"
             />
-            <span class="text-sm text-gray-700 dark:text-gray-300">タイトル <span class="text-xs text-gray-500">（必須）</span></span>
-          </label>
-
-          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
-            <input
-              type="checkbox"
-              checked={columnVisibility.author}
-              onchange={(e) => handleColumnToggle('author', (e.target as HTMLInputElement).checked)}
-              class="w-4 h-4 rounded"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">著者</span>
-          </label>
-
-          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
-            <input
-              type="checkbox"
-              checked={columnVisibility.sitename}
-              onchange={(e) => handleColumnToggle('sitename', (e.target as HTMLInputElement).checked)}
-              class="w-4 h-4 rounded"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">掲載サイト</span>
-          </label>
-
-          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
-            <input
-              type="checkbox"
-              checked={columnVisibility.status}
-              onchange={(e) => handleColumnToggle('status', (e.target as HTMLInputElement).checked)}
-              class="w-4 h-4 rounded"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">状態</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300">ID <span class="text-xs text-gray-500">（必須）</span></span>
           </label>
 
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
@@ -871,11 +852,101 @@
           <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
             <input
               type="checkbox"
+              checked={columnVisibility.newest_article_date}
+              onchange={(e) => handleColumnToggle('newest_article_date', (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">最新話掲載日</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.last_update}
+              onchange={(e) => handleColumnToggle('last_update', (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">更新チェック日</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 rounded cursor-not-allowed">
+            <input
+              type="checkbox"
+              checked={true}
+              disabled
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">タイトル <span class="text-xs text-gray-500">（必須）</span></span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 rounded cursor-not-allowed">
+            <input
+              type="checkbox"
+              checked={true}
+              disabled
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">著者 <span class="text-xs text-gray-500">（必須）</span></span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-700 rounded cursor-not-allowed">
+            <input
+              type="checkbox"
+              checked={true}
+              disabled
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">掲載サイト <span class="text-xs text-gray-500">（必須）</span></span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.status}
+              onchange={(e) => handleColumnToggle('status', (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">状態</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
               checked={columnVisibility.tags}
               onchange={(e) => handleColumnToggle('tags', (e.target as HTMLInputElement).checked)}
               class="w-4 h-4 rounded"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">タグ</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.episode_count}
+              onchange={(e) => handleColumnToggle('episode_count', (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">話数</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.total_chars}
+              onchange={(e) => handleColumnToggle('total_chars', (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">文字数</span>
+          </label>
+
+          <label class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={columnVisibility.avg_chars_per_episode}
+              onchange={(e) => handleColumnToggle('avg_chars_per_episode', (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 rounded"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">平均文字数</span>
           </label>
         </div>
 
@@ -942,6 +1013,29 @@
                 </button>
               </th>
               {/if}
+              {#if columnVisibility.updated_at}
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                <button
+                  onclick={() => handleSort('updated_at')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  更新日
+                  {#if sortBy === 'updated_at'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
+              </th>
+              {/if}
+              {#if columnVisibility.newest_article_date}
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                最新話掲載日
+              </th>
+              {/if}
+              {#if columnVisibility.last_update}
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                更新チェック日
+              </th>
+              {/if}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('title')}
@@ -953,7 +1047,6 @@
                   {/if}
                 </button>
               </th>
-              {#if columnVisibility.author}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('author')}
@@ -965,20 +1058,17 @@
                   {/if}
                 </button>
               </th>
-              {/if}
-              {#if columnVisibility.sitename}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('sitename')}
                   class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
                 >
-                  サイト
+                  掲載サイト
                   {#if sortBy === 'sitename'}
                     <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
                   {/if}
                 </button>
               </th>
-              {/if}
               {#if columnVisibility.status}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
@@ -987,19 +1077,6 @@
                 >
                   状態
                   {#if sortBy === 'status'}
-                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                  {/if}
-                </button>
-              </th>
-              {/if}
-              {#if columnVisibility.updated_at}
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                <button
-                  onclick={() => handleSort('updated_at')}
-                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                >
-                  更新日
-                  {#if sortBy === 'updated_at'}
                     <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
                   {/if}
                 </button>
@@ -1016,6 +1093,21 @@
                     <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
                   {/if}
                 </button>
+              </th>
+              {/if}
+              {#if columnVisibility.episode_count}
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                話数
+              </th>
+              {/if}
+              {#if columnVisibility.total_chars}
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                文字数
+              </th>
+              {/if}
+              {#if columnVisibility.avg_chars_per_episode}
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                平均文字数
               </th>
               {/if}
             </tr>
@@ -1036,6 +1128,36 @@
               >
                 {#if columnVisibility.id}
                 <td class="px-4 py-3 text-sm">{novel.id}</td>
+                {/if}
+                {#if columnVisibility.updated_at}
+                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  {#if novel.last_update}
+                    <div class="flex flex-col">
+                      <span>{new Date(Number(novel.last_update) * 1000).toLocaleDateString('ja-JP')}</span>
+                      <span class="text-xs text-gray-500 dark:text-gray-500">{new Date(Number(novel.last_update) * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  {:else}
+                    <span class="text-gray-400 dark:text-gray-600">-</span>
+                  {/if}
+                </td>
+                {/if}
+                {#if columnVisibility.newest_article_date}
+                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  {#if novel.newest_article_date}
+                    {new Date(Number(novel.newest_article_date) * 1000).toLocaleDateString('ja-JP')}
+                  {:else}
+                    <span class="text-gray-400 dark:text-gray-600">-</span>
+                  {/if}
+                </td>
+                {/if}
+                {#if columnVisibility.last_update}
+                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  {#if novel.last_update}
+                    {new Date(Number(novel.last_update) * 1000).toLocaleDateString('ja-JP')}
+                  {:else}
+                    <span class="text-gray-400 dark:text-gray-600">-</span>
+                  {/if}
+                </td>
                 {/if}
                 <td class="px-4 py-3 text-sm font-medium max-w-md">
                   <div class="flex flex-col gap-1">
@@ -1066,30 +1188,14 @@
                     {/if}
                   </div>
                 </td>
-                {#if columnVisibility.author}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{novel.author}</td>
-                {/if}
-                {#if columnVisibility.sitename}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{novel.sitename}</td>
-                {/if}
                 {#if columnVisibility.status}
                 <td class="px-4 py-3 text-sm">
                   {#if novel.status}
                     <span class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 whitespace-nowrap">
                       {novel.status}
                     </span>
-                  {/if}
-                </td>
-                {/if}
-                {#if columnVisibility.updated_at}
-                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {#if novel.last_update}
-                    <div class="flex flex-col">
-                      <span>{new Date(Number(novel.last_update) * 1000).toLocaleDateString('ja-JP')}</span>
-                      <span class="text-xs text-gray-500 dark:text-gray-500">{new Date(Number(novel.last_update) * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  {:else}
-                    -
                   {/if}
                 </td>
                 {/if}
@@ -1105,6 +1211,21 @@
                       </span>
                     {/each}
                   </div>
+                </td>
+                {/if}
+                {#if columnVisibility.episode_count}
+                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  {novel.general_all_no ? novel.general_all_no : '-'}
+                </td>
+                {/if}
+                {#if columnVisibility.total_chars}
+                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  {novel.length ? novel.length.toLocaleString() : '-'}
+                </td>
+                {/if}
+                {#if columnVisibility.avg_chars_per_episode}
+                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  {novel.general_all_no && novel.length ? Math.floor(novel.length / novel.general_all_no).toLocaleString() : '-'}
                 </td>
                 {/if}
               </tr>

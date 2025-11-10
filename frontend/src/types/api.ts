@@ -30,6 +30,7 @@ export interface Novel {
   novel_type?: string;
   general_lastup?: string;
   last_update?: string;
+  newest_article_date?: string;  // 最新話掲載日
   new_arrivals_date?: string;
   download_date?: string;
   convert_date?: string;
@@ -37,6 +38,8 @@ export interface Novel {
   promo_tags?: string[];
   promo_tags_title?: string;
   promo_tags_author?: string;
+  general_all_no?: number;  // 話数
+  length?: number;          // 文字数
 }
 
 /**
