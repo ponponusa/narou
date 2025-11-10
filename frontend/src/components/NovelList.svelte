@@ -526,7 +526,7 @@
       toast?.show('小説を選択してください', 'warning');
       return;
     }
-    tagModal.open(Array.from(selectedIds));
+    tagModal.open(Array.from(selectedIds), null, () => loadNovels());
   }
 
   function handleSearch() {
@@ -591,7 +591,7 @@
    */
   function handleSingleTagEdit(novelId: number) {
     const novel = novels.find((n: Novel) => n.id === novelId);
-    tagModal?.open([novelId], novel?.title || null);
+    tagModal?.open([novelId], novel?.title || null, () => loadNovels());
   }
 
   /**

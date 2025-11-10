@@ -10,6 +10,7 @@
   let isOpen = $state(false);
   let selectedIds = $state<number[]>([]);
   let novelTitle = $state<string | null>(null);
+  let onSaveCallback = $state<(() => void) | null>(null);
   let tagStates = $state<Record<string, number>>({});
   let tagColors = $state<Record<string, string>>({});
   let newTagName = $state('');
@@ -36,9 +37,10 @@
   /**
    * モーダルを開く
    */
-  export async function open(ids: number[], title: string | null = null) {
+  export async function open(ids: number[], title: string | null = null, onSave: (() => void) | null = null) {
     selectedIds = ids;
     novelTitle = title;
+    onSaveCallback = onSave;
     isOpen = true;
     error = null;
     newTagName = '';
@@ -53,6 +55,7 @@
     isOpen = false;
     selectedIds = [];
     novelTitle = null;
+    onSaveCallback = null;
     tagStates = {};
     newTagName = '';
     error = null;
@@ -155,6 +158,11 @@
         alert(`${result.novel_count}件の小説に対して\n${messages.join('、')}しました`);
       } else {
         alert('変更はありませんでした');
+      }
+      
+      // 保存成功時のコールバックを実行
+      if (onSaveCallback) {
+        onSaveCallback();
       }
       
       close();
