@@ -60,9 +60,6 @@ class Inspector
   end
 
   def display_summary(target = $stdout)
-    # 一時的に無効化してサーバー起動問題を解決
-    return
-    
     # 配列で構築してからjoinする方式（最も確実）
     parts = []
     parts << "小説状態の調査結果を "
@@ -74,11 +71,10 @@ class Inspector
     }.join("、")
     parts << "）"
     
-    # 1つの文字列として結合
-    summary = parts.join + "\n"
-    
-    # writeを直接呼ぶ
+    # 1つの文字列として結合してwriteで出力
+    summary = parts.join
     target.write(summary)
+    target.write("\n")
   end
 
   def display(klass = ALL, target = $stdout)
