@@ -28,7 +28,7 @@ rm -rf /home/ponta/git/narou-mod/tmp/bootsnap-cache/*
 
 echo "Starting backend server..."
 cd /home/ponta/git/narou-mod
-bundle exec ruby narou.rb web &
+nohup bundle exec ruby narou.rb web > backend.log 2>&1 &
 BACKEND_PID=$!
 
 echo "Waiting for backend to initialize..."
