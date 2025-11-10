@@ -587,6 +587,14 @@
   }
 
   /**
+   * 個別タグ編集モーダルを開く
+   */
+  function handleSingleTagEdit(novelId: number) {
+    const novel = novels.find((n: Novel) => n.id === novelId);
+    tagModal?.open([novelId], novel?.title || null);
+  }
+
+  /**
    * EPUBダウンロード
    */
   async function handleDownloadEpub(novelId: number) {
@@ -1471,17 +1479,23 @@
                         </button>
                         <div class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                           <button
+                            onclick={(e) => { e.stopPropagation(); handleSingleTagEdit(novel.id); }}
+                            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                          >
+                            <i class="fas fa-tags"></i> タグ編集
+                          </button>
+                          <button
                             onclick={() => handleFreezeNovel(novel.id, novel.frozen, novel.title)}
                             class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                           >
-                            {novel.frozen ? '凍結を解除' : '凍結する'}
+                            <i class="fas fa-{novel.frozen ? 'unlock' : 'lock'}"></i> {novel.frozen ? '凍結を解除' : '凍結する'}
                           </button>
                           <div class="border-t border-gray-200 dark:border-gray-700"></div>
                           <button
                             onclick={() => handleDeleteNovel(novel.id, novel.title)}
                             class="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
                           >
-                            削除
+                            <i class="fas fa-trash-alt"></i> 削除
                           </button>
                         </div>
                       </div>

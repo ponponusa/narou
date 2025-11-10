@@ -9,6 +9,7 @@
 
   let isOpen = $state(false);
   let selectedIds = $state<number[]>([]);
+  let novelTitle = $state<string | null>(null);
   let tagStates = $state<Record<string, number>>({});
   let tagColors = $state<Record<string, string>>({});
   let newTagName = $state('');
@@ -35,8 +36,9 @@
   /**
    * モーダルを開く
    */
-  export async function open(ids: number[]) {
+  export async function open(ids: number[], title: string | null = null) {
     selectedIds = ids;
+    novelTitle = title;
     isOpen = true;
     error = null;
     newTagName = '';
@@ -50,6 +52,7 @@
   export function close() {
     isOpen = false;
     selectedIds = [];
+    novelTitle = null;
     tagStates = {};
     newTagName = '';
     error = null;
@@ -282,7 +285,11 @@
       <!-- ヘッダー -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 id="tag-modal-title" class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          タグ編集 ({selectedIds.length}件選択中)
+          {#if novelTitle}
+            タグ編集 - {novelTitle}
+          {:else}
+            タグ編集 ({selectedIds.length}件選択中)
+          {/if}
         </h2>
         <button
           onclick={close}
