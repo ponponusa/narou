@@ -927,42 +927,42 @@
           onclick={openAddNovelModal}
           class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
         >
-          ➕ 小説を追加
+          <i class="fas fa-plus"></i> 小説を追加
         </button>
         <button
           onclick={handleDownload}
           disabled={selectedIds.size === 0}
           class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          � 更新 ({selectedIds.size})
+          <i class="fas fa-cloud-download-alt"></i> 更新 ({selectedIds.size})
         </button>
         <button
           onclick={handleForceDownload}
           disabled={selectedIds.size === 0}
           class="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          ♻️ 再取得 ({selectedIds.size})
+          <i class="fas fa-sync"></i> 再取得 ({selectedIds.size})
         </button>
         <button
           onclick={handleConvert}
           disabled={selectedIds.size === 0}
           class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          📖 変換 ({selectedIds.size})
+          <i class="fas fa-file-export"></i> 変換 ({selectedIds.size})
         </button>
         <button
           onclick={handleTagEdit}
           disabled={selectedIds.size === 0}
           class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          🏷️ タグ編集 ({selectedIds.size})
+          <i class="fas fa-tags"></i> タグ編集 ({selectedIds.size})
         </button>
         <button
           onclick={handleRemove}
           disabled={selectedIds.size === 0}
           class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          🗑️ 削除 ({selectedIds.size})
+          <i class="fas fa-trash-alt"></i> 削除 ({selectedIds.size})
         </button>
       </div>
       
@@ -982,14 +982,14 @@
       class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
       title="全ての小説を選択"
     >
-      ☑️ 全て選択
+      <i class="fas fa-check-square"></i> 全て選択
     </button>
     <button
       onclick={() => showColumnSettings = !showColumnSettings}
       class="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors text-sm"
       title="列の表示設定"
     >
-      ⚙️ カラム設定表示
+      <i class="fas fa-cog"></i> カラム設定表示
     </button>
   </div>
 
