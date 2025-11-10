@@ -34,6 +34,9 @@ export interface Novel {
   download_date?: string;
   convert_date?: string;
   send_date?: string;
+  promo_tags?: string[];
+  promo_tags_title?: string;
+  promo_tags_author?: string;
 }
 
 /**

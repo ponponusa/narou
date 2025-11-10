@@ -1999,6 +1999,72 @@ class Narou::AppServer < Sinatra::Base
     hosts.freeze
   end
 
+  # ================================================================================
+  # API v2 エンドポイント
+  # ================================================================================
+
+  # 実行中のタスクをキャンセル
+  post "/api/v2/cancel" do
+    headers "Access-Control-Allow-Origin" => "*"
+    begin
+      Narou::WebWorker.cancel
+      Narou::Worker.cancel if Narou.concurrency_enabled?
+      
+      json({ 
+        success: true, 
+        message: "実行中のタスクをキャンセルしました" 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Cancel API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "キャンセル処理でエラーが発生しました: #{e.message}" })
+    end
+  end
+
+  # すべてのタスクをキャンセル
+  post "/api/v2/cancel/all" do
+    headers "Access-Control-Allow-Origin" => "*"
+    begin
+      # WebWorkerとWorkerの両方をキャンセル
+      Narou::WebWorker.cancel
+      Narou::Worker.cancel if Narou.concurrency_enabled?
+      
+      json({ 
+        success: true, 
+        message: "すべてのタスクをキャンセルしました" 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Cancel All API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "キャンセル処理でエラーが発生しました: #{e.message}" })
+    end
+  end
+
+  # 指定されたIDのタスクをキャンセル
+  # NOTE: 現在のWebWorker実装では個別タスクのキャンセルは未対応
+  # 将来的にタスクID管理機能を実装する際のプレースホルダー
+  post "/api/v2/cancel/:id" do
+    headers "Access-Control-Allow-Origin" => "*"
+    novel_id = params[:id]
+    
+    begin
+      # 現在は全タスクキャンセルと同じ動作
+      # TODO: 個別タスクキャンセル機能の実装
+      Narou::WebWorker.cancel
+      Narou::Worker.cancel if Narou.concurrency_enabled?
+      
+      json({ 
+        success: true, 
+        message: "ID:#{novel_id} のタスクをキャンセルしました（現在は全タスクキャンセル）",
+        notice: "個別タスクキャンセル機能は未実装のため、すべてのタスクがキャンセルされます" 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Cancel by ID API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "キャンセル処理でエラーが発生しました: #{e.message}" })
+    end
+  end
+
   before "/widget/*" do
     from = params["from"]
     if ALLOW_HOSTS.include?(from)

@@ -256,6 +256,34 @@ export async function toggleFreeze(ids: number[]): Promise<void> {
 }
 
 /**
+ * 実行中のタスクをキャンセル（API v2）
+ */
+export async function cancelCurrentTask(): Promise<void> {
+  await fetchApiV2<null>('/api/v2/cancel', {
+    method: 'POST',
+  });
+}
+
+/**
+ * すべてのタスクをキャンセル（API v2）
+ */
+export async function cancelAllTasks(): Promise<void> {
+  await fetchApiV2<null>('/api/v2/cancel/all', {
+    method: 'POST',
+  });
+}
+
+/**
+ * 指定されたIDのタスクをキャンセル（API v2）
+ * 注意: 現在のバックエンド実装では全タスクキャンセルと同じ動作
+ */
+export async function cancelTask(novelId: number): Promise<void> {
+  await fetchApiV2<null>(`/api/v2/cancel/${novelId}`, {
+    method: 'POST',
+  });
+}
+
+/**
  * タグリストを取得（API v2）
  */
 export async function getTagList(): Promise<TagInfo[]> {

@@ -8,11 +8,15 @@
   import { getNovels, downloadNovels, convertNovels, removeNovels, getTagList } from '../lib/api';
   import type { Novel, TagInfo } from '../types/api';
   import { getPushServer } from '../lib/pushserver';
+  import { progressStore } from '../lib/progressStore';
   import AddNovelModal from './AddNovelModal.svelte';
   import TagModal from './TagModal.svelte';
   import ConsolePanel from './ConsolePanel.svelte';
+  import Toast from './Toast.svelte';
+  import TaskQueue from './TaskQueue.svelte';
 
   let novels = $state<Novel[]>([]);
+  let toast: Toast;
   let loading = $state(true);
   let error = $state<string | null>(null);
   let selectedIds = $state<Set<number>>(new Set());
@@ -22,6 +26,7 @@
   let addNovelModal: AddNovelModal;
   let tagModal: TagModal;
   let consolePanel: ConsolePanel;
+  let taskQueue: TaskQueue;
 
   // フィルター・ソート設定
   let currentPage = $state(0);
@@ -30,11 +35,52 @@
   let selectedTag = $state<string>('');
   let selectedSite = $state<string>('');
   let selectedStatus = $state<string>('');
-  let sortBy = $state<'id' | 'title' | 'author' | 'sitename' | 'updated_at' | ''>('updated_at');
+  let sortBy = $state<'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | ''>('updated_at');
   let sortOrder = $state<'asc' | 'desc'>('desc');
   let availableSites = $state<string[]>([]);
 
+  // 設定の保存キー
+  const SETTINGS_KEY = 'narou-novel-list-settings';
+
+  // 設定をlocalStorageに保存
+  function saveSettings() {
+    try {
+      const settings = {
+        pageSize,
+        selectedTag,
+        selectedSite,
+        selectedStatus,
+        sortBy,
+        sortOrder,
+      };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (err) {
+      console.error('設定の保存に失敗しました:', err);
+    }
+  }
+
+  // 設定をlocalStorageから復元
+  function loadSettings() {
+    try {
+      const saved = localStorage.getItem(SETTINGS_KEY);
+      if (saved) {
+        const settings = JSON.parse(saved);
+        pageSize = settings.pageSize ?? 50;
+        selectedTag = settings.selectedTag ?? '';
+        selectedSite = settings.selectedSite ?? '';
+        selectedStatus = settings.selectedStatus ?? '';
+        sortBy = settings.sortBy ?? 'updated_at';
+        sortOrder = settings.sortOrder ?? 'desc';
+      }
+    } catch (err) {
+      console.error('設定の読み込みに失敗しました:', err);
+    }
+  }
+
   onMount(async () => {
+    // 設定を復元
+    loadSettings();
+    
     await Promise.all([loadNovels(), loadTags()]);
     
     // PushServerイベントリスナー設定
@@ -66,6 +112,8 @@
     try {
       allTags = await getTagList();
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'タグリストの取得に失敗しました';
+      toast?.show(message, 'error');
       console.error('タグリストの取得エラー:', err);
     }
   }
@@ -80,7 +128,7 @@
         filter: filterText,
       });
       
-      // クライアント側でのフィルタリング（タグ、サイト、ステータス）
+      // クライアント側でのフィルタリング（タグ、サイト、状態）
       let filteredNovels = response.novels;
       
       if (selectedTag) {
@@ -132,6 +180,15 @@
               aVal = a.last_update || 0;
               bVal = b.last_update || 0;
               break;
+            case 'status':
+              aVal = a.status || '';
+              bVal = b.status || '';
+              break;
+            case 'tags':
+              // タグでソート（最初のタグで比較）
+              aVal = (a.tags && a.tags.length > 0) ? a.tags[0] : '';
+              bVal = (b.tags && b.tags.length > 0) ? b.tags[0] : '';
+              break;
           }
           
           if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
@@ -143,7 +200,9 @@
       novels = filteredNovels;
       totalCount = response.total;
     } catch (err) {
-      error = err instanceof Error ? err.message : '小説リストの取得に失敗しました';
+      const message = err instanceof Error ? err.message : '小説リストの取得に失敗しました';
+      error = message;
+      toast?.show(message, 'error');
       console.error('小説リストの取得エラー:', err);
     } finally {
       loading = false;
@@ -170,52 +229,96 @@
 
   async function handleDownload() {
     if (selectedIds.size === 0) {
-      alert('小説を選択してください');
+      toast?.show('小説を選択してください', 'warning');
       return;
     }
+    const ids = Array.from(selectedIds);
     try {
-      await downloadNovels(Array.from(selectedIds));
-      alert('更新を開始しました');
+      // タスクキューに登録（WAIT状態）
+      ids.forEach(id => {
+        const novel = novels.find(n => n.id === id);
+        if (novel) {
+          taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
+          progressStore.setProgress(id, 'waiting', 'キュー待ち...');
+        }
+      });
+      
+      // API呼び出し（バックグラウンド処理開始）
+      await downloadNovels(ids);
+      
+      toast?.show('更新を開始しました', 'success');
       selectedIds = new Set();
-      await loadNovels();
+      
+      // 注意: 実際の進捗はPushServerイベントから更新されます
     } catch (err) {
-      alert('更新に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
+      const message = err instanceof Error ? err.message : '不明なエラー';
+      // エラー状態に設定
+      ids.forEach(id => {
+        progressStore.setProgress(id, 'error', message);
+      });
+      toast?.show(`更新に失敗しました: ${message}`, 'error');
     }
   }
 
   async function handleForceDownload() {
     if (selectedIds.size === 0) {
-      alert('小説を選択してください');
+      toast?.show('小説を選択してください', 'warning');
       return;
     }
+    const ids = Array.from(selectedIds);
     try {
-      await downloadNovels(Array.from(selectedIds), true);
-      alert('再取得を開始しました');
+      ids.forEach(id => {
+        const novel = novels.find(n => n.id === id);
+        if (novel) {
+          taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
+          progressStore.setProgress(id, 'waiting', 'キュー待ち...');
+        }
+      });
+      
+      await downloadNovels(ids, true);
+      
+      toast?.show('再取得を開始しました', 'success');
       selectedIds = new Set();
-      await loadNovels();
     } catch (err) {
-      alert('再取得に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
+      const message = err instanceof Error ? err.message : '不明なエラー';
+      ids.forEach(id => {
+        progressStore.setProgress(id, 'error', message);
+      });
+      toast?.show(`再取得に失敗しました: ${message}`, 'error');
     }
   }
 
   async function handleConvert() {
     if (selectedIds.size === 0) {
-      alert('小説を選択してください');
+      toast?.show('小説を選択してください', 'warning');
       return;
     }
+    const ids = Array.from(selectedIds);
     try {
-      await convertNovels(Array.from(selectedIds));
-      alert('変換を開始しました');
+      ids.forEach(id => {
+        const novel = novels.find(n => n.id === id);
+        if (novel) {
+          taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
+          progressStore.setProgress(id, 'waiting', 'キュー待ち...');
+        }
+      });
+      
+      await convertNovels(ids);
+      
+      toast?.show('変換を開始しました', 'success');
       selectedIds = new Set();
-      await loadNovels();
     } catch (err) {
-      alert('変換に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
+      const message = err instanceof Error ? err.message : '不明なエラー';
+      ids.forEach(id => {
+        progressStore.setProgress(id, 'error', message);
+      });
+      toast?.show(`変換に失敗しました: ${message}`, 'error');
     }
   }
 
   async function handleRemove() {
     if (selectedIds.size === 0) {
-      alert('小説を選択してください');
+      toast?.show('小説を選択してください', 'warning');
       return;
     }
     if (!confirm(`選択した ${selectedIds.size} 件の小説を削除しますか？`)) {
@@ -223,17 +326,18 @@
     }
     try {
       await removeNovels(Array.from(selectedIds));
-      alert('削除しました');
+      toast?.show('削除しました', 'success');
       selectedIds = new Set();
       await loadNovels();
     } catch (err) {
-      alert('削除に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
+      const message = err instanceof Error ? err.message : '不明なエラー';
+      toast?.show(`削除に失敗しました: ${message}`, 'error');
     }
   }
 
   function handleTagEdit() {
     if (selectedIds.size === 0) {
-      alert('小説を選択してください');
+      toast?.show('小説を選択してください', 'warning');
       return;
     }
     tagModal.open(Array.from(selectedIds));
@@ -246,6 +350,7 @@
   
   function handleFilterChange() {
     currentPage = 0;
+    saveSettings();
     loadNovels();
   }
   
@@ -256,6 +361,7 @@
       sortBy = column;
       sortOrder = 'asc';
     }
+    saveSettings();
     loadNovels();
   }
   
@@ -267,7 +373,43 @@
     sortBy = 'updated_at';
     sortOrder = 'desc';
     currentPage = 0;
+    saveSettings();
     loadNovels();
+  }
+
+  function changePageSize(newSize: number) {
+    pageSize = newSize;
+    currentPage = 0;
+    saveSettings();
+    loadNovels();
+  }
+
+  /**
+   * タグの色に対応するCSSクラスを取得
+   */
+  function getTagColorClass(tagName: string): string {
+    const tagInfo = allTags.find(t => t.name === tagName);
+    const color = tagInfo?.color || 'white';
+    
+    const colorMap: Record<string, string> = {
+      red: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200',
+      blue: 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200',
+      green: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200',
+      yellow: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200',
+      magenta: 'bg-pink-100 dark:bg-pink-900 text-pink-800 dark:text-pink-200',
+      cyan: 'bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200',
+      white: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
+    };
+    return colorMap[color] || colorMap.white;
+  }
+
+  /**
+   * 文字列を指定した長さで切り詰める
+   */
+  function truncateText(text: string, maxLength: number = 12): string {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '…';
   }
 
   function nextPage() {
@@ -288,9 +430,9 @@
 <div class="container mx-auto px-4 py-6">
   <!-- フィルター・検索バー -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
       <!-- テキスト検索 -->
-      <div>
+      <div class="lg:col-span-2">
         <label for="filterText" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           検索
         </label>
@@ -340,10 +482,10 @@
         </select>
       </div>
       
-      <!-- ステータスフィルター -->
+      <!-- 状態フィルター -->
       <div>
-        <label for="statusFilter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          ステータス
+        <label for="statusFilter" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+          状態
         </label>
         <select
           id="statusFilter"
@@ -352,9 +494,10 @@
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
         >
           <option value="">すべて</option>
-          <option value="連載中">連載中</option>
-          <option value="完結済">完結済</option>
-          <option value="短編">短編</option>
+          <option value="凍結">凍結</option>
+          <option value="完結">完結</option>
+          <option value="削除">削除</option>
+          <option value="中断">中断</option>
         </select>
       </div>
       
@@ -381,28 +524,37 @@
       <div class="mt-3 flex flex-wrap gap-2 items-center">
         <span class="text-sm text-gray-600 dark:text-gray-400">フィルター:</span>
         {#if filterText}
-          <span class="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+          <span class="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded whitespace-nowrap">
             検索: {filterText}
           </span>
         {/if}
         {#if selectedTag}
-          <span class="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded">
+          <span class="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded whitespace-nowrap">
             タグ: {selectedTag}
           </span>
         {/if}
         {#if selectedSite}
-          <span class="px-2 py-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded">
+          <span class="px-2 py-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded whitespace-nowrap">
             サイト: {selectedSite}
           </span>
         {/if}
         {#if selectedStatus}
-          <span class="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
-            ステータス: {selectedStatus}
+          <span class="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded whitespace-nowrap">
+            状態: {selectedStatus}
           </span>
         {/if}
         {#if sortBy}
-          <span class="px-2 py-1 text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
-            ソート: {sortBy === 'id' ? 'ID' : sortBy === 'title' ? 'タイトル' : sortBy === 'author' ? '著者' : sortBy === 'sitename' ? 'サイト' : '更新日'} ({sortOrder === 'asc' ? '昇順' : '降順'})
+          <span class="px-2 py-1 text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded whitespace-nowrap">
+            ソート: {
+              sortBy === 'id' ? 'ID' : 
+              sortBy === 'title' ? 'タイトル' : 
+              sortBy === 'author' ? '著者' : 
+              sortBy === 'sitename' ? 'サイト' : 
+              sortBy === 'updated_at' ? '更新日' :
+              sortBy === 'status' ? '状態' :
+              sortBy === 'tags' ? 'タグ' :
+              '不明'
+            } ({sortOrder === 'asc' ? '昇順' : '降順'})
           </span>
         {/if}
       </div>
@@ -462,6 +614,9 @@
     </div>
   </div>
 
+  <!-- タスクキュー -->
+  <TaskQueue bind:this={taskQueue} />
+
   <!-- 小説リストテーブル -->
   {#if loading}
     <div class="text-center py-12">
@@ -479,9 +634,9 @@
     </div>
   {:else}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
             <tr>
               <th class="px-4 py-3 text-left">
                 <input
@@ -491,7 +646,7 @@
                   class="rounded"
                 />
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('id')}
                   class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
@@ -502,7 +657,7 @@
                   {/if}
                 </button>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('title')}
                   class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
@@ -513,7 +668,7 @@
                   {/if}
                 </button>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('author')}
                   class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
@@ -524,7 +679,7 @@
                   {/if}
                 </button>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('sitename')}
                   class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
@@ -535,10 +690,18 @@
                   {/if}
                 </button>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                状態
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                <button
+                  onclick={() => handleSort('status')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  状態
+                  {#if sortBy === 'status'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 <button
                   onclick={() => handleSort('updated_at')}
                   class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
@@ -549,41 +712,86 @@
                   {/if}
                 </button>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                タグ
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                <button
+                  onclick={() => handleSort('tags')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  タグ
+                  {#if sortBy === 'tags'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {#each novels as novel (novel.id)}
-              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                <td class="px-4 py-3">
+              <tr 
+                class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                onclick={(e) => {
+                  // リンクやボタンのクリックは除外
+                  if (e.target instanceof HTMLElement && 
+                      (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || 
+                       e.target.closest('a') || e.target.closest('button'))) {
+                    return;
+                  }
+                  toggleSelection(novel.id);
+                }}
+              >
+                <td class="px-4 py-3" onclick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={selectedIds.has(novel.id)}
                     onchange={() => toggleSelection(novel.id)}
-                    class="rounded"
+                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
                   />
                 </td>
                 <td class="px-4 py-3 text-sm">{novel.id}</td>
-                <td class="px-4 py-3 text-sm font-medium">
-                  <a href={novel.toc_url} target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">
-                    {novel.title}
-                  </a>
-                  {#if novel.frozen}
-                    <span class="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">凍結</span>
-                  {/if}
+                <td class="px-4 py-3 text-sm font-medium max-w-md">
+                  <div class="flex flex-col gap-1">
+                    <div class="flex items-center gap-2">
+                      <a 
+                        href={novel.toc_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        class="text-blue-600 dark:text-blue-400 hover:underline break-words"
+                      >
+                        {(typeof novel.promo_tags_title === 'string' && novel.promo_tags_title.trim()) || novel.title}
+                      </a>
+                      {#if novel.frozen}
+                        <span class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded whitespace-nowrap">凍結</span>
+                      {/if}
+                    </div>
+                    {#if novel.promo_tags && novel.promo_tags.length > 0}
+                      <div class="flex flex-wrap gap-1">
+                        {#each novel.promo_tags as promoTag}
+                          <span 
+                            class="px-2 py-0.5 text-xs rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 whitespace-nowrap"
+                            title={promoTag}
+                          >
+                            {truncateText(promoTag, 12)}
+                          </span>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{novel.author}</td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{novel.sitename}</td>
                 <td class="px-4 py-3 text-sm">
-                  <span class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                    {novel.status}
-                  </span>
+                  {#if novel.status}
+                    <span class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                      {novel.status}
+                    </span>
+                  {/if}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                   {#if novel.last_update}
-                    {new Date(novel.last_update).toLocaleDateString('ja-JP')}
+                    <div class="flex flex-col">
+                      <span>{new Date(novel.last_update * 1000).toLocaleDateString('ja-JP')}</span>
+                      <span class="text-xs text-gray-500 dark:text-gray-500">{new Date(novel.last_update * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
                   {:else}
                     -
                   {/if}
@@ -591,8 +799,11 @@
                 <td class="px-4 py-3 text-sm">
                   <div class="flex flex-wrap gap-1">
                     {#each novel.tags || [] as tag}
-                      <span class="px-2 py-1 text-xs rounded bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                        {tag}
+                      <span 
+                        class="px-2 py-1 text-xs rounded whitespace-nowrap {getTagColorClass(tag)}"
+                        title={tag}
+                      >
+                        {truncateText(tag, 12)}
                       </span>
                     {/each}
                   </div>
@@ -616,7 +827,7 @@
               <select
                 id="pageSize"
                 bind:value={pageSize}
-                onchange={() => { currentPage = 0; loadNovels(); }}
+                onchange={() => changePageSize(pageSize)}
                 class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-600 dark:text-white text-sm"
               >
                 <option value={10}>10</option>
@@ -628,19 +839,19 @@
           </div>
           
           <!-- ページネーションコントロール -->
-          <div class="flex gap-2">
+          <div class="flex gap-1">
             <button
               onclick={() => { currentPage = 0; loadNovels(); }}
               disabled={currentPage === 0}
-              class="px-3 py-1 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed transition-colors"
+              class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               title="最初のページ"
             >
-              «
+              ⟪
             </button>
             <button
               onclick={prevPage}
               disabled={currentPage === 0}
-              class="px-3 py-1 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed transition-colors"
+              class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               ‹ 前へ
             </button>
@@ -648,25 +859,34 @@
             <!-- ページ番号表示 -->
             {#if totalCount > 0}
               {@const totalPages = Math.ceil(totalCount / pageSize)}
-              {@const startPage = Math.max(0, currentPage - 2)}
-              {@const endPage = Math.min(totalPages - 1, currentPage + 2)}
+              {@const maxVisible = 5}
+              {@const half = Math.floor(maxVisible / 2)}
+              
+              {@const startPage = (() => {
+                if (totalPages <= maxVisible) return 0;
+                if (currentPage <= half) return 0;
+                if (currentPage >= totalPages - half - 1) return totalPages - maxVisible;
+                return currentPage - half;
+              })()}
+              
+              {@const endPage = Math.min(totalPages - 1, startPage + maxVisible - 1)}
               
               {#if startPage > 0}
                 <button
                   onclick={() => { currentPage = 0; loadNovels(); }}
-                  class="px-3 py-1 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
+                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
                 >
                   1
                 </button>
                 {#if startPage > 1}
-                  <span class="px-2 py-1 text-gray-500">...</span>
+                  <span class="px-2 py-1.5 text-gray-500 dark:text-gray-400">…</span>
                 {/if}
               {/if}
               
               {#each Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i) as page}
                 <button
                   onclick={() => { currentPage = page; loadNovels(); }}
-                  class="px-3 py-1 {page === currentPage ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200'} border border-gray-300 dark:border-gray-500 rounded hover:bg-blue-500 hover:text-white transition-colors"
+                  class="min-w-[2.5rem] px-3 py-1.5 {page === currentPage ? 'bg-blue-600 text-white font-semibold' : 'bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200'} border border-gray-300 dark:border-gray-500 rounded hover:bg-blue-500 hover:text-white transition-colors"
                 >
                   {page + 1}
                 </button>
@@ -674,11 +894,11 @@
               
               {#if endPage < totalPages - 1}
                 {#if endPage < totalPages - 2}
-                  <span class="px-2 py-1 text-gray-500">...</span>
+                  <span class="px-2 py-1.5 text-gray-500 dark:text-gray-400">…</span>
                 {/if}
                 <button
                   onclick={() => { currentPage = totalPages - 1; loadNovels(); }}
-                  class="px-3 py-1 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
+                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
                 >
                   {totalPages}
                 </button>
@@ -688,17 +908,17 @@
             <button
               onclick={nextPage}
               disabled={(currentPage + 1) * pageSize >= totalCount}
-              class="px-3 py-1 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed transition-colors"
+              class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               次へ ›
             </button>
             <button
               onclick={() => { currentPage = Math.ceil(totalCount / pageSize) - 1; loadNovels(); }}
               disabled={(currentPage + 1) * pageSize >= totalCount}
-              class="px-3 py-1 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed transition-colors"
+              class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               title="最後のページ"
             >
-              »
+              ⟫
             </button>
           </div>
         </div>
@@ -715,3 +935,6 @@
 
 <!-- コンソールパネル -->
 <ConsolePanel bind:this={consolePanel} />
+
+<!-- トースト通知 -->
+<Toast bind:this={toast} />
