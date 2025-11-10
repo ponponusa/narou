@@ -620,10 +620,10 @@
   /**
    * 個別再取得
    */
-  async function handleRedownloadNovel(novelId: number) {
+  async function handleRedownloadNovel(novelId: number, novelTitle: string) {
     showConfirm(
       '再取得の確認',
-      'この小説を再取得しますか？',
+      `「${novelTitle}」を再取得しますか？`,
       async () => {
         try {
           processingNovelIds.add(novelId);
@@ -650,10 +650,10 @@
   /**
    * 個別変換
    */
-  async function handleConvertNovel(novelId: number) {
+  async function handleConvertNovel(novelId: number, novelTitle: string) {
     showConfirm(
       '変換の確認',
-      'この小説を変換しますか？',
+      `「${novelTitle}」を変換しますか？`,
       async () => {
         try {
           processingNovelIds.add(novelId);
@@ -680,11 +680,11 @@
   /**
    * 個別凍結
    */
-  async function handleFreezeNovel(novelId: number, currentFrozen: boolean) {
+  async function handleFreezeNovel(novelId: number, currentFrozen: boolean, novelTitle: string) {
     const action = currentFrozen ? '解除' : '凍結';
     showConfirm(
       `${action}の確認`,
-      `この小説を${action}しますか？`,
+      `「${novelTitle}」を${action}しますか？`,
       async () => {
         try {
           processingNovelIds.add(novelId);
@@ -713,10 +713,10 @@
   /**
    * 個別削除
    */
-  async function handleDeleteNovel(novelId: number) {
+  async function handleDeleteNovel(novelId: number, novelTitle: string) {
     showConfirm(
       '削除の確認',
-      'この小説を削除しますか？この操作は取り消せません。',
+      `「${novelTitle}」を削除しますか？この操作は取り消せません。`,
       async () => {
         try {
           processingNovelIds.add(novelId);
@@ -1437,49 +1437,49 @@
                       <!-- EPUBダウンロード -->
                       <button
                         onclick={() => handleDownloadEpub(novel.id)}
-                        class="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+                        class="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors cursor-pointer"
                         title="EPUBをダウンロード"
                       >
-                        📥
+                        <i class="fas fa-download"></i>
                       </button>
                       
                       <!-- 再取得 -->
                       <button
-                        onclick={() => handleRedownloadNovel(novel.id)}
-                        class="p-1.5 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors"
+                        onclick={() => handleRedownloadNovel(novel.id, novel.title)}
+                        class="p-1.5 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors cursor-pointer"
                         title="再取得"
                       >
-                        ♻️
+                        <i class="fas fa-sync"></i>
                       </button>
                       
                       <!-- 変換再実行 -->
                       <button
-                        onclick={() => handleConvertNovel(novel.id)}
-                        class="p-1.5 text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
+                        onclick={() => handleConvertNovel(novel.id, novel.title)}
+                        class="p-1.5 text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors cursor-pointer"
                         title="変換再実行"
                       >
-                        📖
+                        <i class="fas fa-redo"></i>
                       </button>
                       
                       <!-- その他メニュー -->
                       <div class="relative group">
                         <button
-                          class="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
+                          class="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors cursor-pointer"
                           title="その他"
                         >
-                          ⋮
+                          <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                           <button
-                            onclick={() => handleFreezeNovel(novel.id, novel.frozen)}
-                            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            onclick={() => handleFreezeNovel(novel.id, novel.frozen, novel.title)}
+                            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                           >
                             {novel.frozen ? '凍結を解除' : '凍結する'}
                           </button>
                           <div class="border-t border-gray-200 dark:border-gray-700"></div>
                           <button
-                            onclick={() => handleDeleteNovel(novel.id)}
-                            class="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            onclick={() => handleDeleteNovel(novel.id, novel.title)}
+                            class="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
                           >
                             削除
                           </button>
