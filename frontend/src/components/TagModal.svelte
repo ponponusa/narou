@@ -382,7 +382,7 @@
                         <span class="state-badge">
                           {getStateLabel(state)}
                         </span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                        <span class="text-xs text-gray-700 dark:text-gray-300">
                           クリックで切り替え
                         </span>
                       </div>
@@ -462,12 +462,12 @@
 
   .state-keep {
     border-color: #9ca3af;
-    background-color: #f9fafb;
+    background-color: #d1d5db;
   }
 
   :global(.dark) .state-keep {
     border-color: #4b5563;
-    background-color: #1f2937;
+    background-color: #6b7280;
   }
 
   .state-add {
