@@ -8,27 +8,27 @@ module Narou
     module_function
 
     BRACKETS = [
-      ['\\(', '\\)'], ['\\[', '\\]'], ['【', '】'], ['（', '）'], ['〔', '〕'],
-      ['〈', '〉'], ['《', '》'], ['＜', '＞'], ['『', '』'], ['「', '」'],
-      ['｟', '｠'], ['〖', '〗']
+      ['\\(', '\\)'], ['\\[', '\\]'], ["【", "】"], ["（", "）"], ["〔", "〕"],
+      ["〈", "〉"], ["《", "》"], ["＜", "＞"], ["『", "』"], ["「", "」"],
+      ["｟", "｠"], ["〖", "〗"]
     ].freeze
 
     DEFAULT_PROMO_KEYWORDS = [
-      '書籍化', '文庫化', '単行本化', 'コミカライズ', '漫画化', 'アニメ化', '映画化',
-      'ドラマ化', 'ドラマＣＤ化', 'ドラマCD化', 'ドラマＣＤ', 'ドラマCD', 'ボイスドラマ化', 'ゲーム化',
-      'ノベライズ', 'ボイスコミック', 'オーディオブック',
-      '連載中', '連載開始', '新連載', '配信中', '公開中', '更新中', '完結', '完結済',
-      '好評発売中', '発売中', '発売', '重版', '出荷中', '予約受付中',
-      '最新話', '公開', '第\\d+巻', '第\\d+話', '配信',
-      '受賞', '受賞作', '書籍版発売中', 'コミックス発売中',
-      '書籍版', 'コミックス版', '電書版', 'kindle版',
-      'コミックス\\s*第\\d+巻'
+      "書籍化", "文庫化", "単行本化", "コミカライズ", "漫画化", "アニメ化", "映画化",
+      "ドラマ化", "ドラマＣＤ化", "ドラマCD化", "ドラマＣＤ", "ドラマCD", "ボイスドラマ化", "ゲーム化",
+      "ノベライズ", "ボイスコミック", "オーディオブック",
+      "連載中", "連載開始", "新連載", "連載版", "配信中", "公開中", "更新中", "完結", "完結済",
+      "好評発売中", "発売中", "発売", "重版", "出荷中", "予約受付中",
+      "最新話", "公開", '第\\d+巻', '第\\d+話',
+      "受賞", "受賞作", "書籍版発売中", "コミックス発売中",
+      "書籍版", "コミックス版", "電書版", "kindle版",
+      'コミックス\\s*第\\d+巻', 'コミック\\s*第?\\d+巻', '第?\\d+巻\\s*発売'
     ].freeze
 
     DEFAULT_PROMO_REGEXES = DEFAULT_PROMO_KEYWORDS.map { |pattern| Regexp.new(pattern) }.freeze
 
-    SEP = /\s*[|｜／\/・\-—–―~〜:：;；]+?\s*/x.freeze
-    TOKEN_SEPARATOR = /\s*[|｜／\/・･\-—–―~〜:：;；＋+＠@＆&]+?\s*/x.freeze
+    SEP = %r!\s*[|｜／/・\-—–―~〜:：;；]+?\s*!x.freeze
+    TOKEN_SEPARATOR = %r!\s*[|｜／/・･\-—–―~〜:：;；＋+＠@＆&]+?\s*!x.freeze
     TRAILING_DECORATIONS = /[！!？?。．､，,、…‥☆★♪♪※‼⁉︎〜～ー─—―・\s]+\z/.freeze
     WHITESPACE_PATTERN = /[\s\u3000]+/.freeze
 
@@ -72,16 +72,16 @@ module Narou
 
       resolved_config = config || resolve_config(novel_id: novel_id || entry["id"])
 
-  base_title = entry["title_raw_latest"]
-  base_title = entry.fetch("title_original", nil) if base_title.nil?
-  base_title ||= entry["title"]
+      base_title = entry["title_raw_latest"]
+      base_title = entry.fetch("title_original", nil) if base_title.nil?
+      base_title ||= entry["title"]
 
-  original_author = entry.fetch("author_original", nil) || entry["author"]
+      original_author = entry.fetch("author_original", nil) || entry["author"]
 
-  entry["title_original"] = base_title if base_title
-  entry["author_original"] = original_author if original_author
+      entry["title_original"] = base_title if base_title
+      entry["author_original"] = original_author if original_author
 
-  result = extract(title: base_title, author: original_author, config: resolved_config)
+      result = extract(title: base_title, author: original_author, config: resolved_config)
       updated = false
 
       if result.title != entry["title"]
@@ -223,11 +223,9 @@ module Narou
 
     def compile_regexes(keywords)
       keywords.map do |pattern|
-        begin
-          Regexp.new(pattern)
-        rescue RegexpError
-          Regexp.new(Regexp.escape(pattern))
-        end
+        Regexp.new(pattern)
+      rescue RegexpError
+        Regexp.new(Regexp.escape(pattern))
       end
     end
 
@@ -263,7 +261,12 @@ module Narou
       tags.concat(separated_tags)
 
       normalized = normalize_spacing(text)
-      normalized = normalize_spacing(original) if normalized.empty?
+      # タイトル全文がプロモタグになることはないので、空になった場合は誤認識として
+      # オリジナルのタイトルをそのまま返す（プロモタグなし扱い）
+      if normalized.empty?
+        return [normalize_spacing(original), []]
+      end
+
       [normalized, uniq_preserve_order(tags)]
     end
 
@@ -380,13 +383,16 @@ module Narou
         return [normalize_spacing(tokens.first)]
       end
 
-      return [trimmed] if promotional_token?(trimmed, promo_regexes: promo_regexes)
+      # セグメント全体がプロモーショナルな場合のみタグとして返す
+      if promotional_content?(trimmed, promo_regexes: promo_regexes)
+        return [trimmed]
+      end
 
       []
     end
 
     def split_tokens(text)
-      text.split(TOKEN_SEPARATOR).map { |token| token.strip }.reject(&:empty?)
+      text.split(TOKEN_SEPARATOR).map(&:strip).reject(&:empty?)
     end
 
     def promotional_token?(text, promo_regexes: DEFAULT_PROMO_REGEXES)
