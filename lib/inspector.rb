@@ -60,12 +60,13 @@ class Inspector
   end
 
   def display_summary(target = $stdout)
-    target.print "小説状態の調査結果を #{Inspector::INSPECT_LOG_NAME} に出力しました（"
-    target.print KLASS_TAG.values.map { |klass_type|
+    summary = "小説状態の調査結果を #{Inspector::INSPECT_LOG_NAME} に出力しました（"
+    summary += KLASS_TAG.values.map { |klass_type|
       num = @messages.count { |msg| msg =~ /^\[#{klass_type}\]/ }
       "#{klass_type}：#{num}件"
     }.join("、")
-    target.puts "）"
+    summary += "）"
+    target.puts summary
   end
 
   def display(klass = ALL, target = $stdout)

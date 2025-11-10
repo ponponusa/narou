@@ -207,8 +207,9 @@
     const baseProgressKey = isProgress ? extractProgressKey(cleanMessage) : undefined;
     const progressKey = baseProgressKey && novelId ? `${baseProgressKey}-novel-${novelId}` : baseProgressKey;
     
-    // プログレスバーは上書きせず、すべての状態を保持する
-    const isProgressBar = /\[[#*]+[\s.-]*\]/.test(cleanMessage) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(cleanMessage);
+    // ★プログレスバーは無効化（すべて通常メッセージとして扱う）
+    const isProgressBar = false;
+    // const isProgressBar = /\[[#*]+[\s.-]*\]/.test(cleanMessage) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(cleanMessage);
     
     // コンパクトモードで進捗メッセージの場合、既存のエントリを更新
     // ただし、プログレスバーは除外（すべての状態を表示するため）
@@ -256,7 +257,7 @@
    * 進捗メッセージかどうかを判定
    */
   function isProgressMessage(message: string): boolean {
-    // 空のメッセージは進捗メッセージではない
+    // 空メッセージは進捗ではない
     if (decodeMessage(message).trim().length === 0) {
       return false;
     }
@@ -265,9 +266,10 @@
     
     // プログレスバー: [###...] または [*  ] を含むパターン
     // 0%[###...]100% や [***   ] 50% などに対応
-    if (/\[[#*]+[\s.-]*\]/.test(decoded) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(decoded)) {
-      return true;
-    }
+    // ★プログレスバーは無効化（常に通常メッセージとして扱う）
+    // if (/\[[#*]+[\s.-]*\]/.test(decoded) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(decoded)) {
+    //   return true;
+    // }
     
     // 「第n部分」だけの行は進捗メッセージ
     if (/^第[\d０-９]+部分\s*$/.test(decoded)) {
@@ -299,10 +301,11 @@
     // プログレスバー: [###...] または [*  ] を含むパターン
     // 0%[###...]100% や [***   ] 50% などに対応
     // 小説IDと組み合わせて固有のキーにする
-    if (/\[[#*]+[\s.-]*\]/.test(decoded) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(decoded)) {
-      // プログレスバーは1つのキーで最新のものだけを保持
-      return 'progress-bar';
-    }
+    // ★プログレスバーは無効化（通常メッセージとして処理）
+    // if (/\[[#*]+[\s.-]*\]/.test(decoded) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(decoded)) {
+    //   // プログレスバーは1つのキーで最新のものだけを保持
+    //   return 'progress-bar';
+    // }
     
     // 「第n部分」と「第n章」を同じグループにまとめる
     // プログレスバー → 第n部分 → 第n章 → 章タイトル (n/m) の順で来るので
@@ -440,8 +443,9 @@
     const nonProgressLogs: LogEntry[] = [];
 
     for (const log of filtered) {
-      // プログレスバーかどうかを判定
-      const isProgressBar = /\[[#*]+[\s.-]*\]/.test(log.message) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(log.message);
+      // ★プログレスバーは無効化（すべて通常メッセージとして扱う）
+      const isProgressBar = false;
+      // const isProgressBar = /\[[#*]+[\s.-]*\]/.test(log.message) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(log.message);
       
       if (log.isProgress && log.progressKey && !isProgressBar) {
         // 進捗メッセージ（プログレスバー以外）は progressKey ごとに最新のものだけ保持
