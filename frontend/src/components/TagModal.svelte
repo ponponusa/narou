@@ -70,13 +70,14 @@
     try {
       const tagInfo = await getTagInfo(selectedIds);
       
-      // タグ状態を初期化 - すべてのタグを表示
+      // タグ状態を初期化 - すべての既存タグをデフォルトで「維持」に設定
       tagStates = {};
       tagColors = {};
       Object.entries(tagInfo).forEach(([tagName, info]) => {
-        // count > 0: 選択された小説の一部または全部が持っている = KEEP
-        // count === 0: 選択された小説は持っていない（でも他の小説が持っている）= DELETE
-        tagStates[tagName] = info.count > 0 ? TAG_STATE.KEEP : TAG_STATE.DELETE;
+        // すべての既存タグを「維持」状態で表示
+        // count > 0: 選択された小説の一部または全部が持っている
+        // count === 0: 選択された小説は持っていない（でも他の小説が持っている）
+        tagStates[tagName] = TAG_STATE.KEEP;
         tagColors[tagName] = info.color;
       });
       
