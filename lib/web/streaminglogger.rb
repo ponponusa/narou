@@ -78,5 +78,24 @@ module Narou
       push_streaming(str)
       append_log(str)
     end
+
+    def puts(*args)
+      # putsは内部的に複数回writeを呼ぶ可能性があるため、
+      # 1回のwrite呼び出しにまとめる
+      if args.empty?
+        write("\n")
+      else
+        args.each do |arg|
+          str = arg.to_s
+          str += "\n" unless str.end_with?("\n")
+          write(str)
+        end
+      end
+    end
+
+    def print(*args)
+      # printも同様に1回のwrite呼び出しにまとめる
+      write(args.join)
+    end
   end
 end
