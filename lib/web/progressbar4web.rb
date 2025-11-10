@@ -15,25 +15,22 @@ class ProgressBar
     @@push_server = server
   end
 
-  # すべてのメソッドを無効化して何もしないようにする
+  alias :original_initialize :initialize
+
   def initialize(*args, **opt)
-    # 何もしない
+    # 親クラスのinitializeを呼ぶ（@ioを設定するため）
+    original_initialize(*args, **opt)
+    # プログレスバーイベントは送信しない（無効化）
+    # @@push_server.send_all("progressbar.init" => { target_console: io.target_console })
   end
 
   def output(num)
-    # 何もしない
+    # プログレスバーの出力を完全に無効化
+    # フロントエンド側での表示問題があるため、出力しない
   end
 
   def clear
-    # 何もしない
-  end
-  
-  def calc_ratio(num)
-    0.0
-  end
-  
-  def silent?
-    true
+    # プログレスバーのクリア処理を無効化
   end
 end
 
