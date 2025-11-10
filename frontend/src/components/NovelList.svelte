@@ -604,7 +604,7 @@
 
 <div class="container mx-auto px-4 py-6">
   <!-- フィルター・検索バー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 md:mx-12">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 md:mx-2.5 lg:mx-12">
     <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
       <!-- テキスト検索 -->
       <div class="lg:col-span-2">
@@ -737,7 +737,7 @@
   </div>
 
   <!-- アクションバー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 md:mx-12">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 md:mx-2.5 lg:mx-12">
     <div class="flex flex-wrap gap-4 items-center justify-between">
       <div class="flex gap-2 flex-wrap">
         <button
@@ -793,7 +793,7 @@
   <TaskQueue bind:this={taskQueue} />
 
   <!-- テーブルコントロール -->
-  <div class="flex justify-end items-center gap-3 mb-3 md:mx-12">
+  <div class="flex justify-end items-center gap-3 mb-3 md:mx-2.5 lg:mx-12">
     <button
       onclick={selectAll}
       class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
@@ -979,7 +979,7 @@
   {/if}
 
   <!-- 小説リストテーブル -->
-  <div class="md:mx-12">
+  <div class="md:mx-2.5 lg:mx-12">
   {#if loading}
     <div class="text-center py-12">
       <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -996,7 +996,7 @@
     </div>
   {:else}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-      <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
+      <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -1027,8 +1027,11 @@
               </th>
               {/if}
               {#if columnVisibility.newest_article_date}
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                最新話掲載日
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <div class="flex flex-col">
+                  <span>最新話</span>
+                  <span>掲載日</span>
+                </div>
               </th>
               {/if}
               {#if columnVisibility.last_update}
@@ -1143,8 +1146,8 @@
                 {/if}
                 {#if columnVisibility.newest_article_date}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {#if novel.newest_article_date}
-                    {new Date(Number(novel.newest_article_date) * 1000).toLocaleDateString('ja-JP')}
+                  {#if novel.general_lastup}
+                    {new Date(Number(novel.general_lastup) * 1000).toLocaleDateString('ja-JP')}
                   {:else}
                     <span class="text-gray-400 dark:text-gray-600">-</span>
                   {/if}
@@ -1192,11 +1195,23 @@
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{novel.sitename}</td>
                 {#if columnVisibility.status}
                 <td class="px-4 py-3 text-sm">
-                  {#if novel.status}
-                    <span class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                      {novel.status}
-                    </span>
-                  {/if}
+                  <div class="flex flex-wrap gap-1">
+                    {#if novel.frozen}
+                      <span class="px-2 py-1 text-xs rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 whitespace-nowrap">
+                        凍結
+                      </span>
+                    {/if}
+                    {#if novel.status}
+                      <span class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                        {novel.status}
+                      </span>
+                    {/if}
+                    {#if novel.novel_type}
+                      <span class="px-2 py-1 text-xs rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 whitespace-nowrap">
+                        {novel.novel_type}
+                      </span>
+                    {/if}
+                  </div>
                 </td>
                 {/if}
                 {#if columnVisibility.tags}

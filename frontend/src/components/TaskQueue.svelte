@@ -365,7 +365,7 @@
   }
 </script>
 
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4">
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 md:mx-2.5 lg:mx-12">
   <!-- ヘッダー（常に表示） -->
   <div class="p-4 border-b border-gray-200 dark:border-gray-700">
     <div class="flex items-center justify-between">
