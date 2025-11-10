@@ -1,0 +1,8 @@
+node_modules
+frontend/node_modules
+小説データ
+tmp
+.narou
+.test_dot_narou
+.test_novel_data
+.git

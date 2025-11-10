@@ -60,13 +60,18 @@ class Inspector
   end
 
   def display_summary(target = $stdout)
-    summary = "小説状態の調査結果を #{Inspector::INSPECT_LOG_NAME} に出力しました（"
-    summary += KLASS_TAG.values.map { |klass_type|
+    # 文字列補間を使わず、明示的に結合して1つの文字列にする
+    summary = String.new
+    summary << "小説状態の調査結果を "
+    summary << Inspector::INSPECT_LOG_NAME
+    summary << " に出力しました（"
+    summary << KLASS_TAG.values.map { |klass_type|
       num = @messages.count { |msg| msg =~ /^\[#{klass_type}\]/ }
       "#{klass_type}：#{num}件"
     }.join("、")
-    summary += "）"
-    target.puts summary
+    summary << "）\n"
+    # putsではなくwriteを直接呼ぶ
+    target.write(summary)
   end
 
   def display(klass = ALL, target = $stdout)
