@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import type { 
     NovelSettingsData, 
     NovelSettingItem, 
@@ -24,9 +24,13 @@
 
   // モーダル要素の参照
   let modalElement: HTMLElement | null = null;
+  let modalContentElement: HTMLElement | null = null;
 
   // 設定値の作業用コピー
   let workingSettings = $state<Record<string, any>>({});
+  
+  // トップに戻るボタンの表示制御
+  let showScrollTopButton = $state(false);
 
   /**
    * Toast参照を設定
@@ -194,6 +198,24 @@
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
   });
+
+  // モーダル内のスクロールイベントハンドラー
+  function handleModalScroll(e: Event) {
+    const target = e.target as HTMLElement;
+    if (target) {
+      showScrollTopButton = target.scrollTop > 300;
+    }
+  }
+
+  // モーダル内のトップに戻る
+  function scrollToTop() {
+    if (modalContentElement) {
+      modalContentElement.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  }
 </script>
 
 {#if showModal}
@@ -201,11 +223,12 @@
   <div 
     class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto"
     onclick={(e) => e.target === e.currentTarget && closeModal()}
-    bind:this={modalElement}
+    onscroll={handleModalScroll}
+    bind:this={modalContentElement}
   >
     <!-- モーダルコンテンツ -->
     <div 
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-8"
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-8 relative"
       onclick={(e) => e.stopPropagation()}
     >
       <!-- ヘッダー -->
@@ -410,6 +433,18 @@
           {saving ? '保存中...' : '設定を保存'}
         </button>
       </div>
+      
+      <!-- トップに戻るボタン（モーダル内） -->
+      {#if showScrollTopButton}
+        <button
+          onclick={scrollToTop}
+          class="absolute bottom-4 right-4 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
+          title="トップに戻る"
+          aria-label="トップに戻る"
+        >
+          <i class="fas fa-arrow-up text-lg"></i>
+        </button>
+      {/if}
     </div>
   </div>
 {/if}

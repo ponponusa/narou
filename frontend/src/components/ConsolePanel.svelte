@@ -112,6 +112,13 @@
   }
 
   /**
+   * コンソールの開閉状態を取得
+   */
+  export function getIsOpen() {
+    return isOpen;
+  }
+
+  /**
    * ログをクリア
    */
   function clearLogs() {

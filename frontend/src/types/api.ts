@@ -24,6 +24,7 @@ export interface Novel {
   author: string;
   sitename: string;
   status: string;
+  story?: string;          // あらすじ
   frozen: boolean;
   tags: string[];
   toc_url: string;

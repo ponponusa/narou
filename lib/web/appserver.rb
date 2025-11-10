@@ -2005,6 +2005,48 @@ class Narou::AppServer < Sinatra::Base
   # API v2 エンドポイント
   # ================================================================================
 
+  # 小説のあらすじを取得
+  get "/api/v2/novels/:id/story" do
+    headers "Access-Control-Allow-Origin" => "*"
+    
+    target_id = params[:id]
+    
+    begin
+      toc = Downloader.get_toc_by_target(target_id)
+      unless toc
+        status 404
+        return json({ 
+          success: false, 
+          error: "対象の小説が見つかりません",
+          data: nil,
+          timestamp: Time.now.iso8601
+        })
+      end
+      
+      story = toc["story"] || ""
+      html = HTML.new
+      
+      json({
+        success: true,
+        data: {
+          title: toc["title"],
+          story: html.ln_to_br(story.strip)
+        },
+        timestamp: Time.now.iso8601
+      })
+    rescue StandardError => e
+      puts "[ERROR] Get Story API error: #{e.class}: #{e.message}"
+      puts e.backtrace.join("\n")
+      status 500
+      json({ 
+        success: false,
+        error: "あらすじの取得でエラーが発生しました: #{e.message}",
+        data: nil,
+        timestamp: Time.now.iso8601
+      })
+    end
+  end
+
   # 実行中のタスクをキャンセル
   post "/api/v2/cancel" do
     headers "Access-Control-Allow-Origin" => "*"

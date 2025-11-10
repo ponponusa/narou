@@ -4,7 +4,7 @@
    * 
    * ローカル設定とグローバル設定を表示・編集
    */
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { 
     getSettings, 
     getSettingVariables, 
@@ -28,6 +28,9 @@
   // 編集中の設定値を保持（local/global両方）
   let editedValues = $state<{ local: Record<string, string | boolean | number | null>, global: Record<string, string | boolean | number | null> }>({ local: {}, global: {} });
   let hasChanges = $state(false);
+  
+  // トップに戻るボタンの表示制御
+  let showScrollTopButton = $state(false);
 
   // 利用可能なタブ一覧（リアクティブ）
   let availableTabs = $derived.by(() => {
@@ -322,8 +325,34 @@
     return Math.min(optionCount, 10); // 最大10行
   }
 
+  // スクロールイベントハンドラー
+  function handleScroll() {
+    if (typeof window !== 'undefined') {
+      showScrollTopButton = window.scrollY > 300;
+    }
+  }
+
+  // トップに戻る
+  function scrollToTop() {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  }
+
   onMount(() => {
     loadSettings();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', handleScroll);
+    }
+  });
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('scroll', handleScroll);
+    }
   });
 </script>
 
@@ -830,3 +859,15 @@
     background-color: #4b5563;
   }
 </style>
+
+<!-- トップに戻るボタン -->
+{#if showScrollTopButton}
+  <button
+    onclick={scrollToTop}
+    class="fixed bottom-4 right-4 z-40 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
+    title="トップに戻る"
+    aria-label="トップに戻る"
+  >
+    <i class="fas fa-arrow-up text-lg"></i>
+  </button>
+{/if}

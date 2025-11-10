@@ -12,6 +12,7 @@
   import AddNovelModal from './AddNovelModal.svelte';
   import TagModal from './TagModal.svelte';
   import ConversionSettingsModal from './ConversionSettingsModal.svelte';
+  import NovelDetailModal from './NovelDetailModal.svelte';
   import ConsolePanel from './ConsolePanel.svelte';
   import Toast from './Toast.svelte';
   import TaskQueue from './TaskQueue.svelte';
@@ -27,6 +28,7 @@
   let addNovelModal: AddNovelModal;
   let tagModal: TagModal;
   let conversionSettingsModal: ConversionSettingsModal;
+  let novelDetailModal: NovelDetailModal;
   let consolePanel: ConsolePanel;
   let taskQueue: TaskQueue;
 
@@ -86,6 +88,9 @@
 
   // 列表示設定モーダルの開閉状態
   let showColumnSettings = $state(false);
+
+  // スクロール位置管理
+  let showScrollTopButton = $state(false);
 
   // 設定の保存キー
   const SETTINGS_KEY = 'narou-novel-list-settings';
@@ -264,14 +269,35 @@
     Object.values(columnVisibility).filter(v => v).length
   );
 
+  // スクロールイベントハンドラー
+  function handleScroll() {
+    // ページを300px以上スクロールしたらボタンを表示
+    if (typeof window !== 'undefined') {
+      showScrollTopButton = window.scrollY > 300;
+    }
+  }
+
+  // トップに戻る
+  function scrollToTop() {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  }
+
   onMount(async () => {
     // 設定を復元
     loadSettings();
     loadColumnVisibility();
     
-    // ConversionSettingsModalにToast参照を渡す
+    // モーダルにToast参照を渡す
     if (conversionSettingsModal && toast) {
       conversionSettingsModal.setToast(toast);
+    }
+    if (novelDetailModal && toast) {
+      novelDetailModal.setToast(toast);
     }
     
     await Promise.all([loadNovels(), loadTags()]);
@@ -279,16 +305,44 @@
     // PushServerイベントリスナー設定
     pushServer.on('table.reload', handleTableReload);
     pushServer.on('tag.updateCanvas', handleTagUpdate);
+    
+    // スクロールイベントリスナー追加
+    window.addEventListener('scroll', handleScroll);
   });
 
   onDestroy(() => {
     // イベントリスナー解除
     pushServer.off('table.reload', handleTableReload);
     pushServer.off('tag.updateCanvas', handleTagUpdate);
+    
+    // ブラウザ環境でのみwindowにアクセス
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('scroll', handleScroll);
+    }
   });
 
   function openAddNovelModal() {
     addNovelModal.open();
+  }
+
+  function openNovelDetail(novel: Novel) {
+    novelDetailModal.open(novel, {
+      onUpdate: () => {
+        loadNovels();
+      },
+      onDelete: () => {
+        loadNovels();
+      },
+      onTagEdit: (novelId: number) => {
+        const targetNovel = novels.find(n => n.id === novelId);
+        if (targetNovel) {
+          tagModal.open([targetNovel.id], targetNovel.tags, loadNovels);
+        }
+      },
+      onConversionSettings: (novelId: number, title: string) => {
+        conversionSettingsModal.open(novelId, title, loadNovels);
+      }
+    });
   }
 
   function handleTableReload() {
@@ -1202,9 +1256,8 @@
     </div>
   {:else}
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
               {#if columnVisibility.id}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
@@ -1374,13 +1427,20 @@
                 <td class="px-4 py-3 text-sm font-medium max-w-md">
                   <div class="flex flex-col gap-1">
                     <div class="flex items-center gap-2">
+                      <button
+                        onclick={() => openNovelDetail(novel)}
+                        class="text-blue-600 dark:text-blue-400 hover:underline break-words text-left font-medium"
+                      >
+                        {(typeof novel.promo_tags_title === 'string' && novel.promo_tags_title.trim()) || novel.title}
+                      </button>
                       <a 
                         href={novel.toc_url} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        class="text-blue-600 dark:text-blue-400 hover:underline break-words"
+                        class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                        title="目次ページを開く"
                       >
-                        {(typeof novel.promo_tags_title === 'string' && novel.promo_tags_title.trim()) || novel.title}
+                        <i class="fas fa-external-link-alt text-xs"></i>
                       </a>
                       {#if novel.frozen}
                         <span class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded whitespace-nowrap">凍結</span>
@@ -1527,7 +1587,6 @@
             {/each}
           </tbody>
         </table>
-      </div>
       
       <!-- ページネーション -->
       <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-t border-gray-200 dark:border-gray-600">
@@ -1652,6 +1711,9 @@
 <!-- 個別変換設定モーダル -->
 <ConversionSettingsModal bind:this={conversionSettingsModal} />
 
+<!-- 小説詳細モーダル -->
+<NovelDetailModal bind:this={novelDetailModal} />
+
 <!-- 確認ダイアログ -->
 {#if showConfirmDialog && confirmDialogConfig}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -1686,6 +1748,20 @@
 
 <!-- コンソールパネル -->
 <ConsolePanel bind:this={consolePanel} />
+
+<!-- トップに戻るボタン -->
+{#if showScrollTopButton}
+  {@const consolePanelOpen = consolePanel?.getIsOpen?.() ?? false}
+  <button
+    onclick={scrollToTop}
+    class="fixed z-40 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
+    style={consolePanelOpen ? "bottom: calc(1px + 38vh); right: 1rem;" : "bottom: 62px; right: 1rem;"}
+    title="トップに戻る"
+    aria-label="トップに戻る"
+  >
+    <i class="fas fa-arrow-up text-lg"></i>
+  </button>
+{/if}
 
 <!-- トースト通知 -->
 <Toast bind:this={toast} />

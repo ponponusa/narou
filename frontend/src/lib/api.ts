@@ -219,6 +219,15 @@ export async function addNovel(url: string, force = false): Promise<void> {
 }
 
 /**
+ * 単一小説を再ダウンロード（API v2）
+ * @param id - 小説ID
+ * @param force - 強制ダウンロードフラグ
+ */
+export async function downloadNovel(id: number, force = false): Promise<void> {
+  await downloadNovels([id], force);
+}
+
+/**
  * 小説を変換（API v2）
  */
 export async function convertNovels(ids: number[]): Promise<void> {
@@ -226,6 +235,13 @@ export async function convertNovels(ids: number[]): Promise<void> {
     method: 'POST',
     body: JSON.stringify({ ids }),
   });
+}
+
+/**
+ * 単一小説を変換（API v2）
+ */
+export async function convertNovel(id: number): Promise<void> {
+  await convertNovels([id]);
 }
 
 /**
@@ -248,6 +264,13 @@ export async function removeNovels(ids: number[], withFile = false): Promise<voi
 }
 
 /**
+ * 単一小説を削除（API v2）
+ */
+export async function removeNovel(id: number, withFile = false): Promise<void> {
+  await removeNovels([id], withFile);
+}
+
+/**
  * 凍結状態をトグル（API v2）
  */
 export async function toggleFreeze(ids: number[]): Promise<void> {
@@ -255,6 +278,20 @@ export async function toggleFreeze(ids: number[]): Promise<void> {
     method: 'POST',
     body: JSON.stringify({ ids }),
   });
+}
+
+/**
+ * 単一小説を凍結（API v2）
+ */
+export async function freezeNovel(id: number): Promise<void> {
+  await toggleFreeze([id]);
+}
+
+/**
+ * 単一小説の凍結を解除（API v2）
+ */
+export async function unfreezeNovel(id: number): Promise<void> {
+  await toggleFreeze([id]);
 }
 
 /**
@@ -521,4 +558,24 @@ export async function patchSettings(settings: Record<string, string | boolean | 
     method: 'PATCH',
     body: JSON.stringify({ settings }),
   });
+}
+
+/**
+ * 小説のあらすじを取得（API v2）
+ * @param id - 小説ID
+ */
+export async function getNovelStory(id: number): Promise<{ title: string; story: string }> {
+  try {
+    // API v2を優先的に使用
+    const result = await fetchApiV2<{ title: string; story: string }>(`/api/v2/novels/${id}/story`);
+    return result;
+  } catch (error) {
+    // v2が失敗した場合はLegacy APIにフォールバック
+    console.warn('API v2 failed, falling back to legacy API:', error);
+    const response = await fetch(`${API_BASE_URL}/api/story?id=${id}&_=${Date.now()}`);
+    if (!response.ok) {
+      throw new Error(`あらすじの取得に失敗しました: ${response.statusText}`);
+    }
+    return response.json();
+  }
 }
