@@ -19,21 +19,30 @@ class ProgressBar
   end
 
   def output(num)
-    return if silent?
-    if num > @max
-      raise OverRangeError, "`#{num}` over `#{@max}(max)`"
-    end
-    @counter += 1
-    return unless @counter % @interval == 0
-    ratio = calc_ratio(num)
-    now = (@width * ratio).round
-    rest = @width - now
-    io.stream.print format("[%s%s] %d%%\r", @char * now, " " * rest, (ratio * 100).round)
+    # プログレスバーの出力を無効化
+    # フロントエンド側での表示問題があるため、バックエンド側で出力を抑制
+    return
+    
+    # 以下は無効化されたコード
+    # return if silent?
+    # if num > @max
+    #   raise OverRangeError, "`#{num}` over `#{@max}(max)`"
+    # end
+    # @counter += 1
+    # return unless @counter % @interval == 0
+    # ratio = calc_ratio(num)
+    # now = (@width * ratio).round
+    # rest = @width - now
+    # io.stream.print format("[%s%s] %d%%\r", @char * now, " " * rest, (ratio * 100).round)
   end
 
   def clear
-    return if silent?
-    io.stream.print "\e[2K\r" # 行削除して行頭へ移動
+    # プログレスバーのクリア処理を無効化
+    return
+    
+    # 以下は無効化されたコード
+    # return if silent?
+    # io.stream.print "\e[2K\r" # 行削除して行頭へ移動
   end
 
   def calc_ratio(num)
