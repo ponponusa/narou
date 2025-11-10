@@ -28,9 +28,11 @@
   let pageSize = $state(50);
   let filterText = $state('');
   let selectedTag = $state<string>('');
+  let selectedSite = $state<string>('');
   let selectedStatus = $state<string>('');
-  let sortBy = $state<'title' | 'author' | 'updated_at' | ''>('updated_at');
+  let sortBy = $state<'id' | 'title' | 'author' | 'sitename' | 'updated_at' | ''>('updated_at');
   let sortOrder = $state<'asc' | 'desc'>('desc');
+  let availableSites = $state<string[]>([]);
 
   onMount(async () => {
     await Promise.all([loadNovels(), loadTags()]);
@@ -78,12 +80,18 @@
         filter: filterText,
       });
       
-      // クライアント側でのフィルタリング（タグ、ステータス）
+      // クライアント側でのフィルタリング（タグ、サイト、ステータス）
       let filteredNovels = response.novels;
       
       if (selectedTag) {
         filteredNovels = filteredNovels.filter(novel => 
           novel.tags && novel.tags.includes(selectedTag)
+        );
+      }
+      
+      if (selectedSite) {
+        filteredNovels = filteredNovels.filter(novel => 
+          novel.sitename === selectedSite
         );
       }
       
@@ -93,6 +101,10 @@
         );
       }
       
+      // サイト一覧を抽出（フィルター用）
+      const sites = new Set(response.novels.map(n => n.sitename).filter(Boolean));
+      availableSites = Array.from(sites).sort();
+      
       // クライアント側でのソート
       if (sortBy) {
         filteredNovels.sort((a, b) => {
@@ -100,6 +112,10 @@
           let bVal: string | number = '';
           
           switch (sortBy) {
+            case 'id':
+              aVal = a.id || 0;
+              bVal = b.id || 0;
+              break;
             case 'title':
               aVal = a.title || '';
               bVal = b.title || '';
@@ -108,9 +124,13 @@
               aVal = a.author || '';
               bVal = b.author || '';
               break;
+            case 'sitename':
+              aVal = a.sitename || '';
+              bVal = b.sitename || '';
+              break;
             case 'updated_at':
-              aVal = a.last_update || '';
-              bVal = b.last_update || '';
+              aVal = a.last_update || 0;
+              bVal = b.last_update || 0;
               break;
           }
           
@@ -229,7 +249,7 @@
     loadNovels();
   }
   
-  function handleSort(column: 'title' | 'author' | 'updated_at') {
+  function handleSort(column: 'id' | 'title' | 'author' | 'sitename' | 'updated_at') {
     if (sortBy === column) {
       sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
     } else {
@@ -242,9 +262,10 @@
   function clearFilters() {
     filterText = '';
     selectedTag = '';
+    selectedSite = '';
     selectedStatus = '';
-    sortBy = '';
-    sortOrder = 'asc';
+    sortBy = 'updated_at';
+    sortOrder = 'desc';
     currentPage = 0;
     loadNovels();
   }
@@ -301,6 +322,24 @@
         </select>
       </div>
       
+      <!-- サイトフィルター -->
+      <div>
+        <label for="siteFilter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          サイト
+        </label>
+        <select
+          id="siteFilter"
+          bind:value={selectedSite}
+          onchange={handleFilterChange}
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+        >
+          <option value="">すべて</option>
+          {#each availableSites as site}
+            <option value={site}>{site}</option>
+          {/each}
+        </select>
+      </div>
+      
       <!-- ステータスフィルター -->
       <div>
         <label for="statusFilter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -338,7 +377,7 @@
     </div>
     
     <!-- アクティブフィルター表示 -->
-    {#if filterText || selectedTag || selectedStatus || sortBy}
+    {#if filterText || selectedTag || selectedSite || selectedStatus || sortBy}
       <div class="mt-3 flex flex-wrap gap-2 items-center">
         <span class="text-sm text-gray-600 dark:text-gray-400">フィルター:</span>
         {#if filterText}
@@ -351,6 +390,11 @@
             タグ: {selectedTag}
           </span>
         {/if}
+        {#if selectedSite}
+          <span class="px-2 py-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded">
+            サイト: {selectedSite}
+          </span>
+        {/if}
         {#if selectedStatus}
           <span class="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
             ステータス: {selectedStatus}
@@ -358,7 +402,7 @@
         {/if}
         {#if sortBy}
           <span class="px-2 py-1 text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded">
-            ソート: {sortBy === 'title' ? 'タイトル' : sortBy === 'author' ? '著者' : '更新日'} ({sortOrder === 'asc' ? '昇順' : '降順'})
+            ソート: {sortBy === 'id' ? 'ID' : sortBy === 'title' ? 'タイトル' : sortBy === 'author' ? '著者' : sortBy === 'sitename' ? 'サイト' : '更新日'} ({sortOrder === 'asc' ? '昇順' : '降順'})
           </span>
         {/if}
       </div>
@@ -448,7 +492,15 @@
                 />
               </th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                ID
+                <button
+                  onclick={() => handleSort('id')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  ID
+                  {#if sortBy === 'id'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 <button
@@ -473,7 +525,15 @@
                 </button>
               </th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                サイト
+                <button
+                  onclick={() => handleSort('sitename')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  サイト
+                  {#if sortBy === 'sitename'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 状態
