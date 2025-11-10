@@ -13,6 +13,13 @@ pkill -9 -f "astro" 2>/dev/null || true
 pkill -9 -f "narou.rb web" 2>/dev/null || true
 pkill -9 -f "ruby.*narou.rb.*web" 2>/dev/null || true
 
+# Kill any processes using the ports
+lsof -ti :5678 | xargs -r kill -9 2>/dev/null || true
+lsof -ti :5679 | xargs -r kill -9 2>/dev/null || true
+lsof -ti :33000 | xargs -r kill -9 2>/dev/null || true
+lsof -ti :33001 | xargs -r kill -9 2>/dev/null || true
+lsof -ti :4321 | xargs -r kill -9 2>/dev/null || true
+
 echo "Waiting for processes to terminate..."
 sleep 3
 
