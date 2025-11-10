@@ -74,8 +74,8 @@ class Inspector
     # 1つの文字列として結合
     summary = parts.join + "\n"
     
-    # デバッグ: summaryの内容を確認
-    STDERR.puts "[DEBUG] display_summary: summary=#{summary.inspect}"
+    # デバッグログは削除（パフォーマンスのため）
+    # STDERR.puts "[DEBUG] display_summary: summary=#{summary.inspect}"
     
     # writeを直接呼ぶ
     target.write(summary)

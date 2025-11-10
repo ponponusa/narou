@@ -74,8 +74,8 @@ module Narou
       if str.encoding == Encoding::ASCII_8BIT
         str.force_encoding(Encoding::UTF_8)
       end
-      # デバッグ: write呼び出しをSTDERRに出力
-      STDERR.puts "[StreamingLogger#write] str=#{str.inspect}, caller=#{caller[0..2].join(' <- ')}"
+      # デバッグログは削除（パフォーマンスのため）
+      # STDERR.puts "[StreamingLogger#write] str=#{str.inspect}, caller=#{caller[0..2].join(' <- ')}"
       super(str)
       push_streaming(str)
       append_log(str)
