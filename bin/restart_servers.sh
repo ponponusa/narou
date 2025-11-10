@@ -16,6 +16,9 @@ pkill -9 -f "ruby.*narou.rb.*web" 2>/dev/null || true
 echo "Waiting for processes to terminate..."
 sleep 3
 
+echo "Clearing bootsnap cache..."
+rm -rf /home/ponta/git/narou-mod/tmp/bootsnap-cache/*
+
 echo "Starting backend server..."
 cd /home/ponta/git/narou-mod
 bundle exec ruby narou.rb web &
