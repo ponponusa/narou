@@ -39,6 +39,17 @@
   let sortOrder = $state<'asc' | 'desc'>('desc');
   let availableSites = $state<string[]>([]);
 
+  // アクション処理中の状態管理
+  let processingNovelIds = $state<Set<number>>(new Set());
+  
+  // 確認ダイアログの状態
+  let showConfirmDialog = $state(false);
+  let confirmDialogConfig = $state<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
   // 列表示設定の型定義
   interface ColumnVisibility {
     id: boolean;
@@ -560,6 +571,178 @@
   }
 
   /**
+   * 確認ダイアログを表示
+   */
+  function showConfirm(title: string, message: string, onConfirm: () => void) {
+    confirmDialogConfig = { title, message, onConfirm };
+    showConfirmDialog = true;
+  }
+
+  /**
+   * 確認ダイアログを閉じる
+   */
+  function closeConfirmDialog() {
+    showConfirmDialog = false;
+    confirmDialogConfig = null;
+  }
+
+  /**
+   * EPUBダウンロード
+   */
+  async function handleDownloadEpub(novelId: number) {
+    try {
+      processingNovelIds.add(novelId);
+      processingNovelIds = new Set(processingNovelIds);
+      
+      const response = await fetch(`http://localhost:33000/api/v2/novels/${novelId}/epub`);
+      if (!response.ok) throw new Error('EPUB download failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `novel_${novelId}.epub`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast?.show('EPUBをダウンロードしました', 'success');
+    } catch (err) {
+      console.error('EPUB download error:', err);
+      toast?.show('EPUBのダウンロードに失敗しました', 'error');
+    } finally {
+      processingNovelIds.delete(novelId);
+      processingNovelIds = new Set(processingNovelIds);
+    }
+  }
+
+  /**
+   * 個別再取得
+   */
+  async function handleRedownloadNovel(novelId: number) {
+    showConfirm(
+      '再取得の確認',
+      'この小説を再取得しますか？',
+      async () => {
+        try {
+          processingNovelIds.add(novelId);
+          processingNovelIds = new Set(processingNovelIds);
+          
+          await fetch(`http://localhost:33000/api/v2/novels/${novelId}/download`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          toast?.show('再取得を開始しました', 'success');
+        } catch (err) {
+          console.error('Redownload error:', err);
+          toast?.show('再取得の開始に失敗しました', 'error');
+        } finally {
+          processingNovelIds.delete(novelId);
+          processingNovelIds = new Set(processingNovelIds);
+        }
+        closeConfirmDialog();
+      }
+    );
+  }
+
+  /**
+   * 個別変換
+   */
+  async function handleConvertNovel(novelId: number) {
+    showConfirm(
+      '変換の確認',
+      'この小説を変換しますか？',
+      async () => {
+        try {
+          processingNovelIds.add(novelId);
+          processingNovelIds = new Set(processingNovelIds);
+          
+          await fetch(`http://localhost:33000/api/v2/novels/${novelId}/convert`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          toast?.show('変換を開始しました', 'success');
+        } catch (err) {
+          console.error('Convert error:', err);
+          toast?.show('変換の開始に失敗しました', 'error');
+        } finally {
+          processingNovelIds.delete(novelId);
+          processingNovelIds = new Set(processingNovelIds);
+        }
+        closeConfirmDialog();
+      }
+    );
+  }
+
+  /**
+   * 個別凍結
+   */
+  async function handleFreezeNovel(novelId: number, currentFrozen: boolean) {
+    const action = currentFrozen ? '解除' : '凍結';
+    showConfirm(
+      `${action}の確認`,
+      `この小説を${action}しますか？`,
+      async () => {
+        try {
+          processingNovelIds.add(novelId);
+          processingNovelIds = new Set(processingNovelIds);
+          
+          await fetch(`http://localhost:33000/api/v2/novels/${novelId}/freeze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ freeze: !currentFrozen })
+          });
+          
+          toast?.show(`${action}しました`, 'success');
+          loadNovels();
+        } catch (err) {
+          console.error('Freeze error:', err);
+          toast?.show(`${action}に失敗しました`, 'error');
+        } finally {
+          processingNovelIds.delete(novelId);
+          processingNovelIds = new Set(processingNovelIds);
+        }
+        closeConfirmDialog();
+      }
+    );
+  }
+
+  /**
+   * 個別削除
+   */
+  async function handleDeleteNovel(novelId: number) {
+    showConfirm(
+      '削除の確認',
+      'この小説を削除しますか？この操作は取り消せません。',
+      async () => {
+        try {
+          processingNovelIds.add(novelId);
+          processingNovelIds = new Set(processingNovelIds);
+          
+          const response = await fetch(`http://localhost:33000/api/v2/novels/${novelId}`, {
+            method: 'DELETE'
+          });
+          
+          if (!response.ok) throw new Error('Delete failed');
+          
+          toast?.show('削除しました', 'success');
+          loadNovels();
+        } catch (err) {
+          console.error('Delete error:', err);
+          toast?.show('削除に失敗しました', 'error');
+        } finally {
+          processingNovelIds.delete(novelId);
+          processingNovelIds = new Set(processingNovelIds);
+        }
+        closeConfirmDialog();
+      }
+    );
+  }
+
+  /**
    * タグの色に対応するCSSクラスを取得
    */
   function getTagColorClass(tagName: string): string {
@@ -604,7 +787,7 @@
 
 <div class="container mx-auto px-4 py-6">
   <!-- フィルター・検索バー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 md:mx-2.5 lg:mx-12">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
     <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
       <!-- テキスト検索 -->
       <div class="lg:col-span-2">
@@ -737,7 +920,7 @@
   </div>
 
   <!-- アクションバー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 md:mx-2.5 lg:mx-12">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
     <div class="flex flex-wrap gap-4 items-center justify-between">
       <div class="flex gap-2 flex-wrap">
         <button
@@ -793,7 +976,7 @@
   <TaskQueue bind:this={taskQueue} />
 
   <!-- テーブルコントロール -->
-  <div class="flex justify-end items-center gap-3 mb-3 md:mx-2.5 lg:mx-12">
+  <div class="flex justify-end items-center gap-3 mb-3 lg:mx-12">
     <button
       onclick={selectAll}
       class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
@@ -979,7 +1162,7 @@
   {/if}
 
   <!-- 小説リストテーブル -->
-  <div class="md:mx-2.5 lg:mx-12">
+  <div class="lg:mx-12">
   {#if loading}
     <div class="text-center py-12">
       <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -1113,6 +1296,9 @@
                 平均文字数
               </th>
               {/if}
+              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                アクション
+              </th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -1243,6 +1429,65 @@
                   {novel.general_all_no && novel.length ? Math.floor(novel.length / novel.general_all_no).toLocaleString() : '-'}
                 </td>
                 {/if}
+                <td class="px-4 py-3 text-sm" onclick={(e) => e.stopPropagation()}>
+                  <div class="flex items-center justify-center gap-2">
+                    {#if processingNovelIds.has(novel.id)}
+                      <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                    {:else}
+                      <!-- EPUBダウンロード -->
+                      <button
+                        onclick={() => handleDownloadEpub(novel.id)}
+                        class="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+                        title="EPUBをダウンロード"
+                      >
+                        📥
+                      </button>
+                      
+                      <!-- 再取得 -->
+                      <button
+                        onclick={() => handleRedownloadNovel(novel.id)}
+                        class="p-1.5 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors"
+                        title="再取得"
+                      >
+                        ♻️
+                      </button>
+                      
+                      <!-- 変換再実行 -->
+                      <button
+                        onclick={() => handleConvertNovel(novel.id)}
+                        class="p-1.5 text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
+                        title="変換再実行"
+                      >
+                        📖
+                      </button>
+                      
+                      <!-- その他メニュー -->
+                      <div class="relative group">
+                        <button
+                          class="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
+                          title="その他"
+                        >
+                          ⋮
+                        </button>
+                        <div class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                          <button
+                            onclick={() => handleFreezeNovel(novel.id, novel.frozen)}
+                            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          >
+                            {novel.frozen ? '凍結を解除' : '凍結する'}
+                          </button>
+                          <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                          <button
+                            onclick={() => handleDeleteNovel(novel.id)}
+                            class="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      </div>
+                    {/if}
+                  </div>
+                </td>
               </tr>
             {/each}
           </tbody>
@@ -1368,6 +1613,38 @@
 
 <!-- タグ編集モーダル -->
 <TagModal bind:this={tagModal} />
+
+<!-- 確認ダイアログ -->
+{#if showConfirmDialog && confirmDialogConfig}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick={closeConfirmDialog}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4" onclick={(e) => e.stopPropagation()}>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        {confirmDialogConfig.title}
+      </h3>
+      <p class="text-gray-700 dark:text-gray-300 mb-6">
+        {confirmDialogConfig.message}
+      </p>
+      <div class="flex justify-end gap-3">
+        <button
+          onclick={closeConfirmDialog}
+          class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        >
+          キャンセル
+        </button>
+        <button
+          onclick={confirmDialogConfig.onConfirm}
+          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
+          実行
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <!-- コンソールパネル -->
 <ConsolePanel bind:this={consolePanel} />
