@@ -26,7 +26,7 @@ cd /home/ponta/git/narou-mod
 nohup bundle exec ruby narou.rb web --no-browser > backend.log 2>&1 &
 BACKEND_PID=$!
 
-echo "Waiting for backend to initialize..."
+echo "Waiting for backend to initialize and update frontend config..."
 sleep 5
 
 # Check if backend process is still running
@@ -34,6 +34,17 @@ if ! ps -p $BACKEND_PID > /dev/null 2>&1; then
     echo "❌ Backend server failed to start. Check backend.log for details."
     cat backend.log
     exit 1
+fi
+
+# フロントエンドの.envファイルからポート情報を取得
+if [ -f "frontend/.env" ]; then
+    BACKEND_PORT=$(grep -oP '(?<=localhost:)\d+' frontend/astro.config.mjs | head -1)
+    WS_PORT=$(grep -oP 'PUBLIC_PUSH_SERVER_PORT=\K\d+' frontend/.env)
+    echo "Backend port detected: ${BACKEND_PORT:-5678}, WebSocket port: ${WS_PORT:-5679}"
+else
+    BACKEND_PORT=5678
+    WS_PORT=5679
+    echo "Using default ports: Backend ${BACKEND_PORT}, WebSocket ${WS_PORT}"
 fi
 
 echo "Starting frontend server..."
@@ -70,7 +81,8 @@ fi
 if [ "$BACKEND_RUNNING" = true ] && [ "$FRONTEND_RUNNING" = true ]; then
     echo ""
     echo "✅ All servers are running successfully!"
-    echo "  - Backend: http://localhost:5678 (PID: $BACKEND_PID)"
+    echo "  - Backend: http://localhost:${BACKEND_PORT} (PID: $BACKEND_PID)"
+    echo "  - WebSocket: localhost:${WS_PORT}"
     echo "  - Frontend: http://localhost:4321 (PID: $FRONTEND_PID)"
     echo ""
     echo "Server restart completed."

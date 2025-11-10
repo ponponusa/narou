@@ -87,6 +87,46 @@ module Command
       push_server
     end
 
+    def update_frontend_env(port)
+      frontend_dir = File.join(Narou.root_dir, "frontend")
+      env_file = File.join(frontend_dir, ".env")
+      
+      # フロントエンドディレクトリが存在しない場合はスキップ
+      return unless File.directory?(frontend_dir)
+      
+      ws_port = port + 1
+      
+      # .envファイルを読み込むか、なければテンプレートを使用
+      env_content = if File.exist?(env_file)
+                      File.read(env_file)
+                    else
+                      <<~ENV
+                        # バックエンドAPIサーバーのURL
+                        # 開発時はViteのプロキシを使用するため空文字列
+                        PUBLIC_API_BASE_URL=
+                        
+                        # PushServer WebSocketポート（HTTPサーバーポート + 1）
+                        PUBLIC_PUSH_SERVER_PORT=5679
+                        
+                        # 開発モード設定
+                        PUBLIC_DEV_MODE=true
+                      ENV
+                    end
+      
+      # PUBLIC_PUSH_SERVER_PORTを更新
+      env_content.gsub!(/^PUBLIC_PUSH_SERVER_PORT=.*$/, "PUBLIC_PUSH_SERVER_PORT=#{ws_port}")
+      
+      File.write(env_file, env_content)
+      
+      # astro.config.mjsのプロキシ設定も更新
+      config_file = File.join(frontend_dir, "astro.config.mjs")
+      if File.exist?(config_file)
+        config_content = File.read(config_file)
+        config_content.gsub!(/target:\s*['"]http:\/\/localhost:\d+['"]/, "target: 'http://localhost:#{port}'")
+        File.write(config_file, config_content)
+      end
+    end
+
     def execute(argv)
       if argv.delete("--boot")
         @rebooted = !!argv.delete("--reboot")
@@ -129,6 +169,10 @@ module Command
       loop do
         begin
           params = Narou::AppServer.create_address(@options["port"])
+          
+          # フロントエンドの設定ファイルを更新
+          update_frontend_env(params[:port])
+          
           push_server = create_push_server(params)
           Narou.web = true
           Thread.abort_on_exception = true
