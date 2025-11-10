@@ -29,8 +29,8 @@
   let filterText = $state('');
   let selectedTag = $state<string>('');
   let selectedStatus = $state<string>('');
-  let sortBy = $state<'title' | 'author' | 'updated_at' | ''>('');
-  let sortOrder = $state<'asc' | 'desc'>('asc');
+  let sortBy = $state<'title' | 'author' | 'updated_at' | ''>('updated_at');
+  let sortOrder = $state<'asc' | 'desc'>('desc');
 
   onMount(async () => {
     await Promise.all([loadNovels(), loadTags()]);
@@ -155,11 +155,26 @@
     }
     try {
       await downloadNovels(Array.from(selectedIds));
-      alert('ダウンロードを開始しました');
+      alert('更新を開始しました');
       selectedIds = new Set();
       await loadNovels();
     } catch (err) {
-      alert('ダウンロードに失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
+      alert('更新に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
+    }
+  }
+
+  async function handleForceDownload() {
+    if (selectedIds.size === 0) {
+      alert('小説を選択してください');
+      return;
+    }
+    try {
+      await downloadNovels(Array.from(selectedIds), true);
+      alert('再取得を開始しました');
+      selectedIds = new Set();
+      await loadNovels();
+    } catch (err) {
+      alert('再取得に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
     }
   }
 
@@ -365,7 +380,14 @@
           disabled={selectedIds.size === 0}
           class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          📥 ダウンロード ({selectedIds.size})
+          � 更新 ({selectedIds.size})
+        </button>
+        <button
+          onclick={handleForceDownload}
+          disabled={selectedIds.size === 0}
+          class="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        >
+          ♻️ 再取得 ({selectedIds.size})
         </button>
         <button
           onclick={handleConvert}

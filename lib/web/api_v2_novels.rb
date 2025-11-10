@@ -151,7 +151,7 @@ module Narou
             end
             
             begin
-              args = with_file ? ['--with-file', ids] : [ids]
+              args = with_file ? ['--with-file', '--yes', *ids] : ['--yes', *ids]
               Narou::WebWorker.push do
                 CommandLine.run!('remove', *args)
                 Narou::AppServer.clear_all_cache
