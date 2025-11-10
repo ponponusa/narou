@@ -122,67 +122,91 @@ module Command
     def boot
       load_web_dependencies
       confirm_of_first
-      params = Narou::AppServer.create_address(@options["port"])
-      push_server = create_push_server(params)
-      Narou.web = true
-      Thread.abort_on_exception = true
+      
+      max_retries = 5
+      retry_count = 0
+      
+      loop do
+        begin
+          params = Narou::AppServer.create_address(@options["port"])
+          push_server = create_push_server(params)
+          Narou.web = true
+          Thread.abort_on_exception = true
 
-      # Legacy モードの設定
-      Narou::AppServer.legacy_mode = @options["legacy"] || false
+          # Legacy モードの設定
+          Narou::AppServer.legacy_mode = @options["legacy"] || false
 
-      address = "http://#{params[:host]}:#{params[:port]}/"
-      puts address
-      puts "サーバを止めるには Ctrl+C を入力"
-      if @options["legacy"]
-        puts "(Legacy Haml UI モード)"
-      else
-        puts "(New Astro UI モード)"
+          address = "http://#{params[:host]}:#{params[:port]}/"
+          puts address
+          puts "サーバを止めるには Ctrl+C を入力"
+          if @options["legacy"]
+            puts "(Legacy Haml UI モード)"
+          else
+            puts "(New Astro UI モード)"
+          end
+          puts
+
+          push_server.run
+          open_browser_when_server_boot(address)
+          send_rebooted_event_when_connection_recover(push_server)
+
+          $stdout = Narou::StreamingLogger.new(push_server)
+          $stdout2 = if Inventory.load["concurrency"]
+                       Narou::StreamingLogger.new(push_server, $stdout2, target_console: "stdout2")
+                     else
+                       $stdout
+                     end
+          ProgressBar.push_server = push_server
+          if worker_available?
+            Narou::Worker.push_server = push_server
+          end
+          Narou::AppServer.push_server = push_server
+          Narou::WebWorker.run
+
+          # 自動アップデートスケジューラーを開始
+          require_relative "update/scheduler"
+          Command::Update::Scheduler.start
+
+          Narou::AppServer.run!
+
+          # 自動アップデートスケジューラーを停止
+          Command::Update::Scheduler.stop
+
+          push_server.quit
+          Narou::WebWorker.stop
+          Narou::Worker.stop if worker_available?
+          if Narou::AppServer.request_reboot?
+            exit Narou::EXIT_REQUEST_REBOOT
+          end
+          
+          break  # 成功したらループを抜ける
+          
+        rescue Errno::EADDRINUSE => e
+          retry_count += 1
+          if retry_count >= max_retries
+            Helper.open_browser(address) unless @options["no-browser"]
+            $stdout.puts <<~PORT_IN_USE
+              #{e}
+              ポートが使われています。サーバがすでに立ち上がっているかどうか確認して下さい。
+              他のアプリケーションが使っているポートだった場合、ポートを変更して下さい。
+
+              ポートの変更方法
+                $ narou-mod s server-port=5678
+            PORT_IN_USE
+            exit Narou::EXIT_ERROR_CODE
+          end
+          
+          # ポートをインクリメントして再試行
+          global_setting = Inventory.load("global_setting", :global)
+          current_port = global_setting["server-port"] || 5678
+          new_port = current_port + retry_count
+          
+          $stdout.puts "[WARN] Port #{current_port} is already in use. Trying port #{new_port}..."
+          
+          # 次回の試行用に一時的にポートを変更（設定ファイルは更新しない）
+          @options["port"] = new_port
+        end
       end
-      puts
-
-      push_server.run
-      open_browser_when_server_boot(address)
-      send_rebooted_event_when_connection_recover(push_server)
-
-      $stdout = Narou::StreamingLogger.new(push_server)
-      $stdout2 = if Inventory.load["concurrency"]
-                   Narou::StreamingLogger.new(push_server, $stdout2, target_console: "stdout2")
-                 else
-                   $stdout
-                 end
-      ProgressBar.push_server = push_server
-      if worker_available?
-        Narou::Worker.push_server = push_server
-      end
-      Narou::AppServer.push_server = push_server
-      Narou::WebWorker.run
-
-      # 自動アップデートスケジューラーを開始
-      require_relative "update/scheduler"
-      Command::Update::Scheduler.start
-
-      Narou::AppServer.run!
-
-      # 自動アップデートスケジューラーを停止
-      Command::Update::Scheduler.stop
-
-      push_server.quit
-      Narou::WebWorker.stop
-      Narou::Worker.stop if worker_available?
-      if Narou::AppServer.request_reboot?
-        exit Narou::EXIT_REQUEST_REBOOT
-      end
-    rescue Errno::EADDRINUSE => e
-      Helper.open_browser(address) unless @options["no-browser"]
-      $stdout.puts <<~PORT_IN_USE
-        #{e}
-        ポートが使われています。サーバがすでに立ち上がっているかどうか確認して下さい。
-        他のアプリケーションが使っているポートだった場合、ポートを変更して下さい。
-
-        ポートの変更方法
-          $ narou-mod s server-port=5678
-      PORT_IN_USE
-      exit Narou::EXIT_ERROR_CODE
     end
     # rubocop:enable Metrics/AbcSize
 
