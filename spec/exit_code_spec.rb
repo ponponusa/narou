@@ -19,12 +19,20 @@ describe "exit code" do
   before(:all) do
     # Databaseのスナップショットを保存
     @original_db_data = Database.instance.get_object.dup
+    
+    # Inventoryキャッシュもバックアップ（frozen状態を保存）
+    require_relative "../lib/inventory"
+    @original_inventory_cache = defined?(Inventory.class_variable_get(:@@cache)) ? 
+      Inventory.class_variable_get(:@@cache).dup : {}
   end
 
   before(:each) do
-    # 各テスト前にDatabaseを復元
+    # 各テスト前にDatabaseとInventoryを復元
     db = Database.instance
     db.instance_variable_set(:@database, @original_db_data.dup)
+    
+    # Inventoryキャッシュをクリア（他テストのfrozen状態変更をリセット）
+    Inventory.clear if defined?(Inventory.class_variable_get(:@@cache))
     
     # download を超軽量化
     allow(Command::Download).to receive(:execute!) do |*args, **_kw|
@@ -49,9 +57,14 @@ describe "exit code" do
   end
 
   after(:all) do
-    # 全テスト後にDatabaseを復元
+    # 全テスト後にDatabaseとInventoryを復元
     db = Database.instance
     db.instance_variable_set(:@database, @original_db_data)
+    
+    # Inventoryキャッシュも復元
+    if defined?(Inventory.class_variable_get(:@@cache))
+      Inventory.class_variable_set(:@@cache, @original_inventory_cache)
+    end
   end
 
   after(:each) do
@@ -59,10 +72,12 @@ describe "exit code" do
   end
 
   let(:frozen_ids) do
+    # Database復元後の状態から取得（他テストの影響を受けない）
     Database.instance.get_object.keys.select { |id| Narou.novel_frozen?(id) }
   end
 
   let(:nonfrozen_ids) do
+    # Database復元後の状態から取得（他テストの影響を受けない）
     Database.instance.get_object.keys.reject { |id| Narou.novel_frozen?(id) }
   end
 
