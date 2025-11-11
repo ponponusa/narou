@@ -919,7 +919,7 @@
       tabindex="0"
       aria-label="検索フォームの表示切替"
     >
-      <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
+      <h3 class="text-base font-semibold text-gray-700 dark:text-gray-300">
         <i class="fas fa-search mr-2"></i>
         検索・フィルター
       </h3>
