@@ -205,19 +205,73 @@ export class PushServerClient {
 
 // グローバルインスタンス
 let globalPushServer: PushServerClient | null = null;
+let portInitialized = false;
+let cachedPort: number | null = null;
+
+/**
+ * APIからPushServerのポート番号を取得
+ */
+async function fetchPushServerPort(): Promise<number> {
+  if (cachedPort !== null) {
+    return cachedPort as number;
+  }
+
+  // デフォルトポート
+  const defaultPort = parseInt(import.meta.env.PUBLIC_PUSH_SERVER_PORT || '5679');
+
+  try {
+    const response = await fetch('/api/v2/system/status');
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.data?.push_server?.port) {
+        cachedPort = data.data.push_server.port;
+        console.log(`[PushServer] Using port from API: ${cachedPort}`);
+        return cachedPort as number;
+      }
+    }
+  } catch (error) {
+    console.warn('[PushServer] Failed to fetch port from API, using default:', defaultPort);
+  }
+
+  cachedPort = defaultPort;
+  return defaultPort;
+}
 
 /**
  * PushServerクライアントのグローバルインスタンスを取得または作成
  */
 export function getPushServer(): PushServerClient {
   if (!globalPushServer) {
-    // ブラウザのホスト名を使用（localhostでも172.26.39.220でも動作）
     const host = typeof window !== 'undefined' 
       ? window.location.hostname 
-      : (import.meta.env.PUBLIC_API_BASE_URL?.replace(/^https?:\/\//, '').split(':')[0] || '172.26.39.220');
-    const port = parseInt(import.meta.env.PUBLIC_PUSH_SERVER_PORT || '33001');
+      : (import.meta.env.PUBLIC_API_BASE_URL?.replace(/^https?:\/\//, '').split(':')[0] || 'localhost');
+    
+    // 初期はデフォルトポートで作成（後でinitializePushServerで更新）
+    const port = cachedPort || parseInt(import.meta.env.PUBLIC_PUSH_SERVER_PORT || '5679');
     
     globalPushServer = new PushServerClient(host, port);
+    
+    // 非同期でポート番号を取得して再接続
+    if (!portInitialized) {
+      portInitialized = true;
+      fetchPushServerPort().then(actualPort => {
+        if (actualPort !== port && globalPushServer) {
+          console.log(`[PushServer] Updating port from ${port} to ${actualPort}`);
+          // 新しいポートで再作成
+          globalPushServer.disconnect();
+          globalPushServer = new PushServerClient(host, actualPort);
+          globalPushServer.connect();
+        }
+      });
+    }
   }
   return globalPushServer;
+}
+
+/**
+ * PushServerの初期化（ページロード時に呼び出し推奨）
+ */
+export async function initializePushServer(): Promise<void> {
+  await fetchPushServerPort();
+  getPushServer();
 }

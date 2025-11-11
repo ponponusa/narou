@@ -70,9 +70,10 @@ module Narou
               # PushServer の状態を確認
               push_server_running = false
               push_server_port = nil
-              if defined?(@@push_server) && @@push_server
-                push_server_running = @@push_server.running?
-                push_server_port = @@push_server.port if push_server_running
+              push_server = self.class.push_server
+              if push_server
+                push_server_running = push_server.running?
+                push_server_port = push_server.port if push_server_running
               end
               
               status_data = {
