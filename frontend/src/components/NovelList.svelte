@@ -1414,7 +1414,7 @@
                 平均文字数
               </th>
               {/if}
-              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap w-32 sm:w-20">
+              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap w-40">
                 アクション
               </th>
             </tr>
