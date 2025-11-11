@@ -103,29 +103,32 @@ module Narou
           Narou::WebWorker.push do
             CommandLine.run!("download", targets, opt_mail)
             Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-            @@push_server.send_all(:"table.reload")
+            Narou::AppServer.push_server.send_all(:"table.reload")
           end
+          status 200
         end
 
         # 小説の強制ダウンロード
-          post "/api/download_force" do
+        post "/api/download_force" do
           ids = select_valid_novel_ids(params["ids"])
           bad_request!("小説が選択されていません") unless ids
           Narou::WebWorker.push do
             CommandLine.run!("download", "--force", ids)
             Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-            @@push_server.send_all(:"table.reload")
+            Narou::AppServer.push_server.send_all(:"table.reload")
           end
+          status 200
         end
 
         # 小説のメール送信
-          post "/api/mail" do
+        post "/api/mail" do
           ids = select_valid_novel_ids(params["ids"]) || []
           Narou::WebWorker.push do
             Narou.concurrency_call do
               CommandLine.run!("mail", ids, io: $stdout2)
             end
           end
+          status 200
         end
 
         # 小説の更新
@@ -148,12 +151,12 @@ module Narou
               cmd = Command::Update.new
               if table_reload_timing == "every"
                 cmd.on(:success) do
-                  @@push_server.send_all(:"table.reload")
+                  Narou::AppServer.push_server.send_all(:"table.reload")
                 end
               end
               cmd.execute!(sorted_ids, opt_arguments)
               Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-              @@push_server.send_all(:"table.reload")
+              Narou::AppServer.push_server.send_all(:"table.reload")
             end
           else
             # 選択された小説のみ更新 - 処理用完全IDリストと照合
@@ -162,6 +165,7 @@ module Narou
             
             if selected_ids.empty?
               puts "[DEBUG] No valid IDs selected, skipping update" if ENV["NAROU_DEBUG"] == "1"
+              status 200
               return
             end
             
@@ -175,6 +179,7 @@ module Narou
             
             if sorted_ids.empty?
               puts "[DEBUG] No selected IDs found in current filter/sort, skipping update" if ENV["NAROU_DEBUG"] == "1"
+              status 200
               return
             end
             
@@ -187,14 +192,15 @@ module Narou
               cmd = Command::Update.new
               if table_reload_timing == "every"
                 cmd.on(:success) do
-                  @@push_server.send_all(:"table.reload")
+                  Narou::AppServer.push_server.send_all(:"table.reload")
                 end
               end
               cmd.execute!(sorted_ids, opt_arguments)
               Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-              @@push_server.send_all(:"table.reload")
+              Narou::AppServer.push_server.send_all(:"table.reload")
             end
           end
+          status 200
         end
 
         # タグによる更新
@@ -212,12 +218,12 @@ module Narou
             cmd = Command::Update.new
             if table_reload_timing == "every"
               cmd.on(:success) do
-                @@push_server.send_all(:"table.reload")
+                Narou::AppServer.push_server.send_all(:"table.reload")
               end
             end
             cmd.execute!(tag_params)
             Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-            @@push_server.send_all(:"table.reload")
+            Narou::AppServer.push_server.send_all(:"table.reload")
           end
         end
 
@@ -245,7 +251,7 @@ module Narou
             Narou::WebWorker.push do
               CommandLine.run!("freeze", ids)
               Narou::AppServer.clear_all_cache
-              @@push_server.send_all(:"table.reload")
+              Narou::AppServer.push_server.send_all(:"table.reload")
             end
             json({ success: true, message: "凍結状態を切り替えました", count: ids.length })
           rescue StandardError => e
@@ -262,7 +268,7 @@ module Narou
             Narou::WebWorker.push do
               CommandLine.run!("freeze", "--on", ids)
               Narou::AppServer.clear_all_cache
-              @@push_server.send_all(:"table.reload")
+              Narou::AppServer.push_server.send_all(:"table.reload")
             end
             json({ success: true, message: "凍結しました", count: ids.length })
           rescue StandardError => e
@@ -279,7 +285,7 @@ module Narou
             Narou::WebWorker.push do
               CommandLine.run!("freeze", "--off", ids)
               Narou::AppServer.clear_all_cache
-              @@push_server.send_all(:"table.reload")
+              Narou::AppServer.push_server.send_all(:"table.reload")
             end
             json({ success: true, message: "凍結を解除しました", count: ids.length })
           rescue StandardError => e
@@ -314,9 +320,9 @@ module Narou
             Narou::WebWorker.push do
               begin
                 CommandLine.run!("remove", "--yes", sorted_ids, opt_arguments)
-                @@push_server.send_all(:"table.reload")
+                Narou::AppServer.push_server.send_all(:"table.reload")
               rescue => e
-                @@push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })
+                Narou::AppServer.push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })
               end
             end
             { success: true }.to_json
@@ -346,9 +352,9 @@ module Narou
             Narou::WebWorker.push do
               begin
                 CommandLine.run!("remove", "--yes", "--with-file", sorted_ids)
-                @@push_server.send_all(:"table.reload")
+                Narou::AppServer.push_server.send_all(:"table.reload")
               rescue => e
-                @@push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })
+                Narou::AppServer.push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })
               end
             end
             { success: true }.to_json
