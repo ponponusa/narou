@@ -270,9 +270,22 @@ class Narou::AppServer < Sinatra::Base
       haml :index, layout: true
     else
       # New Astro UI
-      frontend_index = File.join(__dir__, "../../frontend/dist/index.html")
-      if File.exist?(frontend_index)
-        send_file frontend_index
+      # 開発環境のパス
+      dev_index_path = File.join(__dir__, "../../frontend/dist/index.html")
+      
+      # gem環境のパス
+      gem_index_path = File.expand_path("../../frontend/dist/index.html", File.dirname(__FILE__))
+      
+      index_path = if File.exist?(dev_index_path)
+                     dev_index_path
+                   elsif File.exist?(gem_index_path)
+                     gem_index_path
+                   else
+                     nil
+                   end
+      
+      if index_path && File.exist?(index_path)
+        send_file index_path
       else
         halt 500, "Frontend not built. Run 'cd frontend && npm run build' first."
       end
@@ -295,7 +308,7 @@ class Narou::AppServer < Sinatra::Base
       asset_filename = params['splat'].first
       
       # 開発環境のパス
-      dev_asset_path = File.join(Narou.root_dir, "frontend", "dist", "_astro", asset_filename)
+      dev_asset_path = File.join(__dir__, "../../frontend/dist/_astro", asset_filename)
       
       # gem環境のパス
       gem_asset_path = File.expand_path("../../frontend/dist/_astro/#{asset_filename}", File.dirname(__FILE__))
@@ -321,7 +334,7 @@ class Narou::AppServer < Sinatra::Base
   get "/favicon.svg" do
     unless self.class.legacy_mode?
       # 開発環境のパス
-      dev_favicon_path = File.join(Narou.root_dir, "frontend", "dist", "favicon.svg")
+      dev_favicon_path = File.join(__dir__, "../../frontend/dist/favicon.svg")
       
       # gem環境のパス
       gem_favicon_path = File.expand_path("../../frontend/dist/favicon.svg", File.dirname(__FILE__))
@@ -345,10 +358,12 @@ class Narou::AppServer < Sinatra::Base
   end
 
   before "/settings" do
-    @title = "環境設定"
-    @setting_variables = Command::Setting.get_setting_variables
-    @error_list = {}
-    @global_replace_pattern = @replace_pattern = Narou.global_replace_pattern
+    if self.class.legacy_mode?
+      @title = "環境設定"
+      @setting_variables = Command::Setting.get_setting_variables
+      @error_list = {}
+      @global_replace_pattern = @replace_pattern = Narou.global_replace_pattern
+    end
   end
 
   post "/settings" do
@@ -419,7 +434,30 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/settings" do
-    haml :settings
+    if self.class.legacy_mode?
+      haml :settings
+    else
+      # Astro UI の settings ページ
+      # 開発環境のパス
+      dev_settings_path = File.join(__dir__, "../../frontend/dist/settings/index.html")
+      
+      # gem環境のパス
+      gem_settings_path = File.expand_path("../../frontend/dist/settings/index.html", File.dirname(__FILE__))
+      
+      settings_path = if File.exist?(dev_settings_path)
+                        dev_settings_path
+                      elsif File.exist?(gem_settings_path)
+                        gem_settings_path
+                      else
+                        nil
+                      end
+      
+      if settings_path && File.exist?(settings_path)
+        send_file settings_path
+      else
+        halt 404, "Settings page not found"
+      end
+    end
   end
 
   get "/help" do
