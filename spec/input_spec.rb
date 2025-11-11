@@ -9,10 +9,17 @@ require "narou_logger"
 describe Narou::Input do
   before :all do
     $stdout.silent = true
+    @original_stdin = $stdin
   end
 
   after :all do
     $stdout.silent = false
+    $stdin = @original_stdin
+  end
+  
+  after :each do
+    # 各テスト後に$stdinを復元（他テストへのリークを防ぐ）
+    $stdin = @original_stdin
   end
 
   describe ".confirm" do
