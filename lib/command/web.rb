@@ -181,8 +181,15 @@ module Command
     def start_server
       port = @options["port"] || 5678
       
-      # PushServerの初期化（Legacy互換）
-      Narou::AppServer.push_server = Narou::PushServer.instance
+      # PushServerの初期化と起動
+      push_server = Narou::PushServer.instance
+      push_server.port = port + 1
+      push_server.host = host
+      push_server.accepted_domains = ["*"]
+      Narou::AppServer.push_server = push_server
+      
+      # PushServerを起動
+      push_server.run
       
       if @options["open-browser"]
         frontend_url = "http://#{host}:4321/"
