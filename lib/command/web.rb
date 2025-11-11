@@ -190,6 +190,9 @@ module Command
       
       # PushServerを起動
       push_server.run
+      # WebWorkerを起動（タスクキュー処理用）
+      Narou::WebWorker.run
+
       
       if @options["open-browser"]
         frontend_url = "http://#{host}:4321/"
