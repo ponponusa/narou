@@ -48,6 +48,10 @@ class Narou::AppServer < Sinatra::Base
     set :quiet, true
     enable :protection
     enable :sessions
+    
+    # 静的ファイルの配信設定
+    set :public_folder, File.join(File.dirname(__FILE__), "public")
+    enable :static
 
     set(:version) do
       Command::Version.create_version_string

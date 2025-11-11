@@ -40,6 +40,11 @@ Gem::Specification.new do |gem|
 
   tracked_files = `git ls-files`.split("\n").select { |fn| File.exist?(fn) }
   gem.files = tracked_files.reject { |fn| fn =~ %r!^spec/|^"spec! } << Narou.create_git_commit_version
+  
+  # フロントエンドのビルド成果物を追加（git管理外でも含める）
+  frontend_dist = Dir.glob("frontend/dist/**/*").select { |f| File.file?(f) }
+  gem.files += frontend_dist if Dir.exist?("frontend/dist")
+  
   gem.executables = gem.files.grep(%r!^bin/!).map { |f| File.basename(f) }
 
   gem.add_runtime_dependency 'termcolorlight', '~> 1.0', '>= 1.1.1'
