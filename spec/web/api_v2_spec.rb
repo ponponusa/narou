@@ -273,5 +273,16 @@ RSpec.describe "Narou::AppServer API v2" do
       
       expect(last_response.headers["access-control-allow-origin"]).to eq("*")
     end
+
+    it "sets CORS headers for POST requests" do
+      payload = { targets: ["n9669bk"] }.to_json
+      allow(Narou::WebWorker).to receive(:push).and_yield
+      allow(CommandLine).to receive(:run!)
+      allow(Narou::AppServer).to receive(:clear_all_cache)
+
+      post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response.headers["access-control-allow-origin"]).to eq("*")
+    end
   end
 end
