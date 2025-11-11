@@ -121,8 +121,8 @@ npm run dev
 
 ### API ドキュメント
 
-- **Swagger UI**: http://localhost:5678/api/docs
-- **OpenAPI仕様書**: http://localhost:5678/api/openapi.yaml
+- **Swagger UI**: <http://localhost:5678/api/docs>
+- **OpenAPI仕様書**: <http://localhost:5678/api/openapi.yaml>
 - **移行ガイド**: [docs/api_migration_guide.md](docs/api_migration_guide.md)
 
 ### API v2 エンドポイント
