@@ -88,6 +88,26 @@ class Narou::AppServer < Sinatra::Base
   Narou::ApiV2::Tags.register(self)
   Narou::ApiV2::Settings.register(self)
 
+  # Swagger UI と OpenAPI 仕様書のエンドポイント
+  get "/api/docs" do
+    swagger_ui_path = File.join(settings.public_folder, "swagger-ui", "index.html")
+    if File.exist?(swagger_ui_path)
+      send_file swagger_ui_path
+    else
+      halt 404, "Swagger UI not found at #{swagger_ui_path}"
+    end
+  end
+
+  get "/api/openapi.yaml" do
+    content_type "application/x-yaml"
+    openapi_path = File.join(File.dirname(__FILE__), "../../docs/openapi.yaml")
+    if File.exist?(openapi_path)
+      send_file openapi_path
+    else
+      halt 404, "OpenAPI spec not found at #{openapi_path}"
+    end
+  end
+
   # CORS設定（新しいフロントエンドとの連携用）
   before do
     # プリフライトリクエストとAPIエンドポイントにCORSヘッダーを追加

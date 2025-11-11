@@ -18,10 +18,10 @@ info:
   version: 2.0.0
   contact:
     name: Narou.rb MOD Project
-    url: https://github.com/Rumia-Channel/narou
+    url: https://github.com/ponponusa/narou-mod
   license:
     name: MIT
-    url: https://github.com/Rumia-Channel/narou/blob/main/LICENSE.txt
+    url: https://github.com/ponponusa/narou-mod/blob/main/LICENSE.txt
 
 servers:
   - url: http://localhost:5678
