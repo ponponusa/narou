@@ -14,8 +14,12 @@
   let queueSize = $state(0);
   let isConnected = $state(false);
   let pushServer = getPushServer();
+  let currentPath = $state('/');
 
   onMount(async () => {
+    // 現在のパスを取得
+    currentPath = window.location.pathname;
+    
     try {
       const versionData = await getVersion();
       version = versionData.narou;
@@ -85,13 +89,13 @@
         <!-- ナビゲーションボタン -->
         <a
           href="/"
-          class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer"
+          class="px-3 py-1.5 text-sm font-medium rounded transition-colors cursor-pointer {currentPath === '/' || currentPath === '/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
         >
           小説リスト
         </a>
         <a
           href="/settings"
-          class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer"
+          class="px-3 py-1.5 text-sm font-medium rounded transition-colors cursor-pointer {currentPath === '/settings' || currentPath === '/settings/' || currentPath === '/settings/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
         >
           設定
         </a>

@@ -55,6 +55,9 @@
   let sortOrder = $state<'asc' | 'desc'>('desc');
   let availableSites = $state<string[]>([]);
 
+  // 検索フォームの折りたたみ状態（デフォルトは折りたたみ）
+  let isSearchFormCollapsed = $state(true);
+
   // アクション処理中の状態管理
   let processingNovelIds = $state<Set<number>>(new Set());
   
@@ -906,8 +909,33 @@
 
 <div class="container mx-auto px-2.5 py-6">
   <!-- フィルター・検索バー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
-    <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 lg:mx-12">
+    <!-- ヘッダー（常に表示） -->
+    <div 
+      class="flex items-center justify-between p-4 cursor-pointer" 
+      onclick={() => isSearchFormCollapsed = !isSearchFormCollapsed}
+      onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (isSearchFormCollapsed = !isSearchFormCollapsed)}
+      role="button"
+      tabindex="0"
+      aria-label="検索フォームの表示切替"
+    >
+      <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
+        <i class="fas fa-search mr-2"></i>
+        検索・フィルター
+      </h3>
+      <button 
+        class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+        aria-label={isSearchFormCollapsed ? '検索フォームを展開' : '検索フォームを折りたたむ'}
+        tabindex="-1"
+      >
+        <i class="fas fa-chevron-{isSearchFormCollapsed ? 'down' : 'up'}"></i>
+      </button>
+    </div>
+    
+    <!-- フォーム本体（折りたたみ可能） -->
+    {#if !isSearchFormCollapsed}
+    <div class="p-4 pt-0">
+      <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
       <!-- テキスト検索 -->
       <div class="lg:col-span-2">
         <label for="filterText" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1036,7 +1064,12 @@
         {/if}
       </div>
     {/if}
+    </div>
+    {/if}
   </div>
+
+  <!-- タスクキュー -->
+  <TaskQueue bind:this={taskQueue} />
 
   <!-- アクションバー -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
@@ -1090,9 +1123,6 @@
       </div>
     </div>
   </div>
-
-  <!-- タスクキュー -->
-  <TaskQueue bind:this={taskQueue} />
 
   <!-- テーブルコントロール -->
   <div class="flex justify-end items-center gap-3 mb-3 lg:mx-12">
