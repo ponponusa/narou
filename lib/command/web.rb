@@ -130,6 +130,12 @@ module Command
       
       if pid
         # 親プロセス
+        # 子プロセスのPIDをファイルに書き込む
+        pid_file = pid_file_path
+        pid_dir = File.dirname(pid_file)
+        FileUtils.mkdir_p(pid_dir) unless File.exist?(pid_dir)
+        File.write(pid_file, pid.to_s)
+        
         puts "WEBサーバーをバックグラウンドで起動しました (PID: #{pid})"
         $stdout.flush
         $stderr.flush
@@ -163,22 +169,12 @@ module Command
         puts "Time: #{Time.now}"
         puts "=========================================="
         
-        # PIDファイルに書き込み
-        write_pid_file
-        
         # 処理を継続（このメソッドから戻る）
       end
     end
 
     def pid_file_path
       File.join(Narou.root_dir, "tmp", "pids", "narou-web.pid")
-    end
-
-    def write_pid_file
-      pid_file = pid_file_path
-      pid_dir = File.dirname(pid_file)
-      FileUtils.mkdir_p(pid_dir) unless File.exist?(pid_dir)
-      File.write(pid_file, ::Process.pid.to_s)
     end
 
     def delete_pid_file
