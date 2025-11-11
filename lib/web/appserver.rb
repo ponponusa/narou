@@ -29,6 +29,7 @@ require_relative "../narou/promo_tag_extractor"
 require_relative "../narou/system_updater"
 require_relative "../narou/tag_manager"
 require_relative "api/v1/system"
+require_relative "api/v1/settings"
 require_relative "api/v1/utilities"
 require_relative "api/v2/base"
 require_relative "api/v2/novels"
@@ -74,6 +75,7 @@ class Narou::AppServer < Sinatra::Base
 
   # API v1 (Legacy) エンドポイント登録
   Narou::ApiV1::System.register(self)
+  Narou::ApiV1::Settings.register(self)
   Narou::ApiV1::Utilities.register(self)
 
   # API v2 エンドポイント登録
@@ -1777,33 +1779,6 @@ class Narou::AppServer < Sinatra::Base
       debug_puts "[ERROR] Failed to edit tags: #{e.message}"
       debug_puts "[ERROR] States param details: #{request_payload["states"].inspect}"
       { success: false, error: e.message }.to_json
-    end
-  end
-
-  post "/api/update_general_lastup" do
-    option = params["option"]
-    option = nil if option == "all"
-    is_update_modified = params["is_update_modified"] == "true"
-    Narou::WebWorker.push do
-      CommandLine.run!(["update", "--gl", option].compact)
-      Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-      @@push_server.send_all(:"table.reload")
-      @@push_server.send_all(:"tag.updateCanvas")
-      if is_update_modified
-        puts "<yellow>#{Narou::MODIFIED_TAG} タグの付いた小説を更新します</yellow>".termcolor
-        CommandLine.run!("update", "tag:#{Narou::MODIFIED_TAG}")
-        Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-        @@push_server.send_all(:"table.reload")
-        @@push_server.send_all(:"tag.updateCanvas")
-      end
-    end
-  end
-
-  post "/api/setting_burn" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    Narou::WebWorker.push do
-      CommandLine.run!("setting", "--burn", ids)
     end
   end
 
