@@ -422,38 +422,42 @@
 
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 lg:mx-12">
   <!-- ヘッダー（常に表示） -->
-  <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <button
-          onclick={toggleCollapse}
-          class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-          title={isCollapsed ? '展開' : '折りたたむ'}
-        >
-          <svg class="w-5 h-5 transform transition-transform {isCollapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </button>
-        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-          タスクキュー
-        </h2>
-        {#if tasks.length > 0}
-          <span class="px-2 py-1 text-xs rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-            {tasks.length}件
-          </span>
-        {/if}
-        {#if activeTaskCount > 0}
-          <span class="px-2 py-1 text-xs rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 animate-pulse">
-            処理中: {activeTaskCount}件
-          </span>
-        {/if}
-      </div>
+  <div class="flex items-center justify-between p-4 cursor-pointer border-b border-gray-200 dark:border-gray-700"
+       onclick={toggleCollapse}
+       onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleCollapse()}
+       role="button"
+       tabindex="0"
+       aria-label="タスクキューの表示切替">
+    <div class="flex items-center gap-3">
+      <h3 class="text-base font-semibold text-gray-700 dark:text-gray-300">
+        <i class="fas fa-tasks mr-2"></i>
+        タスクキュー
+      </h3>
+      {#if tasks.length > 0}
+        <span class="px-2 py-1 text-xs rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+          {tasks.length}件
+        </span>
+      {/if}
+      {#if activeTaskCount > 0}
+        <span class="px-2 py-1 text-xs rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 animate-pulse">
+          処理中: {activeTaskCount}件
+        </span>
+      {/if}
+    </div>
+    <div class="flex items-center gap-2">
       <button
-        onclick={cancelAllTasks}
+        onclick={(e) => { e.stopPropagation(); cancelAllTasks(); }}
         class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
         disabled={tasks.length === 0}
       >
         リストをクリア
+      </button>
+      <button 
+        class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+        aria-label={isCollapsed ? 'タスクキューを展開' : 'タスクキューを折りたたむ'}
+        tabindex="-1"
+      >
+        <i class="fas fa-chevron-{isCollapsed ? 'down' : 'up'}"></i>
       </button>
     </div>
   </div>

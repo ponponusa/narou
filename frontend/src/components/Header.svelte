@@ -86,6 +86,19 @@
       </div>
       
       <div class="flex items-center space-x-2">
+        <ThemeToggle />
+        
+        <!-- 更新ボタン（アイコンのみ） -->
+        <button
+          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer"
+          onclick={() => window.location.reload()}
+          title="ページを更新"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+        
         <!-- ナビゲーションボタン -->
         <a
           href="/"
@@ -99,19 +112,6 @@
         >
           設定
         </a>
-        
-        <ThemeToggle />
-        
-        <!-- 更新ボタン（アイコンのみ） -->
-        <button
-          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer"
-          onclick={() => window.location.reload()}
-          title="ページを更新"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
       </div>
     </div>
   </nav>
