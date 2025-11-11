@@ -904,7 +904,7 @@
   }
 </script>
 
-<div class="container mx-auto px-4 py-6">
+<div class="container mx-auto px-2.5 py-6">
   <!-- フィルター・検索バー -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
     <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
@@ -1414,7 +1414,7 @@
                 平均文字数
               </th>
               {/if}
-              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap w-32 sm:w-20">
                 アクション
               </th>
             </tr>
@@ -1437,17 +1437,17 @@
                 <td class="px-4 py-3 text-sm">{novel.id}</td>
                 {/if}
                 {#if columnVisibility.updated_at}
-                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
                   {formatDateTime(novel.last_update)}
                 </td>
                 {/if}
                 {#if columnVisibility.newest_article_date}
-                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
                   {formatDateTime(novel.general_lastup)}
                 </td>
                 {/if}
                 {#if columnVisibility.last_update}
-                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
                   {formatDateTime(novel.last_update)}
                 </td>
                 {/if}
@@ -1530,8 +1530,8 @@
                   {novel.general_all_no && novel.length ? formatCharCount(Math.floor(novel.length / novel.general_all_no)) : '-'}
                 </td>
                 {/if}
-                <td class="px-4 py-3 text-sm" onclick={(e) => e.stopPropagation()}>
-                  <div class="flex items-center justify-center gap-2">
+                <td class="px-4 py-3 text-sm w-32 sm:w-20" onclick={(e) => e.stopPropagation()}>
+                  <div class="flex items-center justify-center gap-2 flex-wrap sm:flex-wrap">
                     {#if processingNovelIds.has(novel.id)}
                       <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                     {:else}

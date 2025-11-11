@@ -51,7 +51,7 @@
 </script>
 
 <header class="bg-white dark:bg-gray-800 shadow-md">
-  <nav class="container mx-auto px-4 py-3">
+  <nav class="container mx-auto px-2.5 py-3">
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-4">
         <!-- ロゴ（クリック可能） -->
