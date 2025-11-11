@@ -77,9 +77,6 @@
               <span class="text-yellow-500" title="Bootsnap enabled">⚡︎</span>
             {/if}
           </h1>
-          <span class="text-xs text-gray-500 dark:text-gray-400">
-            v{version}
-          </span>
         </a>
         
         <!-- 接続状態インジケーター -->
