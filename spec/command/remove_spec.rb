@@ -17,6 +17,11 @@ RSpec.describe Command::Remove do
     allow(Inventory).to receive(:load).with("local_setting").and_return({})
   end
 
+  after do
+    # テスト間でcommandインスタンスが共有される場合に備えて@optionsをクリア
+    command.instance_variable_set(:@options, {}) if command
+  end
+
   describe "#get_all_short_story" do
     it "returns only short stories (novel_type == 2)" do
       db_object[1] = { "id" => 1, "title" => "短編1", "novel_type" => 2 }
@@ -38,7 +43,10 @@ RSpec.describe Command::Remove do
 
   describe "#execute" do
     it "shows help when no arguments provided and --all-ss not set" do
-      expect(command).to receive(:display_help!)
+      # display_help!の実装内でexitが呼ばれるため、display_help!自体をstub
+      expect(command).to receive(:display_help!) do
+        # 何もしない（exitを呼ばない）
+      end
       command.execute([])
     end
 
@@ -49,21 +57,43 @@ RSpec.describe Command::Remove do
       command.instance_variable_set(:@options, { "all-ss" => true, "yes" => true })
       allow(command).to receive(:tagname_to_ids)
       allow(Downloader).to receive(:get_data_by_target).and_return(db_object[1], db_object[2])
+      allow(Narou).to receive(:locked?).and_return(false)
+      allow(Narou).to receive(:novel_frozen?).and_return(false)
+      allow(Downloader).to receive(:remove_novel)
+      allow(Helper).to receive(:print_horizontal_rule)
+      
+      # Kernel.exitを明示的にstub
+      allow(command).to receive(:exit)
+      allow(Kernel).to receive(:exit)
       
       expect { command.execute([]) }.to output.to_stdout
     end
 
     it "shows message when no short stories exist with --all-ss" do
-      command.instance_variable_set(:@options, { "all-ss" => true })
+      # display_help!とKernel.exitをstub
+      allow(command).to receive(:display_help!)
+      allow(command).to receive(:exit)
+      allow(Kernel).to receive(:exit)
       
-      expect { command.execute([]) }.to output(/短編小説がひとつもありません/).to_stdout
+      # --all-ssオプションを引数として渡す
+      expect { command.execute(["--all-ss"]) }.to output(/短編小説がひとつもありません/).to_stdout
     end
 
     it "shows error for non-existent novel" do
       allow(command).to receive(:tagname_to_ids)
       allow(Downloader).to receive(:get_data_by_target).with("invalid").and_return(nil)
       
-      expect { command.execute(["invalid"]) }.to output(/は存在しません/).to_stdout
+      # Kernel.exitをstub
+      allow(command).to receive(:exit)
+      allow(Kernel).to receive(:exit)
+      
+      # errorメソッドをstub（$stdout.errorが呼ばれるため）
+      allow(command).to receive(:error)
+      
+      command.execute(["invalid"])
+      
+      # errorメソッドが呼ばれたことを検証
+      expect(command).to have_received(:error).with(/は存在しません/)
     end
   end
 end

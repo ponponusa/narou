@@ -54,14 +54,14 @@ module Command
       setting = Inventory.load("server_setting", :global)
       is_first = !setting["already-server-boot"]
       if is_first
-        puts <<~FIRST_BOOT
+        $stdout.puts <<~FIRST_BOOT
           初めてサーバを起動します。ファイアウォールのアクセス許可を尋ねられた場合、許可をして下さい。
           また、起動したサーバを止めるにはコンソール上で Ctrl+C を入力するか、ブラウザ上で「設定(歯車マーク)→サーバをシャットダウン」を実行して下さい。
         FIRST_BOOT
         if @options["no-browser"]
-          puts "(何かキーを押して下さい)"
+          $stdout.puts "(何かキーを押して下さい)"
         else
-          puts "(何かキーを押して下さい。サーバ起動後ブラウザが立ち上がります)"
+          $stdout.puts "(何かキーを押して下さい。サーバ起動後ブラウザが立ち上がります)"
         end
         # 対話環境でのみキー待ち。非対話（テスト/CI）では即時戻る
         unless TTYHelper.non_interactive?
@@ -175,11 +175,11 @@ module Command
       
       # デーモン化フラグを保存（サーバー起動直前に使用）
       @daemon_mode = @options.fetch("daemon", true)
-      puts "DEBUG: daemon_mode = #{@daemon_mode.inspect}, options = #{@options.inspect}" if ENV["DEBUG"]
+      $stdout.puts "DEBUG: daemon_mode = #{@daemon_mode.inspect}, options = #{@options.inspect}" if ENV["DEBUG"]
       
       if @daemon_mode
-        puts "WEBサーバーをバックグラウンドで起動しています..."
-        puts "ログ: tmp/logs/narou-web.log"
+        $stdout.puts "WEBサーバーをバックグラウンドで起動しています..."
+        $stdout.puts "ログ: tmp/logs/narou-web.log"
       end
       
       max_retries = 5
@@ -200,20 +200,20 @@ module Command
           Narou::AppServer.legacy_mode = @options["legacy"] || false
 
           address = "http://#{params[:host]}:#{params[:port]}/"
-          puts address
-          puts "サーバを止めるには Ctrl+C を入力"
+          $stdout.puts address
+          $stdout.puts "サーバを止めるには Ctrl+C を入力"
           if @options["legacy"]
-            puts "(Legacy Haml UI モード)"
+            $stdout.puts "(Legacy Haml UI モード)"
           else
-            puts "(New Astro UI モード)"
+            $stdout.puts "(New Astro UI モード)"
           end
-          puts
+          $stdout.puts
 
           push_server.run
           
           # デーモン化処理（$stdout 置き換え前に実行）
           if @daemon_mode
-            puts "デーモン化を開始します..."
+            $stdout.puts "デーモン化を開始します..."
             daemonize
             # デーモン化後は子プロセスで処理が継続される
           end
@@ -318,7 +318,7 @@ module Command
           sleep 0.2
           Thread.current.kill if Time.now > timeout
         end
-        puts "<yellow>再起動が完了しました。</yellow>".termcolor
+        $stdout.puts "<yellow>再起動が完了しました。</yellow>".termcolor
         push_server.send_all(:"server.rebooted")
       end
     end
@@ -331,8 +331,8 @@ module Command
       if File.exist?(pid_file)
         existing_pid = File.read(pid_file).to_i
         if process_running?(existing_pid)
-          puts "WEBサーバーはすでに起動しています (PID: #{existing_pid})"
-          puts "停止するには 'narou-mod stop' を実行してください"
+          $stdout.puts "WEBサーバーはすでに起動しています (PID: #{existing_pid})"
+          $stdout.puts "停止するには 'narou-mod stop' を実行してください"
           exit 0
         else
           # 古いPIDファイルを削除
@@ -345,7 +345,7 @@ module Command
       
       if pid
         # 親プロセス
-        puts "WEBサーバーをバックグラウンドで起動しました (PID: #{pid})"
+        $stdout.puts "WEBサーバーをバックグラウンドで起動しました (PID: #{pid})"
         exit 0
       else
         # 子プロセス
@@ -364,11 +364,11 @@ module Command
         $stdout.sync = true
         $stderr.sync = true
         
-        puts "=========================================="
-        puts "WEBサーバーが起動しました"
-        puts "PID: #{::Process.pid}"
-        puts "Time: #{Time.now}"
-        puts "=========================================="
+        $stdout.puts "=========================================="
+        $stdout.puts "WEBサーバーが起動しました"
+        $stdout.puts "PID: #{::Process.pid}"
+        $stdout.puts "Time: #{Time.now}"
+        $stdout.puts "=========================================="
         # 処理を継続（このメソッドから戻る）
       end
     end

@@ -43,11 +43,20 @@
   aria-label={isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
   title={isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
 >
-  {#if isDark}
-    <i class="fas fa-sun"></i>
-  {:else}
-    <i class="fas fa-moon"></i>
-  {/if}
+  <div class="toggle-container">
+    <!-- ライトモードアイコン（左側） -->
+    <div class="icon-wrapper" class:active={!isDark}>
+      <i class="fas fa-sun"></i>
+    </div>
+    
+    <!-- スライダー -->
+    <div class="slider" class:dark={isDark}></div>
+    
+    <!-- ダークモードアイコン（右側） -->
+    <div class="icon-wrapper" class:active={isDark}>
+      <i class="fas fa-moon"></i>
+    </div>
+  </div>
 </button>
 
 <style>
@@ -55,35 +64,74 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    background-color: white;
-    color: #374151;
-    font-size: 1.125rem;
+    padding: 0;
+    border: none;
+    background: transparent;
     cursor: pointer;
-    transition: all 0.2s;
   }
 
-  .theme-toggle:hover {
-    background-color: #f3f4f6;
-    border-color: #9ca3af;
+  .toggle-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 4rem;
+    height: 2rem;
+    padding: 0.25rem;
+    border-radius: 9999px;
+    background-color: #e5e7eb;
+    transition: background-color 0.2s;
   }
 
-  :global(.dark) .theme-toggle {
-    background-color: #374151;
-    border-color: #4b5563;
-    color: #f9fafb;
-  }
-
-  :global(.dark) .theme-toggle:hover {
+  :global(.dark) .toggle-container {
     background-color: #4b5563;
-    border-color: #6b7280;
   }
 
-  .theme-toggle:active {
-    transform: scale(0.95);
+  .icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    transition: color 0.2s;
+    z-index: 2;
+  }
+
+  .icon-wrapper.active {
+    color: #fff;
+  }
+
+  .slider {
+    position: absolute;
+    left: 0.25rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    background-color: #fbbf24;
+    transition: transform 0.2s, background-color 0.2s;
+    z-index: 1;
+  }
+
+  .slider.dark {
+    transform: translateX(2rem);
+    background-color: #60a5fa;
+  }
+
+  .theme-toggle:hover .toggle-container {
+    background-color: #d1d5db;
+  }
+
+  :global(.dark) .theme-toggle:hover .toggle-container {
+    background-color: #6b7280;
+  }
+
+  .theme-toggle:active .slider {
+    transform: scale(0.95) translateX(0);
+  }
+
+  .theme-toggle:active .slider.dark {
+    transform: scale(0.95) translateX(2rem);
   }
 </style>

@@ -2,10 +2,17 @@ require "rspec"
 require "pry"
 require "simplecov"
 
+# ARGV退避: lib/配下のコードがrequire時にARGVを誤解釈しないように
+original_argv = ARGV.dup
+ARGV.clear
+
 # lib/配下からcommandをrequireしとく
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "commandbase"
 Dir[File.expand_path("../lib/command/**/*.rb", __dir__)].sort.each { |f| require f }
+
+# ARGV復元: RSpecが引数を正しく処理できるように
+ARGV.replace(original_argv)
 
 SimpleCov.start do
   add_filter "/spec/"
@@ -128,6 +135,11 @@ RSpec.configure do |config|
         if respond_to?(:get_object) && get_object.is_a?(Hash)
           get_object[id]
         end
+      end
+
+      # save_database メソッド（テスト用の空実装）
+      db.define_singleton_method(:save_database) do
+        # テスト環境では実際の保存は不要
       end
     end
 

@@ -41,7 +41,7 @@
   let tagModal: TagModal;
   let conversionSettingsModal: ConversionSettingsModal;
   let novelDetailModal: NovelDetailModal;
-  let consolePanel: ConsolePanel;
+  let consolePanel = $state<ConsolePanel>();
   let taskQueue: TaskQueue;
 
   // フィルター・ソート設定
@@ -51,9 +51,12 @@
   let selectedTag = $state<string>('');
   let selectedSite = $state<string>('');
   let selectedStatus = $state<string>('');
-  let sortBy = $state<'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | ''>('updated_at');
+  let sortBy = $state<'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | 'episode_count' | 'total_chars' | 'avg_chars_per_episode' | 'newest_article_date' | 'last_update' | ''>('updated_at');
   let sortOrder = $state<'asc' | 'desc'>('desc');
   let availableSites = $state<string[]>([]);
+
+  // 検索フォームの折りたたみ状態（デフォルトは折りたたみ）
+  let isSearchFormCollapsed = $state(true);
 
   // アクション処理中の状態管理
   let processingNovelIds = $state<Set<number>>(new Set());
@@ -299,6 +302,32 @@
     }
   }
 
+  /**
+   * 文字数を整形（1万字以上は「万字」表記）
+   */
+  function formatCharCount(count: number | null | undefined): string {
+    if (!count) return '-';
+    if (count >= 10000) {
+      return `${(count / 10000).toFixed(1)}万字`;
+    }
+    return count.toLocaleString();
+  }
+
+  /**
+   * 日付を整形（YYYY/MM/DD HH:MM形式）
+   */
+  function formatDateTime(timestamp: number | string | null | undefined): string {
+    if (!timestamp) return '-';
+    const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+    const date = new Date(ts * 1000);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}/${month}/${day} ${hours}:${minutes}`;
+  }
+
   onMount(async () => {
     // 設定を復元
     loadSettings();
@@ -348,7 +377,7 @@
       onTagEdit: (novelId: number) => {
         const targetNovel = novels.find(n => n.id === novelId);
         if (targetNovel) {
-          tagModal.open([targetNovel.id], targetNovel.tags, loadNovels);
+          tagModal.open([targetNovel.id], targetNovel.title, loadNovels);
         }
       },
       onConversionSettings: (novelId: number, title: string) => {
@@ -447,6 +476,26 @@
               // タグでソート（最初のタグで比較）
               aVal = (a.tags && a.tags.length > 0) ? a.tags[0] : '';
               bVal = (b.tags && b.tags.length > 0) ? b.tags[0] : '';
+              break;
+            case 'episode_count':
+              aVal = a.general_all_no || 0;
+              bVal = b.general_all_no || 0;
+              break;
+            case 'total_chars':
+              aVal = a.length || 0;
+              bVal = b.length || 0;
+              break;
+            case 'avg_chars_per_episode':
+              aVal = (a.length && a.general_all_no) ? a.length / a.general_all_no : 0;
+              bVal = (b.length && b.general_all_no) ? b.length / b.general_all_no : 0;
+              break;
+            case 'newest_article_date':
+              aVal = a.general_lastup || 0;
+              bVal = b.general_lastup || 0;
+              break;
+            case 'last_update':
+              aVal = a.last_update || 0;
+              bVal = b.last_update || 0;
               break;
           }
           
@@ -617,7 +666,7 @@
     loadNovels();
   }
   
-  function handleSort(column: 'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags') {
+  function handleSort(column: 'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | 'episode_count' | 'total_chars' | 'avg_chars_per_episode' | 'newest_article_date' | 'last_update') {
     if (sortBy === column) {
       sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
     } else {
@@ -878,10 +927,35 @@
   }
 </script>
 
-<div class="container mx-auto px-4 py-6">
+<div class="container mx-auto px-2.5 py-6">
   <!-- フィルター・検索バー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
-    <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 lg:mx-12">
+    <!-- ヘッダー（常に表示） -->
+    <div 
+      class="flex items-center justify-between p-4 cursor-pointer" 
+      onclick={() => isSearchFormCollapsed = !isSearchFormCollapsed}
+      onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (isSearchFormCollapsed = !isSearchFormCollapsed)}
+      role="button"
+      tabindex="0"
+      aria-label="検索フォームの表示切替"
+    >
+      <h3 class="text-base font-semibold text-gray-700 dark:text-gray-300">
+        <i class="fas fa-search mr-2"></i>
+        検索・フィルター
+      </h3>
+      <button 
+        class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+        aria-label={isSearchFormCollapsed ? '検索フォームを展開' : '検索フォームを折りたたむ'}
+        tabindex="-1"
+      >
+        <i class="fas fa-chevron-{isSearchFormCollapsed ? 'down' : 'up'}"></i>
+      </button>
+    </div>
+    
+    <!-- フォーム本体（折りたたみ可能） -->
+    {#if !isSearchFormCollapsed}
+    <div class="p-4 pt-0">
+      <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
       <!-- テキスト検索 -->
       <div class="lg:col-span-2">
         <label for="filterText" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1010,7 +1084,12 @@
         {/if}
       </div>
     {/if}
+    </div>
+    {/if}
   </div>
+
+  <!-- タスクキュー -->
+  <TaskQueue bind:this={taskQueue} />
 
   <!-- アクションバー -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
@@ -1059,23 +1138,22 @@
         </button>
       </div>
       
-      <div class="text-sm text-gray-600 dark:text-gray-400">
-        {selectedIds.size > 0 ? `${selectedIds.size}件選択中` : `${totalCount}件の小説`}
-      </div>
+      {#if selectedIds.size > 0}
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+          {selectedIds.size}件選択中
+        </div>
+      {/if}
     </div>
   </div>
-
-  <!-- タスクキュー -->
-  <TaskQueue bind:this={taskQueue} />
 
   <!-- テーブルコントロール -->
   <div class="flex justify-end items-center gap-3 mb-3 lg:mx-12">
     <button
       onclick={selectAll}
       class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-      title="全ての小説を選択"
+      title="全ての小説を選択/解除"
     >
-      <i class="fas fa-check-square"></i> 全て選択
+      <i class="fas fa-check-square"></i> 全て選択/解除
     </button>
     <button
       onclick={() => showColumnSettings = !showColumnSettings}
@@ -1271,7 +1349,7 @@
       <p>小説が登録されていません</p>
     </div>
   {:else}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto overflow-y-hidden">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -1303,15 +1381,31 @@
               {/if}
               {#if columnVisibility.newest_article_date}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                <div class="flex flex-col">
-                  <span>最新話</span>
-                  <span>掲載日</span>
-                </div>
+                <button
+                  onclick={() => handleSort('newest_article_date')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  <div class="flex flex-col">
+                    <span>最新話</span>
+                    <span>掲載日</span>
+                  </div>
+                  {#if sortBy === 'newest_article_date'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
               {#if columnVisibility.last_update}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                更新チェック日
+                <button
+                  onclick={() => handleSort('last_update')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  更新チェック日
+                  {#if sortBy === 'last_update'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
@@ -1375,20 +1469,44 @@
               {/if}
               {#if columnVisibility.episode_count}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                話数
+                <button
+                  onclick={() => handleSort('episode_count')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  話数
+                  {#if sortBy === 'episode_count'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
               {#if columnVisibility.total_chars}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                文字数
+                <button
+                  onclick={() => handleSort('total_chars')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  文字数
+                  {#if sortBy === 'total_chars'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
               {#if columnVisibility.avg_chars_per_episode}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                平均文字数
+                <button
+                  onclick={() => handleSort('avg_chars_per_episode')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  平均文字数
+                  {#if sortBy === 'avg_chars_per_episode'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
-              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap w-40">
                 アクション
               </th>
             </tr>
@@ -1396,7 +1514,7 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {#each novels as novel (novel.id)}
               <tr 
-                class="transition-colors cursor-pointer {selectedIds.has(novel.id) ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                class="transition-colors cursor-pointer {selectedIds.has(novel.id) ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-100 dark:hover:bg-gray-600'}"
                 onclick={(e) => {
                   // リンクやボタンのクリックは除外
                   if (e.target instanceof HTMLElement && 
@@ -1411,33 +1529,18 @@
                 <td class="px-4 py-3 text-sm">{novel.id}</td>
                 {/if}
                 {#if columnVisibility.updated_at}
-                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {#if novel.last_update}
-                    <div class="flex flex-col">
-                      <span>{new Date(Number(novel.last_update) * 1000).toLocaleDateString('ja-JP')}</span>
-                      <span class="text-xs text-gray-500 dark:text-gray-500">{new Date(Number(novel.last_update) * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  {:else}
-                    <span class="text-gray-400 dark:text-gray-600">-</span>
-                  {/if}
+                <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                  {formatDateTime(novel.last_update)}
                 </td>
                 {/if}
                 {#if columnVisibility.newest_article_date}
-                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {#if novel.general_lastup}
-                    {new Date(Number(novel.general_lastup) * 1000).toLocaleDateString('ja-JP')}
-                  {:else}
-                    <span class="text-gray-400 dark:text-gray-600">-</span>
-                  {/if}
+                <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                  {formatDateTime(novel.general_lastup)}
                 </td>
                 {/if}
                 {#if columnVisibility.last_update}
-                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {#if novel.last_update}
-                    {new Date(Number(novel.last_update) * 1000).toLocaleDateString('ja-JP')}
-                  {:else}
-                    <span class="text-gray-400 dark:text-gray-600">-</span>
-                  {/if}
+                <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                  {formatDateTime(novel.last_update)}
                 </td>
                 {/if}
                 <td class="px-4 py-3 text-sm font-medium max-w-md">
@@ -1511,16 +1614,16 @@
                 {/if}
                 {#if columnVisibility.total_chars}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {novel.length ? novel.length.toLocaleString() : '-'}
+                  {formatCharCount(novel.length)}
                 </td>
                 {/if}
                 {#if columnVisibility.avg_chars_per_episode}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {novel.general_all_no && novel.length ? Math.floor(novel.length / novel.general_all_no).toLocaleString() : '-'}
+                  {novel.general_all_no && novel.length ? formatCharCount(Math.floor(novel.length / novel.general_all_no)) : '-'}
                 </td>
                 {/if}
-                <td class="px-4 py-3 text-sm" onclick={(e) => e.stopPropagation()}>
-                  <div class="flex items-center justify-center gap-2">
+                <td class="px-4 py-3 text-sm w-32 sm:w-20" onclick={(e) => e.stopPropagation()}>
+                  <div class="flex items-center justify-center gap-2 flex-wrap sm:flex-wrap">
                     {#if processingNovelIds.has(novel.id)}
                       <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                     {:else}
@@ -1601,7 +1704,11 @@
           <!-- 表示情報と件数選択 -->
           <div class="flex items-center gap-4">
             <div class="text-sm text-gray-700 dark:text-gray-300">
-              全 {totalCount} 件中 {currentPage * pageSize + 1} - {Math.min((currentPage + 1) * pageSize, totalCount)} 件を表示
+              {#if totalCount > 0}
+                全 {totalCount} 件中 {currentPage * pageSize + 1} - {Math.min((currentPage + 1) * pageSize, totalCount)} 件を表示
+              {:else}
+                0 件
+              {/if}
             </div>
             <div class="flex items-center gap-2">
               <label for="pageSize" class="text-sm text-gray-700 dark:text-gray-300">表示件数:</label>

@@ -13,7 +13,7 @@ require_relative "../lib/narou_logger"
 AUTHOR = "whiteleaf"
 $debug = File.exist?(File.expand_path(File.join(File.dirname(__FILE__), "../debug")))
 
-describe "convert" do
+describe "convert", :show_output do
   before :all do
     test_text_dir = File.join(File.dirname(__FILE__), "data/convert_test")
     @pwd = Dir.pwd

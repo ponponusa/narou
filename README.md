@@ -33,7 +33,7 @@
 主な機能は小説家になろうの小説のダウンロード、更新管理、テキスト整形、AozoraEpub3・kindlegen連携によるEPUB/MOBI出力です。  
 その他にも変換したデータを直接電子書籍端末へ送信する機能は、メールで送信する機能などもあります。
 
-~~詳細な説明やインストール方法は **[Narou.rb_MOD説明書](https://github.com/ponponusa/narou/wiki)** を御覧ください。~~（準備中）
+~~詳細な説明やインストール方法は **[Narou.rb_MOD説明書](https://github.com/ponponusa/narou-mod/wiki)** を御覧ください。~~（準備中）
 
 ## オリジナルプロジェクトからの変更点 - Changes from Original Project
 
@@ -71,9 +71,9 @@
 
 ## 更新履歴 - ChangeLog
 
-![GitHub Release](https://img.shields.io/github/v/release/ponponusa/narou)
+![GitHub Release](https://img.shields.io/github/v/release/ponponusa/narou-mod)
 
-[->リリースページへ](https://github.com/ponponusa/narou/releases)
+[->リリースページへ](https://github.com/ponponusa/narou-mod/releases)
 
 ## TODO
 
@@ -115,10 +115,55 @@ npm run dev
 
 詳細は [frontend/README.md](frontend/README.md) を参照してください。
 
+## API開発 - API Development
+
+このプロジェクトは REST API (API v2) を提供しており、Swagger UI で仕様を確認できます。
+
+### API ドキュメント
+
+- **Swagger UI**: <http://localhost:5678/api/docs>
+- **OpenAPI仕様書**: <http://localhost:5678/api/openapi.yaml>
+- **移行ガイド**: [docs/api_migration_guide.md](docs/api_migration_guide.md)
+
+### API v2 エンドポイント
+
+サーバーを起動後、以下のURLにアクセスしてください：
+
+```bash
+# サーバー起動
+narou-mod web --boot
+
+# Swagger UIを開く（ブラウザで）
+http://localhost:5678/api/docs
+```
+
+Swagger UIでは以下が可能です：
+
+- 全エンドポイントの仕様確認
+- リクエスト/レスポンスの例
+- インタラクティブなAPI呼び出し（Try it out機能）
+- スキーマ定義の参照
+
+### API v2 vs Legacy API
+
+- **新規開発**: API v2 (`/api/v2/*`) の使用を推奨
+- **既存コード**: Legacy API v1 (`/api/*`) は互換性のために維持
+- **移行**: [移行ガイド](docs/api_migration_guide.md) を参照
+
+詳細は [docs/web_api_endpoints.md](docs/web_api_endpoints.md) を参照してください。
+
 ----
 
 ## License
 
+- **Maintainer:** [ponponusa](https://github.com/ponponusa)
+- **Copyrights:**
+  - Original Project: Copyright (c) 2013-2024 whiteleaf7
+  - Forked Project: Copyright (c) 2025 Rumia-Channel
+  - This MOD Project: Copyright (c) 2025 ponponusa
+- **License:** This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) file for details.
+
+----
+
 - 「小説家になろう」は株式会社ヒナプロジェクトの登録商標です。
-- 本ソフトウェアを利用（入手、インストール、実行等）した時点で、[利用規約・免責事項](https://github.com/ponponusa/narou/blob/develop/TERMS_AND_DISCLAIMER.md)に同意したものとみなします。ご利用の前に必ず内容をご確認ください。
-- This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- 本ソフトウェアを利用（入手、インストール、実行等）した時点で、[利用規約・免責事項](https://github.com/ponponusa/narou-mod/blob/develop/TERMS_AND_DISCLAIMER.md)に同意したものとみなします。ご利用の前に必ず内容をご確認ください。

@@ -36,22 +36,22 @@ module Command
       
       # 停止処理
       if File.exist?(pid_file)
-        puts "WEBサーバーを停止しています..."
+        $stdout.puts "WEBサーバーを停止しています..."
         stop_cmd = Stop.new
         stop_argv = @options["force"] ? ["--force"] : []
         stop_cmd.execute(stop_argv)
         
         sleep 2  # サーバーが完全に停止するまで待つ
       else
-        puts "WEBサーバーは起動していません。起動します..."
+        $stdout.puts "WEBサーバーは起動していません。起動します..."
       end
       
       # 起動処理
-      puts "WEBサーバーを起動しています..."
+      $stdout.puts "WEBサーバーを起動しています..."
       web_cmd = Web.new
       web_cmd.execute(["--boot", "--daemon", "--no-browser"])
       
-      puts "WEBサーバーの再起動が完了しました"
+      $stdout.puts "WEBサーバーの再起動が完了しました"
     end
   end
 end

@@ -4,7 +4,7 @@
 # Copyright 2025 ponponusa. All rights reserved.
 #
 
-require_relative 'api_v2'
+require_relative 'base'
 
 module Narou
   module ApiV2
@@ -20,8 +20,8 @@ module Narou
             set_cors_headers
             
             begin
-              require_relative '../command/setting'
-              require_relative '../inventory'
+              require_relative '../../../command/setting'
+              require_relative '../../../inventory'
               
               settings = {
                 local: Inventory.load("local_setting", :local),
@@ -61,7 +61,7 @@ module Narou
             set_cors_headers
             
             begin
-              require_relative '../command/setting'
+              require_relative '../../../command/setting'
               
               setting_variables = Command::Setting.get_setting_variables
               tab_names = Command::Setting.get_setting_tab_names
@@ -92,9 +92,9 @@ module Narou
             end
             
             begin
-              require_relative '../command/setting'
-              require_relative '../inventory'
-              require_relative '../narou_logger'
+              require_relative '../../../command/setting'
+              require_relative '../../../inventory'
+              require_relative '../../../narou_logger'
               
               # 設定コマンドのインスタンスを作成
               setting_cmd = Command::Setting.new
@@ -169,9 +169,9 @@ module Narou
             end
             
             begin
-              require_relative '../command/setting'
-              require_relative '../inventory'
-              require_relative '../narou_logger'
+              require_relative '../../../command/setting'
+              require_relative '../../../inventory'
+              require_relative '../../../narou_logger'
               
               setting_cmd = Command::Setting.new
               error_list = {}

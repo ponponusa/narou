@@ -65,8 +65,8 @@ module Command
         boot
       else
         super
-        puts "サーバを起動するには --boot オプションを指定してください"
-        puts "Example: narou-mod web --boot"
+        $stdout.puts "サーバを起動するには --boot オプションを指定してください"
+        $stdout.puts "Example: narou-mod web --boot"
       end
     end
 
@@ -269,21 +269,21 @@ module Command
 
     def display_startup_message
       port = @options["port"] || 5678
-      puts ""
-      puts "✅ サーバーが起動しました！"
-      puts ""
+      $stdout.puts ""
+      $stdout.puts "✅ サーバーが起動しました！"
+      $stdout.puts ""
       
       if should_start_frontend?
-        puts "  バックエンドAPI: http://#{host}:#{port}"
-        puts "  Web UI:          http://#{host}:4321"
-        puts ""
-        puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+        $stdout.puts "  バックエンドAPI: http://#{host}:#{port}"
+        $stdout.puts "  Web UI:          http://#{host}:4321"
+        $stdout.puts ""
+        $stdout.puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
       else
-        puts "  Web UI: http://#{host}:#{port}"
-        puts ""
-        puts "  ※ ブラウザで上記URLにアクセスしてください"
+        $stdout.puts "  Web UI: http://#{host}:#{port}"
+        $stdout.puts ""
+        $stdout.puts "  ※ ブラウザで上記URLにアクセスしてください"
       end
-      puts ""
+      $stdout.puts ""
     end
 
     def daemonize
@@ -298,26 +298,26 @@ module Command
         FileUtils.mkdir_p(pid_dir) unless File.exist?(pid_dir)
         File.write(pid_file, pid.to_s)
         
-        puts ""
-        puts "✅ サーバーが起動しました！"
-        puts ""
+        $stdout.puts ""
+        $stdout.puts "✅ サーバーが起動しました！"
+        $stdout.puts ""
         port = @options["port"] || 5678
-        puts "  PID:             #{pid}"
+        $stdout.puts "  PID:             #{pid}"
         
         if should_start_frontend?
-          puts "  バックエンドAPI: http://#{host}:#{port}"
-          puts "  Web UI:          http://#{host}:4321"
-          puts ""
-          puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+          $stdout.puts "  バックエンドAPI: http://#{host}:#{port}"
+          $stdout.puts "  Web UI:          http://#{host}:4321"
+          $stdout.puts ""
+          $stdout.puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
         else
-          puts "  Web UI:          http://#{host}:#{port}"
-          puts ""
-          puts "  ※ ブラウザで上記URLにアクセスしてください"
+          $stdout.puts "  Web UI:          http://#{host}:#{port}"
+          $stdout.puts ""
+          $stdout.puts "  ※ ブラウザで上記URLにアクセスしてください"
         end
-        puts ""
-        puts "サーバーを停止するには: narou-mod stop"
-        puts "サーバーの状態を確認:   narou-mod process"
-        puts ""
+        $stdout.puts ""
+        $stdout.puts "サーバーを停止するには: narou-mod stop"
+        $stdout.puts "サーバーの状態を確認:   narou-mod process"
+        $stdout.puts ""
         $stdout.flush
         $stderr.flush
         exit 0
@@ -344,11 +344,11 @@ module Command
         STDERR.reopen(STDOUT)
         STDERR.sync = true
         
-        puts "=========================================="
-        puts "WEBサーバーが起動しました"
-        puts "PID: #{::Process.pid}"
-        puts "Time: #{Time.now}"
-        puts "=========================================="
+        $stdout.puts "=========================================="
+        $stdout.puts "WEBサーバーが起動しました"
+        $stdout.puts "PID: #{::Process.pid}"
+        $stdout.puts "Time: #{Time.now}"
+        $stdout.puts "=========================================="
         
         # 処理を継続（このメソッドから戻る）
       end

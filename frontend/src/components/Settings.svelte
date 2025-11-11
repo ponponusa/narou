@@ -40,7 +40,7 @@
     
     // local と global 両方のvariablesからタブを収集
     ['local', 'global'].forEach(scope => {
-      const variables = variablesData.variables[scope as 'local' | 'global'];
+      const variables = variablesData?.variables[scope as 'local' | 'global'];
       if (variables) {
         Object.values(variables).forEach(variable => {
           // invisibleチェックを削除 - すべてのタブを表示
@@ -73,7 +73,7 @@
     
     // localとglobal両方のスコープから、現在のタブに該当する設定を収集
     (['local', 'global'] as const).forEach(scope => {
-      const variables = variablesData.variables[scope];
+      const variables = variablesData?.variables[scope];
       if (!variables) return;
       
       Object.entries(variables).forEach(([key, variable]) => {
@@ -119,7 +119,7 @@
       console.log('Tab names:', variables.tab_names);
       
       // タブの集計をデバッグ（invisibleも含める）
-      const tabDebug = { local: {}, global: {} };
+      const tabDebug: { local: Record<string, number>, global: Record<string, number> } = { local: {}, global: {} };
       Object.entries(variables.variables.local).forEach(([key, variable]) => {
         if (variable.tab) {
           tabDebug.local[variable.tab] = (tabDebug.local[variable.tab] || 0) + 1;
@@ -170,8 +170,10 @@
     
     // local と global 両方の設定を初期化
     ['local', 'global'].forEach(scope => {
-      const variables = variablesData.variables[scope as 'local' | 'global'];
-      const scopeSettings = settingsData[scope as 'local' | 'global'];
+      const variables = variablesData?.variables[scope as 'local' | 'global'];
+      const scopeSettings = settingsData?.[scope as 'local' | 'global'];
+      
+      if (!variables || !scopeSettings) return;
       
       Object.keys(variables).forEach((key) => {
         // 設定値があればそれを使用、なければnull
@@ -201,7 +203,9 @@
     
     // local と global 両方をチェック
     hasChanges = ['local', 'global'].some(scope => {
-      const scopeSettings = settingsData[scope as 'local' | 'global'];
+      const scopeSettings = settingsData?.[scope as 'local' | 'global'];
+      if (!scopeSettings) return false;
+      
       return Object.keys(editedValues[scope as 'local' | 'global']).some(key => {
         const originalValue = scopeSettings[key]?.value ?? null;
         return editedValues[scope as 'local' | 'global'][key] !== originalValue;
@@ -224,7 +228,8 @@
       const changedSettings: Record<string, string | boolean | number | null> = {};
       
       ['local', 'global'].forEach(scope => {
-        const scopeSettings = settingsData[scope as 'local' | 'global'];
+        const scopeSettings = settingsData?.[scope as 'local' | 'global'];
+        if (!scopeSettings) return;
         
         Object.entries(editedValues[scope as 'local' | 'global']).forEach(([key, value]) => {
           const originalValue = scopeSettings[key]?.value ?? null;

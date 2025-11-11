@@ -1,4 +1,7 @@
-# Web UI REST API Endpoints
+# Web UI REST API Endpoints (Legacy API v1)
+
+> **注意**: このドキュメントは Legacy API (v1) の一覧です。  
+> 新規開発では [API v2](./api_migration_guide.md) の使用を推奨します。
 
 Narou.rb MOD の Web インターフェイスが利用する REST 形式の API 一覧です。  
 各エンドポイントの用途と、内部で呼び出される主なコマンド／モジュール依存関係を整理しています。
@@ -8,6 +11,13 @@ Narou.rb MOD の Web インターフェイスが利用する REST 形式の API 
 > - ここに記載のコマンドは `Narou.web` 起動時に `Command.require_all` により事前ロードされます。  
 > - `CommandLine.run!` は Narou CLI と同一のサブコマンド実装を呼び出します。  
 > - 末尾が `*` の項目は非同期 (`Narou::WebWorker`) で実行され、完了後 PushServer 経由でイベントが配信されます。
+
+## 関連ドキュメント
+
+- [API Migration Guide](./api_migration_guide.md) - Legacy API v1 から API v2 への移行ガイド
+- [OpenAPI Specification](./openapi.yaml) - API v2 の OpenAPI 仕様書
+
+## エンドポイント一覧
 
 | Method | Path | 概要 | 主な依存 (Command / モジュール) |
 | --- | --- | --- | --- |

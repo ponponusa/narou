@@ -61,14 +61,14 @@
   let splitView = $state(true); // 左右分割表示
   let splitRatio = $state(60); // 左ペインの幅（%）
   let isResizing = $state(false); // リサイズ中かどうか
-  let logContainer: HTMLDivElement | undefined;
-  let leftPaneContainer: HTMLDivElement | undefined;
-  let rightPaneContainer: HTMLDivElement | undefined;
+  let logContainer = $state<HTMLDivElement | undefined>();
+  let leftPaneContainer = $state<HTMLDivElement | undefined>();
+  let rightPaneContainer = $state<HTMLDivElement | undefined>();
   let nextId = 0;
   let unsubscribe: (() => void) | null = null;
   let isConnected = $state(false);
   let lastUpdateTime = 0;
-  let pendingLogs: Array<{console: 'stdout' | 'stdout2', message: string}> = [];
+  let pendingLogs: Array<{console: 'stdout' | 'stdout2' | 'convert', message: string}> = [];
   
   // プログレスバーの状態
   let currentProgressBar: {
@@ -180,7 +180,7 @@
   /**
    * ログを処理して追加
    */
-  function processLog(consoleType: 'stdout' | 'stdout2', message: string) {
+  function processLog(consoleType: 'stdout' | 'stdout2' | 'convert', message: string) {
     let cleanMessage = message.replace(/\n$/, ''); // 末尾の改行を削除
     
     // ANSI escape sequence（プログレスバーのclear()）を無視
@@ -763,6 +763,7 @@
     <!-- ログ表示エリア -->
     {#if splitView}
       <!-- 左右分割表示 -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div 
         class="console-split-view flex h-64 relative" 
         role="group"
@@ -821,6 +822,8 @@
         </div>
 
         <!-- リサイザー -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <div 
           class="w-1 bg-gray-700 hover:bg-blue-500 cursor-col-resize transition-colors absolute top-0 bottom-0 {isResizing ? 'bg-blue-500' : ''}" 
           style="left: {splitRatio}%"

@@ -51,28 +51,28 @@ module Command
 
     def stop_process(pid_file)
       unless File.exist?(pid_file)
-        puts "WEBサーバーは起動していません"
+        $stdout.puts "WEBサーバーは起動していません"
         return
       end
 
       pid = File.read(pid_file).to_i
       begin
         ::Process.kill("TERM", pid)
-        puts "WEBサーバーを停止しました (PID: #{pid})"
+        $stdout.puts "WEBサーバーを停止しました (PID: #{pid})"
         File.delete(pid_file) if File.exist?(pid_file)
       rescue Errno::ESRCH
-        puts "PID #{pid} のプロセスが見つかりません"
+        $stdout.puts "PID #{pid} のプロセスが見つかりません"
         File.delete(pid_file) if File.exist?(pid_file)
       rescue Errno::EPERM
-        puts "PID #{pid} のプロセスを停止する権限がありません"
+        $stdout.puts "PID #{pid} のプロセスを停止する権限がありません"
       end
     end
 
     def show_pid(pid_file)
       if File.exist?(pid_file)
-        puts File.read(pid_file).strip
+        $stdout.puts File.read(pid_file).strip
       else
-        puts "WEBサーバーは起動していません"
+        $stdout.puts "WEBサーバーは起動していません"
         exit 1
       end
     end
@@ -108,28 +108,28 @@ module Command
       
       # 状態を表示
       if backend_running
-        puts "バックエンドサーバー: 実行中 (PID: #{backend_pid})"
+        $stdout.puts "バックエンドサーバー: 実行中 (PID: #{backend_pid})"
         
         # ポート情報を表示
         setting = Inventory.load("server_setting", :global)
         if setting["server-port"]
-          puts "  ポート: #{setting["server-port"]}"
-          puts "  URL: http://localhost:#{setting["server-port"]}/"
+          $stdout.puts "  ポート: #{setting["server-port"]}"
+          $stdout.puts "  URL: http://localhost:#{setting["server-port"]}/"
         end
       else
-        puts "バックエンドサーバー: 停止中"
+        $stdout.puts "バックエンドサーバー: 停止中"
       end
       
       if frontend_running
-        puts "フロントエンドサーバー: 実行中 (PID: #{frontend_pid})"
-        puts "  URL: http://localhost:4321/"
+        $stdout.puts "フロントエンドサーバー: 実行中 (PID: #{frontend_pid})"
+        $stdout.puts "  URL: http://localhost:4321/"
       else
-        puts "フロントエンドサーバー: 停止中"
+        $stdout.puts "フロントエンドサーバー: 停止中"
       end
       
       if !backend_running && !frontend_running
-        puts ""
-        puts "両サーバーが停止しています"
+        $stdout.puts ""
+        $stdout.puts "両サーバーが停止しています"
       end
     end
 

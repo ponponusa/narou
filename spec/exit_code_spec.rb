@@ -15,7 +15,7 @@ require "narou_logger"
 require "database"
 require "downloader"
 
-describe "exit code" do
+describe "exit code", :show_output do
   before(:all) do
     # Databaseのスナップショットを保存
     @original_db_data = Database.instance.get_object.dup

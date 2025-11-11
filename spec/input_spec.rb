@@ -6,7 +6,7 @@
 require "input"
 require "narou_logger"
 
-describe Narou::Input do
+describe Narou::Input, :show_output do
   before :all do
     $stdout.silent = true
     @original_stdin = $stdin
