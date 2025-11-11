@@ -78,24 +78,58 @@ module Command
     end
 
     def show_status(pid_file)
-      unless File.exist?(pid_file)
-        puts "WEBサーバー: 停止中"
-        return
+      backend_pid_file = pid_file
+      frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+      
+      backend_running = false
+      frontend_running = false
+      backend_pid = nil
+      frontend_pid = nil
+      
+      # バックエンドの状態確認
+      if File.exist?(backend_pid_file)
+        backend_pid = File.read(backend_pid_file).to_i
+        if process_running?(backend_pid)
+          backend_running = true
+        else
+          File.delete(backend_pid_file)
+        end
       end
-
-      pid = File.read(pid_file).to_i
-      if process_running?(pid)
-        puts "WEBサーバー: 実行中 (PID: #{pid})"
+      
+      # フロントエンドの状態確認
+      if File.exist?(frontend_pid_file)
+        frontend_pid = File.read(frontend_pid_file).to_i
+        if process_running?(frontend_pid)
+          frontend_running = true
+        else
+          File.delete(frontend_pid_file)
+        end
+      end
+      
+      # 状態を表示
+      if backend_running
+        puts "バックエンドサーバー: 実行中 (PID: #{backend_pid})"
         
         # ポート情報を表示
         setting = Inventory.load("server_setting", :global)
         if setting["server-port"]
-          puts "ポート: #{setting["server-port"]}"
-          puts "URL: http://localhost:#{setting["server-port"]}/"
+          puts "  ポート: #{setting["server-port"]}"
+          puts "  URL: http://localhost:#{setting["server-port"]}/"
         end
       else
-        puts "WEBサーバー: 停止中（古いPIDファイルが残っています）"
-        File.delete(pid_file)
+        puts "バックエンドサーバー: 停止中"
+      end
+      
+      if frontend_running
+        puts "フロントエンドサーバー: 実行中 (PID: #{frontend_pid})"
+        puts "  URL: http://localhost:4321/"
+      else
+        puts "フロントエンドサーバー: 停止中"
+      end
+      
+      if !backend_running && !frontend_running
+        puts ""
+        puts "両サーバーが停止しています"
       end
     end
 

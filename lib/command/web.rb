@@ -97,18 +97,85 @@ module Command
       # デーモンモードフラグ
       daemon_mode = @options.fetch("daemon", true)
       
+      # フロントエンド設定を更新（デーモン化の前に実行）
+      port = @options["port"] || 5678
+      update_frontend_env(port) if should_start_frontend?
+      
       if daemon_mode
         puts "WEBサーバーをバックグラウンドで起動しています..."
         puts "ログ: tmp/logs/narou-web.log"
+        
         daemonize
         # daemonize内で親プロセスはexit、子プロセスだけがここに到達する
+        
+        # フロントエンドを起動（子プロセスで、ログファイルに出力）
+        start_frontend if should_start_frontend?
       else
         # フォアグラウンドモードの場合、起動メッセージを表示
         display_startup_message
+        
+        # フロントエンドを起動
+        start_frontend if should_start_frontend?
       end
 
-      # サーバーを起動（子プロセスまたはフォアグラウンドモード）
+      # バックエンドサーバーを起動（子プロセスまたはフォアグラウンドモード）
       start_server
+    end
+
+    def should_start_frontend?
+      # テスト環境ではフロントエンドを起動しない
+      return false if ENV["NAROU_ENV"] == "test"
+      
+      # 開発環境（frontend/ディレクトリが存在）かつデーモンモードの場合のみ
+      frontend_dir = File.join(Narou.root_dir, "frontend")
+      File.directory?(frontend_dir) && File.exist?(File.join(frontend_dir, "package.json"))
+    end
+
+    def start_frontend
+      frontend_dir = File.join(Narou.root_dir, "frontend")
+      frontend_log = File.join(Narou.root_dir, "tmp", "logs", "narou-frontend.log")
+      frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+      
+      # 既にフロントエンドサーバーが起動しているかチェック
+      if File.exist?(frontend_pid_file)
+        existing_pid = File.read(frontend_pid_file).to_i
+        if process_running?(existing_pid)
+          puts "フロントエンドサーバーは既に起動しています (PID: #{existing_pid})"
+          return
+        else
+          File.delete(frontend_pid_file)
+        end
+      end
+      
+      puts "フロントエンドサーバーを起動しています..."
+      
+      # フロントエンドサーバーをバックグラウンドで起動
+      pid = fork do
+        Dir.chdir(frontend_dir)
+        
+        # 標準入力・出力・エラーをリダイレクト
+        log_dir = File.dirname(frontend_log)
+        FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
+        
+        STDIN.reopen("/dev/null")
+        STDOUT.reopen(frontend_log, "a")
+        STDERR.reopen(STDOUT)
+        STDOUT.sync = true
+        STDERR.sync = true
+        
+        # npm run dev を実行
+        exec("npm", "run", "dev")
+      end
+      
+      # PIDファイルに書き込み
+      pid_dir = File.dirname(frontend_pid_file)
+      FileUtils.mkdir_p(pid_dir) unless File.exist?(pid_dir)
+      File.write(frontend_pid_file, pid.to_s)
+      
+      # プロセスをデタッチ（親プロセスが終了してもフロントエンドは継続）
+      Process.detach(pid)
+      
+      puts "フロントエンドサーバーを起動しました (PID: #{pid})"
     end
 
     def start_server
@@ -125,6 +192,43 @@ module Command
       Narou::AppServer.set(:bind, host)
       Narou::AppServer.set(:port, port)
       Narou::AppServer.run!
+    end
+
+    def update_frontend_env(port)
+      frontend_dir = File.join(Narou.root_dir, "frontend")
+      env_file = File.join(frontend_dir, ".env")
+      
+      ws_port = port + 1
+      
+      # .envファイルを読み込むか、なければテンプレートを使用
+      env_content = if File.exist?(env_file)
+                      File.read(env_file)
+                    else
+                      <<~ENV
+                        # バックエンドAPIサーバーのURL
+                        # 開発時はViteのプロキシを使用するため空文字列
+                        PUBLIC_API_BASE_URL=
+                        
+                        # PushServer WebSocketポート（HTTPサーバーポート + 1）
+                        PUBLIC_PUSH_SERVER_PORT=5679
+                        
+                        # 開発モード設定
+                        PUBLIC_DEV_MODE=true
+                      ENV
+                    end
+      
+      # PUBLIC_PUSH_SERVER_PORTを更新
+      env_content.gsub!(/^PUBLIC_PUSH_SERVER_PORT=.*$/, "PUBLIC_PUSH_SERVER_PORT=#{ws_port}")
+      
+      File.write(env_file, env_content)
+      
+      # astro.config.mjsのプロキシ設定も更新
+      config_file = File.join(frontend_dir, "astro.config.mjs")
+      if File.exist?(config_file)
+        config_content = File.read(config_file)
+        config_content.gsub!(/target:\s*['"]http:\/\/localhost:\d+['"]/, "target: 'http://localhost:#{port}'")
+        File.write(config_file, config_content)
+      end
     end
 
     def display_startup_message

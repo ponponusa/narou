@@ -29,11 +29,21 @@ module Command
     def execute(argv)
       super
       
+      backend_stopped = stop_backend
+      frontend_stopped = stop_frontend
+      
+      if !backend_stopped && !frontend_stopped
+        puts "サーバーは起動していません"
+      end
+    end
+
+    private
+
+    def stop_backend
       pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-web.pid")
       
       unless File.exist?(pid_file)
-        puts "WEBサーバーは起動していません"
-        return
+        return false
       end
 
       pid = File.read(pid_file).to_i
@@ -42,11 +52,39 @@ module Command
       begin
         ::Process.kill(signal, pid)
         signal_name = @options["force"] ? "強制停止" : "停止"
-        puts "WEBサーバーを#{signal_name}しました (PID: #{pid})"
+        puts "バックエンドサーバーを#{signal_name}しました (PID: #{pid})"
         File.delete(pid_file) if File.exist?(pid_file)
+        true
       rescue Errno::ESRCH
         puts "PID #{pid} のプロセスが見つかりません"
         File.delete(pid_file) if File.exist?(pid_file)
+        false
+      rescue Errno::EPERM
+        puts "PID #{pid} のプロセスを停止する権限がありません"
+        exit 1
+      end
+    end
+
+    def stop_frontend
+      pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+      
+      unless File.exist?(pid_file)
+        return false
+      end
+
+      pid = File.read(pid_file).to_i
+      signal = @options["force"] ? "KILL" : "TERM"
+      
+      begin
+        ::Process.kill(signal, pid)
+        signal_name = @options["force"] ? "強制停止" : "停止"
+        puts "フロントエンドサーバーを#{signal_name}しました (PID: #{pid})"
+        File.delete(pid_file) if File.exist?(pid_file)
+        true
+      rescue Errno::ESRCH
+        puts "PID #{pid} のプロセスが見つかりません"
+        File.delete(pid_file) if File.exist?(pid_file)
+        false
       rescue Errno::EPERM
         puts "PID #{pid} のプロセスを停止する権限がありません"
         exit 1
