@@ -136,6 +136,11 @@ RSpec.configure do |config|
           get_object[id]
         end
       end
+
+      # save_database メソッド（テスト用の空実装）
+      db.define_singleton_method(:save_database) do
+        # テスト環境では実際の保存は不要
+      end
     end
 
     # ---- 凍結ルール：3件(22,29,404) を true ----
