@@ -102,6 +102,9 @@ module Command
         puts "ログ: tmp/logs/narou-web.log"
         daemonize
         # daemonize内で親プロセスはexit、子プロセスだけがここに到達する
+      else
+        # フォアグラウンドモードの場合、起動メッセージを表示
+        display_startup_message
       end
 
       # サーバーを起動（子プロセスまたはフォアグラウンドモード）
@@ -124,6 +127,18 @@ module Command
       Narou::AppServer.run!
     end
 
+    def display_startup_message
+      port = @options["port"] || 5678
+      puts ""
+      puts "✅ サーバーが起動しました！"
+      puts ""
+      puts "  バックエンドAPI: http://#{host}:#{port}"
+      puts "  Web UI:          http://#{host}:4321"
+      puts ""
+      puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+      puts ""
+    end
+
     def daemonize
       # デーモン化
       pid = fork
@@ -136,7 +151,19 @@ module Command
         FileUtils.mkdir_p(pid_dir) unless File.exist?(pid_dir)
         File.write(pid_file, pid.to_s)
         
-        puts "WEBサーバーをバックグラウンドで起動しました (PID: #{pid})"
+        puts ""
+        puts "✅ サーバーが起動しました！"
+        puts ""
+        port = @options["port"] || 5678
+        puts "  PID:             #{pid}"
+        puts "  バックエンドAPI: http://#{host}:#{port}"
+        puts "  Web UI:          http://#{host}:4321"
+        puts ""
+        puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+        puts ""
+        puts "サーバーを停止するには: narou-mod stop"
+        puts "サーバーの状態を確認:   narou-mod process"
+        puts ""
         $stdout.flush
         $stderr.flush
         exit 0
