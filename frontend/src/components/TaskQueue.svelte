@@ -447,7 +447,7 @@
     <div class="flex items-center gap-2">
       <button
         onclick={(e) => { e.stopPropagation(); cancelAllTasks(); }}
-        class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
+        class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer mr-2"
         disabled={tasks.length === 0}
       >
         リストをクリア

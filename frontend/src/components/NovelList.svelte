@@ -1118,9 +1118,11 @@
         </button>
       </div>
       
-      <div class="text-sm text-gray-600 dark:text-gray-400">
-        {selectedIds.size > 0 ? `${selectedIds.size}件選択中` : `${totalCount}件の小説`}
-      </div>
+      {#if selectedIds.size > 0}
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+          {selectedIds.size}件選択中
+        </div>
+      {/if}
     </div>
   </div>
 
@@ -1129,9 +1131,9 @@
     <button
       onclick={selectAll}
       class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-      title="全ての小説を選択"
+      title="全ての小説を選択/解除"
     >
-      <i class="fas fa-check-square"></i> 全て選択
+      <i class="fas fa-check-square"></i> 全て選択/解除
     </button>
     <button
       onclick={() => showColumnSettings = !showColumnSettings}
