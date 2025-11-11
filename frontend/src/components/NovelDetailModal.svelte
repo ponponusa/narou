@@ -276,11 +276,19 @@
   <div
     class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto"
     onclick={(e) => e.target === e.currentTarget && closeModal()}
+    onkeydown={(e) => e.key === 'Escape' && closeModal()}
+    role="button"
+    tabindex="-1"
+    aria-label="モーダルを閉じる"
   >
     <!-- モーダルコンテンツ -->
     <div
       class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-8"
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      tabindex="0"
     >
       <!-- ヘッダー -->
       <div

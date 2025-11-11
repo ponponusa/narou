@@ -41,7 +41,7 @@
   let tagModal: TagModal;
   let conversionSettingsModal: ConversionSettingsModal;
   let novelDetailModal: NovelDetailModal;
-  let consolePanel: ConsolePanel;
+  let consolePanel = $state<ConsolePanel>();
   let taskQueue: TaskQueue;
 
   // フィルター・ソート設定
@@ -377,7 +377,7 @@
       onTagEdit: (novelId: number) => {
         const targetNovel = novels.find(n => n.id === novelId);
         if (targetNovel) {
-          tagModal.open([targetNovel.id], targetNovel.tags, loadNovels);
+          tagModal.open([targetNovel.id], targetNovel.title, loadNovels);
         }
       },
       onConversionSettings: (novelId: number, title: string) => {
