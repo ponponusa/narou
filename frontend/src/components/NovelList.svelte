@@ -51,7 +51,7 @@
   let selectedTag = $state<string>('');
   let selectedSite = $state<string>('');
   let selectedStatus = $state<string>('');
-  let sortBy = $state<'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | ''>('updated_at');
+  let sortBy = $state<'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | 'episode_count' | 'total_chars' | 'avg_chars_per_episode' | ''>('updated_at');
   let sortOrder = $state<'asc' | 'desc'>('desc');
   let availableSites = $state<string[]>([]);
 
@@ -646,7 +646,7 @@
     loadNovels();
   }
   
-  function handleSort(column: 'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags') {
+  function handleSort(column: 'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | 'episode_count' | 'total_chars' | 'avg_chars_per_episode') {
     if (sortBy === column) {
       sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
     } else {
@@ -1433,17 +1433,41 @@
               {/if}
               {#if columnVisibility.episode_count}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                話数
+                <button
+                  onclick={() => handleSort('episode_count')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  話数
+                  {#if sortBy === 'episode_count'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
               {#if columnVisibility.total_chars}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                文字数
+                <button
+                  onclick={() => handleSort('total_chars')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  文字数
+                  {#if sortBy === 'total_chars'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
               {#if columnVisibility.avg_chars_per_episode}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                平均文字数
+                <button
+                  onclick={() => handleSort('avg_chars_per_episode')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  平均文字数
+                  {#if sortBy === 'avg_chars_per_episode'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
               <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap w-40">
