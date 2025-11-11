@@ -367,35 +367,55 @@
     
     // 小説IDを抽出
     const idMatch = message.match(/ID[:：]\s*(\d+)/i);
-    if (!idMatch) return;
     
-    const novelId = parseInt(idMatch[1]);
-    const task = tasks.find(t => t.novelId === novelId);
-    if (!task) return;
-    
-    // 処理状態を判定
-    // 1. DL開始: "ID:123　タイトル のDL開始"
-    if (/のDL開始/.test(message)) {
-      progressStore.setProgress(novelId, 'downloading', 'ダウンロード中...');
-    }
-    // 2. 変換開始: "ID:123　タイトル の変換を開始"
-    else if (/の変換を開始/.test(message)) {
-      progressStore.setProgress(novelId, 'converting', '変換中...');
-    }
-    // 3. 変換終了: "縦書用の変換が終了しました"
-    else if (/変換が終了しました|変換しました/.test(message)) {
-      progressStore.setProgress(novelId, 'completed', '完了');
-    }
-    // 4. エラーメッセージ
-    else if (/エラー|error|失敗|failed/.test(message)) {
-      progressStore.setProgress(novelId, 'error', message);
-    }
-    // 5. 章のダウンロード進捗（"第n部分"）
-    else if (/第[\d０-９]+部分/.test(message)) {
-      // 既にDL中でない場合のみ状態変更
-      if (task.status === 'idle' || task.status === 'waiting') {
+    // IDが含まれる場合の処理
+    if (idMatch) {
+      const novelId = parseInt(idMatch[1]);
+      const task = tasks.find(t => t.novelId === novelId);
+      if (!task) return;
+      
+      // 処理状態を判定
+      // 1. DL開始: "ID:123　タイトル のDL開始"
+      if (/のDL開始/.test(message)) {
         progressStore.setProgress(novelId, 'downloading', 'ダウンロード中...');
       }
+      // 2. 変換開始: "ID:123　タイトル の変換を開始"
+      else if (/の変換を開始/.test(message)) {
+        progressStore.setProgress(novelId, 'converting', '変換中...');
+      }
+      // 3. 章のダウンロード進捗（"第n部分"）
+      else if (/第[\d０-９]+部分/.test(message)) {
+        // 既にDL中でない場合のみ状態変更
+        if (task.status === 'idle' || task.status === 'waiting') {
+          progressStore.setProgress(novelId, 'downloading', 'ダウンロード中...');
+        }
+      }
+      // 4. エラーメッセージ
+      else if (/エラー|error|失敗|failed/i.test(message)) {
+        progressStore.setProgress(novelId, 'error', message);
+      }
+      return;
+    }
+    
+    // IDが含まれない場合の処理（変換完了メッセージなど）
+    // 最も新しいDL中/変換中のタスクを対象にする
+    const activeTask = tasks.find(t => 
+      t.status === 'downloading' || t.status === 'converting'
+    );
+    
+    if (!activeTask) return;
+    
+    // 変換開始メッセージ（IDなし）: "タイトル の変換を開始"
+    if (/の変換を開始/.test(message) && activeTask.status === 'downloading') {
+      progressStore.setProgress(activeTask.novelId as number, 'converting', '変換中...');
+    }
+    // 変換完了メッセージ: "縦書用の変換が終了しました" or "変換しました"
+    else if (/変換が終了しました|変換しました/.test(message) && activeTask.status === 'converting') {
+      progressStore.setProgress(activeTask.novelId as number, 'completed', '完了');
+    }
+    // エラーメッセージ
+    else if (/エラー|error|失敗|failed/i.test(message)) {
+      progressStore.setProgress(activeTask.novelId as number, 'error', message);
     }
   }
 </script>

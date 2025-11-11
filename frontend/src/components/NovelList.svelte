@@ -1449,15 +1449,6 @@
                       >
                         {(typeof novel.promo_tags_title === 'string' && novel.promo_tags_title.trim()) || novel.title}
                       </button>
-                      <a 
-                        href={novel.toc_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
-                        title="目次ページを開く"
-                      >
-                        <i class="fas fa-external-link-alt text-xs"></i>
-                      </a>
                       {#if novel.frozen}
                         <span class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded whitespace-nowrap">凍結</span>
                       {/if}
