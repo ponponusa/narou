@@ -1422,7 +1422,7 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {#each novels as novel (novel.id)}
               <tr 
-                class="transition-colors cursor-pointer {selectedIds.has(novel.id) ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}"
+                class="transition-colors cursor-pointer {selectedIds.has(novel.id) ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-100 dark:hover:bg-gray-600'}"
                 onclick={(e) => {
                   // リンクやボタンのクリックは除外
                   if (e.target instanceof HTMLElement && 
