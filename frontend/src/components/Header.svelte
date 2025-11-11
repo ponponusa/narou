@@ -86,10 +86,10 @@
         <div class="flex items-baseline gap-6 mx-4">
           <!-- PushServer状態 -->
           <div class="flex items-baseline gap-1.5">
-            <div 
-              class="w-2 h-2 rounded-full {isConnected ? 'bg-green-500' : 'bg-red-500'}"
+            <i 
+              class="fas fa-server text-xs {isConnected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}"
               title={isConnected ? 'PushServer接続中' : 'PushServer未接続'}
-            ></div>
+            ></i>
             <span class="text-xs text-gray-600 dark:text-gray-400">Push</span>
           </div>
           
