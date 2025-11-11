@@ -1329,7 +1329,7 @@
       <p>小説が登録されていません</p>
     </div>
   {:else}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -1644,7 +1644,11 @@
           <!-- 表示情報と件数選択 -->
           <div class="flex items-center gap-4">
             <div class="text-sm text-gray-700 dark:text-gray-300">
-              全 {totalCount} 件中 {currentPage * pageSize + 1} - {Math.min((currentPage + 1) * pageSize, totalCount)} 件を表示
+              {#if totalCount > 0}
+                全 {totalCount} 件中 {currentPage * pageSize + 1} - {Math.min((currentPage + 1) * pageSize, totalCount)} 件を表示
+              {:else}
+                0 件
+              {/if}
             </div>
             <div class="flex items-center gap-2">
               <label for="pageSize" class="text-sm text-gray-700 dark:text-gray-300">表示件数:</label>

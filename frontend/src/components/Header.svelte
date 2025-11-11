@@ -4,7 +4,7 @@
   ナビゲーションバーとアクションボタンを提供
 -->
 <script lang="ts">
-  import { getVersion } from '../lib/api';
+  import { getVersion, getSettings } from '../lib/api';
   import { onMount, onDestroy } from 'svelte';
   import { getPushServer } from '../lib/pushserver';
   import ThemeToggle from './ThemeToggle.svelte';
@@ -13,6 +13,7 @@
   let bootsnap = $state(false);
   let queueSize = $state(0);
   let isConnected = $state(false);
+  let hasAozoraEpub3 = $state<boolean | null>(null);
   let pushServer = getPushServer();
   let currentPath = $state('/');
 
@@ -26,6 +27,16 @@
       bootsnap = false; // TODO: APIから取得
     } catch (error) {
       console.error('バージョン情報の取得に失敗:', error);
+    }
+
+    // 設定を取得してaozoraepub3dirの状態をチェック
+    try {
+      const settings = await getSettings();
+      const aozoraepub3dir = settings.global?.aozoraepub3dir?.value || settings.local?.aozoraepub3dir?.value;
+      hasAozoraEpub3 = !!aozoraepub3dir && aozoraepub3dir !== '';
+    } catch (error) {
+      console.error('設定の取得に失敗:', error);
+      hasAozoraEpub3 = null;
     }
 
     // PushServerイベントリスナー設定
@@ -77,6 +88,15 @@
             class="w-2 h-2 rounded-full {isConnected ? 'bg-green-500' : 'bg-red-500'}"
             title={isConnected ? 'PushServer接続中' : 'PushServer未接続'}
           ></div>
+          
+          <!-- AozoraEpub3設定状態アイコン -->
+          {#if hasAozoraEpub3 !== null}
+            <i 
+              class="fas fa-retweet text-xs {hasAozoraEpub3 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}"
+              title={hasAozoraEpub3 ? '青空文庫epub3変換ツールのパスが設定されています' : '青空文庫epub3変換ツールのパスが設定されていません'}
+            ></i>
+          {/if}
+          
           {#if queueSize > 0}
             <span class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
               処理中: {queueSize}
