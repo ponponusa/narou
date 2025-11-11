@@ -70,13 +70,13 @@ RSpec.describe Command::Remove do
     end
 
     it "shows message when no short stories exist with --all-ss" do
-      command.instance_variable_set(:@options, { "all-ss" => true })
-      
-      # Kernel.exitをstub
+      # display_help!とKernel.exitをstub
+      allow(command).to receive(:display_help!)
       allow(command).to receive(:exit)
       allow(Kernel).to receive(:exit)
       
-      expect { command.execute([]) }.to output(/短編小説がひとつもありません/).to_stdout
+      # --all-ssオプションを引数として渡す
+      expect { command.execute(["--all-ss"]) }.to output(/短編小説がひとつもありません/).to_stdout
     end
 
     it "shows error for non-existent novel" do
@@ -87,7 +87,13 @@ RSpec.describe Command::Remove do
       allow(command).to receive(:exit)
       allow(Kernel).to receive(:exit)
       
-      expect { command.execute(["invalid"]) }.to output(/は存在しません/).to_stdout
+      # errorメソッドをstub（$stdout.errorが呼ばれるため）
+      allow(command).to receive(:error)
+      
+      command.execute(["invalid"])
+      
+      # errorメソッドが呼ばれたことを検証
+      expect(command).to have_received(:error).with(/は存在しません/)
     end
   end
 end
