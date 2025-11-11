@@ -51,7 +51,7 @@
   let selectedTag = $state<string>('');
   let selectedSite = $state<string>('');
   let selectedStatus = $state<string>('');
-  let sortBy = $state<'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | 'episode_count' | 'total_chars' | 'avg_chars_per_episode' | ''>('updated_at');
+  let sortBy = $state<'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | 'episode_count' | 'total_chars' | 'avg_chars_per_episode' | 'newest_article_date' | 'last_update' | ''>('updated_at');
   let sortOrder = $state<'asc' | 'desc'>('desc');
   let availableSites = $state<string[]>([]);
 
@@ -477,6 +477,26 @@
               aVal = (a.tags && a.tags.length > 0) ? a.tags[0] : '';
               bVal = (b.tags && b.tags.length > 0) ? b.tags[0] : '';
               break;
+            case 'episode_count':
+              aVal = a.general_all_no || 0;
+              bVal = b.general_all_no || 0;
+              break;
+            case 'total_chars':
+              aVal = a.length || 0;
+              bVal = b.length || 0;
+              break;
+            case 'avg_chars_per_episode':
+              aVal = (a.length && a.general_all_no) ? a.length / a.general_all_no : 0;
+              bVal = (b.length && b.general_all_no) ? b.length / b.general_all_no : 0;
+              break;
+            case 'newest_article_date':
+              aVal = a.general_lastup || 0;
+              bVal = b.general_lastup || 0;
+              break;
+            case 'last_update':
+              aVal = a.last_update || 0;
+              bVal = b.last_update || 0;
+              break;
           }
           
           if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
@@ -646,7 +666,7 @@
     loadNovels();
   }
   
-  function handleSort(column: 'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | 'episode_count' | 'total_chars' | 'avg_chars_per_episode') {
+  function handleSort(column: 'id' | 'title' | 'author' | 'sitename' | 'updated_at' | 'status' | 'tags' | 'episode_count' | 'total_chars' | 'avg_chars_per_episode' | 'newest_article_date' | 'last_update') {
     if (sortBy === column) {
       sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
     } else {
@@ -1361,15 +1381,31 @@
               {/if}
               {#if columnVisibility.newest_article_date}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                <div class="flex flex-col">
-                  <span>最新話</span>
-                  <span>掲載日</span>
-                </div>
+                <button
+                  onclick={() => handleSort('newest_article_date')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  <div class="flex flex-col">
+                    <span>最新話</span>
+                    <span>掲載日</span>
+                  </div>
+                  {#if sortBy === 'newest_article_date'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
               {#if columnVisibility.last_update}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                更新チェック日
+                <button
+                  onclick={() => handleSort('last_update')}
+                  class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
+                >
+                  更新チェック日
+                  {#if sortBy === 'last_update'}
+                    <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  {/if}
+                </button>
               </th>
               {/if}
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
