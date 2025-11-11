@@ -225,6 +225,7 @@ module Command
             $stdout2 = Narou::StreamingLogger.new($stdout2.push_server, $stdout2, target_console: "convert")
           end
           
+          require_relative "convert" unless defined?(Command::Convert)
           convert_status = Convert.execute!(convert_argv)
           
           # $stdout2を元に戻す
@@ -370,6 +371,7 @@ module Command
     def mail_hotentry
       hotentry_manager = HotentryManager.new
       return unless hotentry_manager.auto_mail?
+      require_relative "mail" unless defined?(Command::Mail)
       Mail.execute!("hotentry")
     end
 

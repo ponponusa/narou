@@ -152,7 +152,8 @@ module Command
             after_process(download_target)
           end
         else
-          convert_status = Convert.execute!(download_target) do
+          require_relative "convert" unless defined?(Command::Convert)
+          convert_status = Command::Convert.execute!(download_target) do
             after_process(download_target)
           end
           if convert_status > 0
@@ -175,12 +176,15 @@ module Command
 
     def after_process(target)
       if @options["mail"]
+        require_relative "mail" unless defined?(Command::Mail)
         Mail.execute!(target, io: $stdout2)
       end
       if @options["freeze"]
+        require_relative "freeze" unless defined?(Command::Freeze)
         Freeze.execute!(target)
       elsif @options["remove"]
         # --freeze オプションが指定された場合は --remove オプションは無視する
+        require_relative "remove" unless defined?(Command::Remove)
         Remove.execute!(target, "-y")
       end
     end
