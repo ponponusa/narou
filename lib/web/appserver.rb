@@ -190,7 +190,7 @@ class Narou::AppServer < Sinatra::Base
     return unless Device.support_eject?
     Thread.new do
       loop do
-        if @@push_server.connections.count > 0
+        if defined?(@@push_server) && @@push_server && @@push_server.connections.count > 0
           device = Narou.get_device
           @@push_server.send_all(:"device.ejectable" => device && device.ejectable?)
         end

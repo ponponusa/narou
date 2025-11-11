@@ -72,6 +72,10 @@ module Command
 
     private
 
+    def host
+      @options["host"] || "127.0.0.1"
+    end
+
     def boot
       require_relative "../narou"
       require_relative "../web/appserver"
@@ -97,40 +101,27 @@ module Command
         puts "WEBサーバーをバックグラウンドで起動しています..."
         puts "ログ: tmp/logs/narou-web.log"
         daemonize
-        # この後は子プロセスで処理が継続される
+        # daemonize内で親プロセスはexit、子プロセスだけがここに到達する
       end
 
-      # サーバーを起動
+      # サーバーを起動（子プロセスまたはフォアグラウンドモード）
       start_server
     end
 
     def start_server
-      port = @options["port"] || Inventory.load["server-port"] || 5678
+      port = @options["port"] || 5678
       
-      params = Narou::AppServer.create_address(port)
+      # PushServerの初期化（Legacy互換）
+      Narou::AppServer.push_server = Narou::PushServer.instance
       
-      backend_address = "http://#{params[:host]}:#{params[:port]}/"
-      puts backend_address
-      puts "サーバを止めるには Ctrl+C を入力"
-      puts "(New Astro UI モード)"
-      puts
-
-      # ブラウザを開く
-      # デーモンモードでない場合、または --open-browser が指定された場合
-      # フロントエンドのURLで開く（開発サーバーのポート4321）
-      if !@options["daemon"] || @options["open-browser"]
-        unless @options["no-browser"]
-          frontend_port = 4321  # Astro開発サーバーのデフォルトポート
-          frontend_address = "http://#{params[:host]}:#{frontend_port}/"
-          Helper.open_browser(frontend_address)
-        end
+      if @options["open-browser"]
+        frontend_url = "http://#{host}:4321/"
+        Helper.open_browser(frontend_url)
       end
-
-      # Sinatraサーバーを起動
-      Narou::AppServer.run!
       
-      # 終了時の処理
-      delete_pid_file if @options["daemon"]
+      Narou::AppServer.set(:bind, host)
+      Narou::AppServer.set(:port, port)
+      Narou::AppServer.run!
     end
 
     def daemonize
@@ -140,29 +131,41 @@ module Command
       if pid
         # 親プロセス
         puts "WEBサーバーをバックグラウンドで起動しました (PID: #{pid})"
+        $stdout.flush
+        $stderr.flush
         exit 0
       else
         # 子プロセス
+        # 出力をフラッシュしてから新しいセッションを作成
+        $stdout.flush
+        $stderr.flush
+        
         # 新しいセッションを作成
         ::Process.setsid
-        
-        # PIDファイルに書き込み
-        write_pid_file
         
         # ログファイルにリダイレクト
         log_file = File.join(Narou.root_dir, "tmp", "logs", "narou-web.log")
         log_dir = File.dirname(log_file)
         FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
-        $stdout.reopen(log_file, "a")
-        $stderr.reopen(log_file, "a")
-        $stdout.sync = true
-        $stderr.sync = true
+        
+        # STDINをクローズ
+        STDIN.reopen("/dev/null")
+        
+        # STDOUT と STDERR をログファイルにリダイレクト
+        STDOUT.reopen(log_file, "a")
+        STDOUT.sync = true
+        STDERR.reopen(STDOUT)
+        STDERR.sync = true
         
         puts "=========================================="
         puts "WEBサーバーが起動しました"
         puts "PID: #{::Process.pid}"
         puts "Time: #{Time.now}"
         puts "=========================================="
+        
+        # PIDファイルに書き込み
+        write_pid_file
+        
         # 処理を継続（このメソッドから戻る）
       end
     end
