@@ -28,6 +28,8 @@ require_relative "server_helpers"
 require_relative "../narou/promo_tag_extractor"
 require_relative "../narou/system_updater"
 require_relative "../narou/tag_manager"
+require_relative "api/v1/system"
+require_relative "api/v1/utilities"
 require_relative "api/v2/base"
 require_relative "api/v2/novels"
 require_relative "api/v2/novel_settings"
@@ -69,6 +71,10 @@ class Narou::AppServer < Sinatra::Base
       BetterErrors.application_root = Narou.script_dir
     end
   end
+
+  # API v1 (Legacy) エンドポイント登録
+  Narou::ApiV1::System.register(self)
+  Narou::ApiV1::Utilities.register(self)
 
   # API v2 エンドポイント登録
   include Narou::ApiV2::Base
@@ -1331,29 +1337,6 @@ class Narou::AppServer < Sinatra::Base
     end
   end
 
-  post "/api/cancel" do
-    Narou::WebWorker.cancel
-    Narou::Worker.cancel if Narou.concurrency_enabled?
-  end
-
-  get "/api/sort_state" do
-    server_setting = Inventory.load("server_setting", :global)
-    current_sort = server_setting["current_sort"]
-    
-    if current_sort
-      json({
-        column: current_sort["column"],
-        dir: current_sort["dir"]
-      })
-    else
-      # デフォルトソート: 最新話掲載日 降順
-      json({
-        column: 2,
-        dir: "desc"
-      })
-    end
-  end
-
   post "/api/convert" do
     begin
       ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
@@ -1644,73 +1627,6 @@ class Narou::AppServer < Sinatra::Base
     end
   end
 
-  post "/api/diff" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    number = params["number"] || "1"
-    disabled_log_io = $stdout.dup_with_disabled_logging
-    Narou::WebWorker.push do
-      # diff コマンドは１度に一つのIDしか受け取らないので一つずつ表示する
-      ids.each do |id|
-        # セキュリティ的にWEB UIでは独自の差分表示のみ使う
-        CommandLine.run!("diff", "--no-tool", id, "--number", number)
-        Helper.print_horizontal_rule(disabled_log_io)
-      end
-    end
-  end
-
-  get "/api/diff_list" do
-    target = params["target"] or return ""
-    id = Downloader.get_id_by_target(target) or return ""
-    @list = Command::Diff.new.get_diff_list(id)
-    haml :_diff_list, layout: false
-  end
-
-  post "/api/diff_clean" do
-    target = params["target"] or bad_request!("target が指定されていません")
-    id = Downloader.get_id_by_target(target) or bad_request!("対象の小説が見つかりません")
-    Narou::WebWorker.push do
-      CommandLine.run!("diff", "--clean", id)
-    end
-  end
-
-  post "/api/inspect" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    Narou::WebWorker.push do
-      CommandLine.run!("inspect", ids)
-    end
-  end
-
-  post "/api/folder" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    CommandLine.run!("folder", ids)
-  end
-
-  post "/api/backup" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    Narou::WebWorker.push do
-      CommandLine.run!("backup", ids)
-    end
-  end
-
-  get "/api/history" do
-    case params["stream"]
-    when "stdout2"
-      $stdout2.string
-    else
-      $stdout.string
-    end
-  end
-
-  post "/api/clear_history" do
-    Narou::PushServer.instance.clear_history
-    $stdout.string.clear
-    $stdout2.string.clear if Narou.concurrency_enabled?
-  end
-
   get "/api/tag_list" do
     result =
       +'<div><span class="tag tag-reset label label-default" data-tag="">タグ検索を解除</span></div>' \
@@ -1864,13 +1780,6 @@ class Narou::AppServer < Sinatra::Base
     end
   end
 
-  get "/api/get_queue_size" do
-    res = [
-      Narou::WebWorker.instance.size, Narou::Worker.size
-    ]
-    json res
-  end
-
   post "/api/update_general_lastup" do
     option = params["option"]
     option = nil if option == "all"
@@ -1912,119 +1821,6 @@ class Narou::AppServer < Sinatra::Base
     # テーブルリロードとタグキャンバス更新を順次実行
     @@push_server.send_all(:"table.reload")
     @@push_server.send_all(:"tag.updateCanvas")
-  end
-
-  get "/api/csv/download" do
-    begin
-      content_type "application/csv"
-      attachment "novels.csv"
-
-      csv_command = Command::Csv.new
-      result = csv_command.generate
-      puts "CSVファイルをエクスポートしました (#{result.bytesize} bytes)"
-      result
-    rescue StandardError => e
-      puts "[ERROR] CSVエクスポートに失敗しました: #{e.message}"
-      status 500
-      content_type "text/plain"
-      "CSVエクスポートエラー: #{e.message}"
-    end
-  end
-
-  post "/api/csv/import" do
-    begin
-  raw_files = params["files"]
-  bad_request!("CSVファイルが指定されていません") if raw_files.nil?
-  files = raw_files.is_a?(Array) ? raw_files.compact : [raw_files].compact
-  bad_request!("CSVファイルが指定されていません") if files.empty?
-      csv = Command::Csv.new
-      imported_count = 0
-      files.each do |file|
-        csv.import(file[:tempfile])
-        imported_count += 1
-      end
-      bad_request!("CSVファイルが指定されていません") if imported_count.zero?
-      puts "CSVファイルをインポートしました (#{imported_count}件)"
-      ""
-    rescue StandardError => e
-      puts "[ERROR] CSVインポートに失敗しました: #{e.message}"
-      status 500
-      "CSVインポートエラー: #{e.message}"
-    end
-  end
-
-  # ダウンロード登録すると同時にグレーのボタン画像を返す
-  get "/api/download4ssl" do
-    target = params["target"] or error("need a parameter: `target'")
-    opt_mail = "--mail" if query_to_boolean(params["mail"])
-    Narou::WebWorker.push do
-      CommandLine.run!("download", target, opt_mail)
-      @@push_server.send_all(:"table.reload")
-    end
-    redirect "/resources/images/dl_button1.gif"
-  end
-
-  # ダウンロード済みかどうかで表示が変わる画像
-  get "/api/downloadable.gif" do
-    target = params["target"]
-    # 0: 未ダウンロード, 1: ダウンロード済み, 2: ダウンロード出来ない
-    number =
-      if target
-        Downloader.get_id_by_target(target) ? 1 : 0
-      else
-        2
-      end
-    redirect "/resources/images/dl_button#{number}.gif"
-  end
-
-  get "/api/validate_url_regexp_list" do
-    json SiteSetting.settings.values.map { |setting|
-      Array(setting["url"]).map do |url|
-        "(#{url.gsub(/\?<.+?>/, "?:").gsub("\\", "\\\\")})"
-      end
-    }.flatten
-  end
-
-  get "/api/version/current.json" do
-    json({ version: Narou::VERSION })
-  end
-
-  get "/api/version/latest.json" do
-    json({ version: Narou.latest_version })
-  end
-
-  get "/api/notepad/read" do
-    content_type "text/plain"
-    if File.exist?(notepad_text_path)
-      File.read(notepad_text_path)
-    else
-      ""
-    end
-  end
-
-  post "/api/notepad/save" do
-    File.write(notepad_text_path, params["text"])
-    @@push_server.send_all("notepad.change" => {
-      text: params["text"], object_id: params["object_id"]
-    })
-    ""
-  end
-
-  post "/api/eject" do
-    do_eject = proc do
-      device = Narou.get_device
-      device&.eject do
-        puts "<bold><green>端末を取り外しました</green></bold>".termcolor
-      end
-    end
-    if params["enqueue"] == "true"
-      Narou::WebWorker.push do
-        Narou.concurrency_call(&do_eject)
-      end
-    else
-      do_eject.call
-    end
-    ""
   end
 
   get "/api/story" do
