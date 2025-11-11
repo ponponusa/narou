@@ -236,10 +236,17 @@ module Command
       puts ""
       puts "✅ サーバーが起動しました！"
       puts ""
-      puts "  バックエンドAPI: http://#{host}:#{port}"
-      puts "  Web UI:          http://#{host}:4321"
-      puts ""
-      puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+      
+      if should_start_frontend?
+        puts "  バックエンドAPI: http://#{host}:#{port}"
+        puts "  Web UI:          http://#{host}:4321"
+        puts ""
+        puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+      else
+        puts "  Web UI: http://#{host}:#{port}"
+        puts ""
+        puts "  ※ ブラウザで上記URLにアクセスしてください"
+      end
       puts ""
     end
 
@@ -260,10 +267,17 @@ module Command
         puts ""
         port = @options["port"] || 5678
         puts "  PID:             #{pid}"
-        puts "  バックエンドAPI: http://#{host}:#{port}"
-        puts "  Web UI:          http://#{host}:4321"
-        puts ""
-        puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+        
+        if should_start_frontend?
+          puts "  バックエンドAPI: http://#{host}:#{port}"
+          puts "  Web UI:          http://#{host}:4321"
+          puts ""
+          puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+        else
+          puts "  Web UI:          http://#{host}:#{port}"
+          puts ""
+          puts "  ※ ブラウザで上記URLにアクセスしてください"
+        end
         puts ""
         puts "サーバーを停止するには: narou-mod stop"
         puts "サーバーの状態を確認:   narou-mod process"

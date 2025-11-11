@@ -48,10 +48,12 @@ class Narou::AppServer < Sinatra::Base
     set :quiet, true
     enable :protection
     enable :sessions
-    
-    # 静的ファイルの配信設定
-    set :public_folder, File.join(File.dirname(__FILE__), "public")
     enable :static
+    
+    # 静的ファイルの配信設定は動的に決定できないため、
+    # デフォルトでlib/web/publicを設定（Legacyモード用）
+    # 新しいUIのフロントエンドファイルはルーティングで個別に処理
+    set :public_folder, File.join(File.dirname(__FILE__), "public")
 
     set(:version) do
       Command::Version.create_version_string
@@ -289,8 +291,24 @@ class Narou::AppServer < Sinatra::Base
   # Astro ビルド済みアセット配信
   get "/_astro/*" do
     unless self.class.legacy_mode?
-      asset_path = File.join(__dir__, "../../frontend/dist/_astro", params['splat'].first)
-      if File.exist?(asset_path)
+      # 開発環境とgem環境の両方に対応
+      asset_filename = params['splat'].first
+      
+      # 開発環境のパス
+      dev_asset_path = File.join(Narou.root_dir, "frontend", "dist", "_astro", asset_filename)
+      
+      # gem環境のパス
+      gem_asset_path = File.expand_path("../../frontend/dist/_astro/#{asset_filename}", File.dirname(__FILE__))
+      
+      asset_path = if File.exist?(dev_asset_path)
+                     dev_asset_path
+                   elsif File.exist?(gem_asset_path)
+                     gem_asset_path
+                   else
+                     nil
+                   end
+      
+      if asset_path && File.exist?(asset_path)
         send_file asset_path
       else
         halt 404
@@ -302,8 +320,21 @@ class Narou::AppServer < Sinatra::Base
 
   get "/favicon.svg" do
     unless self.class.legacy_mode?
-      favicon_path = File.join(__dir__, "../../frontend/dist/favicon.svg")
-      if File.exist?(favicon_path)
+      # 開発環境のパス
+      dev_favicon_path = File.join(Narou.root_dir, "frontend", "dist", "favicon.svg")
+      
+      # gem環境のパス
+      gem_favicon_path = File.expand_path("../../frontend/dist/favicon.svg", File.dirname(__FILE__))
+      
+      favicon_path = if File.exist?(dev_favicon_path)
+                       dev_favicon_path
+                     elsif File.exist?(gem_favicon_path)
+                       gem_favicon_path
+                     else
+                       nil
+                     end
+      
+      if favicon_path && File.exist?(favicon_path)
         send_file favicon_path
       else
         halt 404
