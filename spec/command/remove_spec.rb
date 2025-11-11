@@ -38,6 +38,8 @@ RSpec.describe Command::Remove do
 
   describe "#execute" do
     it "shows help when no arguments provided and --all-ss not set" do
+      # display_help!とexitをstubして出力を完全に抑制
+      allow(command).to receive(:exit).and_return(nil)
       expect(command).to receive(:display_help!)
       command.execute([])
     end

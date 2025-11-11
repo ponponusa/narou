@@ -194,7 +194,10 @@ module Command
 
     def emit_help_output(text)
       return if text.nil? || text.empty?
-      streams = [STDOUT]
+      # テスト環境ではSTDOUTへの直接出力を抑制し、$stdoutのみに出力
+      # これによりRSpecのexpect { }.to_stdout()でキャプチャ可能になる
+      streams = []
+      streams << STDOUT unless ENV["NAROU_ENV"] == "test"
       streams << $stdout unless $stdout.equal?(STDOUT)
       streams.each do |io|
         io.write(text)
