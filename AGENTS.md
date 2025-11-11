@@ -15,6 +15,7 @@
 - `bundle exec ruby narou.rb download <novel_id>`: fetch source content for conversion experiments.
 - `bundle exec rspec`: run the full test suite; scope to a file with `bundle exec rspec spec/downloader_spec.rb`.
 - `bundle exec rubocop` (add `-A` to auto-correct): enforce Ruby style and catch regressions.
+- `./bin/restart_servers.sh`: stop all running servers and restart them in the background (backend + frontend).
 
 ## Coding Style & Naming Conventions
 

@@ -37,6 +37,7 @@ archive
 mail_setting.yaml
 .byebug_history
 *.log
+.agent/
 
 #
 # for gem
@@ -60,3 +61,6 @@ tmp
 document
 
 .serena
+# Temporary files
+tmp/pids/
+tmp/logs/

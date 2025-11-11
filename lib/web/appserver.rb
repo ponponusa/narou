@@ -26,6 +26,13 @@ require_relative "settingmessages"
 require_relative "server_helpers"
 require_relative "../narou/promo_tag_extractor"
 require_relative "../narou/system_updater"
+require_relative "../narou/tag_manager"
+require_relative "api_v2"
+require_relative "api_v2_novels"
+require_relative "api_v2_novel_settings"
+require_relative "api_v2_system"
+require_relative "api_v2_tags"
+require_relative "api_v2_settings"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -41,6 +48,12 @@ class Narou::AppServer < Sinatra::Base
     set :quiet, true
     enable :protection
     enable :sessions
+    enable :static
+    
+    # 静的ファイルの配信設定は動的に決定できないため、
+    # デフォルトでlib/web/publicを設定（Legacyモード用）
+    # 新しいUIのフロントエンドファイルはルーティングで個別に処理
+    set :public_folder, File.join(File.dirname(__FILE__), "public")
 
     set(:version) do
       Command::Version.create_version_string
@@ -56,12 +69,42 @@ class Narou::AppServer < Sinatra::Base
     end
   end
 
+  # API v2 エンドポイント登録
+  include Narou::ApiV2::Base
+  Narou::ApiV2::Novels.register(self)
+  Narou::ApiV2::NovelSettings.register(self)
+  Narou::ApiV2::System.register(self)
+  Narou::ApiV2::Tags.register(self)
+  Narou::ApiV2::Settings.register(self)
+
+  # CORS設定（新しいフロントエンドとの連携用）
+  before do
+    # プリフライトリクエストとAPIエンドポイントにCORSヘッダーを追加
+    if request.path.start_with?('/api') || request.request_method == 'OPTIONS'
+      headers['Access-Control-Allow-Origin'] = '*'
+      headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+      headers['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization'
+      headers['Access-Control-Max-Age'] = '86400'
+      
+      # OPTIONSリクエスト（プリフライト）の場合は200を返して終了
+      halt 200 if request.request_method == 'OPTIONS'
+    end
+  end
+
   def self.push_server=(server)
     @@push_server = server
   end
 
   def self.push_server
     @@push_server
+  end
+
+  def self.legacy_mode=(enabled)
+    @@legacy_mode = enabled
+  end
+
+  def self.legacy_mode?
+    @@legacy_mode ||= false
   end
 
   def self.request_reboot
@@ -149,7 +192,7 @@ class Narou::AppServer < Sinatra::Base
     return unless Device.support_eject?
     Thread.new do
       loop do
-        if @@push_server.connections.count > 0
+        if defined?(@@push_server) && @@push_server && @@push_server.connections.count > 0
           device = Narou.get_device
           @@push_server.send_all(:"device.ejectable" => device && device.ejectable?)
         end
@@ -216,24 +259,111 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/" do
-    setting = Inventory.load("server_setting", :global)
-    @is_first_access = !setting["already-accessed"]
-    if @is_first_access
-      setting["already-accessed"] = true
-      setting.save
+    if self.class.legacy_mode?
+      # Legacy Haml UI
+      setting = Inventory.load("server_setting", :global)
+      @is_first_access = !setting["already-accessed"]
+      if @is_first_access
+        setting["already-accessed"] = true
+        setting.save
+      end
+      haml :index, layout: true
+    else
+      # New Astro UI
+      # 開発環境のパス
+      dev_index_path = File.join(__dir__, "../../frontend/dist/index.html")
+      
+      # gem環境のパス
+      gem_index_path = File.expand_path("../../frontend/dist/index.html", File.dirname(__FILE__))
+      
+      index_path = if File.exist?(dev_index_path)
+                     dev_index_path
+                   elsif File.exist?(gem_index_path)
+                     gem_index_path
+                   else
+                     nil
+                   end
+      
+      if index_path && File.exist?(index_path)
+        send_file index_path
+      else
+        halt 500, "Frontend not built. Run 'cd frontend && npm run build' first."
+      end
     end
-    haml :index, layout: true
   end
 
   get "/style.css" do
-    scss :style
+    if self.class.legacy_mode?
+      scss :style
+    else
+      # Astro UI では使用しない
+      halt 404
+    end
+  end
+
+  # Astro ビルド済みアセット配信
+  get "/_astro/*" do
+    unless self.class.legacy_mode?
+      # 開発環境とgem環境の両方に対応
+      asset_filename = params['splat'].first
+      
+      # 開発環境のパス
+      dev_asset_path = File.join(__dir__, "../../frontend/dist/_astro", asset_filename)
+      
+      # gem環境のパス
+      gem_asset_path = File.expand_path("../../frontend/dist/_astro/#{asset_filename}", File.dirname(__FILE__))
+      
+      asset_path = if File.exist?(dev_asset_path)
+                     dev_asset_path
+                   elsif File.exist?(gem_asset_path)
+                     gem_asset_path
+                   else
+                     nil
+                   end
+      
+      if asset_path && File.exist?(asset_path)
+        send_file asset_path
+      else
+        halt 404
+      end
+    else
+      halt 404
+    end
+  end
+
+  get "/favicon.svg" do
+    unless self.class.legacy_mode?
+      # 開発環境のパス
+      dev_favicon_path = File.join(__dir__, "../../frontend/dist/favicon.svg")
+      
+      # gem環境のパス
+      gem_favicon_path = File.expand_path("../../frontend/dist/favicon.svg", File.dirname(__FILE__))
+      
+      favicon_path = if File.exist?(dev_favicon_path)
+                       dev_favicon_path
+                     elsif File.exist?(gem_favicon_path)
+                       gem_favicon_path
+                     else
+                       nil
+                     end
+      
+      if favicon_path && File.exist?(favicon_path)
+        send_file favicon_path
+      else
+        halt 404
+      end
+    else
+      halt 404
+    end
   end
 
   before "/settings" do
-    @title = "環境設定"
-    @setting_variables = Command::Setting.get_setting_variables
-    @error_list = {}
-    @global_replace_pattern = @replace_pattern = Narou.global_replace_pattern
+    if self.class.legacy_mode?
+      @title = "環境設定"
+      @setting_variables = Command::Setting.get_setting_variables
+      @error_list = {}
+      @global_replace_pattern = @replace_pattern = Narou.global_replace_pattern
+    end
   end
 
   post "/settings" do
@@ -304,7 +434,30 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/settings" do
-    haml :settings
+    if self.class.legacy_mode?
+      haml :settings
+    else
+      # Astro UI の settings ページ
+      # 開発環境のパス
+      dev_settings_path = File.join(__dir__, "../../frontend/dist/settings/index.html")
+      
+      # gem環境のパス
+      gem_settings_path = File.expand_path("../../frontend/dist/settings/index.html", File.dirname(__FILE__))
+      
+      settings_path = if File.exist?(dev_settings_path)
+                        dev_settings_path
+                      elsif File.exist?(gem_settings_path)
+                        gem_settings_path
+                      else
+                        nil
+                      end
+      
+      if settings_path && File.exist?(settings_path)
+        send_file settings_path
+      else
+        halt 404, "Settings page not found"
+      end
+    end
   end
 
   get "/help" do
@@ -1570,6 +1723,19 @@ class Narou::AppServer < Sinatra::Base
     result
   end
 
+  get "/api/tag_list.json" do
+    headers "Access-Control-Allow-Origin" => "*"
+    tag_list = Narou::TagManager.get_tag_list
+    result = tag_list.map do |tagname, count|
+      {
+        name: tagname,
+        count: count,
+        color: Narou::TagManager.get_color(tagname)
+      }
+    end
+    json(result.sort_by { |tag| tag[:name] })
+  end
+
   post "/api/taginfo.json" do
     ids = select_valid_novel_ids(params["ids"])
     bad_request!("小説が選択されていません") unless ids
@@ -1670,49 +1836,31 @@ class Narou::AppServer < Sinatra::Base
       return { success: false, error: "No tag states provided" }.to_json
     end
     
-    # key と value を重複を維持したまま反転
+    # TagManager を使ってタグ編集を実行
     begin
-      invert_states = request_payload["states"].inject({}) { |h,(k,v)| (h[v] ||= []) << k; h }
-      debug_puts "[DEBUG] Inverted states: #{invert_states.inspect}"
-    rescue => e
-      debug_puts "[ERROR] Failed to invert states: #{e.message}"
-      debug_puts "[ERROR] States param details: #{request_payload["states"].inspect}"
-      return { success: false, error: e.message }.to_json
-    end
-    
-    has_additions = false
-    has_deletions = false
-    
-    invert_states.each do |state, tags|
-      case state.to_i
-      when 0
-        # タグを削除
-        debug_puts "タグ削除実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
-        Command::Tag.execute!("--delete", tags.join(" "), sorted_ids, io: Narou::NullIO.new)
-        has_deletions = true
-      when 1
-        # 現状を維持(何もしない)
-      when 2
-        # タグを追加
-        debug_puts "タグ追加実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
-        Command::Tag.execute!("--add", tags.join(" "), sorted_ids, io: Narou::NullIO.new)
-        has_additions = true
+      result = Narou::TagManager.edit_tags(request_payload["states"], sorted_ids.map(&:to_i))
+      
+      if result[:success]
+        debug_puts "タグ編集完了 (追加: #{result[:added].join(', ')}, 削除: #{result[:deleted].join(', ')})"
+        
+        # キャッシュをクリアしてからイベント送信
+        Narou::AppServer.clear_all_cache 
+        debug_puts "全キャッシュクリア後にリロードイベントを送信"
+        
+        # テーブルリロードとタグキャンバス更新を順次実行
+        @@push_server.send_all(:"table.reload")
+        @@push_server.send_all(:"tag.updateCanvas")
+        
+        { success: true }.to_json
+      else
+        debug_puts "[ERROR] Tag edit failed: #{result[:error]}"
+        { success: false, error: result[:error] }.to_json
       end
+    rescue => e
+      debug_puts "[ERROR] Failed to edit tags: #{e.message}"
+      debug_puts "[ERROR] States param details: #{request_payload["states"].inspect}"
+      { success: false, error: e.message }.to_json
     end
-    
-    # タグ追加がある場合は、データベース書き込み完了を待つ
-    if has_additions
-      debug_puts "タグ追加処理のためデータベース同期を待機中..."
-      sleep(0.5)  # データベース書き込み完了を待つ
-    end
-    
-    # キャッシュを確実にクリアしてからイベント送信
-    Narou::AppServer.clear_all_cache 
-    debug_puts "タグ編集完了 (追加: #{has_additions}, 削除: #{has_deletions}): 全キャッシュクリア後にリロードイベントを送信"
-    
-    # テーブルリロードとタグキャンバス更新を順次実行
-    @@push_server.send_all(:"table.reload")
-    @@push_server.send_all(:"tag.updateCanvas")
   end
 
   get "/api/get_queue_size" do
@@ -1924,6 +2072,114 @@ class Narou::AppServer < Sinatra::Base
       hosts << s["domain"]
     end
     hosts.freeze
+  end
+
+  # ================================================================================
+  # API v2 エンドポイント
+  # ================================================================================
+
+  # 小説のあらすじを取得
+  get "/api/v2/novels/:id/story" do
+    headers "Access-Control-Allow-Origin" => "*"
+    
+    target_id = params[:id]
+    
+    begin
+      toc = Downloader.get_toc_by_target(target_id)
+      unless toc
+        status 404
+        return json({ 
+          success: false, 
+          error: "対象の小説が見つかりません",
+          data: nil,
+          timestamp: Time.now.iso8601
+        })
+      end
+      
+      story = toc["story"] || ""
+      html = HTML.new
+      
+      json({
+        success: true,
+        data: {
+          title: toc["title"],
+          story: html.ln_to_br(story.strip)
+        },
+        timestamp: Time.now.iso8601
+      })
+    rescue StandardError => e
+      puts "[ERROR] Get Story API error: #{e.class}: #{e.message}"
+      puts e.backtrace.join("\n")
+      status 500
+      json({ 
+        success: false,
+        error: "あらすじの取得でエラーが発生しました: #{e.message}",
+        data: nil,
+        timestamp: Time.now.iso8601
+      })
+    end
+  end
+
+  # 実行中のタスクをキャンセル
+  post "/api/v2/cancel" do
+    headers "Access-Control-Allow-Origin" => "*"
+    begin
+      Narou::WebWorker.cancel
+      Narou::Worker.cancel if Narou.concurrency_enabled?
+      
+      json({ 
+        success: true, 
+        message: "実行中のタスクをキャンセルしました" 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Cancel API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "キャンセル処理でエラーが発生しました: #{e.message}" })
+    end
+  end
+
+  # すべてのタスクをキャンセル
+  post "/api/v2/cancel/all" do
+    headers "Access-Control-Allow-Origin" => "*"
+    begin
+      # WebWorkerとWorkerの両方をキャンセル
+      Narou::WebWorker.cancel
+      Narou::Worker.cancel if Narou.concurrency_enabled?
+      
+      json({ 
+        success: true, 
+        message: "すべてのタスクをキャンセルしました" 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Cancel All API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "キャンセル処理でエラーが発生しました: #{e.message}" })
+    end
+  end
+
+  # 指定されたIDのタスクをキャンセル
+  # NOTE: 現在のWebWorker実装では個別タスクのキャンセルは未対応
+  # 将来的にタスクID管理機能を実装する際のプレースホルダー
+  post "/api/v2/cancel/:id" do
+    headers "Access-Control-Allow-Origin" => "*"
+    novel_id = params[:id]
+    
+    begin
+      # 現在は全タスクキャンセルと同じ動作
+      # TODO: 個別タスクキャンセル機能の実装
+      Narou::WebWorker.cancel
+      Narou::Worker.cancel if Narou.concurrency_enabled?
+      
+      json({ 
+        success: true, 
+        message: "ID:#{novel_id} のタスクをキャンセルしました（現在は全タスクキャンセル）",
+        notice: "個別タスクキャンセル機能は未実装のため、すべてのタスクがキャンセルされます" 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Cancel by ID API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "キャンセル処理でエラーが発生しました: #{e.message}" })
+    end
   end
 
   before "/widget/*" do

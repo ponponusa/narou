@@ -31,6 +31,10 @@ module Narou
       clear_history
     end
 
+    def running?
+      !@server_thread.nil? && @server_thread.alive?
+    end
+
     def run
       @server = WebSocketServer.new({
         accepted_domains: @accepted_domains,

@@ -20,13 +20,14 @@ describe Narou::PromoTagExtractor do
       expect(result.promo_tags).to eq(["書籍化！", "アニメ化！", "受賞"])
     end
 
-    it "タグのみで構成されるタイトルは元の文字列を維持する" do
+    it "タグのみで構成されるタイトルは元の文字列を維持する（プロモタグなし扱い）" do
       source = "【書籍化！】"
       result = described_class.extract(title: source, author: nil, config: enabled_config)
 
+      # タイトル全文がプロモタグになる場合は誤認識として、オリジナルをそのまま返す
       expect(result.title).to eq(source)
-      expect(result.title_tags).to eq(["書籍化！"])
-      expect(result.promo_tags).to eq(["書籍化！"])
+      expect(result.title_tags).to eq([])
+      expect(result.promo_tags).to eq([])
     end
 
     it "余分な空白を整形する" do
@@ -108,6 +109,53 @@ describe Narou::PromoTagExtractor do
       expect(result.title_tags).to eq(["限定特典"])
       expect(result.promo_tags).to eq(["限定特典"])
     end
+
+    context "プロモタグを含まない長いタイトルの処理" do
+      it "プロモタグが含まれていない場合は元のタイトルを保持する（ケース1）" do
+        title = "底辺配信者だけどダンジョンで人気探索者を助けたら、なぜかやべぇ女として大バズりしてみんなから怖がられている"
+        result = described_class.extract(title: title, author: nil, config: enabled_config)
+
+        expect(result.title).to eq(title)
+        expect(result.title_tags).to be_empty
+        expect(result.promo_tags).to be_empty
+      end
+
+      it "プロモタグが含まれていない場合は元のタイトルを保持する（ケース2）" do
+        title = "バーチャル美少年ダンジョンチューバー ～男が希少すぎる世界で、男装女子と言い張ってダンジョン配信します～"
+        result = described_class.extract(title: title, author: nil, config: enabled_config)
+
+        expect(result.title).to eq(title)
+        expect(result.title_tags).to be_empty
+        expect(result.promo_tags).to be_empty
+      end
+
+      it "プロモタグが含まれていない場合は元のタイトルを保持する（ケース3）" do
+        title = "ユニークスキルのせいでハーレムを作る事が確定した哀れな中年冒険者が挑む現代ダンジョン配信物"
+        result = described_class.extract(title: title, author: nil, config: enabled_config)
+
+        expect(result.title).to eq(title)
+        expect(result.title_tags).to be_empty
+        expect(result.promo_tags).to be_empty
+      end
+
+      it "【連載版】タグを正しく抽出する" do
+        title = "【連載版】実家住みおじさん、私道のど真ん中に湧いた邪魔なダンジョンと配信者どもをヘッドショットでぶっ潰す"
+        result = described_class.extract(title: title, author: nil, config: enabled_config)
+
+        expect(result.title).to eq("実家住みおじさん、私道のど真ん中に湧いた邪魔なダンジョンと配信者どもをヘッドショットでぶっ潰す")
+        expect(result.title_tags).to eq(["連載版"])
+        expect(result.promo_tags).to eq(["連載版"])
+      end
+
+      it "複数のプロモタグを正しく抽出し、本文を保持する" do
+        title = "レアモンスター？それ、ただの害虫ですよ　～知らぬ間にダンジョン化した自宅での日常生活が配信されてバズったんですが～【コミック三巻発売！】"
+        result = described_class.extract(title: title, author: nil, config: enabled_config)
+
+        expect(result.title).to eq("レアモンスター？それ、ただの害虫ですよ ～知らぬ間にダンジョン化した自宅での日常生活が配信されてバズったんですが～")
+        expect(result.title_tags).to eq(["コミック三巻発売！"])
+        expect(result.promo_tags).to eq(["コミック三巻発売！"])
+      end
+    end
   end
 
   describe ".normalize_entry!" do
@@ -134,9 +182,9 @@ describe Narou::PromoTagExtractor do
       expect(entry["promo_tags"]).to eq(["書籍化！", "アニメ化！", "受賞"])
       expect(entry["promo_tags_title"]).to eq(["書籍化！", "アニメ化！"])
       expect(entry["promo_tags_author"]).to eq(["受賞"])
-    expect(entry["title_original"]).to eq("【書籍化！】サンプル【アニメ化！】")
-    expect(entry["author_original"]).to eq("著者【受賞】")
-    expect(entry["title_raw_latest"]).to eq("【書籍化！】サンプル【アニメ化！】")
+      expect(entry["title_original"]).to eq("【書籍化！】サンプル【アニメ化！】")
+      expect(entry["author_original"]).to eq("著者【受賞】")
+      expect(entry["title_raw_latest"]).to eq("【書籍化！】サンプル【アニメ化！】")
     end
 
     it "変更がない場合は false を返す" do
@@ -157,8 +205,8 @@ describe Narou::PromoTagExtractor do
       expect(entry["promo_tags"]).to eq([])
       expect(entry["promo_tags_title"]).to eq([])
       expect(entry["promo_tags_author"]).to eq([])
-  expect(entry["title_original"]).to eq(original["title_raw_latest"])
-  expect(entry["title_raw_latest"]).to eq(original["title_raw_latest"])
+      expect(entry["title_original"]).to eq(original["title_raw_latest"])
+      expect(entry["title_raw_latest"]).to eq(original["title_raw_latest"])
     end
 
     it "オリジナルのタイトルから再適用できる" do

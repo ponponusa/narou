@@ -1,0 +1,17 @@
+---
+/**
+ * 設定画面
+ * 
+ * ローカル設定とグローバル設定をタブ別に表示・編集
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.svelte';
+import SettingsComponent from '../components/Settings.svelte';
+---
+
+<BaseLayout title="設定 - Narou">
+  <Header client:load />
+  <main class="container mx-auto px-4 py-6">
+    <SettingsComponent client:load />
+  </main>
+</BaseLayout>
