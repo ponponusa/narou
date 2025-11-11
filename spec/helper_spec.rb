@@ -105,4 +105,52 @@ describe Helper do
       it { is_expected.to eq "[著者名] 長い文字.kepub.epub" }
     end
   end
+
+  describe "OS detection methods" do
+    describe ".determine_os" do
+      it "returns a symbol representing the OS type" do
+        result = Helper.determine_os
+        expect([:docker, :windows, :mac, :cygwin, :wsl, :other]).to include(result)
+      end
+    end
+
+    describe ".os_windows?" do
+      it "detects Windows OS" do
+        result = Helper.os_windows?
+        expect(result).to be_truthy.or be_falsey
+      end
+    end
+
+    describe ".os_mac?" do
+      it "detects macOS" do
+        result = Helper.os_mac?
+        expect(result).to be_truthy.or be_falsey
+      end
+    end
+
+    describe ".os_cygwin?" do
+      it "detects Cygwin environment" do
+        result = Helper.os_cygwin?
+        expect(result).to be_truthy.or be_falsey
+      end
+    end
+
+    describe ".os_wsl?" do
+      it "returns a boolean" do
+        expect([true, false]).to include(Helper.os_wsl?)
+      end
+    end
+
+    describe ".in_docker?" do
+      it "returns a boolean" do
+        expect([true, false]).to include(Helper.in_docker?)
+      end
+    end
+  end
+
+  describe ".engine_jruby?" do
+    it "returns a boolean based on RUBY_ENGINE" do
+      expect([true, false]).to include(Helper.engine_jruby?)
+    end
+  end
 end

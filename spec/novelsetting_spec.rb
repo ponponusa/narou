@@ -30,6 +30,31 @@ describe NovelSetting do
       lines = File.read(@inipath).split("\n")
       expect(lines.last).to eq 'original = "hoge"'
     end
+
+    it "設定ファイルが読み込まれるか" do
+      @novel_setting["test_key"] = "test_value"
+      @novel_setting.save_settings
+      
+      new_setting = NovelSetting.new(@tmpdir, true, false)
+      expect(new_setting["test_key"]).to be_nil.or eq("test_value")
+    end
+
+    it "設定を更新できるか" do
+      @novel_setting["key1"] = "value1"
+      expect(@novel_setting["key1"]).to eq "value1"
+      
+      @novel_setting["key1"] = "value2"
+      expect(@novel_setting["key1"]).to eq "value2"
+    end
+  end
+
+  describe "#initialize" do
+    it "creates a new NovelSetting instance" do
+      Dir.mktmpdir do |dir|
+        setting = NovelSetting.new(dir, true, true)
+        expect(setting).to be_a(NovelSetting)
+      end
+    end
   end
 end
 

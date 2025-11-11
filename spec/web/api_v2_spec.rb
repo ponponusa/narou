@@ -51,6 +51,14 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(json_response["data"]).to have_key("narou")
       expect(json_response["data"]).to have_key("ruby")
     end
+
+    it "includes valid version strings" do
+      get "/api/v2/system/version"
+      
+      expect(last_response).to be_ok
+      expect(json_response["data"]["narou"]).to match(/\d+\.\d+\.\d+/)
+      expect(json_response["data"]["ruby"]).to match(/\d+\.\d+\.\d+/)
+    end
   end
 
   describe "GET /api/v2/system/queue" do
@@ -79,6 +87,22 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(json_response["data"]["pagination"]).to have_key("total")
       expect(json_response["data"]["pagination"]).to have_key("page")
     end
+
+    it "accepts filter parameter" do
+      get "/api/v2/novels?filter=test"
+      
+      expect(last_response).to be_ok
+      expect(json_response["success"]).to be true
+    end
+
+    it "accepts pagination parameters" do
+      get "/api/v2/novels?page=1&per_page=10"
+      
+      expect(last_response).to be_ok
+      expect(json_response["success"]).to be true
+      expect(json_response["data"]["pagination"]["page"]).to eq(1)
+      expect(json_response["data"]["pagination"]["per_page"]).to eq(10)
+    end
   end
 
   describe "POST /api/v2/novels/download" do
@@ -101,6 +125,26 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
       expect(json_response["error"]).to have_key("code")
+    end
+
+    it "returns 400 for empty targets array" do
+      post "/api/v2/novels/download", { targets: [] }.to_json, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response.status).to eq(400)
+      expect(json_response["success"]).to be false
+    end
+
+    it "handles multiple targets" do
+      allow(Narou::WebWorker).to receive(:push).and_yield
+      allow(CommandLine).to receive(:run!)
+      allow(Narou::AppServer).to receive(:clear_all_cache)
+      
+      payload = { targets: ["n9669bk", "n0000xx"] }.to_json
+      post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response).to be_ok
+      expect(json_response["success"]).to be true
+      expect(json_response["data"]["targets"].length).to eq(2)
     end
   end
 
@@ -128,6 +172,23 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(json_response["success"]).to be true
       expect(json_response["data"]).to have_key("tag_info")
     end
+
+    it "returns 400 when ids are missing" do
+      post "/api/v2/tags/info", {}.to_json, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response.status).to eq(400)
+      expect(json_response["success"]).to be false
+    end
+
+    it "handles empty ids array" do
+      allow(Narou::TagManager).to receive(:get_tag_info).and_return({})
+      
+      payload = { ids: [] }.to_json
+      post "/api/v2/tags/info", payload, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response.status).to eq(400)
+      expect(json_response["success"]).to be false
+    end
   end
 
   describe "POST /api/v2/tags/edit" do
@@ -153,6 +214,23 @@ RSpec.describe "Narou::AppServer API v2" do
       
       expect(last_response.status).to eq(400)
     end
+
+    it "returns 400 when states are missing" do
+      payload = { ids: [1, 2] }.to_json
+      post "/api/v2/tags/edit", payload, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response.status).to eq(400)
+    end
+
+    it "handles invalid state values" do
+      allow(Narou::TagManager).to receive(:edit_tags).and_raise(ArgumentError, "invalid state value")
+      
+      payload = { ids: [1, 2], states: { "tag1" => 99 } }.to_json
+      post "/api/v2/tags/edit", payload, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response.status).to eq(500)
+      expect(json_response["success"]).to be false
+    end
   end
 
   describe "GET /api/v2/settings" do
@@ -169,6 +247,23 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(json_response["success"]).to be true
       expect(json_response["data"]).to have_key("local")
       expect(json_response["data"]).to have_key("global")
+    end
+
+    it "includes all setting scopes" do
+      test_settings = {
+        local: { "key1" => "value1" },
+        global: { "key2" => "value2" }
+      }
+      
+      allow(Inventory).to receive(:load).and_return({})
+      allow(Command::Setting).to receive(:get_setting_variables).and_return(test_settings)
+      
+      get "/api/v2/settings"
+      
+      expect(last_response).to be_ok
+      data = json_response["data"]
+      expect(data).to have_key("local")
+      expect(data).to have_key("global")
     end
   end
 
