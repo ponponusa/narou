@@ -4,6 +4,8 @@
  * バックエンドのPushServerと接続し、リアルタイム通知を受け取る
  */
 
+import { getPushServerPort } from './backend-config';
+
 export type PushServerEvent = 
   | 'table.reload'
   | 'tag.updateCanvas'
@@ -216,25 +218,16 @@ async function fetchPushServerPort(): Promise<number> {
     return cachedPort as number;
   }
 
-  // デフォルトポート
-  const defaultPort = parseInt(import.meta.env.PUBLIC_PUSH_SERVER_PORT || '5679');
-
   try {
-    const response = await fetch('/api/v2/system/status');
-    if (response.ok) {
-      const data = await response.json();
-      if (data?.data?.push_server?.port) {
-        cachedPort = data.data.push_server.port;
-        console.log(`[PushServer] Using port from API: ${cachedPort}`);
-        return cachedPort as number;
-      }
-    }
+    // backend-config.tsからポート番号を取得
+    cachedPort = await getPushServerPort();
+    console.log(`[PushServer] Using port from backend config: ${cachedPort}`);
+    return cachedPort as number;
   } catch (error) {
-    console.warn('[PushServer] Failed to fetch port from API, using default:', defaultPort);
+    console.warn('[PushServer] Failed to fetch port from backend config, using default: 5679');
+    cachedPort = 5679;
+    return cachedPort as number;
   }
-
-  cachedPort = defaultPort;
-  return defaultPort;
 }
 
 /**

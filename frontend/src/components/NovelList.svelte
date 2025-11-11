@@ -5,7 +5,19 @@
 -->
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { getNovels, downloadNovels, convertNovels, removeNovels, getTagList } from '../lib/api';
+  import { 
+    getNovels, 
+    downloadNovels, 
+    downloadNovel,
+    downloadEpub,
+    convertNovels, 
+    convertNovel,
+    freezeNovel,
+    unfreezeNovel,
+    removeNovels,
+    deleteNovel,
+    getTagList 
+  } from '../lib/api';
   import type { Novel, TagInfo } from '../types/api';
   import { getPushServer } from '../lib/pushserver';
   import { progressStore } from '../lib/progressStore';
@@ -481,10 +493,14 @@
     }
     const ids = Array.from(selectedIds);
     try {
+      console.log('[NovelList] Starting download for IDs:', ids);
+      console.log('[NovelList] taskQueue:', taskQueue);
+      
       // タスクキューに登録（WAIT状態）
       ids.forEach(id => {
         const novel = novels.find(n => n.id === id);
         if (novel) {
+          console.log(`[NovelList] Calling taskQueue.addTask for ID=${id}`);
           taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
           progressStore.setProgress(id, 'waiting', 'キュー待ち...');
         }
@@ -671,10 +687,7 @@
       processingNovelIds.add(novelId);
       processingNovelIds = new Set(processingNovelIds);
       
-      const response = await fetch(`http://localhost:33000/api/v2/novels/${novelId}/epub`);
-      if (!response.ok) throw new Error('EPUB download failed');
-      
-      const blob = await response.blob();
+      const blob = await downloadEpub(novelId);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -706,10 +719,14 @@
           processingNovelIds.add(novelId);
           processingNovelIds = new Set(processingNovelIds);
           
-          await fetch(`http://localhost:33000/api/v2/novels/${novelId}/download`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
+          // タスクキューに追加（小説情報を取得）
+          const novel = novels.find(n => n.id === novelId);
+          if (novel && taskQueue) {
+            taskQueue.addTask(novelId, novel.title, novel.author, 'waiting');
+          }
+          
+          // 強制更新（force=true）
+          await downloadNovel(novelId, true);
           
           toast?.show('再取得を開始しました', 'success');
         } catch (err) {
@@ -736,10 +753,13 @@
           processingNovelIds.add(novelId);
           processingNovelIds = new Set(processingNovelIds);
           
-          await fetch(`http://localhost:33000/api/v2/novels/${novelId}/convert`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
+          // タスクキューに追加
+          const novel = novels.find(n => n.id === novelId);
+          if (novel && taskQueue) {
+            taskQueue.addTask(novelId, novel.title, novel.author, 'converting');
+          }
+          
+          await convertNovel(novelId);
           
           toast?.show('変換を開始しました', 'success');
         } catch (err) {
@@ -767,11 +787,11 @@
           processingNovelIds.add(novelId);
           processingNovelIds = new Set(processingNovelIds);
           
-          await fetch(`http://localhost:33000/api/v2/novels/${novelId}/freeze`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ freeze: !currentFrozen })
-          });
+          if (currentFrozen) {
+            await unfreezeNovel(novelId);
+          } else {
+            await freezeNovel(novelId);
+          }
           
           toast?.show(`${action}しました`, 'success');
           loadNovels();
@@ -799,11 +819,7 @@
           processingNovelIds.add(novelId);
           processingNovelIds = new Set(processingNovelIds);
           
-          const response = await fetch(`http://localhost:33000/api/v2/novels/${novelId}`, {
-            method: 'DELETE'
-          });
-          
-          if (!response.ok) throw new Error('Delete failed');
+          await deleteNovel(novelId);
           
           toast?.show('削除しました', 'success');
           loadNovels();

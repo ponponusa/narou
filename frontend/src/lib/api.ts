@@ -579,3 +579,29 @@ export async function getNovelStory(id: number): Promise<{ title: string; story:
     return response.json();
   }
 }
+
+/**
+ * EPUBファイルをダウンロード
+ * @param id - 小説ID
+ * @returns EPUBファイルのBlob
+ */
+export async function downloadEpub(id: number): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}/api/v2/novels/${id}/epub`);
+  if (!response.ok) {
+    throw new Error(`EPUBダウンロードに失敗しました: ${response.statusText}`);
+  }
+  return response.blob();
+}
+
+/**
+ * 小説を削除
+ * @param id - 小説ID
+ */
+export async function deleteNovel(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v2/novels/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`削除に失敗しました: ${response.statusText}`);
+  }
+}

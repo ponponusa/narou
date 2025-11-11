@@ -188,8 +188,21 @@ module Command
       push_server.accepted_domains = ["*"]
       Narou::AppServer.push_server = push_server
       
+      # WorkerとWebWorkerにもpush_serverを設定
+      Narou::Worker.push_server = push_server
+      
       # PushServerを起動
       push_server.run
+      
+      # StreamingLoggerを設定（標準出力をPushServerに送信）
+      require_relative "../web/streaminglogger"
+      $stdout = Narou::StreamingLogger.new(push_server)
+      $stdout2 = if Inventory.load["concurrency"]
+                   Narou::StreamingLogger.new(push_server, $stdout2, target_console: "stdout2")
+                 else
+                   $stdout
+                 end
+      
       # WebWorkerを起動（タスクキュー処理用）
       Narou::WebWorker.run
 
@@ -239,6 +252,19 @@ module Command
         config_content.gsub!(/target:\s*['"]http:\/\/localhost:\d+['"]/, "target: 'http://localhost:#{port}'")
         File.write(config_file, config_content)
       end
+      
+      # ポート情報をJSONファイルとして保存（フロントエンドから読み込み可能にする）
+      port_info_file = File.join(frontend_dir, "public", "backend-port.json")
+      port_info_dir = File.dirname(port_info_file)
+      FileUtils.mkdir_p(port_info_dir) unless File.exist?(port_info_dir)
+      
+      require 'json'
+      port_info = {
+        backend_port: port,
+        push_server_port: ws_port,
+        updated_at: Time.now.iso8601
+      }
+      File.write(port_info_file, JSON.pretty_generate(port_info))
     end
 
     def display_startup_message

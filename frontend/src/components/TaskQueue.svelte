@@ -94,6 +94,8 @@
    * タスクを追加
    */
   export function addTask(novelId: number | 'NEW', title: string, author: string, status: ProgressInfo['status'] = 'waiting') {
+    console.log(`[TaskQueue] Adding task: ID=${novelId}, title="${title}", author="${author}", status=${status}`);
+    
     const newTask: TaskInfo = {
       novelId,
       title,
@@ -104,6 +106,8 @@
     };
     tasks = [...tasks, newTask];
     saveTasks();
+    
+    console.log(`[TaskQueue] Task added. Total tasks: ${tasks.length}`);
     
     // キューが積まれたら自動展開
     if (isCollapsed) {
@@ -318,12 +322,43 @@
     };
     pushServer.on('echo', echoHandler);
     
+    // PushServerからのnotification.queueイベントを監視
+    const queueHandler = (data: number[] | { webWorkerSize?: number; workerSize?: number }) => {
+      handleQueueNotification(data);
+    };
+    pushServer.on('notification.queue', queueHandler);
+    
     return () => {
       unsubscribeProgress();
       pushServer.off('echo', echoHandler);
+      pushServer.off('notification.queue', queueHandler);
     };
   });
   
+  /**
+   * PushServerのnotification.queueイベントを処理
+   * バックエンドから [webWorkerSize, workerSize] の配列が送られてくる
+   */
+  function handleQueueNotification(data: number[] | { webWorkerSize?: number; workerSize?: number }) {
+    console.log('[TaskQueue] Queue notification received:', data);
+    
+    let webWorkerSize = 0;
+    let workerSize = 0;
+    
+    if (Array.isArray(data)) {
+      // 配列形式: [webWorkerSize, workerSize]
+      [webWorkerSize, workerSize] = data;
+    } else {
+      // オブジェクト形式
+      webWorkerSize = data.webWorkerSize || 0;
+      workerSize = data.workerSize || 0;
+    }
+    
+    // タスクキューのサイズが0になったら完了タスクをクリアする等の処理を追加可能
+    // 現時点ではログ出力のみ
+    console.log(`[TaskQueue] WebWorker queue: ${webWorkerSize}, Worker queue: ${workerSize}`);
+  }
+
   /**
    * PushServerのechoメッセージから進捗を検出
    */
