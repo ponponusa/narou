@@ -83,20 +83,30 @@
         </a>
         
         <!-- 接続状態インジケーター -->
-        <div class="flex items-center gap-2">
-          <div 
-            class="w-2 h-2 rounded-full {isConnected ? 'bg-green-500' : 'bg-red-500'}"
-            title={isConnected ? 'PushServer接続中' : 'PushServer未接続'}
-          ></div>
+        <div class="flex items-baseline gap-6 mx-4">
+          <!-- PushServer状態 -->
+          <div class="flex items-baseline gap-1.5">
+            <div 
+              class="w-2 h-2 rounded-full {isConnected ? 'bg-green-500' : 'bg-red-500'}"
+              title={isConnected ? 'PushServer接続中' : 'PushServer未接続'}
+            ></div>
+            <span class="text-xs text-gray-600 dark:text-gray-400">Push</span>
+          </div>
           
-          <!-- AozoraEpub3設定状態アイコン -->
+          <!-- AozoraEpub3設定状態 -->
           {#if hasAozoraEpub3 !== null}
-            <i 
-              class="fas fa-retweet text-xs {hasAozoraEpub3 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}"
-              title={hasAozoraEpub3 ? '青空文庫epub3変換ツールのパスが設定されています' : '青空文庫epub3変換ツールのパスが設定されていません'}
-            ></i>
+            <div class="flex items-baseline gap-1.5">
+              <i 
+                class="fas fa-retweet text-xs {hasAozoraEpub3 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}"
+                title={hasAozoraEpub3 ? '青空文庫epub3変換ツールのパスが設定されています' : '青空文庫epub3変換ツールのパスが設定されていません'}
+              ></i>
+              <span class="text-xs text-gray-600 dark:text-gray-400">Aozora</span>
+            </div>
           {/if}
-          
+        </div>
+        
+        <!-- キューサイズ表示 -->
+        <div>
           {#if queueSize > 0}
             <span class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
               処理中: {queueSize}
