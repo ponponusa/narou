@@ -15,6 +15,7 @@ jobs:
   # 1) PR用ビルド・テストジョブ
   #    - develop / release / test-develop / test-release 向け PR で走る
   #    - RSpec を実行
+  #    - Astro UI のビルドとテスト
   #
   build-test:
     if: github.event_name == 'pull_request'
@@ -55,6 +56,25 @@ jobs:
           bundle _${BUNDLER_VERSION}_ config set path "${BUNDLE_PATH}"
           bundle _${BUNDLER_VERSION}_ check || bundle _${BUNDLER_VERSION}_ install
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Astro UI
+        working-directory: frontend
+        run: npm run build
+
+      - name: Check TypeScript types
+        working-directory: frontend
+        run: npm run check
+
       - name: Run RSpec
         run: |
           mkdir -p test_results/rspec
@@ -77,9 +97,17 @@ jobs:
           name: coverage
           path: coverage
 
+      - name: Upload Astro build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: astro-dist
+          path: frontend/dist
+
   #
   # 2) Linux/macOS 向けの汎用 gem をビルド
   #    - release / test-release ブランチへの push で実行
+  #    - Astro UI をビルドして含める
   #
   build-gem-linux:
     if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
@@ -110,6 +138,21 @@ jobs:
         run: |
           bundle _${BUNDLER_VERSION}_ install --path vendor/bundle
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Astro UI
+        working-directory: frontend
+        run: npm run build
+
       - name: Get version
         id: get_version
         run: |
@@ -133,6 +176,7 @@ jobs:
   #
   # 3) Windows (mingw-ucrt) 向け gem をビルド
   #    - release / test-release ブランチへの push で実行
+  #    - Astro UI をビルドして含める
   #
   build-gem-windows:
     if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
@@ -151,6 +195,23 @@ jobs:
         with:
           ruby-version: "3.4"
           bundler-cache: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        shell: bash
+        run: npm ci
+
+      - name: Build Astro UI
+        working-directory: frontend
+        shell: bash
+        run: npm run build
 
       # Windows側では bundler/bundle install は実行しない
       # 依存を揃える必要はなく、gem build だけでよい

@@ -8,9 +8,11 @@ require "optparse"
 require "termcolorlight"
 
 # help をログに記録しないために STDOUT に直接出力する
+# ただし、テスト環境では $stdout を使う
 OptionParser::Officious["help"] = proc do |parser|
   OptionParser::Switch::NoArgument.new do |_arg|
-    STDOUT.puts parser.help
+    output_stream = ENV["RACK_ENV"] == "test" ? $stdout : STDOUT
+    output_stream.puts parser.help
     exit
   end
 end
