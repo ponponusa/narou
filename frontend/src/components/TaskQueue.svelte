@@ -450,10 +450,10 @@
       </div>
       <button
         onclick={cancelAllTasks}
-        class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+        class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
         disabled={tasks.length === 0}
       >
-        タスクをキャンセル
+        リストをクリア
       </button>
     </div>
   </div>

@@ -299,6 +299,32 @@
     }
   }
 
+  /**
+   * 文字数を整形（1万字以上は「万字」表記）
+   */
+  function formatCharCount(count: number | null | undefined): string {
+    if (!count) return '-';
+    if (count >= 10000) {
+      return `${(count / 10000).toFixed(1)}万字`;
+    }
+    return count.toLocaleString();
+  }
+
+  /**
+   * 日付を整形（YYYY/MM/DD HH:MM形式）
+   */
+  function formatDateTime(timestamp: number | string | null | undefined): string {
+    if (!timestamp) return '-';
+    const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+    const date = new Date(ts * 1000);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}/${month}/${day} ${hours}:${minutes}`;
+  }
+
   onMount(async () => {
     // 設定を復元
     loadSettings();
@@ -1396,7 +1422,7 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {#each novels as novel (novel.id)}
               <tr 
-                class="transition-colors cursor-pointer {selectedIds.has(novel.id) ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                class="transition-colors cursor-pointer {selectedIds.has(novel.id) ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-100 dark:hover:bg-gray-750'}"
                 onclick={(e) => {
                   // リンクやボタンのクリックは除外
                   if (e.target instanceof HTMLElement && 
@@ -1412,32 +1438,17 @@
                 {/if}
                 {#if columnVisibility.updated_at}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {#if novel.last_update}
-                    <div class="flex flex-col">
-                      <span>{new Date(Number(novel.last_update) * 1000).toLocaleDateString('ja-JP')}</span>
-                      <span class="text-xs text-gray-500 dark:text-gray-500">{new Date(Number(novel.last_update) * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  {:else}
-                    <span class="text-gray-400 dark:text-gray-600">-</span>
-                  {/if}
+                  {formatDateTime(novel.last_update)}
                 </td>
                 {/if}
                 {#if columnVisibility.newest_article_date}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {#if novel.general_lastup}
-                    {new Date(Number(novel.general_lastup) * 1000).toLocaleDateString('ja-JP')}
-                  {:else}
-                    <span class="text-gray-400 dark:text-gray-600">-</span>
-                  {/if}
+                  {formatDateTime(novel.general_lastup)}
                 </td>
                 {/if}
                 {#if columnVisibility.last_update}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {#if novel.last_update}
-                    {new Date(Number(novel.last_update) * 1000).toLocaleDateString('ja-JP')}
-                  {:else}
-                    <span class="text-gray-400 dark:text-gray-600">-</span>
-                  {/if}
+                  {formatDateTime(novel.last_update)}
                 </td>
                 {/if}
                 <td class="px-4 py-3 text-sm font-medium max-w-md">
@@ -1511,12 +1522,12 @@
                 {/if}
                 {#if columnVisibility.total_chars}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {novel.length ? novel.length.toLocaleString() : '-'}
+                  {formatCharCount(novel.length)}
                 </td>
                 {/if}
                 {#if columnVisibility.avg_chars_per_episode}
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {novel.general_all_no && novel.length ? Math.floor(novel.length / novel.general_all_no).toLocaleString() : '-'}
+                  {novel.general_all_no && novel.length ? formatCharCount(Math.floor(novel.length / novel.general_all_no)) : '-'}
                 </td>
                 {/if}
                 <td class="px-4 py-3 text-sm" onclick={(e) => e.stopPropagation()}>
