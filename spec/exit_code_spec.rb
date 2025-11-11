@@ -16,7 +16,16 @@ require "database"
 require "downloader"
 
 describe "exit code" do
-  before do
+  before(:all) do
+    # Databaseのスナップショットを保存
+    @original_db_data = Database.instance.get_object.dup
+  end
+
+  before(:each) do
+    # 各テスト前にDatabaseを復元
+    db = Database.instance
+    db.instance_variable_set(:@database, @original_db_data.dup)
+    
     # download を超軽量化
     allow(Command::Download).to receive(:execute!) do |*args, **_kw|
       argv = args.flatten.compact
@@ -39,7 +48,13 @@ describe "exit code" do
     allow(Narou).to receive(:lock).and_yield
   end
 
-  after do
+  after(:all) do
+    # 全テスト後にDatabaseを復元
+    db = Database.instance
+    db.instance_variable_set(:@database, @original_db_data)
+  end
+
+  after(:each) do
     $stdout.silent = false
   end
 

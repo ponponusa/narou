@@ -1,0 +1,156 @@
+# frozen_string_literal: true
+
+#
+# Copyright 2024 ponponusa. All rights reserved.
+#
+
+require_relative "../spec_helper"
+require_relative "../../lib/web/pushserver"
+
+RSpec.describe Narou::PushServer do
+  let(:push_server) { Narou::PushServer.instance }
+
+  before do
+    # PushServerをリセット
+    push_server.quit if push_server.running?
+    push_server.instance_variable_set(:@connections, [])
+  end
+
+  after do
+    # テスト後にPushServerを停止
+    push_server.quit if push_server.running?
+  end
+
+  describe ".instance" do
+    it "returns singleton instance" do
+      expect(Narou::PushServer.instance).to be push_server
+    end
+  end
+
+  describe "#initialize" do
+    it "sets default values" do
+      expect(push_server.port).to eq(31000)
+      expect(push_server.accepted_domains).to eq(["*"])
+      expect(push_server.connections).to eq([])
+    end
+  end
+
+  describe "#accepted_domains=" do
+    it "accepts single domain" do
+      push_server.accepted_domains = "example.com"
+      expect(push_server.accepted_domains).to eq(["example.com"])
+    end
+
+    it "accepts multiple domains" do
+      push_server.accepted_domains = ["example.com", "test.com"]
+      expect(push_server.accepted_domains).to eq(["example.com", "test.com"])
+    end
+  end
+
+  describe "#port=" do
+    it "sets custom port" do
+      push_server.port = 31234
+      expect(push_server.port).to eq(31234)
+    end
+  end
+
+  describe "#host=" do
+    it "sets custom host" do
+      push_server.host = "127.0.0.1"
+      expect(push_server.host).to eq("127.0.0.1")
+    end
+  end
+
+  describe "#running?" do
+    context "when not started" do
+      it "returns false" do
+        expect(push_server.running?).to be false
+      end
+    end
+
+    context "when started" do
+      it "returns true" do
+        # WebSocketServerのモック化
+        mock_server = double("WebSocketServer")
+        allow(WebSocketServer).to receive(:new).and_return(mock_server)
+        allow(mock_server).to receive(:run) do
+          # 無限ループをシミュレート
+          sleep
+        end
+
+        push_server.run
+        # スレッドが起動するまで待つ
+        sleep 0.01
+        
+        expect(push_server.running?).to be true
+      end
+    end
+  end
+
+  describe "#quit" do
+    it "stops the server" do
+      mock_server = double("WebSocketServer")
+      allow(WebSocketServer).to receive(:new).and_return(mock_server)
+      allow(mock_server).to receive(:run) { sleep }
+      allow(mock_server).to receive(:quit)
+
+      push_server.run
+      sleep 0.01
+      
+      push_server.quit
+      
+      expect(push_server.running?).to be false
+    end
+  end
+
+  describe "#send_all" do
+    it "sends message to all connections" do
+      queue1 = instance_double(Queue)
+      queue2 = instance_double(Queue)
+      push_server.instance_variable_set(:@connections, [queue1, queue2])
+
+      expect(queue1).to receive(:push).with(kind_of(String))
+      expect(queue2).to receive(:push).with(kind_of(String))
+
+      push_server.send_all(test_message: { data: "test" })
+    end
+
+    it "handles symbol argument" do
+      queue = instance_double(Queue)
+      push_server.instance_variable_set(:@connections, [queue])
+
+      expect(queue).to receive(:push).with(kind_of(String))
+
+      push_server.send_all(:"test.event")
+    end
+
+    it "handles empty connections gracefully" do
+      push_server.instance_variable_set(:@connections, [])
+      
+      expect { push_server.send_all(test: "message") }.not_to raise_error
+    end
+  end
+
+  describe "#clear_history" do
+    it "clears message history" do
+      push_server.clear_history
+      
+      history = push_server.instance_variable_get(:@history)
+      expect(history).to be_an(Array)
+      expect(history).to be_empty
+    end
+  end
+
+  describe "event handling" do
+    it "can trigger events" do
+      received = false
+      push_server.on(:test_event) do |data|
+        received = true
+      end
+
+      push_server.trigger(:test_event, { test: "data" })
+      
+      expect(received).to be true
+    end
+  end
+end
