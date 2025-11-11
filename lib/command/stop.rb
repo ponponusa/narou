@@ -33,7 +33,7 @@ module Command
       frontend_stopped = stop_frontend
       
       if !backend_stopped && !frontend_stopped
-        puts "サーバーは起動していません"
+        $stdout.puts "サーバーは起動していません"
       end
     end
 
@@ -52,15 +52,15 @@ module Command
       begin
         ::Process.kill(signal, pid)
         signal_name = @options["force"] ? "強制停止" : "停止"
-        puts "バックエンドサーバーを#{signal_name}しました (PID: #{pid})"
+        $stdout.puts "バックエンドサーバーを#{signal_name}しました (PID: #{pid})"
         File.delete(pid_file) if File.exist?(pid_file)
         true
       rescue Errno::ESRCH
-        puts "PID #{pid} のプロセスが見つかりません"
+        $stdout.puts "PID #{pid} のプロセスが見つかりません"
         File.delete(pid_file) if File.exist?(pid_file)
         false
       rescue Errno::EPERM
-        puts "PID #{pid} のプロセスを停止する権限がありません"
+        $stdout.puts "PID #{pid} のプロセスを停止する権限がありません"
         exit 1
       end
     end
@@ -78,15 +78,15 @@ module Command
       begin
         ::Process.kill(signal, pid)
         signal_name = @options["force"] ? "強制停止" : "停止"
-        puts "フロントエンドサーバーを#{signal_name}しました (PID: #{pid})"
+        $stdout.puts "フロントエンドサーバーを#{signal_name}しました (PID: #{pid})"
         File.delete(pid_file) if File.exist?(pid_file)
         true
       rescue Errno::ESRCH
-        puts "PID #{pid} のプロセスが見つかりません"
+        $stdout.puts "PID #{pid} のプロセスが見つかりません"
         File.delete(pid_file) if File.exist?(pid_file)
         false
       rescue Errno::EPERM
-        puts "PID #{pid} のプロセスを停止する権限がありません"
+        $stdout.puts "PID #{pid} のプロセスを停止する権限がありません"
         exit 1
       end
     end
