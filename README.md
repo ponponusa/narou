@@ -156,6 +156,14 @@ Swagger UIでは以下が可能です：
 
 ## License
 
+- **Maintainer:** [ponponusa](https://github.com/ponponusa)
+- **Copyrights:**
+  - Original Project: Copyright (c) 2013-2024 whiteleaf7
+  - Forked Project: Copyright (c) 2025 Rumia-Channel
+  - This MOD Project: Copyright (c) 2025 ponponusa
+- **License:** This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) file for details.
+
+----
+
 - 「小説家になろう」は株式会社ヒナプロジェクトの登録商標です。
 - 本ソフトウェアを利用（入手、インストール、実行等）した時点で、[利用規約・免責事項](https://github.com/ponponusa/narou-mod/blob/develop/TERMS_AND_DISCLAIMER.md)に同意したものとみなします。ご利用の前に必ず内容をご確認ください。
-- This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
