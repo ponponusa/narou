@@ -199,7 +199,9 @@ module Command
           # Legacy モードの設定
           Narou::AppServer.legacy_mode = @options["legacy"] || false
 
-          address = "http://#{params[:host]}:#{params[:port]}/"
+          # 表示用のホスト名（127.0.0.1の場合はlocalhostに変換）
+          display_host = params[:host] == "127.0.0.1" ? "localhost" : params[:host]
+          address = "http://#{display_host}:#{params[:port]}/"
           $stdout.puts address
           $stdout.puts "サーバを止めるには Ctrl+C を入力"
           if @options["legacy"]
