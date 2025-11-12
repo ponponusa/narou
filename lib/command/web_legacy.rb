@@ -138,13 +138,17 @@ module Command
       if argv.delete("--boot")
         @rebooted = !!argv.delete("--reboot")
         super
-        # デーモンモードのデフォルト設定（明示的に指定されていない場合のみ）
-        @options["daemon"] = true unless @options.key?("daemon")
         boot
       else
+        # デーモンモードのデフォルト設定（明示的に指定されていない場合のみ）
+        # --bootフラグを追加する前に設定することで、ユーザーの意図を保持
+        @options["daemon"] = true unless @options.key?("daemon")
+        
         argv << "--backtrace" if $display_backtrace
         argv << "--no-color" if $disable_color
         argv << "--boot"
+        # daemonオプションを明示的に渡す
+        argv << (@options["daemon"] ? "--daemon" : "--no-daemon")
         argv_copy = argv.dup
         kill_threads
         begin
