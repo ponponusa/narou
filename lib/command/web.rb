@@ -250,6 +250,13 @@ module Command
     def start_server
       port = @options["port"] || 5678
       
+      # サーバー起動完了メッセージ（$stdoutを置き換える前に表示）
+      Command::OutputHelper.render("web_started", {
+        host: host,
+        port: port,
+        frontend_enabled: should_start_frontend?
+      })
+      
       # PushServerの初期化と起動
       push_server = Narou::PushServer.instance
       push_server.port = port + 1
@@ -274,13 +281,6 @@ module Command
       
       # WebWorkerを起動（タスクキュー処理用）
       Narou::WebWorker.run
-
-      # サーバー起動完了メッセージ
-      Command::OutputHelper.render("web_started", {
-        host: host,
-        port: port,
-        frontend_enabled: should_start_frontend?
-      })
       
       if @options["open-browser"]
         frontend_url = should_start_frontend? ? "http://#{host}:4321/" : "http://#{host}:#{port}/"
