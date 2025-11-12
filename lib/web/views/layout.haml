@@ -9,7 +9,7 @@
     %title
       = [@title, "Narou.rb MOD WEB UI"].compact.join(" - ")
     %link{:href => "/favicon.ico", :rel => "shortcut icon"}/
-    - if @bootstrap_theme
+    - if @bootstrap_theme && %w[Cerulean Darkly Readable Slate Superhero United].include?(@bootstrap_theme)
       %link{:href => "/theme/#{@bootstrap_theme}/bootstrap.min.css?_=#{Narou::VERSION}.#{Narou::COMMIT}", :rel => "stylesheet"}/
       %link{:href => "/theme/#{@bootstrap_theme}/style.css?_=#{Narou::VERSION}.#{Narou::COMMIT}", :rel => "stylesheet"}/
     - else
