@@ -75,6 +75,70 @@ module Narou
               })
             end
           end
+
+          # サーバーステータス取得
+          get "/api/server/status" do
+            backend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-web.pid")
+            frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+            
+            backend_running = false
+            frontend_running = false
+            backend_pid = nil
+            frontend_pid = nil
+            
+            if File.exist?(backend_pid_file)
+              backend_pid = File.read(backend_pid_file).to_i
+              begin
+                ::Process.kill(0, backend_pid)
+                backend_running = true
+              rescue Errno::ESRCH, Errno::EPERM
+                backend_running = false
+              end
+            end
+            
+            if File.exist?(frontend_pid_file)
+              frontend_pid = File.read(frontend_pid_file).to_i
+              begin
+                ::Process.kill(0, frontend_pid)
+                frontend_running = true
+              rescue Errno::ESRCH, Errno::EPERM
+                frontend_running = false
+              end
+            end
+            
+            json({
+              backend: {
+                running: backend_running,
+                pid: backend_pid
+              },
+              frontend: {
+                running: frontend_running,
+                pid: frontend_pid
+              }
+            })
+          end
+
+          # サーバー再起動
+          post "/api/server/restart" do
+            # 別プロセスで再起動コマンドを実行
+            pid = fork do
+              exec("narou-mod", "restart")
+            end
+            ::Process.detach(pid)
+            
+            json({ success: true, message: "サーバーを再起動しています..." })
+          end
+
+          # サーバー停止
+          post "/api/server/stop" do
+            # 別プロセスで停止コマンドを実行
+            pid = fork do
+              exec("narou-mod", "stop")
+            end
+            ::Process.detach(pid)
+            
+            json({ success: true, message: "サーバーを停止しています..." })
+          end
         end
       end
     end

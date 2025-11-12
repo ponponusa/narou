@@ -605,3 +605,54 @@ export async function deleteNovel(id: number): Promise<void> {
     throw new Error(`削除に失敗しました: ${response.statusText}`);
   }
 }
+
+/**
+ * サーバーステータス情報の型定義
+ */
+export interface ServerStatus {
+  backend: {
+    running: boolean;
+    pid: number | null;
+  };
+  frontend: {
+    running: boolean;
+    pid: number | null;
+  };
+}
+
+/**
+ * サーバーステータスを取得
+ */
+export async function getServerStatus(): Promise<ServerStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/server/status?_=${Date.now()}`);
+  if (!response.ok) {
+    throw new Error(`サーバーステータスの取得に失敗しました: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * サーバーを再起動
+ */
+export async function restartServer(): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/server/restart`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`サーバーの再起動に失敗しました: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * サーバーを停止
+ */
+export async function stopServer(): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/server/stop`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`サーバーの停止に失敗しました: ${response.statusText}`);
+  }
+  return response.json();
+}

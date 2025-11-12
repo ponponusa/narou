@@ -8,6 +8,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { getPushServer } from '../lib/pushserver';
   import ThemeToggle from './ThemeToggle.svelte';
+  import PowerMenu from './PowerMenu.svelte';
 
   let version = $state('...');
   let bootsnap = $state(false);
@@ -114,6 +115,9 @@
       
       <div class="flex items-center space-x-2">
         <ThemeToggle />
+        
+        <!-- 電源メニュー -->
+        <PowerMenu />
         
         <!-- 更新ボタン（アイコンのみ） -->
         <button
