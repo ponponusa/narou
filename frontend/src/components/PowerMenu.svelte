@@ -12,21 +12,32 @@
   let serverStatus = $state<ServerStatus | null>(null);
   let isLoading = $state(false);
   let statusInterval: number | null = null;
+  let isMounted = $state(false);
 
   onMount(() => {
+    isMounted = true;
     loadServerStatus();
     // 5秒ごとにステータスを更新
     statusInterval = window.setInterval(loadServerStatus, 5000);
     
     // クリック外でメニューを閉じる
     document.addEventListener('click', handleOutsideClick);
+    
+    return () => {
+      if (statusInterval) {
+        clearInterval(statusInterval);
+      }
+      document.removeEventListener('click', handleOutsideClick);
+    };
   });
 
   onDestroy(() => {
     if (statusInterval) {
       clearInterval(statusInterval);
     }
-    document.removeEventListener('click', handleOutsideClick);
+    if (isMounted) {
+      document.removeEventListener('click', handleOutsideClick);
+    }
   });
 
   async function loadServerStatus() {
