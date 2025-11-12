@@ -24,14 +24,14 @@ module Narou
             Narou::WebWorker.push do
               CommandLine.run!(["update", "--gl", option].compact)
               Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-              @@push_server.send_all(:"table.reload")
-              @@push_server.send_all(:"tag.updateCanvas")
+              Narou::AppServer.push_server.send_all(:"table.reload")
+              Narou::AppServer.push_server.send_all(:"tag.updateCanvas")
               if is_update_modified
                 puts "<yellow>#{Narou::MODIFIED_TAG} タグの付いた小説を更新します</yellow>".termcolor
                 CommandLine.run!("update", "tag:#{Narou::MODIFIED_TAG}")
                 Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-                @@push_server.send_all(:"table.reload")
-                @@push_server.send_all(:"tag.updateCanvas")
+                Narou::AppServer.push_server.send_all(:"table.reload")
+                Narou::AppServer.push_server.send_all(:"tag.updateCanvas")
               end
             end
           end

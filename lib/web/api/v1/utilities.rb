@@ -29,7 +29,7 @@ module Narou
           # ノートパッド保存
           post "/api/notepad/save" do
             File.write(notepad_text_path, params["text"])
-            @@push_server.send_all("notepad.change" => {
+            Narou::AppServer.push_server.send_all("notepad.change" => {
               text: params["text"], object_id: params["object_id"]
             })
             ""
@@ -158,7 +158,7 @@ module Narou
             opt_mail = "--mail" if query_to_boolean(params["mail"])
             Narou::WebWorker.push do
               CommandLine.run!("download", target, opt_mail)
-              @@push_server.send_all(:"table.reload")
+              Narou::AppServer.push_server.send_all(:"table.reload")
             end
             redirect "/resources/images/dl_button1.gif"
           end
