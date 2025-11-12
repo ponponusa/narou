@@ -77,19 +77,21 @@ module Command
     end
 
     def boot
-      require_relative "../narou"
-      require_relative "../web/appserver"
-      
-      # フロントエンド設定を更新
+      # フロントエンド設定を更新（require前に実行）
       port = @options["port"] || 5678
       update_frontend_env(port) if should_start_frontend?
       
-      # 起動メッセージを表示
+      # 起動メッセージを表示（require_relative "../narou" より前に実行）
+      # narou.rbをrequireすると$stdoutがNarou::Loggerに置き換わるため
       Command::OutputHelper.render("web_starting", {
         host: host,
         port: port,
         frontend_enabled: should_start_frontend?
       })
+      
+      # Narouモジュールをロード（$stdoutがNarou::Loggerに置き換わる）
+      require_relative "../narou"
+      require_relative "../web/appserver"
       
       # シグナルハンドラを設定（Ctrl+Cで停止）
       setup_signal_handlers
