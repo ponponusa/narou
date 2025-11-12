@@ -998,9 +998,23 @@
   }
 </script>
 
-<div class="container mx-auto px-2.5 py-6">
-  <!-- フィルター・検索バー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 lg:mx-12">
+<div class="relative">
+  <!-- サーバー停止時のオーバーレイとメッセージ -->
+  {#if $isServerStopped}
+    <div class="absolute inset-0 bg-gray-900 bg-opacity-75 z-20 flex items-center justify-center">
+      <div class="text-center text-white px-4">
+        <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <h2 class="text-2xl font-bold mb-2">サーバーが停止しています</h2>
+        <p class="text-gray-300">再度操作するには、ヘッダーの電源メニューからサーバーを起動してください。</p>
+      </div>
+    </div>
+  {/if}
+
+  <div class="container mx-auto px-2.5 py-6">
+    <!-- フィルター・検索バー -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 lg:mx-12">
     <!-- ヘッダー（常に表示） -->
     <div 
       class="flex items-center justify-between p-4 cursor-pointer" 
@@ -1947,6 +1961,7 @@
   {/if}
   </div>
 </div>
+</div>
 
 <!-- 小説追加モーダル -->
 <AddNovelModal bind:this={addNovelModal} />
@@ -2007,13 +2022,6 @@
   >
     <i class="fas fa-arrow-up text-lg"></i>
   </button>
-{/if}
-
-<!-- サーバー停止時のオーバーレイ -->
-{#if $isServerStopped}
-  <div class="fixed inset-0 bg-black bg-opacity-50 z-30 pointer-events-none">
-    <!-- 画面全体を無効化 -->
-  </div>
 {/if}
 
 <!-- トースト通知 -->
