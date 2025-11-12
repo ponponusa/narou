@@ -293,7 +293,75 @@ module Command
     end
 
     def daemonize
-      # デーモン化
+      # Windows環境ではfork()がサポートされていないため、spawnを使用
+      if Gem.win_platform?
+        daemonize_windows
+      else
+        daemonize_unix
+      end
+    end
+
+    def daemonize_windows
+      # Windowsではspawn + Process.detachでバックグラウンド実行
+      log_file = File.join(Narou.root_dir, "tmp", "logs", "narou-web.log")
+      log_dir = File.dirname(log_file)
+      FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
+
+      # 現在のコマンドを再構築（--bootの代わりに--no-daemonを使用）
+      ruby_path = RbConfig.ruby
+      script_path = File.join(__dir__, "..", "..", "narou.rb")
+      
+      # コマンドライン引数を再構築
+      args = ["web", "--no-daemon"]
+      args << "--port" << (@options["port"] || 5678).to_s if @options["port"]
+      args << "--host" << @options["host"] if @options["host"]
+      args << "--no-frontend" if @options["no-frontend"]
+      
+      # バックグラウンドでプロセスを起動
+      pid = spawn(
+        ruby_path, script_path, *args,
+        out: log_file,
+        err: log_file,
+        chdir: Narou.root_dir,
+        new_pgroup: true  # Windowsで新しいプロセスグループを作成
+      )
+      
+      # プロセスをデタッチ（親プロセスが終了しても子プロセスは継続）
+      ::Process.detach(pid)
+      
+      # PIDファイルに書き込む
+      pid_file = pid_file_path
+      pid_dir = File.dirname(pid_file)
+      FileUtils.mkdir_p(pid_dir) unless File.exist?(pid_dir)
+      File.write(pid_file, pid.to_s)
+      
+      # 起動メッセージを表示
+      $stdout.puts ""
+      $stdout.puts "✅ サーバーが起動しました！"
+      $stdout.puts ""
+      port = @options["port"] || 5678
+      $stdout.puts "  PID:             #{pid}"
+      
+      if should_start_frontend?
+        $stdout.puts "  バックエンドAPI: http://#{host}:#{port}"
+        $stdout.puts "  Web UI:          http://#{host}:4321"
+        $stdout.puts ""
+        $stdout.puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+      else
+        $stdout.puts "  Web UI:          http://#{host}:#{port}"
+        $stdout.puts ""
+        $stdout.puts "  ※ ブラウザで上記URLにアクセスしてください"
+      end
+      $stdout.puts ""
+      $stdout.puts "サーバーを停止するには: narou-mod stop"
+      $stdout.puts "サーバーの状態を確認:   narou-mod process"
+      $stdout.puts ""
+      
+      exit 0
+    end
+
+    def daemonize_unix
+      # Unix/Linux/macOSではfork()を使用
       pid = fork
       
       if pid
