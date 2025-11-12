@@ -179,7 +179,8 @@ module Command
       confirm_of_first
       
       # デーモン化フラグを保存（サーバー起動直前に使用）
-      @daemon_mode = @options.fetch("daemon", true)
+      # Legacy UIモードではデフォルトでフォアグラウンド実行
+      @daemon_mode = @options.fetch("daemon", false)
       $stdout.puts "DEBUG: daemon_mode = #{@daemon_mode.inspect}, options = #{@options.inspect}" if ENV["DEBUG"]
       
       if @daemon_mode
