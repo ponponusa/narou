@@ -59,7 +59,11 @@ async function fetchApiV2<T>(
       error: 'HTTP Error',
       message: `${response.status} ${response.statusText}`,
     }));
-    throw new Error(error.message || error.error);
+    const errorMessage = error.message || error.error || `${response.status} ${response.statusText}`;
+    const err = new Error(errorMessage);
+    // HTTPステータスコードを保持
+    (err as any).status = response.status;
+    throw err;
   }
 
   const apiResponse: ApiV2Response<T> = await response.json();

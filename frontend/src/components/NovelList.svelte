@@ -517,16 +517,20 @@
     } catch (err) {
       console.error('小説リストの取得エラー:', err);
       
-      // 接続エラーの判定を広範囲に
+      // HTTPステータスコードをチェック（500系エラーはリトライしない）
+      const isServerError = (err as any).status >= 500;
+      
+      // 接続エラーの判定を広範囲に（ただし500系は除外）
       // TypeError: Failed to fetch や NetworkError など
-      const isConnectionError = 
+      const isConnectionError = !isServerError && (
         err instanceof TypeError || // fetch失敗時
         (err instanceof Error && (
           err.message.includes('Failed to fetch') || 
           err.message.includes('NetworkError') ||
           err.message.includes('fetch') ||
           err.message.includes('network')
-        ));
+        ))
+      );
       
       if (isConnectionError && retryCount < maxRetries) {
         retryCount++;
@@ -542,9 +546,12 @@
       const message = err instanceof Error ? err.message : '小説リストの取得に失敗しました';
       error = message;
       loading = false;
+      retryCount = 0; // リトライカウンターをリセット
       
-      // 接続エラー以外の場合のみトーストを表示
-      if (!isConnectionError) {
+      // エラートーストを表示
+      if (isServerError) {
+        toast?.show('サーバーエラーが発生しました: ' + message, 'error');
+      } else if (!isConnectionError) {
         toast?.show(message, 'error');
       } else {
         toast?.show('サーバーに接続できませんでした', 'error');
