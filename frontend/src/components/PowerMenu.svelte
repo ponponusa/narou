@@ -7,12 +7,14 @@
   import { onMount, onDestroy } from 'svelte';
   import { getServerStatus, restartServer, stopServer } from '../lib/api';
   import type { ServerStatus } from '../lib/api';
+  import ServerActionModal from './ServerActionModal.svelte';
 
   let isOpen = $state(false);
   let serverStatus = $state<ServerStatus | null>(null);
   let isLoading = $state(false);
   let statusInterval: number | null = null;
   let isMounted = $state(false);
+  let currentAction = $state<'restart' | 'stop' | null>(null);
 
   onMount(() => {
     isMounted = true;
@@ -61,7 +63,7 @@
   }
 
   async function handleRestart() {
-    if (!confirm('サーバーを再起動しますか？\n\n再起動後、自動的にページがリロードされます。')) {
+    if (!confirm('サーバーを再起動しますか？')) {
       return;
     }
 
@@ -69,11 +71,7 @@
     try {
       await restartServer();
       isOpen = false;
-      
-      // 3秒後にページをリロード
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
+      currentAction = 'restart';
     } catch (error) {
       console.error('サーバーの再起動に失敗:', error);
       alert('サーバーの再起動に失敗しました');
@@ -91,9 +89,7 @@
     try {
       await stopServer();
       isOpen = false;
-      
-      // 停止メッセージを表示
-      alert('サーバーを停止しました。\n\nこのページを閉じてください。');
+      currentAction = 'stop';
     } catch (error) {
       console.error('サーバーの停止に失敗:', error);
       alert('サーバーの停止に失敗しました');
@@ -210,4 +206,7 @@
     </div>
   {/if}
 </div>
+
+<!-- サーバーアクション実行中モーダル -->
+<ServerActionModal bind:action={currentAction} />
 
