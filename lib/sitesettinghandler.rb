@@ -117,7 +117,11 @@ end
 
 class EvalHandler < SiteSettingHandler
   def match(source)
-    eval(@value, binding, parent&.path || "(nil)") # rubocop:disable Security/Eval
+    # rubocop:disable Security/Eval
+    # サイト設定YAMLファイル内のeval式を実行。
+    # これらの設定ファイルはアプリケーション開発者が管理する信頼できるソース。
+    eval(@value, binding, parent&.path || "(nil)")
+    # rubocop:enable Security/Eval
   end
   add_handler(path_or_type: "eval")
 end
