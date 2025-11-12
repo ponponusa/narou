@@ -18,7 +18,8 @@ RSpec.describe Command::Process do
   describe "#execute with --status" do
     context "when server is not running" do
       it "shows stopped status" do
-        expect { command.execute(["--status"]) }.to output(/停止中/).to_stdout
+        # バックエンドとフロントエンド両方の停止状態を確認
+        expect { command.execute(["--status"]) }.to output(/バックエンドサーバー: 停止中/).to_stdout
       end
     end
 

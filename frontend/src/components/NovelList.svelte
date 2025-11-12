@@ -21,6 +21,7 @@
   import type { Novel, TagInfo } from '../types/api';
   import { getPushServer } from '../lib/pushserver';
   import { progressStore } from '../lib/progressStore';
+  import { isServerStopped } from '../lib/stores/serverStatus';
   import AddNovelModal from './AddNovelModal.svelte';
   import TagModal from './TagModal.svelte';
   import ConversionSettingsModal from './ConversionSettingsModal.svelte';
@@ -28,6 +29,7 @@
   import ConsolePanel from './ConsolePanel.svelte';
   import Toast from './Toast.svelte';
   import TaskQueue from './TaskQueue.svelte';
+  import LoadingScreen from './LoadingScreen.svelte';
 
   let novels = $state<Novel[]>([]);
   let toast: Toast;
@@ -43,6 +45,10 @@
   let novelDetailModal: NovelDetailModal;
   let consolePanel = $state<ConsolePanel>();
   let taskQueue: TaskQueue;
+  let retryCount = $state(0);
+  let maxRetries = 10; // 最大10回リトライ（約20秒）
+  let isInitialLoad = $state(true); // 初回ロードフラグ
+  let initialLoadDelay = 2000; // 初回ロード時の待機時間（2秒）
 
   // フィルター・ソート設定
   let currentPage = $state(0);
@@ -329,6 +335,13 @@
   }
 
   onMount(async () => {
+    // sessionStorageで初回ロードかどうかを判定
+    const hasLoaded = sessionStorage.getItem('novelListLoaded');
+    if (hasLoaded === 'true') {
+      // 既に一度ロード済み（ページリロード）の場合はウェイトをスキップ
+      isInitialLoad = false;
+    }
+    
     // 設定を復元
     loadSettings();
     loadColumnVisibility();
@@ -409,12 +422,25 @@
   async function loadNovels() {
     loading = true;
     error = null;
+    
+    // 初回ロード時はバックエンドの起動を待つため2秒待機
+    if (isInitialLoad) {
+      console.log(`初回ロード: バックエンド起動を待機中... (${initialLoadDelay / 1000}秒)`);
+      await new Promise(resolve => setTimeout(resolve, initialLoadDelay));
+      isInitialLoad = false;
+      // 初回ロード完了フラグをセット
+      sessionStorage.setItem('novelListLoaded', 'true');
+    }
+    
     try {
       const response = await getNovels({
         page: currentPage + 1, // API v2 は 1-indexed
         per_page: pageSize,
         filter: filterText,
       });
+      
+      // 成功したらリトライカウントをリセット
+      retryCount = 0;
       
       // クライアント側でのフィルタリング（タグ、サイト、状態）
       let filteredNovels = response.novels;
@@ -507,13 +533,58 @@
       
       novels = filteredNovels;
       totalCount = response.total;
+      loading = false; // 成功時のみloadingをfalseに
     } catch (err) {
+      console.error('小説リストの取得エラー:', err);
+      
+      // HTTPステータスコードをチェック
+      const status = (err as any).status;
+      const isServerError = status >= 500 && status !== 503; // 503は除外（サービス準備中）
+      
+      // 503エラーまたは接続エラーの判定
+      // TypeError: Failed to fetch や NetworkError など
+      const isConnectionError = status === 503 || (
+        !isServerError && (
+          err instanceof TypeError || // fetch失敗時
+          (err instanceof Error && (
+            err.message.includes('Failed to fetch') || 
+            err.message.includes('NetworkError') ||
+            err.message.includes('fetch') ||
+            err.message.includes('network')
+          ))
+        )
+      );
+      
+      if (isConnectionError && retryCount < maxRetries) {
+        retryCount++;
+        console.log(`サーバー接続をリトライ中... (${retryCount}/${maxRetries})`);
+        
+        // エラートーストを表示（初回のみ）
+        if (retryCount === 1) {
+          toast?.show('小説リストの取得に時間がかかっています...', 'info');
+        }
+        
+        // 2秒後に再試行（loadingはtrueのまま維持）
+        setTimeout(() => {
+          loadNovels();
+        }, 2000);
+        return; // loadingはtrueのまま、エラー表示をスキップ
+      }
+      
+      // 最大リトライ回数に達した場合、または接続エラー以外の場合はエラー表示
       const message = err instanceof Error ? err.message : '小説リストの取得に失敗しました';
       error = message;
-      toast?.show(message, 'error');
-      console.error('小説リストの取得エラー:', err);
-    } finally {
       loading = false;
+      retryCount = 0; // リトライカウンターをリセット
+      
+      // エラートーストを表示
+      if (isServerError) {
+        toast?.show('サーバーエラーが発生しました: ' + message, 'error');
+      } else if (!isConnectionError) {
+        toast?.show(message, 'error');
+      } else {
+        toast?.show('サーバーに接続できませんでした。しばらくしてから再度お試しください。', 'error');
+      }
     }
   }
 
@@ -927,9 +998,23 @@
   }
 </script>
 
-<div class="container mx-auto px-2.5 py-6">
-  <!-- フィルター・検索バー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 lg:mx-12">
+<div class="relative">
+  <!-- サーバー停止時のオーバーレイとメッセージ -->
+  {#if $isServerStopped}
+    <div class="absolute inset-0 bg-gray-900 bg-opacity-75 z-20 flex items-center justify-center">
+      <div class="text-center text-white px-4">
+        <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <h2 class="text-2xl font-bold mb-2">サーバーが停止しています</h2>
+        <p class="text-gray-300">再度操作するには、ヘッダーの電源メニューからサーバーを起動してください。</p>
+      </div>
+    </div>
+  {/if}
+
+  <div class="container mx-auto px-2.5 py-6">
+    <!-- フィルター・検索バー -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 lg:mx-12">
     <!-- ヘッダー（常に表示） -->
     <div 
       class="flex items-center justify-between p-4 cursor-pointer" 
@@ -1335,10 +1420,12 @@
   <!-- 小説リストテーブル -->
   <div class="lg:mx-12">
   {#if loading}
-    <div class="text-center py-12">
-      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      <p class="mt-4 text-gray-600 dark:text-gray-400">読み込み中...</p>
-    </div>
+    <LoadingScreen 
+      message="小説リストを読み込んでいます..." 
+      retryCount={retryCount}
+      maxRetries={maxRetries}
+      isInitialLoad={isInitialLoad}
+    />
   {:else if error}
     <div class="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded">
       <p class="font-bold">エラー</p>
@@ -1623,46 +1710,105 @@
                 </td>
                 {/if}
                 <td class="px-4 py-3 text-sm w-32 sm:w-20" onclick={(e) => e.stopPropagation()}>
-                  <div class="flex items-center justify-center gap-2 flex-wrap sm:flex-wrap">
+                  <div class="flex items-center justify-center gap-2">
                     {#if processingNovelIds.has(novel.id)}
                       <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                     {:else}
-                      <!-- EPUBダウンロード -->
-                      <button
-                        onclick={() => handleDownloadEpub(novel.id)}
-                        class="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                        title="EPUBをダウンロード"
-                      >
-                        <i class="fas fa-download"></i>
-                      </button>
+                      <!-- デスクトップ表示（md以上） -->
+                      <div class="hidden md:flex items-center gap-2 flex-wrap">
+                        <!-- EPUBダウンロード -->
+                        <button
+                          onclick={() => handleDownloadEpub(novel.id)}
+                          class="p-1.5 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                          title="EPUBをダウンロード"
+                        >
+                          <i class="fas fa-download"></i>
+                        </button>
+                        
+                        <!-- 再取得 -->
+                        <button
+                          onclick={() => handleRedownloadNovel(novel.id, novel.title)}
+                          class="p-1.5 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors cursor-pointer"
+                          title="再取得"
+                        >
+                          <i class="fas fa-sync"></i>
+                        </button>
+                        
+                        <!-- 変換再実行 -->
+                        <button
+                          onclick={() => handleConvertNovel(novel.id, novel.title)}
+                          class="p-1.5 text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors cursor-pointer"
+                          title="変換再実行"
+                        >
+                          <i class="fas fa-redo"></i>
+                        </button>
+                        
+                        <!-- その他メニュー -->
+                        <div class="relative group">
+                          <button
+                            class="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors cursor-pointer"
+                            title="その他"
+                          >
+                            <i class="fas fa-ellipsis-v"></i>
+                          </button>
+                          <div class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                            <button
+                              onclick={(e) => { e.stopPropagation(); handleSingleTagEdit(novel.id); }}
+                              class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                            >
+                              <i class="fas fa-tags"></i> タグ編集
+                            </button>
+                            <button
+                              onclick={(e) => { e.stopPropagation(); handleConversionSettings(novel.id); }}
+                              class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                            >
+                              <i class="fas fa-cog"></i> 個別設定
+                            </button>
+                            <button
+                              onclick={() => handleFreezeNovel(novel.id, novel.frozen, novel.title)}
+                              class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                            >
+                              <i class="fas fa-{novel.frozen ? 'unlock' : 'lock'}"></i> {novel.frozen ? '凍結を解除' : '凍結する'}
+                            </button>
+                            <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                            <button
+                              onclick={() => handleDeleteNovel(novel.id, novel.title)}
+                              class="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
+                            >
+                              <i class="fas fa-trash-alt"></i> 削除
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                       
-                      <!-- 再取得 -->
-                      <button
-                        onclick={() => handleRedownloadNovel(novel.id, novel.title)}
-                        class="p-1.5 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors cursor-pointer"
-                        title="再取得"
-                      >
-                        <i class="fas fa-sync"></i>
-                      </button>
-                      
-                      <!-- 変換再実行 -->
-                      <button
-                        onclick={() => handleConvertNovel(novel.id, novel.title)}
-                        class="p-1.5 text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors cursor-pointer"
-                        title="変換再実行"
-                      >
-                        <i class="fas fa-redo"></i>
-                      </button>
-                      
-                      <!-- その他メニュー -->
-                      <div class="relative group">
+                      <!-- モバイル表示（md未満）: 全てハンバーガーメニュー内 -->
+                      <div class="md:hidden relative group">
                         <button
                           class="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors cursor-pointer"
-                          title="その他"
+                          title="アクション"
                         >
                           <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                          <button
+                            onclick={() => handleDownloadEpub(novel.id)}
+                            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                          >
+                            <i class="fas fa-download"></i> EPUBダウンロード
+                          </button>
+                          <button
+                            onclick={() => handleRedownloadNovel(novel.id, novel.title)}
+                            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                          >
+                            <i class="fas fa-sync"></i> 再取得
+                          </button>
+                          <button
+                            onclick={() => handleConvertNovel(novel.id, novel.title)}
+                            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                          >
+                            <i class="fas fa-redo"></i> 変換再実行
+                          </button>
+                          <div class="border-t border-gray-200 dark:border-gray-700"></div>
                           <button
                             onclick={(e) => { e.stopPropagation(); handleSingleTagEdit(novel.id); }}
                             class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
@@ -1814,6 +1960,7 @@
     </div>
   {/if}
   </div>
+</div>
 </div>
 
 <!-- 小説追加モーダル -->

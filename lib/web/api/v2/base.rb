@@ -80,6 +80,25 @@ module Narou
         
         result.empty? ? nil : result
       end
+
+      # データベースの準備状態をチェック
+      def database_ready?
+        return false unless defined?(Database)
+        
+        # Databaseインスタンスが取得できるかチェック
+        db = Database.instance
+        return false unless db
+        
+        # データベースオブジェクトが存在するかチェック
+        db_obj = db.get_object
+        return false unless db_obj
+        
+        true
+      rescue StandardError => e
+        # エラーが発生した場合は準備未完了とみなす
+        logger.warn "Database ready check failed: #{e.message}" if defined?(logger)
+        false
+      end
     end
   end
 end

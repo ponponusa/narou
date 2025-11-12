@@ -55,11 +55,29 @@ async function fetchApiV2<T>(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      error: 'HTTP Error',
-      message: `${response.status} ${response.statusText}`,
-    }));
-    throw new Error(error.message || error.error);
+    let errorMessage = `${response.status} ${response.statusText}`;
+    
+    try {
+      const error: ApiError = await response.json();
+      // エラーメッセージを抽出（複数のパターンに対応）
+      if (typeof error.message === 'string' && error.message) {
+        errorMessage = error.message;
+      } else if (typeof error.error === 'string' && error.error) {
+        errorMessage = error.error;
+      } else if (error.error && typeof error.error === 'object') {
+        // error.error がオブジェクトの場合（ネストされたエラー）
+        const nestedError = error.error as any;
+        errorMessage = nestedError.message || nestedError.error || JSON.stringify(error.error);
+      }
+    } catch (parseError) {
+      // JSONパースに失敗した場合はデフォルトメッセージを使用
+      console.error('Error response parse failed:', parseError);
+    }
+    
+    const err = new Error(errorMessage);
+    // HTTPステータスコードを保持
+    (err as any).status = response.status;
+    throw err;
   }
 
   const apiResponse: ApiV2Response<T> = await response.json();
@@ -84,11 +102,28 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      error: 'Unknown error',
-      message: response.statusText,
-    }));
-    throw new Error(error.message || error.error);
+    let errorMessage = response.statusText || `HTTP ${response.status}`;
+    
+    try {
+      const error: ApiError = await response.json();
+      // エラーメッセージを抽出（複数のパターンに対応）
+      if (typeof error.message === 'string' && error.message) {
+        errorMessage = error.message;
+      } else if (typeof error.error === 'string' && error.error) {
+        errorMessage = error.error;
+      } else if (error.error && typeof error.error === 'object') {
+        // error.error がオブジェクトの場合（ネストされたエラー）
+        const nestedError = error.error as any;
+        errorMessage = nestedError.message || nestedError.error || JSON.stringify(error.error);
+      }
+    } catch (parseError) {
+      // JSONパースに失敗した場合はデフォルトメッセージを使用
+      console.error('Error response parse failed:', parseError);
+    }
+    
+    const err = new Error(errorMessage);
+    (err as any).status = response.status;
+    throw err;
   }
 
   return response.json();
@@ -604,4 +639,55 @@ export async function deleteNovel(id: number): Promise<void> {
   if (!response.ok) {
     throw new Error(`削除に失敗しました: ${response.statusText}`);
   }
+}
+
+/**
+ * サーバーステータス情報の型定義
+ */
+export interface ServerStatus {
+  backend: {
+    running: boolean;
+    pid: number | null;
+  };
+  frontend: {
+    running: boolean;
+    pid: number | null;
+  };
+}
+
+/**
+ * サーバーステータスを取得
+ */
+export async function getServerStatus(): Promise<ServerStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/server/status?_=${Date.now()}`);
+  if (!response.ok) {
+    throw new Error(`サーバーステータスの取得に失敗しました: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * サーバーを再起動
+ */
+export async function restartServer(): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/server/restart`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`サーバーの再起動に失敗しました: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * サーバーを停止
+ */
+export async function stopServer(): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/server/stop`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`サーバーの停止に失敗しました: ${response.statusText}`);
+  }
+  return response.json();
 }

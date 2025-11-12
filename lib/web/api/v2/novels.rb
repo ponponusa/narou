@@ -20,6 +20,13 @@ module Narou
             set_cors_headers
             
             begin
+              # データベースの準備チェック
+              unless database_ready?
+                status 503
+                headers 'Retry-After' => '2' # 2秒後に再試行を推奨
+                return json error_response('SERVICE_UNAVAILABLE', 'データベースを準備中です。しばらくお待ちください。')
+              end
+              
               # パラメータ取得
               page = (params['page'] || 1).to_i
               per_page = (params['per_page'] || 50).to_i

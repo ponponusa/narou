@@ -5,14 +5,16 @@ require_relative "../spec_helper"
 RSpec.describe Command::Stop do
   subject(:command) { described_class.new }
 
-  let(:pid_file) { File.join(Narou.root_dir, "tmp", "pids", "narou-web.pid") }
+  let(:backend_pid_file) { File.join(Narou.root_dir, "tmp", "pids", "narou-web.pid") }
+  let(:frontend_pid_file) { File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid") }
 
   before do
-    FileUtils.mkdir_p(File.dirname(pid_file))
+    FileUtils.mkdir_p(File.dirname(backend_pid_file))
   end
 
   after do
-    File.delete(pid_file) if File.exist?(pid_file)
+    File.delete(backend_pid_file) if File.exist?(backend_pid_file)
+    File.delete(frontend_pid_file) if File.exist?(frontend_pid_file)
   end
 
   describe "#execute" do
@@ -24,7 +26,7 @@ RSpec.describe Command::Stop do
 
     context "when server is running" do
       before do
-        File.write(pid_file, Process.pid.to_s)
+        File.write(backend_pid_file, Process.pid.to_s)
       end
 
       it "stops the server with TERM signal" do

@@ -151,6 +151,9 @@ module Command
       
       # フロントエンドサーバーをバックグラウンドで起動
       pid = fork do
+        # 新しいプロセスグループを作成（stop時に子プロセスも停止できるようにする）
+        ::Process.setpgid(0, 0)
+        
         Dir.chdir(frontend_dir)
         
         # 標準入力・出力・エラーをリダイレクト
@@ -269,17 +272,20 @@ module Command
 
     def display_startup_message
       port = @options["port"] || 5678
+      # 表示用のホスト名（127.0.0.1の場合はlocalhostに変換）
+      display_host = host == "127.0.0.1" ? "localhost" : host
+      
       $stdout.puts ""
       $stdout.puts "✅ サーバーが起動しました！"
       $stdout.puts ""
       
       if should_start_frontend?
-        $stdout.puts "  バックエンドAPI: http://#{host}:#{port}"
-        $stdout.puts "  Web UI:          http://#{host}:4321"
+        $stdout.puts "  バックエンドAPI: http://#{display_host}:#{port}"
+        $stdout.puts "  Web UI:          http://#{display_host}:4321"
         $stdout.puts ""
-        $stdout.puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
+        $stdout.puts "  ※ Web UIにアクセスしてください (http://#{display_host}:4321)"
       else
-        $stdout.puts "  Web UI: http://#{host}:#{port}"
+        $stdout.puts "  Web UI: http://#{display_host}:#{port}"
         $stdout.puts ""
         $stdout.puts "  ※ ブラウザで上記URLにアクセスしてください"
       end
