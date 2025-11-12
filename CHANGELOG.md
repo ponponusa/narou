@@ -1,5 +1,37 @@
 # 更新履歴 - ChangeLog
 
+## 2.1.0 (未リリース)
+
+### 破壊的変更
+
+- **WEBサーバーのデーモンモードを削除**
+  - Puma 7.0以降でデーモン機能が削除されたため、フォアグラウンド実行のみに変更
+  - `--daemon`, `--no-daemon` オプションを削除
+  - サーバーは常にフォアグラウンドで実行され、`Ctrl+C`で停止
+  - `narou-mod restart` コマンドは使用不可（`Ctrl+C` → `narou-mod web --boot` で再起動）
+
+### 新機能
+
+- **TUI（Text User Interface）強化**
+  - `tty-markdown`, `tty-spinner`, `tty-box`, `tty-prompt` を導入
+  - CLI出力をMarkdown形式で見やすく表示
+  - スピナーやボックス表示でユーザビリティ向上
+
+- **ログファイル出力オプション追加**
+  - `--log-file FILE` オプションを追加（例: `narou-mod web --boot --log-file app.log`）
+  - 標準出力とファイル出力を切り替え可能
+
+### 変更点
+
+- `lib/command/output_helper.rb` モジュールを追加（TUI出力の一元管理）
+- `lib/command/web.rb`, `stop.rb`, `restart.rb` の出力を `OutputHelper` 経由に変更
+- フロントエンド起動処理を簡素化（フォアグラウンド実行に最適化）
+
+### systemd / タスクスケジューラについて
+
+- 本バージョンではsystemdユニットファイルやWindowsタスクスケジューラの提供は行いません
+- バックグラウンド実行が必要な場合は、ユーザー側で設定をお願いします
+
 ## 2.0.0
 
 - プロモタグ機能を実装

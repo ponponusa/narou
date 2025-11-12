@@ -69,6 +69,49 @@
 - Ruby 3.4以上（※元プロジェクトから変更されています）
 - MSYS2環境（Windowsの場合）
 
+## WEBサーバーの起動について - Web Server
+
+**v2.1.0以降、WEBサーバーはフォアグラウンド実行のみ対応**しています。
+
+```bash
+# サーバー起動（フォアグラウンド実行）
+narou-mod web --boot
+
+# オプション指定
+narou-mod web --boot --port 8080 --log-file app.log
+
+# サーバー停止
+# 方法1: Ctrl+C で停止
+# 方法2: 別ターミナルから narou-mod stop
+```
+
+### バックグラウンド実行が必要な場合
+
+systemdやタスクスケジューラを使用してください：
+
+#### Linuxの場合（systemdサービス例）
+
+```bash
+# /etc/systemd/system/narou-mod.service
+[Unit]
+Description=Narou-mod Web Server
+After=network.target
+
+[Service]
+Type=simple
+User=your-user
+WorkingDirectory=/path/to/narou-mod
+ExecStart=/usr/bin/narou-mod web --boot --log-file /var/log/narou-mod.log
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### Windowsの場合（タスクスケジューラ）
+
+タスクスケジューラで「ログオン時に実行」「非表示」設定で起動してください。
+
 ## 更新履歴 - ChangeLog
 
 ![GitHub Release](https://img.shields.io/github/v/release/ponponusa/narou-mod)
