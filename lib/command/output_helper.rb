@@ -34,8 +34,12 @@ module Command
     # 出力モード
     @output_mode = MODE_STDOUT
 
+    # 元のSTDOUTを保存（Narou::Loggerに置き換わる前の実際のターミナル）
+    ORIGINAL_STDOUT = STDOUT.dup
+    ORIGINAL_STDERR = STDERR.dup
+
     # TTY検出（パイプやリダイレクト時はTUIを無効化）
-    @tty_enabled = $stdout.tty?
+    @tty_enabled = ORIGINAL_STDOUT.tty?
 
     #
     # ログファイルを設定
@@ -54,18 +58,18 @@ module Command
 
         # 標準出力・エラー出力をログファイルにリダイレクト
         # テスト環境ではSTDOUT/STDERRがStringIOの場合があるのでスキップ
-        unless $stdout.is_a?(StringIO) || $stderr.is_a?(StringIO)
-          $stdout.reopen(log_file, "a")
-          $stderr.reopen($stdout)
-          $stdout.sync = true
-          $stderr.sync = true
+        unless ORIGINAL_STDOUT.is_a?(StringIO) || ORIGINAL_STDERR.is_a?(StringIO)
+          ORIGINAL_STDOUT.reopen(log_file, "a")
+          ORIGINAL_STDERR.reopen(ORIGINAL_STDOUT)
+          ORIGINAL_STDOUT.sync = true
+          ORIGINAL_STDERR.sync = true
         end
       else
         # 標準出力モード（デフォルト）
-        # Loggerは作成するが、$stdoutはリダイレクトしない
-        @logger = Logger.new($stdout)
+        # 元のSTDOUTを使ってLoggerを作成
+        @logger = Logger.new(ORIGINAL_STDOUT)
         @output_mode = MODE_STDOUT
-        @tty_enabled = $stdout.tty?
+        @tty_enabled = ORIGINAL_STDOUT.tty?
       end
 
       @logger.level = Logger::INFO
@@ -104,7 +108,8 @@ module Command
         @logger.info(plain)
       else
         # 標準出力モード: tty-markdownでレンダリング
-        puts TTY::Markdown.parse(markdown)
+        # 元のSTDOUTを使用（Narou::Loggerではなく実際のターミナル）
+        ORIGINAL_STDOUT.puts TTY::Markdown.parse(markdown)
       end
     end
 
@@ -126,7 +131,8 @@ module Command
         result
       else
         # 標準出力モード: tty-spinnerを使用
-        spinner = TTY::Spinner.new("[:spinner] #{message}...", format: :dots)
+        # 元のSTDOUTを使用（Narou::Loggerではなく実際のターミナル）
+        spinner = TTY::Spinner.new("[:spinner] #{message}...", format: :dots, output: ORIGINAL_STDOUT)
         spinner.auto_spin
         begin
           result = yield
@@ -156,6 +162,7 @@ module Command
         @logger.info("=" * (title.length + 8))
       else
         # 標準出力モード: tty-boxを使用
+        # 元のSTDOUTを使用（Narou::Loggerではなく実際のターミナル）
         box_style = case style
                     when :success then { border: :thick, padding: 1, style: { fg: :green, border: { fg: :green } } }
                     when :error then { border: :thick, padding: 1, style: { fg: :red, border: { fg: :red } } }
@@ -163,7 +170,7 @@ module Command
                     else { border: :thick, padding: 1, style: { fg: :cyan, border: { fg: :cyan } } }
                     end
 
-        puts TTY::Box.frame(title: { top_left: " #{title} " }, **box_style) do
+        ORIGINAL_STDOUT.puts TTY::Box.frame(title: { top_left: " #{title} " }, **box_style) do
           content
         end
       end
@@ -180,7 +187,7 @@ module Command
       if @output_mode == MODE_FILE || !@tty_enabled
         @logger.info(message)
       else
-        puts @pastel.cyan(message)
+        ORIGINAL_STDOUT.puts @pastel.cyan(message)
       end
     end
 
@@ -195,7 +202,7 @@ module Command
       if @output_mode == MODE_FILE || !@tty_enabled
         @logger.info("✓ #{message}")
       else
-        puts @pastel.green("✓ #{message}")
+        ORIGINAL_STDOUT.puts @pastel.green("✓ #{message}")
       end
     end
 
@@ -210,7 +217,7 @@ module Command
       if @output_mode == MODE_FILE || !@tty_enabled
         @logger.warn(message)
       else
-        puts @pastel.yellow("⚠ #{message}")
+        ORIGINAL_STDOUT.puts @pastel.yellow("⚠ #{message}")
       end
     end
 
@@ -225,9 +232,9 @@ module Command
       if @output_mode == MODE_FILE || !@tty_enabled
         @logger.error(message)
         # ファイル出力時も重要なエラーは標準エラー出力に出す
-        warn "ERROR: #{message}" if @output_mode == MODE_FILE
+        ORIGINAL_STDERR.puts "ERROR: #{message}" if @output_mode == MODE_FILE
       else
-        puts @pastel.red("✗ #{message}")
+        ORIGINAL_STDOUT.puts @pastel.red("✗ #{message}")
       end
     end
 
