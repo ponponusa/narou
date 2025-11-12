@@ -147,8 +147,8 @@ module Narou
                 debug_puts "全キャッシュクリア後にリロードイベントを送信"
                 
                 # テーブルリロードとタグキャンバス更新を順次実行
-                @@push_server.send_all(:"table.reload")
-                @@push_server.send_all(:"tag.updateCanvas")
+                Narou::AppServer.push_server.send_all(:"table.reload")
+                Narou::AppServer.push_server.send_all(:"tag.updateCanvas")
                 
                 { success: true }.to_json
               else
@@ -175,8 +175,8 @@ module Narou
             puts "タグ色変更完了: 全キャッシュクリア後にリロードイベントを送信"
             
             # テーブルリロードとタグキャンバス更新を順次実行
-            @@push_server.send_all(:"table.reload")
-            @@push_server.send_all(:"tag.updateCanvas")
+            Narou::AppServer.push_server.send_all(:"table.reload")
+            Narou::AppServer.push_server.send_all(:"tag.updateCanvas")
           end
         end
       end

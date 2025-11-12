@@ -39,10 +39,10 @@ module Command
       @opt.on("-o", "--open-browser", "起動時にブラウザを開く") {
         @options["open-browser"] = true
       }
-      @opt.on("-d", "--daemon", "バックグラウンドで起動（デフォルト）") {
+      @opt.on("-d", "--daemon", "バックグラウンドで起動") {
         @options["daemon"] = true
       }
-      @opt.on("--no-daemon", "フォアグラウンドで起動") {
+      @opt.on("--no-daemon", "フォアグラウンドで起動（デフォルト）") {
         @options["daemon"] = false
       }
       @opt.on("-l", "--legacy", "旧 Haml UI を使用する (デフォルトは新 Astro UI)") {
@@ -138,13 +138,18 @@ module Command
       if argv.delete("--boot")
         @rebooted = !!argv.delete("--reboot")
         super
-        # デーモンモードのデフォルト設定（明示的に指定されていない場合のみ）
-        @options["daemon"] = true unless @options.key?("daemon")
         boot
       else
+        # デーモンモードのデフォルト設定（明示的に指定されていない場合のみ）
+        # --bootフラグを追加する前に設定することで、ユーザーの意図を保持
+        # Legacy UIモードではデフォルトでフォアグラウンド実行
+        @options["daemon"] = false unless @options.key?("daemon")
+        
         argv << "--backtrace" if $display_backtrace
         argv << "--no-color" if $disable_color
         argv << "--boot"
+        # daemonオプションを明示的に渡す
+        argv << (@options["daemon"] ? "--daemon" : "--no-daemon")
         argv_copy = argv.dup
         kill_threads
         begin
@@ -174,7 +179,8 @@ module Command
       confirm_of_first
       
       # デーモン化フラグを保存（サーバー起動直前に使用）
-      @daemon_mode = @options.fetch("daemon", true)
+      # Legacy UIモードではデフォルトでフォアグラウンド実行
+      @daemon_mode = @options.fetch("daemon", false)
       $stdout.puts "DEBUG: daemon_mode = #{@daemon_mode.inspect}, options = #{@options.inspect}" if ENV["DEBUG"]
       
       if @daemon_mode
