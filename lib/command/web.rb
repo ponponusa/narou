@@ -151,6 +151,9 @@ module Command
       
       # フロントエンドサーバーをバックグラウンドで起動
       pid = fork do
+        # 新しいプロセスグループを作成（stop時に子プロセスも停止できるようにする）
+        ::Process.setpgid(0, 0)
+        
         Dir.chdir(frontend_dir)
         
         # 標準入力・出力・エラーをリダイレクト

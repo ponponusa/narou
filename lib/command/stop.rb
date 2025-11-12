@@ -76,7 +76,9 @@ module Command
       signal = @options["force"] ? "KILL" : "TERM"
       
       begin
-        ::Process.kill(signal, pid)
+        # プロセスグループ全体に停止シグナルを送信
+        # npmの子プロセス（astro devなど）も含めて停止
+        ::Process.kill("-#{signal}", pid)
         signal_name = @options["force"] ? "強制停止" : "停止"
         $stdout.puts "フロントエンドサーバーを#{signal_name}しました (PID: #{pid})"
         File.delete(pid_file) if File.exist?(pid_file)
