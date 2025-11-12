@@ -6,6 +6,7 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.svelte';
+import ServerStoppedBanner from '../components/ServerStoppedBanner.svelte';
 import NovelList from '../components/NovelList.svelte';
 import Footer from '../components/Footer.svelte';
 ---
@@ -13,7 +14,8 @@ import Footer from '../components/Footer.svelte';
 <BaseLayout title="Narou.rb MOD - ホーム">
   <div class="min-h-screen flex flex-col">
     <Header client:load />
-    <main class="flex-1">
+    <ServerStoppedBanner client:load />
+    <main class="flex-1 relative">
       <NovelList client:load />
     </main>
     <Footer client:load />

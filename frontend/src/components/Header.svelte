@@ -7,6 +7,7 @@
   import { getVersion, getSettings } from '../lib/api';
   import { onMount, onDestroy } from 'svelte';
   import { getPushServer } from '../lib/pushserver';
+  import { isServerStopped } from '../lib/stores/serverStatus';
   import ThemeToggle from './ThemeToggle.svelte';
   import PowerMenu from './PowerMenu.svelte';
 
@@ -117,7 +118,7 @@
         <!-- ナビゲーションボタン（アイコン） -->
         <a
           href="/"
-          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer {currentPath === '/' || currentPath === '/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : ''}"
+          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors {currentPath === '/' || currentPath === '/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : ''} {$isServerStopped ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}"
           title="小説リスト"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +128,7 @@
         
         <a
           href="/settings"
-          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer {currentPath === '/settings' || currentPath === '/settings/' || currentPath === '/settings/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : ''}"
+          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors {currentPath === '/settings' || currentPath === '/settings/' || currentPath === '/settings/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : ''} {$isServerStopped ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}"
           title="設定"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,9 +139,10 @@
         
         <!-- 更新ボタン（アイコンのみ） -->
         <button
-          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors cursor-pointer"
+          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors {$isServerStopped ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
           onclick={() => window.location.reload()}
           title="ページを更新"
+          disabled={$isServerStopped}
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

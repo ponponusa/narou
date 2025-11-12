@@ -6,6 +6,7 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.svelte';
+import ServerStoppedBanner from '../components/ServerStoppedBanner.svelte';
 import SettingsComponent from '../components/Settings.svelte';
 import Footer from '../components/Footer.svelte';
 ---
@@ -13,6 +14,7 @@ import Footer from '../components/Footer.svelte';
 <BaseLayout title="設定 - Narou">
   <div class="min-h-screen flex flex-col">
     <Header client:load />
+    <ServerStoppedBanner client:load />
     <main class="container mx-auto px-2.5 py-6 flex-1">
       <SettingsComponent client:load />
     </main>

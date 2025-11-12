@@ -21,6 +21,7 @@
   import type { Novel, TagInfo } from '../types/api';
   import { getPushServer } from '../lib/pushserver';
   import { progressStore } from '../lib/progressStore';
+  import { isServerStopped } from '../lib/stores/serverStatus';
   import AddNovelModal from './AddNovelModal.svelte';
   import TagModal from './TagModal.svelte';
   import ConversionSettingsModal from './ConversionSettingsModal.svelte';
@@ -1938,6 +1939,13 @@
   >
     <i class="fas fa-arrow-up text-lg"></i>
   </button>
+{/if}
+
+<!-- サーバー停止時のオーバーレイ -->
+{#if $isServerStopped}
+  <div class="fixed inset-0 bg-black bg-opacity-50 z-30 pointer-events-none">
+    <!-- 画面全体を無効化 -->
+  </div>
 {/if}
 
 <!-- トースト通知 -->

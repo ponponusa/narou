@@ -6,6 +6,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { getServerStatus } from '../lib/api';
+  import { isServerStopped } from '../lib/stores/serverStatus';
 
   interface Props {
     action: 'restart' | 'stop' | null;
@@ -105,6 +106,7 @@
           // 接続エラー = サーバーが停止した
           status = 'completed';
           message = 'サーバーが正常に停止しました';
+          isServerStopped.set(true); // グローバル状態を更新
           if (checkInterval) {
             clearInterval(checkInterval);
           }
