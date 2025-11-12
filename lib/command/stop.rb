@@ -4,6 +4,8 @@
 # Copyright 2025 narou-mod contributors. All rights reserved.
 #
 
+require_relative "output_helper"
+
 module Command
   class Stop < CommandBase
     def self.oneline_help
@@ -29,11 +31,13 @@ module Command
     def execute(argv)
       super
       
+      Command::OutputHelper.setup_logger(nil)
+      
       backend_stopped = stop_backend
       frontend_stopped = stop_frontend
       
       if !backend_stopped && !frontend_stopped
-        $stdout.puts "サーバーは起動していません"
+        Command::OutputHelper.warning("サーバーは起動していません")
       end
     end
 
@@ -52,15 +56,15 @@ module Command
       begin
         ::Process.kill(signal, pid)
         signal_name = @options["force"] ? "強制停止" : "停止"
-        $stdout.puts "バックエンドサーバーを#{signal_name}しました (PID: #{pid})"
+        Command::OutputHelper.success("バックエンドサーバーを#{signal_name}しました (PID: #{pid})")
         File.delete(pid_file) if File.exist?(pid_file)
         true
       rescue Errno::ESRCH
-        $stdout.puts "PID #{pid} のプロセスが見つかりません"
+        Command::OutputHelper.warning("PID #{pid} のプロセスが見つかりません")
         File.delete(pid_file) if File.exist?(pid_file)
         false
       rescue Errno::EPERM
-        $stdout.puts "PID #{pid} のプロセスを停止する権限がありません"
+        Command::OutputHelper.error("PID #{pid} のプロセスを停止する権限がありません")
         exit 1
       end
     end
@@ -80,15 +84,15 @@ module Command
         # npmの子プロセス（astro devなど）も含めて停止
         ::Process.kill("-#{signal}", pid)
         signal_name = @options["force"] ? "強制停止" : "停止"
-        $stdout.puts "フロントエンドサーバーを#{signal_name}しました (PID: #{pid})"
+        Command::OutputHelper.success("フロントエンドサーバーを#{signal_name}しました (PID: #{pid})")
         File.delete(pid_file) if File.exist?(pid_file)
         true
       rescue Errno::ESRCH
-        $stdout.puts "PID #{pid} のプロセスが見つかりません"
+        Command::OutputHelper.warning("PID #{pid} のプロセスが見つかりません")
         File.delete(pid_file) if File.exist?(pid_file)
         false
       rescue Errno::EPERM
-        $stdout.puts "PID #{pid} のプロセスを停止する権限がありません"
+        Command::OutputHelper.error("PID #{pid} のプロセスを停止する権限がありません")
         exit 1
       end
     end
