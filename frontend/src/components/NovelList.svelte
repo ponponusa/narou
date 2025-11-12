@@ -513,6 +513,7 @@
       
       novels = filteredNovels;
       totalCount = response.total;
+      loading = false; // 成功時のみloadingをfalseに
     } catch (err) {
       console.error('小説リストの取得エラー:', err);
       
@@ -525,23 +526,22 @@
       if (isConnectionError && retryCount < maxRetries) {
         retryCount++;
         console.log(`リトライ中... (${retryCount}/${maxRetries})`);
-        // 2秒後に再試行
+        // 2秒後に再試行（loadingはtrueのまま維持）
         setTimeout(() => {
           loadNovels();
         }, 2000);
-        return; // エラー表示をスキップ
+        return; // loadingはtrueのまま、エラー表示をスキップ
       }
       
       // 最大リトライ回数に達した場合、または接続エラー以外の場合はエラー表示
       const message = err instanceof Error ? err.message : '小説リストの取得に失敗しました';
       error = message;
+      loading = false;
       
       // 接続エラー以外の場合のみトーストを表示
       if (!isConnectionError) {
         toast?.show(message, 'error');
       }
-    } finally {
-      loading = false;
     }
   }
 
