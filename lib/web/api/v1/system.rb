@@ -87,22 +87,40 @@ module Narou
             frontend_pid = nil
             
             if File.exist?(backend_pid_file)
-              backend_pid = File.read(backend_pid_file).to_i
+              pid = File.read(backend_pid_file).to_i
               begin
-                ::Process.kill(0, backend_pid)
+                ::Process.kill(0, pid)
+                # プロセスが存在する
                 backend_running = true
-              rescue Errno::ESRCH, Errno::EPERM
+                backend_pid = pid
+              rescue Errno::ESRCH
+                # プロセスが存在しない -> PIDファイルを削除
+                File.delete(backend_pid_file)
                 backend_running = false
+                backend_pid = nil
+              rescue Errno::EPERM
+                # 権限がないが、プロセスは存在する
+                backend_running = true
+                backend_pid = pid
               end
             end
             
             if File.exist?(frontend_pid_file)
-              frontend_pid = File.read(frontend_pid_file).to_i
+              pid = File.read(frontend_pid_file).to_i
               begin
-                ::Process.kill(0, frontend_pid)
+                ::Process.kill(0, pid)
+                # プロセスが存在する
                 frontend_running = true
-              rescue Errno::ESRCH, Errno::EPERM
+                frontend_pid = pid
+              rescue Errno::ESRCH
+                # プロセスが存在しない -> PIDファイルを削除
+                File.delete(frontend_pid_file)
                 frontend_running = false
+                frontend_pid = nil
+              rescue Errno::EPERM
+                # 権限がないが、プロセスは存在する
+                frontend_running = true
+                frontend_pid = pid
               end
             end
             

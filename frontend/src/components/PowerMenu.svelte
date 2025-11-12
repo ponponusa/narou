@@ -45,6 +45,7 @@
   async function loadServerStatus() {
     try {
       serverStatus = await getServerStatus();
+      console.log('サーバーステータス:', JSON.stringify(serverStatus, null, 2));
     } catch (error) {
       console.error('サーバーステータスの取得に失敗:', error);
     }
