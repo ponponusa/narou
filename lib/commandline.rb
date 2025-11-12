@@ -22,8 +22,13 @@ module CommandLine
     end
     unless STDIN.tty?
       # 端末からの生入力だとブロックするので、パイプ/リダイレクト時のみ読む
-      if !$stdin.tty?
-        argv += ($stdin.read || "").split
+      # nohup環境などでSTDINが閉じられている場合はスキップ
+      if !$stdin.tty? && !$stdin.closed?
+        begin
+          argv += ($stdin.read || "").split
+        rescue Errno::EBADF
+          # STDINが利用不可の場合は無視
+        end
       end
     end
 

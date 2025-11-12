@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Narou.rb MOD API Documentation</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui.css" />
+  <link rel="icon" type="image/png" href="https://unpkg.com/swagger-ui-dist@5.10.0/favicon-32x32.png" sizes="32x32" />
+  <link rel="icon" type="image/png" href="https://unpkg.com/swagger-ui-dist@5.10.0/favicon-16x16.png" sizes="16x16" />
+  <style>
+    html {
+      box-sizing: border-box;
+      overflow: -moz-scrollbars-vertical;
+      overflow-y: scroll;
+    }
+    *,
+    *:before,
+    *:after {
+      box-sizing: inherit;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui-bundle.js" charset="UTF-8"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
+  <script>
+    window.onload = function() {
+      // Build a system
+      const ui = SwaggerUIBundle({
+        url: "/api/openapi.yaml",
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout",
+        // デフォルトでAPI v2サーバーを選択
+        server: "http://localhost:5678",
+        // 日本語表示
+        defaultModelsExpandDepth: 1,
+        defaultModelExpandDepth: 1,
+        docExpansion: "list",
+        filter: true,
+        showRequestHeaders: true,
+        showExtensions: true,
+        showCommonExtensions: true,
+        tryItOutEnabled: true,
+        requestSnippetsEnabled: true,
+        persistAuthorization: true
+      });
+      window.ui = ui;
+    };
+  </script>
+</body>
+</html>

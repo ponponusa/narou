@@ -8,6 +8,7 @@ require_relative "../progressbar"
 
 #
 # コンソール用のプログレスバーはWEB UIでは使えないため置き換える
+# プログレスバーの出力を完全に無効化
 #
 class ProgressBar
   def self.push_server=(server)
@@ -17,20 +18,19 @@ class ProgressBar
   alias :original_initialize :initialize
 
   def initialize(*args, **opt)
+    # 親クラスのinitializeを呼ぶ（@ioを設定するため）
     original_initialize(*args, **opt)
-    @@push_server.send_all("progressbar.init" => { target_console: io.target_console })
+    # プログレスバーイベントは送信しない（無効化）
+    # @@push_server.send_all("progressbar.init" => { target_console: io.target_console })
   end
 
   def output(num)
-    percent = calc_ratio(num) * 100
-    @@push_server.send_all("progressbar.step" => {
-      percent: percent,
-      target_console: io.target_console
-    })
+    # プログレスバーの出力を完全に無効化
+    # フロントエンド側での表示問題があるため、出力しない
   end
 
   def clear
-    @@push_server.send_all("progressbar.clear" => { target_console: io.target_console })
+    # プログレスバーのクリア処理を無効化
   end
 end
 

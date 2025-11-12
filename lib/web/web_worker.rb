@@ -24,7 +24,6 @@ module Narou
       @size = 0
       @mutex = Mutex.new
       @worker_thread = nil
-      @push_server = Narou::PushServer.instance
       @cancel_signal = false
       @thread_of_block_executing = nil
     end
@@ -111,7 +110,10 @@ module Narou
     end
 
     def notification_queue
-      @push_server.send_all("notification.queue" => [@size, Narou::Worker.size])
+      push_server = Narou::AppServer.push_server
+      return unless push_server
+      
+      push_server.send_all("notification.queue" => [@size, Narou::Worker.size])
     end
 
     def countup

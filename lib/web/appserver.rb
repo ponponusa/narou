@@ -18,6 +18,7 @@ require "rack/protection"
 require "tilt/erubi"
 require "tilt/haml"
 require "tilt/sass"
+require_relative "../version"
 require_relative "../commandline"
 require_relative "../inventory"
 require_relative "web_worker"
@@ -26,6 +27,18 @@ require_relative "settingmessages"
 require_relative "server_helpers"
 require_relative "../narou/promo_tag_extractor"
 require_relative "../narou/system_updater"
+require_relative "../narou/tag_manager"
+require_relative "api/v1/system"
+require_relative "api/v1/settings"
+require_relative "api/v1/tags"
+require_relative "api/v1/utilities"
+require_relative "api/v1/novels"
+require_relative "api/v2/base"
+require_relative "api/v2/novels"
+require_relative "api/v2/novel_settings"
+require_relative "api/v2/system"
+require_relative "api/v2/tags"
+require_relative "api/v2/settings"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -41,6 +54,12 @@ class Narou::AppServer < Sinatra::Base
     set :quiet, true
     enable :protection
     enable :sessions
+    enable :static
+    
+    # 静的ファイルの配信設定は動的に決定できないため、
+    # デフォルトでlib/web/publicを設定（Legacyモード用）
+    # 新しいUIのフロントエンドファイルはルーティングで個別に処理
+    set :public_folder, File.join(File.dirname(__FILE__), "public")
 
     set(:version) do
       Command::Version.create_version_string
@@ -56,12 +75,69 @@ class Narou::AppServer < Sinatra::Base
     end
   end
 
+  # API v1 (Legacy) エンドポイント登録
+  Narou::ApiV1::System.register(self)
+  Narou::ApiV1::Settings.register(self)
+  Narou::ApiV1::Tags.register(self)
+  Narou::ApiV1::Utilities.register(self)
+  Narou::ApiV1::Novels.register(self)
+
+  # API v2 エンドポイント登録
+  include Narou::ApiV2::Base
+  Narou::ApiV2::Novels.register(self)
+  Narou::ApiV2::NovelSettings.register(self)
+  Narou::ApiV2::System.register(self)
+  Narou::ApiV2::Tags.register(self)
+  Narou::ApiV2::Settings.register(self)
+
+  # Swagger UI と OpenAPI 仕様書のエンドポイント
+  get "/api/docs" do
+    swagger_ui_path = File.join(settings.public_folder, "swagger-ui", "index.html")
+    if File.exist?(swagger_ui_path)
+      send_file swagger_ui_path
+    else
+      halt 404, "Swagger UI not found at #{swagger_ui_path}"
+    end
+  end
+
+  get "/api/openapi.yaml" do
+    content_type "application/x-yaml"
+    openapi_path = File.join(File.dirname(__FILE__), "../../docs/openapi.yaml")
+    if File.exist?(openapi_path)
+      send_file openapi_path
+    else
+      halt 404, "OpenAPI spec not found at #{openapi_path}"
+    end
+  end
+
+  # CORS設定（新しいフロントエンドとの連携用）
+  before do
+    # プリフライトリクエストとAPIエンドポイントにCORSヘッダーを追加
+    if request.path.start_with?('/api') || request.request_method == 'OPTIONS'
+      headers['Access-Control-Allow-Origin'] = '*'
+      headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+      headers['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization'
+      headers['Access-Control-Max-Age'] = '86400'
+      
+      # OPTIONSリクエスト（プリフライト）の場合は200を返して終了
+      halt 200 if request.request_method == 'OPTIONS'
+    end
+  end
+
   def self.push_server=(server)
     @@push_server = server
   end
 
   def self.push_server
     @@push_server
+  end
+
+  def self.legacy_mode=(enabled)
+    @@legacy_mode = enabled
+  end
+
+  def self.legacy_mode?
+    @@legacy_mode ||= false
   end
 
   def self.request_reboot
@@ -149,7 +225,7 @@ class Narou::AppServer < Sinatra::Base
     return unless Device.support_eject?
     Thread.new do
       loop do
-        if @@push_server.connections.count > 0
+        if defined?(@@push_server) && @@push_server && @@push_server.connections.count > 0
           device = Narou.get_device
           @@push_server.send_all(:"device.ejectable" => device && device.ejectable?)
         end
@@ -216,24 +292,111 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/" do
-    setting = Inventory.load("server_setting", :global)
-    @is_first_access = !setting["already-accessed"]
-    if @is_first_access
-      setting["already-accessed"] = true
-      setting.save
+    if self.class.legacy_mode?
+      # Legacy Haml UI
+      setting = Inventory.load("server_setting", :global)
+      @is_first_access = !setting["already-accessed"]
+      if @is_first_access
+        setting["already-accessed"] = true
+        setting.save
+      end
+      haml :index, layout: true
+    else
+      # New Astro UI
+      # 開発環境のパス
+      dev_index_path = File.join(__dir__, "../../frontend/dist/index.html")
+      
+      # gem環境のパス
+      gem_index_path = File.expand_path("../../frontend/dist/index.html", File.dirname(__FILE__))
+      
+      index_path = if File.exist?(dev_index_path)
+                     dev_index_path
+                   elsif File.exist?(gem_index_path)
+                     gem_index_path
+                   else
+                     nil
+                   end
+      
+      if index_path && File.exist?(index_path)
+        send_file index_path
+      else
+        halt 500, "Frontend not built. Run 'cd frontend && npm run build' first."
+      end
     end
-    haml :index, layout: true
   end
 
   get "/style.css" do
-    scss :style
+    if self.class.legacy_mode?
+      scss :style
+    else
+      # Astro UI では使用しない
+      halt 404
+    end
+  end
+
+  # Astro ビルド済みアセット配信
+  get "/_astro/*" do
+    unless self.class.legacy_mode?
+      # 開発環境とgem環境の両方に対応
+      asset_filename = params['splat'].first
+      
+      # 開発環境のパス
+      dev_asset_path = File.join(__dir__, "../../frontend/dist/_astro", asset_filename)
+      
+      # gem環境のパス
+      gem_asset_path = File.expand_path("../../frontend/dist/_astro/#{asset_filename}", File.dirname(__FILE__))
+      
+      asset_path = if File.exist?(dev_asset_path)
+                     dev_asset_path
+                   elsif File.exist?(gem_asset_path)
+                     gem_asset_path
+                   else
+                     nil
+                   end
+      
+      if asset_path && File.exist?(asset_path)
+        send_file asset_path
+      else
+        halt 404
+      end
+    else
+      halt 404
+    end
+  end
+
+  get "/favicon.svg" do
+    unless self.class.legacy_mode?
+      # 開発環境のパス
+      dev_favicon_path = File.join(__dir__, "../../frontend/dist/favicon.svg")
+      
+      # gem環境のパス
+      gem_favicon_path = File.expand_path("../../frontend/dist/favicon.svg", File.dirname(__FILE__))
+      
+      favicon_path = if File.exist?(dev_favicon_path)
+                       dev_favicon_path
+                     elsif File.exist?(gem_favicon_path)
+                       gem_favicon_path
+                     else
+                       nil
+                     end
+      
+      if favicon_path && File.exist?(favicon_path)
+        send_file favicon_path
+      else
+        halt 404
+      end
+    else
+      halt 404
+    end
   end
 
   before "/settings" do
-    @title = "環境設定"
-    @setting_variables = Command::Setting.get_setting_variables
-    @error_list = {}
-    @global_replace_pattern = @replace_pattern = Narou.global_replace_pattern
+    if self.class.legacy_mode?
+      @title = "環境設定"
+      @setting_variables = Command::Setting.get_setting_variables
+      @error_list = {}
+      @global_replace_pattern = @replace_pattern = Narou.global_replace_pattern
+    end
   end
 
   post "/settings" do
@@ -304,7 +467,30 @@ class Narou::AppServer < Sinatra::Base
   end
 
   get "/settings" do
-    haml :settings
+    if self.class.legacy_mode?
+      haml :settings
+    else
+      # Astro UI の settings ページ
+      # 開発環境のパス
+      dev_settings_path = File.join(__dir__, "../../frontend/dist/settings/index.html")
+      
+      # gem環境のパス
+      gem_settings_path = File.expand_path("../../frontend/dist/settings/index.html", File.dirname(__FILE__))
+      
+      settings_path = if File.exist?(dev_settings_path)
+                        dev_settings_path
+                      elsif File.exist?(gem_settings_path)
+                        gem_settings_path
+                      else
+                        nil
+                      end
+      
+      if settings_path && File.exist?(settings_path)
+        send_file settings_path
+      else
+        halt 404, "Settings page not found"
+      end
+    end
   end
 
   get "/help" do
@@ -1138,759 +1324,6 @@ class Narou::AppServer < Sinatra::Base
     return sorted_ids
   end
 
-  get "/api/list" do
-    begin
-      result = process_novel_list_request(params)
-      json result
-    rescue StandardError => e
-      # エラーが発生した場合のレスポンス
-      puts "API List Error: #{e.message}"
-      puts e.backtrace.join("\n")
-      
-      json({
-        draw: params["draw"].to_i || 1,
-        data: [],
-        recordsTotal: 0,
-        recordsFiltered: 0,
-        error: "サーバーエラーが発生しました: #{e.message}"
-      })
-    end
-  end
-
-  # POSTメソッドでも同じ処理を実行（URIが長くなる問題を回避）
-  post "/api/list" do
-    begin
-      result = process_novel_list_request(params)
-      json result
-    rescue StandardError => e
-      # エラーが発生した場合のレスポンス
-      puts "API List Error: #{e.message}"
-      puts e.backtrace.join("\n")
-      
-      json({
-        draw: params["draw"].to_i || 1,
-        data: [],
-        recordsTotal: 0,
-        recordsFiltered: 0,
-        error: "サーバーエラーが発生しました: #{e.message}"
-      })
-    end
-  end
-
-  post "/api/cancel" do
-    Narou::WebWorker.cancel
-    Narou::Worker.cancel if Narou.concurrency_enabled?
-  end
-
-  get "/api/sort_state" do
-    server_setting = Inventory.load("server_setting", :global)
-    current_sort = server_setting["current_sort"]
-    
-    if current_sort
-      json({
-        column: current_sort["column"],
-        dir: current_sort["dir"]
-      })
-    else
-      # デフォルトソート: 最新話掲載日 降順
-      json({
-        column: 2,
-        dir: "desc"
-      })
-    end
-  end
-
-  post "/api/convert" do
-    begin
-      ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
-      
-      # convert実行時点でのソート状態が渡された場合はそれを使用
-      if params["sort_state"] && params["timestamp"]
-        debug_puts "[DEBUG] Convert with fixed sort state (timestamp: #{params["timestamp"]})"
-        sorted_ids = sort_ids_with_fixed_state(ids, params["sort_state"])
-      else
-        # 従来通りの現在のソート状態に基づく並び替え
-        debug_puts "[DEBUG] Convert with current sort state"
-        sorted_ids = sort_ids_by_current_sort(ids)
-      end
-      
-      debug_puts "[DEBUG] Convert processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
-      concurrency_push do
-        CommandLine.run!("convert", "--no-open", sorted_ids)
-      end
-      
-      json({ 
-        success: true, 
-        message: "変換処理を開始しました", 
-        count: sorted_ids.length,
-        ids: sorted_ids 
-      })
-    rescue StandardError => e
-      puts "[ERROR] Convert API error: #{e.class}: #{e.message}"
-      puts e.backtrace.first(5).join("\n") if $DEBUG
-      status 500
-      json({ error: "変換処理でエラーが発生しました: #{e.message}" })
-    end
-  end
-
-  post "/api/download" do
-    headers "Access-Control-Allow-Origin" => "*"
-    targets_param = params["targets"]
-    bad_request!("ダウンロード対象が指定されていません") if targets_param.nil?
-
-    targets = targets_param.is_a?(Array) ? targets_param : targets_param.to_s.split
-    targets = targets.map(&:to_s).reject(&:empty?)
-    bad_request!("ダウンロード対象が指定されていません") if targets.empty?
-
-    opt_mail = "--mail" if query_to_boolean(params["mail"])
-    Narou::WebWorker.push do
-      CommandLine.run!("download", targets, opt_mail)
-      Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-      @@push_server.send_all(:"table.reload")
-    end
-  end
-
-  post "/api/download_force" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    Narou::WebWorker.push do
-      CommandLine.run!("download", "--force", ids)
-      Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-      @@push_server.send_all(:"table.reload")
-    end
-  end
-
-  post "/api/mail" do
-    ids = select_valid_novel_ids(params["ids"]) || []
-    Narou::WebWorker.push do
-      Narou.concurrency_call do
-        CommandLine.run!("mail", ids, io: $stdout2)
-      end
-    end
-  end
-
-  post "/api/update" do
-    if params["update_all"] == "true"
-      # 全件更新の場合 - 処理用完全IDリストを使用
-      puts "[DEBUG] All novels update requested" if ENV["NAROU_DEBUG"] == "1"
-      
-      # 新しいキャッシュシステムで全IDを取得（現在のフィルター・ソート条件適用済み）
-      sorted_ids = get_full_sorted_ids(params)
-      puts "[DEBUG] Full sorted IDs for update: #{sorted_ids.length} items" if ENV["NAROU_DEBUG"] == "1"
-      puts "[DEBUG] First 10 IDs: #{sorted_ids.first(10).inspect}" if ENV["NAROU_DEBUG"] == "1"
-      
-      opt_arguments = []
-      if params["force"] == "true"
-        opt_arguments << "--force"
-      end
-      Narou::WebWorker.push do
-        puts "<white>全ての小説の更新を開始します（#{sorted_ids.length}件を#{current_sort_display_string}で処理）</white>".termcolor
-        cmd = Command::Update.new
-        if table_reload_timing == "every"
-          cmd.on(:success) do
-            @@push_server.send_all(:"table.reload")
-          end
-        end
-        cmd.execute!(sorted_ids, opt_arguments)
-        Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-        @@push_server.send_all(:"table.reload")
-      end
-    else
-      # 選択された小説のみ更新 - 処理用完全IDリストと照合
-      selected_ids = select_valid_novel_ids(params["ids"]) || []
-      puts "[DEBUG] Selected IDs from WebUI: #{selected_ids.inspect}" if ENV["NAROU_DEBUG"] == "1"
-      
-      if selected_ids.empty?
-        puts "[DEBUG] No valid IDs selected, skipping update" if ENV["NAROU_DEBUG"] == "1"
-        return
-      end
-      
-      # 処理用完全IDリストを取得（現在のフィルター・ソート条件適用済み）
-      full_sorted_ids = get_full_sorted_ids(params)
-      puts "[DEBUG] Full sorted IDs: #{full_sorted_ids.length} items" if ENV["NAROU_DEBUG"] == "1"
-      
-      # 選択されたIDを完全リストの順序で並び替え
-      sorted_ids = full_sorted_ids.select { |id| selected_ids.include?(id) }
-      puts "[DEBUG] Final sorted IDs for update: #{sorted_ids.inspect}" if ENV["NAROU_DEBUG"] == "1"
-      
-      if sorted_ids.empty?
-        puts "[DEBUG] No selected IDs found in current filter/sort, skipping update" if ENV["NAROU_DEBUG"] == "1"
-        return
-      end
-      
-      opt_arguments = []
-      if params["force"] == "true"
-        opt_arguments << "--force"
-      end
-      Narou::WebWorker.push do
-        puts "<white>更新を開始します（#{sorted_ids.length}件を#{current_sort_display_string}で処理）</white>".termcolor
-        cmd = Command::Update.new
-        if table_reload_timing == "every"
-          cmd.on(:success) do
-            @@push_server.send_all(:"table.reload")
-          end
-        end
-        cmd.execute!(sorted_ids, opt_arguments)
-        Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-        @@push_server.send_all(:"table.reload")
-      end
-    end
-  end
-
-  post "/api/update_by_tag" do
-    tags = params["tags"] || []
-    exclusion_tags = params["exclusion_tags"] || []
-    tag_params = tags.map do |tag|
-      "tag:#{tag}"
-    end
-    tag_params += exclusion_tags.map do |tag|
-      "^tag:#{tag}"
-    end
-    bad_request!("タグが指定されていません") if tag_params.empty?
-    Narou::WebWorker.push do
-      cmd = Command::Update.new
-      if table_reload_timing == "every"
-        cmd.on(:success) do
-          @@push_server.send_all(:"table.reload")
-        end
-      end
-      cmd.execute!(tag_params)
-      Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-      @@push_server.send_all(:"table.reload")
-    end
-  end
-
-  post "/api/send" do
-    ids = select_valid_novel_ids(params["ids"]) || []
-    Narou::WebWorker.push do
-      Narou.concurrency_call do
-        CommandLine.run!("send", ids, io: $stdout2)
-      end
-    end
-  end
-
-  post "/api/backup_bookmark" do
-    Narou::WebWorker.push do
-      CommandLine.run!("send", "--backup-bookmark")
-    end
-  end
-
-  post "/api/freeze" do
-    begin
-      ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
-      Narou::WebWorker.push do
-        CommandLine.run!("freeze", ids)
-        Narou::AppServer.clear_all_cache
-        @@push_server.send_all(:"table.reload")
-      end
-      json({ success: true, message: "凍結状態を切り替えました", count: ids.length })
-    rescue StandardError => e
-      puts "[ERROR] Freeze API error: #{e.class}: #{e.message}"
-      status 500
-      json({ error: "凍結処理でエラーが発生しました: #{e.message}" })
-    end
-  end
-
-  post "/api/freeze_on" do
-    begin
-      ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
-      Narou::WebWorker.push do
-        CommandLine.run!("freeze", "--on", ids)
-        Narou::AppServer.clear_all_cache
-        @@push_server.send_all(:"table.reload")
-      end
-      json({ success: true, message: "凍結しました", count: ids.length })
-    rescue StandardError => e
-      puts "[ERROR] Freeze On API error: #{e.class}: #{e.message}"
-      status 500
-      json({ error: "凍結処理でエラーが発生しました: #{e.message}" })
-    end
-  end
-
-  post "/api/freeze_off" do
-    begin
-      ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
-      Narou::WebWorker.push do
-        CommandLine.run!("freeze", "--off", ids)
-        Narou::AppServer.clear_all_cache
-        @@push_server.send_all(:"table.reload")
-      end
-      json({ success: true, message: "凍結を解除しました", count: ids.length })
-    rescue StandardError => e
-      puts "[ERROR] Freeze Off API error: #{e.class}: #{e.message}"
-      status 500
-      json({ error: "凍結解除処理でエラーが発生しました: #{e.message}" })
-    end
-  end
-
-  post "/api/remove" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    
-    # remove実行時点でのソート状態が渡された場合はそれを使用
-    if params["sort_state"] && params["timestamp"]
-      debug_puts "[DEBUG] Remove with fixed sort state (timestamp: #{params["timestamp"]})"
-      sorted_ids = sort_ids_with_fixed_state(ids, params["sort_state"])
-    else
-      # 従来通りの現在のソート状態に基づく並び替え
-      debug_puts "[DEBUG] Remove with current sort state"
-      sorted_ids = sort_ids_by_current_sort(ids)
-    end
-    
-    opt_arguments = []
-    if params["with_file"] == "true"
-      opt_arguments << "--with-file"
-    end
-    
-    debug_puts "[DEBUG] Remove processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
-    begin
-      Narou::WebWorker.push do
-        begin
-          CommandLine.run!("remove", "--yes", sorted_ids, opt_arguments)
-          @@push_server.send_all(:"table.reload")
-        rescue => e
-          @@push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })
-        end
-      end
-      { success: true }.to_json
-    rescue => e
-      status 500
-      { error: "削除処理でエラーが発生しました: #{e.message}" }.to_json
-    end
-  end
-
-  post "/api/remove_with_file" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    
-    # remove実行時点でのソート状態が渡された場合はそれを使用
-    if params["sort_state"] && params["timestamp"]
-      debug_puts "[DEBUG] Remove with file with fixed sort state (timestamp: #{params["timestamp"]})"
-      sorted_ids = sort_ids_with_fixed_state(ids, params["sort_state"])
-    else
-      # 従来通りの現在のソート状態に基づく並び替え
-      debug_puts "[DEBUG] Remove with file with current sort state"
-      sorted_ids = sort_ids_by_current_sort(ids)
-    end
-    
-    debug_puts "[DEBUG] Remove with file processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
-    begin
-      Narou::WebWorker.push do
-        begin
-          CommandLine.run!("remove", "--yes", "--with-file", sorted_ids)
-          @@push_server.send_all(:"table.reload")
-        rescue => e
-          @@push_server.send_all(:"error", { message: "削除に失敗しました: #{e.message}" })
-        end
-      end
-      { success: true }.to_json
-    rescue => e
-      status 500
-      { error: "削除処理でエラーが発生しました: #{e.message}" }.to_json
-    end
-  end
-
-  post "/api/diff" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    number = params["number"] || "1"
-    disabled_log_io = $stdout.dup_with_disabled_logging
-    Narou::WebWorker.push do
-      # diff コマンドは１度に一つのIDしか受け取らないので一つずつ表示する
-      ids.each do |id|
-        # セキュリティ的にWEB UIでは独自の差分表示のみ使う
-        CommandLine.run!("diff", "--no-tool", id, "--number", number)
-        Helper.print_horizontal_rule(disabled_log_io)
-      end
-    end
-  end
-
-  get "/api/diff_list" do
-    target = params["target"] or return ""
-    id = Downloader.get_id_by_target(target) or return ""
-    @list = Command::Diff.new.get_diff_list(id)
-    haml :_diff_list, layout: false
-  end
-
-  post "/api/diff_clean" do
-    target = params["target"] or bad_request!("target が指定されていません")
-    id = Downloader.get_id_by_target(target) or bad_request!("対象の小説が見つかりません")
-    Narou::WebWorker.push do
-      CommandLine.run!("diff", "--clean", id)
-    end
-  end
-
-  post "/api/inspect" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    Narou::WebWorker.push do
-      CommandLine.run!("inspect", ids)
-    end
-  end
-
-  post "/api/folder" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    CommandLine.run!("folder", ids)
-  end
-
-  post "/api/backup" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    Narou::WebWorker.push do
-      CommandLine.run!("backup", ids)
-    end
-  end
-
-  get "/api/history" do
-    case params["stream"]
-    when "stdout2"
-      $stdout2.string
-    else
-      $stdout.string
-    end
-  end
-
-  post "/api/clear_history" do
-    Narou::PushServer.instance.clear_history
-    $stdout.string.clear
-    $stdout2.string.clear if Narou.concurrency_enabled?
-  end
-
-  get "/api/tag_list" do
-    result =
-      +'<div><span class="tag tag-reset label label-default" data-tag="">タグ検索を解除</span></div>' \
-      '<div class="text-muted" style="font-size:10px">Altキーを押しながらで除外検索</div>'
-    tagname_list = Command::Tag.get_tag_list.keys
-    tagname_list.sort.each do |tagname|
-      result << "<div>#{decorate_tags([tagname])} " \
-                "<span class='select-color-button' data-target-tag='#{h tagname}'>" \
-                "<span class='#{Command::Tag.get_color(tagname)}'>a</span></span></div>"
-    end
-    result
-  end
-
-  post "/api/taginfo.json" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    ids.map!(&:to_i)
-    
-    # tag情報取得時点でのソート状態が渡された場合はそれを使用
-    if params["sort_state"] && params["timestamp"]
-      debug_puts "[DEBUG] TagInfo with fixed sort state (timestamp: #{params["timestamp"]})"
-      # 固定化された状態でデータを取得
-      sorted_ids = sort_ids_with_fixed_state(ids.map(&:to_s), params["sort_state"]).map(&:to_i)
-    else
-      debug_puts "[DEBUG] TagInfo with current state"
-      sorted_ids = ids
-    end
-    
-    database = Database.instance
-    tag_info = {}
-    
-    # まず全体のタグ一覧を取得（すべてのタグを選択肢として表示するため）
-    all_tags = Command::Tag.get_tag_list
-    all_tags.each do |tag, total_count|
-      tag_info[tag] = {
-        count: 0,
-        total_count: total_count,
-        tag: tag,
-        html: decorate_tags([tag]),
-        exclusion_html: params["with_exclusion"] ? decorate_exclusion_tags([tag]) : ""
-      }
-    end
-    
-    # 選択されたIDの小説での各タグの出現回数を計算
-    sorted_ids.each do |id|
-      data = database[id]
-      next unless data
-      
-      tags = data["tags"] || []
-      tags.each do |tag|
-        if tag_info[tag]
-          tag_info[tag][:count] += 1
-        end
-      end
-    end
-    
-    debug_puts "[DEBUG] TagInfo processing #{sorted_ids.length} novels for #{tag_info.keys.length} tags (#{all_tags.keys.length} total tags available)"
-    json Hash[tag_info.sort_by { |k, v| k }].values
-  end
-
-  post "/api/edit_tag" do
-    request.body.rewind
-    raw_body = request.body.read.to_s
-
-    unless request.media_type == "application/json"
-      debug_puts "[ERROR] Unsupported Content-Type for tag edit: #{request.media_type.inspect}"
-      halt 415, json({
-        success: false,
-        error: "Unsupported Media Type",
-        message: "このエンドポイントは application/json のみ受け付けます"
-      })
-    end
-
-    if raw_body.empty?
-      debug_puts "[ERROR] Empty request body for tag edit"
-      halt 400, json({ success: false, error: "Empty request body" })
-    end
-
-    begin
-      request_payload = JSON.parse(raw_body)
-    rescue JSON::ParserError => e
-      debug_puts "[ERROR] Failed to parse JSON payload: #{e.message}"
-      halt 400, json({ success: false, error: "Invalid JSON payload" })
-    end
-
-    unless request_payload.is_a?(Hash)
-      debug_puts "[ERROR] Tag edit payload must be a JSON object: #{request_payload.class.name}"
-      halt 400, json({ success: false, error: "JSON object required" })
-    end
-
-  ids = select_valid_novel_ids(request_payload["ids"])
-  bad_request!("小説が選択されていません") unless ids
-    
-    # tag編集実行時点でのソート状態が渡された場合はそれを使用
-    if request_payload["sort_state"] && request_payload["timestamp"]
-      debug_puts "[DEBUG] Tag edit with fixed sort state (timestamp: #{request_payload["timestamp"]})"
-      sorted_ids = sort_ids_with_fixed_state(ids, request_payload["sort_state"])
-    else
-      debug_puts "[DEBUG] Tag edit with current sort state"
-      sorted_ids = ids
-    end
-    
-  debug_puts "[DEBUG] Tag edit processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
-    debug_puts "[DEBUG] Received payload: #{request_payload.inspect}"
-    debug_puts "[DEBUG] Received states param: #{request_payload["states"].inspect}"
-    debug_puts "[DEBUG] Received states class: #{request_payload["states"]&.class&.name || 'nil'}"
-    
-    # states パラメータの存在チェック
-    if request_payload["states"].nil? || request_payload["states"].empty?
-      debug_puts "[ERROR] States parameter is nil or empty"
-      return { success: false, error: "No tag states provided" }.to_json
-    end
-    
-    # key と value を重複を維持したまま反転
-    begin
-      invert_states = request_payload["states"].inject({}) { |h,(k,v)| (h[v] ||= []) << k; h }
-      debug_puts "[DEBUG] Inverted states: #{invert_states.inspect}"
-    rescue => e
-      debug_puts "[ERROR] Failed to invert states: #{e.message}"
-      debug_puts "[ERROR] States param details: #{request_payload["states"].inspect}"
-      return { success: false, error: e.message }.to_json
-    end
-    
-    has_additions = false
-    has_deletions = false
-    
-    invert_states.each do |state, tags|
-      case state.to_i
-      when 0
-        # タグを削除
-        debug_puts "タグ削除実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
-        Command::Tag.execute!("--delete", tags.join(" "), sorted_ids, io: Narou::NullIO.new)
-        has_deletions = true
-      when 1
-        # 現状を維持(何もしない)
-      when 2
-        # タグを追加
-        debug_puts "タグ追加実行: #{tags.join(', ')} (対象ID: #{sorted_ids.join(', ')})"
-        Command::Tag.execute!("--add", tags.join(" "), sorted_ids, io: Narou::NullIO.new)
-        has_additions = true
-      end
-    end
-    
-    # タグ追加がある場合は、データベース書き込み完了を待つ
-    if has_additions
-      debug_puts "タグ追加処理のためデータベース同期を待機中..."
-      sleep(0.5)  # データベース書き込み完了を待つ
-    end
-    
-    # キャッシュを確実にクリアしてからイベント送信
-    Narou::AppServer.clear_all_cache 
-    debug_puts "タグ編集完了 (追加: #{has_additions}, 削除: #{has_deletions}): 全キャッシュクリア後にリロードイベントを送信"
-    
-    # テーブルリロードとタグキャンバス更新を順次実行
-    @@push_server.send_all(:"table.reload")
-    @@push_server.send_all(:"tag.updateCanvas")
-  end
-
-  get "/api/get_queue_size" do
-    res = [
-      Narou::WebWorker.instance.size, Narou::Worker.size
-    ]
-    json res
-  end
-
-  post "/api/update_general_lastup" do
-    option = params["option"]
-    option = nil if option == "all"
-    is_update_modified = params["is_update_modified"] == "true"
-    Narou::WebWorker.push do
-      CommandLine.run!(["update", "--gl", option].compact)
-      Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-      @@push_server.send_all(:"table.reload")
-      @@push_server.send_all(:"tag.updateCanvas")
-      if is_update_modified
-        puts "<yellow>#{Narou::MODIFIED_TAG} タグの付いた小説を更新します</yellow>".termcolor
-        CommandLine.run!("update", "tag:#{Narou::MODIFIED_TAG}")
-        Narou::AppServer.clear_all_cache # 全キャッシュ無効化
-        @@push_server.send_all(:"table.reload")
-        @@push_server.send_all(:"tag.updateCanvas")
-      end
-    end
-  end
-
-  post "/api/setting_burn" do
-    ids = select_valid_novel_ids(params["ids"])
-    bad_request!("小説が選択されていません") unless ids
-    Narou::WebWorker.push do
-      CommandLine.run!("setting", "--burn", ids)
-    end
-  end
-
-  post "/api/change_tag_color" do
-    tag = params["tag"] or bad_request!("タグが指定されていません")
-    color = params["color"] or bad_request!("カラーが指定されていません")
-    tag_colors = Inventory.load("tag_colors")
-    tag_colors[tag] = color
-    tag_colors.save
-    
-    # キャッシュを確実にクリアしてからイベント送信
-    Narou::AppServer.clear_all_cache 
-    puts "タグ色変更完了: 全キャッシュクリア後にリロードイベントを送信"
-    
-    # テーブルリロードとタグキャンバス更新を順次実行
-    @@push_server.send_all(:"table.reload")
-    @@push_server.send_all(:"tag.updateCanvas")
-  end
-
-  get "/api/csv/download" do
-    begin
-      content_type "application/csv"
-      attachment "novels.csv"
-
-      csv_command = Command::Csv.new
-      result = csv_command.generate
-      puts "CSVファイルをエクスポートしました (#{result.bytesize} bytes)"
-      result
-    rescue StandardError => e
-      puts "[ERROR] CSVエクスポートに失敗しました: #{e.message}"
-      status 500
-      content_type "text/plain"
-      "CSVエクスポートエラー: #{e.message}"
-    end
-  end
-
-  post "/api/csv/import" do
-    begin
-  raw_files = params["files"]
-  bad_request!("CSVファイルが指定されていません") if raw_files.nil?
-  files = raw_files.is_a?(Array) ? raw_files.compact : [raw_files].compact
-  bad_request!("CSVファイルが指定されていません") if files.empty?
-      csv = Command::Csv.new
-      imported_count = 0
-      files.each do |file|
-        csv.import(file[:tempfile])
-        imported_count += 1
-      end
-      bad_request!("CSVファイルが指定されていません") if imported_count.zero?
-      puts "CSVファイルをインポートしました (#{imported_count}件)"
-      ""
-    rescue StandardError => e
-      puts "[ERROR] CSVインポートに失敗しました: #{e.message}"
-      status 500
-      "CSVインポートエラー: #{e.message}"
-    end
-  end
-
-  # ダウンロード登録すると同時にグレーのボタン画像を返す
-  get "/api/download4ssl" do
-    target = params["target"] or error("need a parameter: `target'")
-    opt_mail = "--mail" if query_to_boolean(params["mail"])
-    Narou::WebWorker.push do
-      CommandLine.run!("download", target, opt_mail)
-      @@push_server.send_all(:"table.reload")
-    end
-    redirect "/resources/images/dl_button1.gif"
-  end
-
-  # ダウンロード済みかどうかで表示が変わる画像
-  get "/api/downloadable.gif" do
-    target = params["target"]
-    # 0: 未ダウンロード, 1: ダウンロード済み, 2: ダウンロード出来ない
-    number =
-      if target
-        Downloader.get_id_by_target(target) ? 1 : 0
-      else
-        2
-      end
-    redirect "/resources/images/dl_button#{number}.gif"
-  end
-
-  get "/api/validate_url_regexp_list" do
-    json SiteSetting.settings.values.map { |setting|
-      Array(setting["url"]).map do |url|
-        "(#{url.gsub(/\?<.+?>/, "?:").gsub("\\", "\\\\")})"
-      end
-    }.flatten
-  end
-
-  get "/api/version/current.json" do
-    json({ version: Narou::VERSION })
-  end
-
-  get "/api/version/latest.json" do
-    json({ version: Narou.latest_version })
-  end
-
-  get "/api/notepad/read" do
-    content_type "text/plain"
-    if File.exist?(notepad_text_path)
-      File.read(notepad_text_path)
-    else
-      ""
-    end
-  end
-
-  post "/api/notepad/save" do
-    File.write(notepad_text_path, params["text"])
-    @@push_server.send_all("notepad.change" => {
-      text: params["text"], object_id: params["object_id"]
-    })
-    ""
-  end
-
-  post "/api/eject" do
-    do_eject = proc do
-      device = Narou.get_device
-      device&.eject do
-        puts "<bold><green>端末を取り外しました</green></bold>".termcolor
-      end
-    end
-    if params["enqueue"] == "true"
-      Narou::WebWorker.push do
-        Narou.concurrency_call(&do_eject)
-      end
-    else
-      do_eject.call
-    end
-    ""
-  end
-
-  get "/api/story" do
-    target_id = params["id"]
-    bad_request!("小説IDが指定されていません") if target_id.nil? || target_id.to_s.empty?
-    toc = Downloader.get_toc_by_target(target_id)
-    unless toc
-      status 404
-      return json({ success: false, error: "対象の小説が見つかりません" })
-    end
-    story = toc["story"] || ""
-    html = HTML.new
-    json title: toc["title"], story: html.ln_to_br(story.strip)
-  end
-
   # -------------------------------------------------------------------------------
   # 一部分に表示するためのHTMLを取得する(パーシャル)
   # -------------------------------------------------------------------------------
@@ -1924,6 +1357,114 @@ class Narou::AppServer < Sinatra::Base
       hosts << s["domain"]
     end
     hosts.freeze
+  end
+
+  # ================================================================================
+  # API v2 エンドポイント
+  # ================================================================================
+
+  # 小説のあらすじを取得
+  get "/api/v2/novels/:id/story" do
+    headers "Access-Control-Allow-Origin" => "*"
+    
+    target_id = params[:id]
+    
+    begin
+      toc = Downloader.get_toc_by_target(target_id)
+      unless toc
+        status 404
+        return json({ 
+          success: false, 
+          error: "対象の小説が見つかりません",
+          data: nil,
+          timestamp: Time.now.iso8601
+        })
+      end
+      
+      story = toc["story"] || ""
+      html = HTML.new
+      
+      json({
+        success: true,
+        data: {
+          title: toc["title"],
+          story: html.ln_to_br(story.strip)
+        },
+        timestamp: Time.now.iso8601
+      })
+    rescue StandardError => e
+      puts "[ERROR] Get Story API error: #{e.class}: #{e.message}"
+      puts e.backtrace.join("\n")
+      status 500
+      json({ 
+        success: false,
+        error: "あらすじの取得でエラーが発生しました: #{e.message}",
+        data: nil,
+        timestamp: Time.now.iso8601
+      })
+    end
+  end
+
+  # 実行中のタスクをキャンセル
+  post "/api/v2/cancel" do
+    headers "Access-Control-Allow-Origin" => "*"
+    begin
+      Narou::WebWorker.cancel
+      Narou::Worker.cancel if Narou.concurrency_enabled?
+      
+      json({ 
+        success: true, 
+        message: "実行中のタスクをキャンセルしました" 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Cancel API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "キャンセル処理でエラーが発生しました: #{e.message}" })
+    end
+  end
+
+  # すべてのタスクをキャンセル
+  post "/api/v2/cancel/all" do
+    headers "Access-Control-Allow-Origin" => "*"
+    begin
+      # WebWorkerとWorkerの両方をキャンセル
+      Narou::WebWorker.cancel
+      Narou::Worker.cancel if Narou.concurrency_enabled?
+      
+      json({ 
+        success: true, 
+        message: "すべてのタスクをキャンセルしました" 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Cancel All API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "キャンセル処理でエラーが発生しました: #{e.message}" })
+    end
+  end
+
+  # 指定されたIDのタスクをキャンセル
+  # NOTE: 現在のWebWorker実装では個別タスクのキャンセルは未対応
+  # 将来的にタスクID管理機能を実装する際のプレースホルダー
+  post "/api/v2/cancel/:id" do
+    headers "Access-Control-Allow-Origin" => "*"
+    novel_id = params[:id]
+    
+    begin
+      # 現在は全タスクキャンセルと同じ動作
+      # TODO: 個別タスクキャンセル機能の実装
+      Narou::WebWorker.cancel
+      Narou::Worker.cancel if Narou.concurrency_enabled?
+      
+      json({ 
+        success: true, 
+        message: "ID:#{novel_id} のタスクをキャンセルしました（現在は全タスクキャンセル）",
+        notice: "個別タスクキャンセル機能は未実装のため、すべてのタスクがキャンセルされます" 
+      })
+    rescue StandardError => e
+      puts "[ERROR] Cancel by ID API error: #{e.class}: #{e.message}"
+      status 500
+      json({ error: "キャンセル処理でエラーが発生しました: #{e.message}" })
+    end
   end
 
   before "/widget/*" do

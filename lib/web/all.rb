@@ -4,6 +4,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require_relative "../narou_logger"
 require_relative "appserver"
 require_relative "pushserver"
 require_relative "streaminglogger"

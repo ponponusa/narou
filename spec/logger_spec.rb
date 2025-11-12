@@ -5,7 +5,7 @@
 
 require_relative "../lib/narou_logger"
 
-describe Narou::Logger do
+describe Narou::Logger, :show_output do
   describe "#capture" do
     context "when non block" do
       it "raise error" do

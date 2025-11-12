@@ -7,7 +7,7 @@
 require "commandline"
 require "narou_logger"
 
-describe Command::Update do
+describe Command::Update, :show_output do
   describe "--ignore-all" do
     it "should be blank" do
       cap = $stdout.capture {
