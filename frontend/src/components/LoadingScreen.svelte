@@ -8,9 +8,15 @@
     message?: string;
     retryCount?: number;
     maxRetries?: number;
+    isInitialLoad?: boolean; // 初回ロードフラグ
   }
 
-  let { message = '読み込み中...', retryCount = 0, maxRetries = 0 }: Props = $props();
+  let { 
+    message = '読み込み中...', 
+    retryCount = 0, 
+    maxRetries = 0,
+    isInitialLoad = false 
+  }: Props = $props();
 </script>
 
 <div class="flex items-center justify-center min-h-[400px] py-12">
@@ -30,7 +36,11 @@
       {message}
     </p>
     
-    {#if retryCount > 0 && maxRetries > 0}
+    {#if isInitialLoad}
+      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        バックエンドサーバーの起動を待機中...
+      </p>
+    {:else if retryCount > 0 && maxRetries > 0}
       <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
         サーバーに接続中... ({retryCount}/{maxRetries})
       </p>

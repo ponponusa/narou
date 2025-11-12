@@ -46,6 +46,8 @@
   let taskQueue: TaskQueue;
   let retryCount = $state(0);
   let maxRetries = 10; // 最大10回リトライ（約20秒）
+  let isInitialLoad = $state(true); // 初回ロードフラグ
+  let initialLoadDelay = 5000; // 初回ロード時の待機時間（5秒）
 
   // フィルター・ソート設定
   let currentPage = $state(0);
@@ -412,6 +414,14 @@
   async function loadNovels() {
     loading = true;
     error = null;
+    
+    // 初回ロード時はバックエンドの起動を待つため5秒待機
+    if (isInitialLoad) {
+      console.log(`初回ロード: バックエンド起動を待機中... (${initialLoadDelay / 1000}秒)`);
+      await new Promise(resolve => setTimeout(resolve, initialLoadDelay));
+      isInitialLoad = false;
+    }
+    
     try {
       const response = await getNovels({
         page: currentPage + 1, // API v2 は 1-indexed
@@ -1381,6 +1391,7 @@
       message="小説リストを読み込んでいます..." 
       retryCount={retryCount}
       maxRetries={maxRetries}
+      isInitialLoad={isInitialLoad}
     />
   {:else if error}
     <div class="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded">
