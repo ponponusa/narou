@@ -39,10 +39,10 @@ module Command
       @opt.on("-o", "--open-browser", "起動時にブラウザを開く") {
         @options["open-browser"] = true
       }
-      @opt.on("-d", "--daemon", "バックグラウンドで起動（デフォルト）") {
+      @opt.on("-d", "--daemon", "バックグラウンドで起動") {
         @options["daemon"] = true
       }
-      @opt.on("--no-daemon", "フォアグラウンドで起動") {
+      @opt.on("--no-daemon", "フォアグラウンドで起動（デフォルト）") {
         @options["daemon"] = false
       }
       @opt.on("-l", "--legacy", "旧 Haml UI を使用する (デフォルトは新 Astro UI)") {
@@ -142,7 +142,8 @@ module Command
       else
         # デーモンモードのデフォルト設定（明示的に指定されていない場合のみ）
         # --bootフラグを追加する前に設定することで、ユーザーの意図を保持
-        @options["daemon"] = true unless @options.key?("daemon")
+        # Legacy UIモードではデフォルトでフォアグラウンド実行
+        @options["daemon"] = false unless @options.key?("daemon")
         
         argv << "--backtrace" if $display_backtrace
         argv << "--no-color" if $disable_color
