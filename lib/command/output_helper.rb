@@ -62,6 +62,7 @@ module Command
         end
       else
         # 標準出力モード（デフォルト）
+        # Loggerは作成するが、$stdoutはリダイレクトしない
         @logger = Logger.new($stdout)
         @output_mode = MODE_STDOUT
         @tty_enabled = $stdout.tty?
@@ -72,6 +73,7 @@ module Command
         if @output_mode == MODE_FILE
           "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
         else
+          # 標準出力モードではタイムスタンプなし
           "#{msg}\n"
         end
       end
