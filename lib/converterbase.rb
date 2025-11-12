@@ -813,9 +813,11 @@ class ConverterBase
   BRACKETS = [%w(「 」), %w(『 』)]
 
   # ネストに対応したかぎ括弧の正規表現
+  # ReDoS攻撃を防ぐため、ネストの深さを制限
   OPENCLOSE_REGEXPS = BRACKETS.map { |bracket|
     bo, bc = bracket
-    /(?<oc>#{bo}[^#{bo+bc}]*(?:\g<oc>[^#{bo+bc}]*)*#{bc})/m
+    # 最大3階層のネストに制限し、各階層の長さも制限
+    /(?<oc>#{bo}(?:[^#{bo+bc}]{0,1000}|(?:\g<oc>)){0,50}#{bc})/m
   }
 
   #
