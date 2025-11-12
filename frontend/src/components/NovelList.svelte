@@ -517,15 +517,20 @@
     } catch (err) {
       console.error('小説リストの取得エラー:', err);
       
-      // 接続エラーの場合はリトライ
-      const isConnectionError = err instanceof Error && 
-        (err.message.includes('Failed to fetch') || 
-         err.message.includes('NetworkError') ||
-         err.message.includes('fetch'));
+      // 接続エラーの判定を広範囲に
+      // TypeError: Failed to fetch や NetworkError など
+      const isConnectionError = 
+        err instanceof TypeError || // fetch失敗時
+        (err instanceof Error && (
+          err.message.includes('Failed to fetch') || 
+          err.message.includes('NetworkError') ||
+          err.message.includes('fetch') ||
+          err.message.includes('network')
+        ));
       
       if (isConnectionError && retryCount < maxRetries) {
         retryCount++;
-        console.log(`リトライ中... (${retryCount}/${maxRetries})`);
+        console.log(`サーバー接続をリトライ中... (${retryCount}/${maxRetries})`);
         // 2秒後に再試行（loadingはtrueのまま維持）
         setTimeout(() => {
           loadNovels();
@@ -541,6 +546,8 @@
       // 接続エラー以外の場合のみトーストを表示
       if (!isConnectionError) {
         toast?.show(message, 'error');
+      } else {
+        toast?.show('サーバーに接続できませんでした', 'error');
       }
     }
   }
