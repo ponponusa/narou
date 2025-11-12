@@ -44,6 +44,8 @@
   let novelDetailModal: NovelDetailModal;
   let consolePanel = $state<ConsolePanel>();
   let taskQueue: TaskQueue;
+  let retryCount = $state(0);
+  let maxRetries = 10; // 最大10回リトライ（約20秒）
 
   // フィルター・ソート設定
   let currentPage = $state(0);
@@ -417,6 +419,9 @@
         filter: filterText,
       });
       
+      // 成功したらリトライカウントをリセット
+      retryCount = 0;
+      
       // クライアント側でのフィルタリング（タグ、サイト、状態）
       let filteredNovels = response.novels;
       
@@ -509,10 +514,32 @@
       novels = filteredNovels;
       totalCount = response.total;
     } catch (err) {
+      console.error('小説リストの取得エラー:', err);
+      
+      // 接続エラーの場合はリトライ
+      const isConnectionError = err instanceof Error && 
+        (err.message.includes('Failed to fetch') || 
+         err.message.includes('NetworkError') ||
+         err.message.includes('fetch'));
+      
+      if (isConnectionError && retryCount < maxRetries) {
+        retryCount++;
+        console.log(`リトライ中... (${retryCount}/${maxRetries})`);
+        // 2秒後に再試行
+        setTimeout(() => {
+          loadNovels();
+        }, 2000);
+        return; // エラー表示をスキップ
+      }
+      
+      // 最大リトライ回数に達した場合、または接続エラー以外の場合はエラー表示
       const message = err instanceof Error ? err.message : '小説リストの取得に失敗しました';
       error = message;
-      toast?.show(message, 'error');
-      console.error('小説リストの取得エラー:', err);
+      
+      // 接続エラー以外の場合のみトーストを表示
+      if (!isConnectionError) {
+        toast?.show(message, 'error');
+      }
     } finally {
       loading = false;
     }
@@ -1336,7 +1363,11 @@
   <!-- 小説リストテーブル -->
   <div class="lg:mx-12">
   {#if loading}
-    <LoadingScreen message="小説リストを読み込んでいます..." />
+    <LoadingScreen 
+      message="小説リストを読み込んでいます..." 
+      retryCount={retryCount}
+      maxRetries={maxRetries}
+    />
   {:else if error}
     <div class="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded">
       <p class="font-bold">エラー</p>

@@ -6,9 +6,11 @@
 <script lang="ts">
   interface Props {
     message?: string;
+    retryCount?: number;
+    maxRetries?: number;
   }
 
-  let { message = '読み込み中...' }: Props = $props();
+  let { message = '読み込み中...', retryCount = 0, maxRetries = 0 }: Props = $props();
 </script>
 
 <div class="flex items-center justify-center min-h-[400px] py-12">
@@ -27,6 +29,12 @@
     <p class="mt-6 text-lg font-medium text-gray-700 dark:text-gray-300">
       {message}
     </p>
+    
+    {#if retryCount > 0 && maxRetries > 0}
+      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        サーバーに接続中... ({retryCount}/{maxRetries})
+      </p>
+    {/if}
     
     <!-- アニメーションドット -->
     <div class="mt-2 flex justify-center space-x-1">
