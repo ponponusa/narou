@@ -76,6 +76,11 @@ module Command
       @options["host"] || "127.0.0.1"
     end
 
+    # 表示用のホスト名（127.0.0.1をlocalhostに変換）
+    def display_host
+      host == "127.0.0.1" ? "localhost" : host
+    end
+
     def boot
       # フロントエンド設定を更新（require前に実行）
       port = @options["port"] || 5678
@@ -84,7 +89,7 @@ module Command
       # 起動メッセージを表示（require_relative "../narou" より前に実行）
       # narou.rbをrequireすると$stdoutがNarou::Loggerに置き換わるため
       Command::OutputHelper.render("web_starting", {
-        host: host,
+        host: display_host,
         port: port,
         frontend_enabled: should_start_frontend?
       })
@@ -254,7 +259,7 @@ module Command
       
       # サーバー起動完了メッセージ（$stdoutを置き換える前に表示）
       Command::OutputHelper.render("web_started", {
-        host: host,
+        host: display_host,
         port: port,
         frontend_enabled: should_start_frontend?
       })
@@ -285,7 +290,7 @@ module Command
       Narou::WebWorker.run
       
       if @options["open-browser"]
-        frontend_url = should_start_frontend? ? "http://#{host}:4321/" : "http://#{host}:#{port}/"
+        frontend_url = should_start_frontend? ? "http://#{display_host}:4321/" : "http://#{display_host}:#{port}/"
         Helper.open_browser(frontend_url)
       end
       
