@@ -48,7 +48,7 @@
   let retryCount = $state(0);
   let maxRetries = 10; // 最大10回リトライ（約20秒）
   let isInitialLoad = $state(true); // 初回ロードフラグ
-  let initialLoadDelay = 2500; // 初回ロード時の待機時間（2.5秒）
+  let initialLoadDelay = 2000; // 初回ロード時の待機時間（2秒）
 
   // フィルター・ソート設定
   let currentPage = $state(0);
@@ -335,6 +335,13 @@
   }
 
   onMount(async () => {
+    // sessionStorageで初回ロードかどうかを判定
+    const hasLoaded = sessionStorage.getItem('novelListLoaded');
+    if (hasLoaded === 'true') {
+      // 既に一度ロード済み（ページリロード）の場合はウェイトをスキップ
+      isInitialLoad = false;
+    }
+    
     // 設定を復元
     loadSettings();
     loadColumnVisibility();
@@ -416,11 +423,13 @@
     loading = true;
     error = null;
     
-    // 初回ロード時はバックエンドの起動を待つため5秒待機
+    // 初回ロード時はバックエンドの起動を待つため2秒待機
     if (isInitialLoad) {
       console.log(`初回ロード: バックエンド起動を待機中... (${initialLoadDelay / 1000}秒)`);
       await new Promise(resolve => setTimeout(resolve, initialLoadDelay));
       isInitialLoad = false;
+      // 初回ロード完了フラグをセット
+      sessionStorage.setItem('novelListLoaded', 'true');
     }
     
     try {
