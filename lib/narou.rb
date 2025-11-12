@@ -124,6 +124,7 @@ module Narou
     end
 
     def novel_frozen?(target)
+      require_relative "downloader" unless defined?(Downloader)
       id = Downloader.get_id_by_target(target) or return false
       Inventory.load("freeze").include?(id)
     end

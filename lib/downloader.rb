@@ -550,6 +550,7 @@ class Downloader
     when true
       unless tags.include?("end")
         update_database if update_subtitles.count == 0
+        require_relative "command/tag" unless defined?(Command::Tag)
         Command::Tag.execute!(%W(#{id} --add end --color white --no-overwrite-color), io: Narou::NullIO.new)
         msg = old_toc.empty? ? "完結しているようです" : "完結したようです"
         @stream.puts "<cyan>#{id_and_title.escape} は#{msg}</cyan>".termcolor
@@ -558,6 +559,7 @@ class Downloader
     when false
       if tags.include?("end")
         update_database if update_subtitles.size == 0
+        require_relative "command/tag" unless defined?(Command::Tag)
         Command::Tag.execute!(@id, "--delete", "end", io: Narou::NullIO.new)
         @stream.puts "<cyan>#{id_and_title.escape} は連載を再開したようです</cyan>".termcolor
         return_status = :ok
@@ -633,9 +635,11 @@ class Downloader
         when "2"
           return true
         when "3"
+          require_relative "command/freeze" unless defined?(Command::Freeze)
           Command::Freeze.execute!(latest_toc["toc_url"])
           return true
         when "4"
+          require_relative "command/backup" unless defined?(Command::Backup)
           Command::Backup.execute!(latest_toc["toc_url"])
         when "5"
           if Narou.web?
@@ -649,6 +653,7 @@ class Downloader
         when "7"
           Helper.open_directory(Downloader.get_novel_data_dir_by_target(latest_toc["toc_url"]))
         when "8"
+          require_relative "command/convert" unless defined?(Command::Convert)
           Command::Convert.execute!(latest_toc["toc_url"], sync: true)
         end
         unless Narou.web?
@@ -996,6 +1001,8 @@ class Downloader
       @stream.error "小説が削除されているか非公開な可能性があります"
       sleep_for_download
       if database.novel_exists?(@id)
+        require_relative "command/tag" unless defined?(Command::Tag)
+        require_relative "command/freeze" unless defined?(Command::Freeze)
         Command::Tag.execute!(%W(#{@id} --add 404 --color white --no-overwrite-color), io: Narou::NullIO.new)
         Command::Freeze.execute!(@id, "--on")
       end

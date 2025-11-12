@@ -1,0 +1,1001 @@
+openapi: 3.0.3
+info:
+  title: Narou.rb MOD API
+  description: |
+    Narou.rb MOD の REST API 仕様書です。
+    
+    ## 概要
+    
+    このAPIは、小説管理ツール Narou.rb MOD の各種機能をプログラムから操作するためのインターフェースです。
+    
+    ## バージョニング
+    
+    - **API v2** (`/api/v2/*`): 最新の RESTful API（推奨）
+    - **Legacy API v1** (`/api/*`): 旧 API（非推奨、後方互換性のため提供）
+    
+    新規開発では必ず API v2 を使用してください。
+    
+  version: 2.0.0
+  contact:
+    name: Narou.rb MOD Project
+    url: https://github.com/ponponusa/narou-mod
+  license:
+    name: MIT
+    url: https://github.com/ponponusa/narou-mod/blob/main/LICENSE.txt
+
+servers:
+  - url: http://localhost:5678
+    description: ローカル開発サーバー
+  - url: http://localhost:4321
+    description: Astro 開発サーバー（プロキシ経由）
+
+tags:
+  - name: system
+    description: システム管理 API
+  - name: novels
+    description: 小説管理 API
+  - name: tags
+    description: タグ管理 API
+  - name: settings
+    description: 設定管理 API
+  - name: novel-settings
+    description: 小説個別設定 API
+
+paths:
+  # ========================================
+  # System API
+  # ========================================
+  
+  /api/v2/system/version:
+    get:
+      tags:
+        - system
+      summary: バージョン情報取得
+      description: Narou.rb MOD の現在のバージョン情報を取得します。
+      operationId: getSystemVersion
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
+              example:
+                status: success
+                data:
+                  version: "2.1.0"
+                  ruby_version: "3.4.7"
+                meta:
+                  timestamp: "2025-11-11T00:00:00Z"
+  
+  /api/v2/system/queue:
+    get:
+      tags:
+        - system
+      summary: キュー情報取得
+      description: 実行中およびキューに積まれているタスク情報を取得します。
+      operationId: getSystemQueue
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueResponse'
+              example:
+                status: success
+                data:
+                  queue_size: 3
+                  running: true
+                  tasks:
+                    - type: download
+                      novel_id: "n9669bk"
+                      status: running
+                    - type: convert
+                      novel_id: "n4259s"
+                      status: queued
+                meta:
+                  timestamp: "2025-11-11T00:00:00Z"
+  
+  /api/v2/system/status:
+    get:
+      tags:
+        - system
+      summary: システム状態取得
+      description: システムの動作状態を取得します。
+      operationId: getSystemStatus
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              example:
+                status: success
+                data:
+                  server_running: true
+                  worker_running: false
+                  database_loaded: true
+                  uptime_seconds: 3600
+                meta:
+                  timestamp: "2025-11-11T00:00:00Z"
+  
+  # ========================================
+  # Novels API
+  # ========================================
+  
+  /api/v2/novels:
+    get:
+      tags:
+        - novels
+      summary: 小説一覧取得
+      description: |
+        登録されている小説の一覧を取得します。
+        フィルタリング、ソート、ページネーションをサポートします。
+      operationId: getNovels
+      parameters:
+        - name: page
+          in: query
+          description: ページ番号（1から開始）
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          description: 1ページあたりの件数
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: tag
+          in: query
+          description: タグでフィルタリング（複数指定可）
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: frozen
+          in: query
+          description: 凍結状態でフィルタリング
+          schema:
+            type: boolean
+        - name: sort
+          in: query
+          description: ソートキー
+          schema:
+            type: string
+            enum: [id, title, author, updated_at, created_at]
+            default: updated_at
+        - name: order
+          in: query
+          description: ソート順
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NovelsListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  
+  /api/v2/novels/{id}:
+    get:
+      tags:
+        - novels
+      summary: 単一小説取得
+      description: 指定されたIDの小説情報を取得します。
+      operationId: getNovelById
+      parameters:
+        - $ref: '#/components/parameters/NovelId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NovelResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  
+  /api/v2/novels/download:
+    post:
+      tags:
+        - novels
+      summary: 小説ダウンロード
+      description: |
+        指定された小説をダウンロードします。
+        WebWorker を通じて非同期で実行されます。
+      operationId: downloadNovels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - targets
+              properties:
+                targets:
+                  type: array
+                  items:
+                    type: string
+                  description: ダウンロード対象（Nコード、URL、IDなど）
+                  example: ["n9669bk", "https://ncode.syosetu.com/n4259s/"]
+                force:
+                  type: boolean
+                  description: 強制ダウンロード
+                  default: false
+                mail:
+                  type: boolean
+                  description: ダウンロード後にメール送信
+                  default: false
+      responses:
+        '202':
+          description: 受付成功（非同期処理開始）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncTaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  
+  /api/v2/novels/convert:
+    post:
+      tags:
+        - novels
+      summary: 小説変換
+      description: |
+        指定された小説を EPUB 等に変換します。
+        WebWorker を通じて非同期で実行されます。
+      operationId: convertNovels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  description: 変換対象の小説ID
+                  example: ["1", "2", "3"]
+                no_open:
+                  type: boolean
+                  description: 変換後にファイルを開かない
+                  default: true
+      responses:
+        '202':
+          $ref: '#/components/responses/AsyncTaskAccepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  
+  /api/v2/novels/freeze:
+    post:
+      tags:
+        - novels
+      summary: 小説凍結
+      description: |
+        指定された小説の凍結状態を変更します。
+        凍結された小説は自動更新の対象外になります。
+      operationId: freezeNovels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  description: 対象の小説ID
+                  example: ["1", "2"]
+                action:
+                  type: string
+                  enum: [toggle, on, off]
+                  description: 凍結操作（toggle=切り替え、on=凍結、off=解除）
+                  default: toggle
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  
+  /api/v2/novels/remove:
+    post:
+      tags:
+        - novels
+      summary: 小説削除
+      description: |
+        指定された小説をデータベースから削除します。
+        オプションで生成済みファイルも削除できます。
+      operationId: removeNovels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  description: 削除対象の小説ID
+                  example: ["1", "2"]
+                with_files:
+                  type: boolean
+                  description: 生成済みファイルも削除
+                  default: false
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  
+  # ========================================
+  # Tags API
+  # ========================================
+  
+  /api/v2/tags:
+    get:
+      tags:
+        - tags
+      summary: タグ一覧取得
+      description: 登録されているタグの一覧を取得します。
+      operationId: getTags
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagsListResponse'
+  
+  /api/v2/tags/info:
+    post:
+      tags:
+        - tags
+      summary: タグ情報取得
+      description: 指定された小説のタグ情報を取得します。
+      operationId: getTagsInfo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  description: 対象の小説ID
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagInfoResponse'
+  
+  /api/v2/tags/edit:
+    post:
+      tags:
+        - tags
+      summary: タグ一括編集
+      description: 複数の小説のタグを一括で編集します。
+      operationId: editTags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagEditRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  
+  /api/v2/tags/color:
+    post:
+      tags:
+        - tags
+      summary: タグ色変更
+      description: タグの表示色を変更します。
+      operationId: changeTagColor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tag
+                - color
+              properties:
+                tag:
+                  type: string
+                  description: タグ名
+                color:
+                  type: string
+                  description: 色クラス名
+                  example: "label-primary"
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  # ========================================
+  # Settings API
+  # ========================================
+  
+  /api/v2/settings:
+    get:
+      tags:
+        - settings
+      summary: 設定一覧取得
+      description: アプリケーションの設定一覧を取得します。
+      operationId: getSettings
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsResponse'
+    
+    put:
+      tags:
+        - settings
+      summary: 設定一括更新
+      description: 設定を一括で更新します（完全置換）。
+      operationId: updateSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingsUpdateRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    
+    patch:
+      tags:
+        - settings
+      summary: 設定部分更新
+      description: 設定を部分的に更新します。
+      operationId: patchSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingsPatchRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  
+  /api/v2/settings/variables:
+    get:
+      tags:
+        - settings
+      summary: 設定変数一覧取得
+      description: 設定可能な変数の一覧とメタデータを取得します。
+      operationId: getSettingsVariables
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsVariablesResponse'
+  
+  # ========================================
+  # Novel Settings API
+  # ========================================
+  
+  /api/v2/novels/{id}/settings:
+    get:
+      tags:
+        - novel-settings
+      summary: 小説個別設定取得
+      description: 指定された小説の個別設定を取得します。
+      operationId: getNovelSettings
+      parameters:
+        - $ref: '#/components/parameters/NovelId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NovelSettingsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      tags:
+        - novel-settings
+      summary: 小説個別設定更新
+      description: 指定された小説の個別設定を更新します。
+      operationId: updateNovelSettings
+      parameters:
+        - $ref: '#/components/parameters/NovelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NovelSettingsUpdateRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+# ========================================
+# Components
+# ========================================
+
+components:
+  parameters:
+    NovelId:
+      name: id
+      in: path
+      required: true
+      description: 小説ID
+      schema:
+        type: string
+      example: "1"
+  
+  schemas:
+    # Base Response Schemas
+    BaseResponse:
+      type: object
+      required:
+        - status
+        - meta
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+          description: レスポンスステータス
+        meta:
+          type: object
+          required:
+            - timestamp
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+              description: レスポンス生成時刻
+            request_id:
+              type: string
+              format: uuid
+              description: リクエストID（デバッグ用）
+    
+    SuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: 成功メッセージ
+    
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          required:
+            - error
+          properties:
+            error:
+              type: object
+              required:
+                - code
+                - message
+              properties:
+                code:
+                  type: string
+                  description: エラーコード
+                message:
+                  type: string
+                  description: エラーメッセージ
+                details:
+                  type: object
+                  description: エラー詳細
+    
+    # System Schemas
+    VersionResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                version:
+                  type: string
+                  description: Narou.rb MOD バージョン
+                ruby_version:
+                  type: string
+                  description: Ruby バージョン
+    
+    QueueResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                queue_size:
+                  type: integer
+                  description: キューサイズ
+                running:
+                  type: boolean
+                  description: 実行中かどうか
+                tasks:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Task'
+    
+    StatusResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                server_running:
+                  type: boolean
+                worker_running:
+                  type: boolean
+                database_loaded:
+                  type: boolean
+                uptime_seconds:
+                  type: integer
+    
+    Task:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [download, convert, update, remove]
+        novel_id:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+    
+    # Novel Schemas
+    Novel:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 小説ID
+        ncode:
+          type: string
+          description: Nコード
+        title:
+          type: string
+          description: タイトル
+        author:
+          type: string
+          description: 作者名
+        tags:
+          type: array
+          items:
+            type: string
+          description: タグ一覧
+        frozen:
+          type: boolean
+          description: 凍結状態
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新日時
+        created_at:
+          type: string
+          format: date-time
+          description: 作成日時
+    
+    NovelsListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Novel'
+            meta:
+              type: object
+              properties:
+                total:
+                  type: integer
+                  description: 全件数
+                count:
+                  type: integer
+                  description: 取得件数
+                page:
+                  type: integer
+                  description: 現在のページ
+                per_page:
+                  type: integer
+                  description: 1ページあたりの件数
+    
+    NovelResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Novel'
+    
+    AsyncTaskResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                task_id:
+                  type: string
+                  description: タスクID
+                status:
+                  type: string
+                  enum: [queued, running]
+                message:
+                  type: string
+    
+    # Tag Schemas
+    Tag:
+      type: object
+      properties:
+        name:
+          type: string
+          description: タグ名
+        count:
+          type: integer
+          description: タグが付けられている小説数
+        color:
+          type: string
+          description: 表示色クラス
+    
+    TagsListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Tag'
+    
+    TagInfoResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  tag:
+                    type: string
+                  count:
+                    type: integer
+                  total_count:
+                    type: integer
+                  state:
+                    type: integer
+                    description: 0=なし, 1=全て, 2=一部
+    
+    TagEditRequest:
+      type: object
+      required:
+        - ids
+        - states
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          description: 対象の小説ID
+        states:
+          type: object
+          additionalProperties:
+            type: integer
+            enum: [0, 1]
+          description: タグ名とその状態（0=削除、1=追加）
+    
+    # Settings Schemas
+    SettingsResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              additionalProperties: true
+              description: 設定値（キー・バリュー）
+    
+    SettingsUpdateRequest:
+      type: object
+      additionalProperties: true
+      description: 更新する設定値
+    
+    SettingsPatchRequest:
+      type: object
+      additionalProperties: true
+      description: 部分更新する設定値
+    
+    SettingsVariablesResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  type:
+                    type: string
+                    enum: [string, integer, boolean, select]
+                  default:
+                    description: デフォルト値
+                  options:
+                    type: array
+                    items:
+                      type: string
+                    description: select型の場合の選択肢
+    
+    # Novel Settings Schemas
+    NovelSettingsResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              additionalProperties: true
+              description: 小説個別設定
+    
+    NovelSettingsUpdateRequest:
+      type: object
+      additionalProperties: true
+      description: 更新する設定値
+  
+  responses:
+    BadRequest:
+      description: リクエストパラメータ不正
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            error:
+              code: BAD_REQUEST
+              message: リクエストパラメータが不正です
+            meta:
+              timestamp: "2025-11-11T00:00:00Z"
+    
+    NotFound:
+      description: リソースが存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            error:
+              code: NOT_FOUND
+              message: 指定されたリソースが見つかりません
+            meta:
+              timestamp: "2025-11-11T00:00:00Z"
+    
+    ValidationError:
+      description: バリデーションエラー
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            error:
+              code: VALIDATION_ERROR
+              message: 入力値が不正です
+              details:
+                field: id
+                reason: 必須項目です
+            meta:
+              timestamp: "2025-11-11T00:00:00Z"
+    
+    AsyncTaskAccepted:
+      description: 受付成功（非同期処理開始）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AsyncTaskResponse'
+          example:
+            status: success
+            data:
+              task_id: "uuid-here"
+              status: queued
+              message: タスクをキューに追加しました
+            meta:
+              timestamp: "2025-11-11T00:00:00Z"

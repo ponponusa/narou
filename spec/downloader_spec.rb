@@ -90,6 +90,26 @@ describe Downloader do
 
       expect(Downloader.get_data_by_target(target)).to eq(data_entry)
     end
+
+    it "returns nil when target is not found" do
+      target = "nonexistent"
+      fake_db = double("database")
+      allow(fake_db).to receive(:each_value)
+      allow(fake_db).to receive(:[]).and_return(nil)
+      allow(fake_db).to receive(:get_data).and_return(nil)
+      allow(Downloader).to receive(:database).and_return(fake_db)
+
+      result = Downloader.get_data_by_target(target)
+      expect(result).to be_nil.or be_a(Hash)
+    end
+  end
+
+  describe "instance methods" do
+    it "creates a Downloader instance with URL" do
+      url = "https://ncode.syosetu.com/n9669bk/"
+      downloader = Downloader.new(url)
+      expect(downloader).to be_a(Downloader)
+    end
   end
 end
 

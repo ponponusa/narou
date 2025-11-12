@@ -199,10 +199,10 @@ module Command
     def ask_aozoraepub3_path
   # 非対話環境では入力を読まない
   return nil if non_interactive?
-      puts
+      $stdout.puts
       print "<bold><green>AozoraEpub3のあるフォルダを入力して下さい:</green></bold>\n(未入力でスキップ".termcolor
       if @global_setting["aozoraepub3dir"]
-        puts "、:keep で現在と同じ場所を指定)"
+        $stdout.puts "、:keep で現在と同じ場所を指定)"
         print "(現在の場所:#{@global_setting["aozoraepub3dir"]}"
       end
       print ")\n>"
@@ -222,8 +222,8 @@ module Command
       # 後方互換のために未設定時の line_height デフォルトは 1.6 だが、
       # オススメは 1.8 なので入力時のデフォルトは 1.8 にする
       line_height = Narou.line_height(default: 1.8)
-      puts
-      puts(<<-MSG.termcolor)
+      $stdout.puts
+      $stdout.puts(<<-MSG.termcolor)
 <bold><green>行間の調整を行います。小説の行の高さを設定して下さい(単位 em):</green></bold>
 1em = 1文字分の高さ
 行の高さ＝1文字分の高さ＋行間の高さ
@@ -290,7 +290,7 @@ module Command
       message = yield if block_given?
       return if message.nil?
       message.to_s.split(/\n/, -1).each do |line|
-        puts line
+        $stdout.puts line
       end
     end
 
