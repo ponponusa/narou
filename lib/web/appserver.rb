@@ -997,7 +997,7 @@ class Narou::AppServer < Sinatra::Base
           promo_tags_author: promo_tags_author,
           promo_tags_text: promo_tags.join(" "),
           author_url: author_url,
-          actions: nil,
+          actions: "",  # アクションボタンはJavaScript側で動的に生成
           frozen: is_frozen,
           new_arrivals_date: data["new_arrivals_date"].tap { |m| break m.to_i if m },
           general_lastup: data["general_lastup"].tap { |m| break m.to_i if m },
