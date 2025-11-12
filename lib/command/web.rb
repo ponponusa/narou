@@ -308,18 +308,25 @@ module Command
       FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
 
       # 現在のコマンドを再構築（--bootの代わりに--no-daemonを使用）
-      ruby_path = RbConfig.ruby
-      script_path = File.join(__dir__, "..", "..", "narou.rb")
+      # gem経由でインストールされている場合はnarou-modコマンドを使用
+      # 開発環境ではnarou.rbを直接使用
+      narou_cmd = if File.exist?(File.join(__dir__, "..", "..", "narou.rb"))
+                    # 開発環境
+                    [RbConfig.ruby, File.join(__dir__, "..", "..", "narou.rb")]
+                  else
+                    # gem環境: narou-modコマンドを探す
+                    ["narou-mod"]
+                  end
       
       # コマンドライン引数を再構築
-      args = ["web", "--no-daemon"]
-      args << "--port" << (@options["port"] || 5678).to_s if @options["port"]
-      args << "--host" << @options["host"] if @options["host"]
+      args = ["web", "--boot", "--no-daemon"]
+      args.concat(["--port", @options["port"].to_s]) if @options["port"]
+      args.concat(["--host", @options["host"]]) if @options["host"]
       args << "--no-frontend" if @options["no-frontend"]
       
       # バックグラウンドでプロセスを起動
       pid = spawn(
-        ruby_path, script_path, *args,
+        *narou_cmd, *args,
         out: log_file,
         err: log_file,
         chdir: Narou.root_dir,
