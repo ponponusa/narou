@@ -109,7 +109,15 @@ module Command
       else
         # 標準出力モード: tty-markdownでレンダリング
         # 元のSTDOUTを使用（Narou::Loggerではなく実際のターミナル）
-        ORIGINAL_STDOUT.puts TTY::Markdown.parse(markdown)
+        # TTY::Screen.widthがNarou::Loggerにアクセスしないよう、明示的に幅を指定
+        begin
+          require "io/console"
+          width = ORIGINAL_STDOUT.winsize[1]
+        rescue StandardError
+          width = 80  # デフォルト幅
+        end
+        
+        ORIGINAL_STDOUT.puts TTY::Markdown.parse(markdown, width: width)
       end
     end
 
