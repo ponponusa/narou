@@ -38,6 +38,8 @@ mail_setting.yaml
 .byebug_history
 *.log
 .agent/
+commitversion
+frontend/public/backend-port.json
 
 #
 # for gem
