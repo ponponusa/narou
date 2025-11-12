@@ -122,6 +122,16 @@
   }
 
   function handleClose() {
+    // サーバー停止完了時は自動でブラウザを閉じる
+    if (action === 'stop' && status === 'completed') {
+      window.close();
+      // window.close()が効かない場合（ユーザーが開いたタブ）の対策
+      setTimeout(() => {
+        window.location.href = 'about:blank';
+      }, 100);
+      return;
+    }
+    
     action = null;
     if (onClose) {
       onClose();
