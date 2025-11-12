@@ -28,6 +28,7 @@
   import ConsolePanel from './ConsolePanel.svelte';
   import Toast from './Toast.svelte';
   import TaskQueue from './TaskQueue.svelte';
+  import LoadingScreen from './LoadingScreen.svelte';
 
   let novels = $state<Novel[]>([]);
   let toast: Toast;
@@ -1335,10 +1336,7 @@
   <!-- 小説リストテーブル -->
   <div class="lg:mx-12">
   {#if loading}
-    <div class="text-center py-12">
-      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      <p class="mt-4 text-gray-600 dark:text-gray-400">読み込み中...</p>
-    </div>
+    <LoadingScreen message="小説リストを読み込んでいます..." />
   {:else if error}
     <div class="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded">
       <p class="font-bold">エラー</p>
