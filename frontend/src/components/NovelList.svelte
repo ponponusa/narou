@@ -47,7 +47,7 @@
   let retryCount = $state(0);
   let maxRetries = 10; // 最大10回リトライ（約20秒）
   let isInitialLoad = $state(true); // 初回ロードフラグ
-  let initialLoadDelay = 5000; // 初回ロード時の待機時間（5秒）
+  let initialLoadDelay = 2500; // 初回ロード時の待機時間（2.5秒）
 
   // フィルター・ソート設定
   let currentPage = $state(0);
@@ -527,24 +527,33 @@
     } catch (err) {
       console.error('小説リストの取得エラー:', err);
       
-      // HTTPステータスコードをチェック（500系エラーはリトライしない）
-      const isServerError = (err as any).status >= 500;
+      // HTTPステータスコードをチェック
+      const status = (err as any).status;
+      const isServerError = status >= 500 && status !== 503; // 503は除外（サービス準備中）
       
-      // 接続エラーの判定を広範囲に（ただし500系は除外）
+      // 503エラーまたは接続エラーの判定
       // TypeError: Failed to fetch や NetworkError など
-      const isConnectionError = !isServerError && (
-        err instanceof TypeError || // fetch失敗時
-        (err instanceof Error && (
-          err.message.includes('Failed to fetch') || 
-          err.message.includes('NetworkError') ||
-          err.message.includes('fetch') ||
-          err.message.includes('network')
-        ))
+      const isConnectionError = status === 503 || (
+        !isServerError && (
+          err instanceof TypeError || // fetch失敗時
+          (err instanceof Error && (
+            err.message.includes('Failed to fetch') || 
+            err.message.includes('NetworkError') ||
+            err.message.includes('fetch') ||
+            err.message.includes('network')
+          ))
+        )
       );
       
       if (isConnectionError && retryCount < maxRetries) {
         retryCount++;
         console.log(`サーバー接続をリトライ中... (${retryCount}/${maxRetries})`);
+        
+        // エラートーストを表示（初回のみ）
+        if (retryCount === 1) {
+          toast?.show('小説リストの取得に時間がかかっています...', 'info');
+        }
+        
         // 2秒後に再試行（loadingはtrueのまま維持）
         setTimeout(() => {
           loadNovels();
@@ -564,7 +573,7 @@
       } else if (!isConnectionError) {
         toast?.show(message, 'error');
       } else {
-        toast?.show('サーバーに接続できませんでした', 'error');
+        toast?.show('サーバーに接続できませんでした。しばらくしてから再度お試しください。', 'error');
       }
     }
   }
