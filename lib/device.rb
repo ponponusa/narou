@@ -51,7 +51,10 @@ class Device
         unless h[name]
           if Helper.os_windows?
             # パスにマルチバイト文字が使われる可能性があるのでrequireは使えない
+            # rubocop:disable Security/Eval
+            # デバイスライブラリファイルはアプリケーション内部のコードであり、信頼できるソース
             eval(File.read(path, encoding: Encoding::UTF_8), binding, path)
+            # rubocop:enable Security/Eval
           else
             require path
           end

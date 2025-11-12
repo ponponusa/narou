@@ -33,7 +33,8 @@ module Narou
     WHITESPACE_PATTERN = /[\s\u3000]+/.freeze
 
     BRACKET_REGEXES = BRACKETS.map do |opening, closing|
-      Regexp.new("#{opening}(.*?)#{closing}")
+      # ReDoS攻撃を防ぐため、改行以外の文字に限定し、文字数制限を追加
+      Regexp.new("#{opening}([^\n]{1,200}?)#{closing}")
     end.freeze
     SEP_CAPTURE = Regexp.new("(#{SEP.source})", SEP.options).freeze
 
