@@ -121,7 +121,7 @@ module Command
                     end
       
       # PUBLIC_PUSH_SERVER_PORTを更新
-      env_content.gsub!(/^PUBLIC_PUSH_SERVER_PORT=.*$/, "PUBLIC_PUSH_SERVER_PORT=#{ws_port}")
+      env_content = env_content.gsub(/^PUBLIC_PUSH_SERVER_PORT=.*$/, "PUBLIC_PUSH_SERVER_PORT=#{ws_port}")
       
       File.write(env_file, env_content)
       
@@ -129,7 +129,7 @@ module Command
       config_file = File.join(frontend_dir, "astro.config.mjs")
       if File.exist?(config_file)
         config_content = File.read(config_file)
-        config_content.gsub!(/target:\s*['"]http:\/\/localhost:\d+['"]/, "target: 'http://localhost:#{port}'")
+        config_content = config_content.gsub(/target:\s*['"]http:\/\/localhost:\d+['"]/, "target: 'http://localhost:#{port}'")
         File.write(config_file, config_content)
       end
     end
