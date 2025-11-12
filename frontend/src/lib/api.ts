@@ -55,11 +55,25 @@ async function fetchApiV2<T>(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      error: 'HTTP Error',
-      message: `${response.status} ${response.statusText}`,
-    }));
-    const errorMessage = error.message || error.error || `${response.status} ${response.statusText}`;
+    let errorMessage = `${response.status} ${response.statusText}`;
+    
+    try {
+      const error: ApiError = await response.json();
+      // エラーメッセージを抽出（複数のパターンに対応）
+      if (typeof error.message === 'string' && error.message) {
+        errorMessage = error.message;
+      } else if (typeof error.error === 'string' && error.error) {
+        errorMessage = error.error;
+      } else if (error.error && typeof error.error === 'object') {
+        // error.error がオブジェクトの場合（ネストされたエラー）
+        const nestedError = error.error as any;
+        errorMessage = nestedError.message || nestedError.error || JSON.stringify(error.error);
+      }
+    } catch (parseError) {
+      // JSONパースに失敗した場合はデフォルトメッセージを使用
+      console.error('Error response parse failed:', parseError);
+    }
+    
     const err = new Error(errorMessage);
     // HTTPステータスコードを保持
     (err as any).status = response.status;
@@ -88,11 +102,28 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      error: 'Unknown error',
-      message: response.statusText,
-    }));
-    throw new Error(error.message || error.error);
+    let errorMessage = response.statusText || `HTTP ${response.status}`;
+    
+    try {
+      const error: ApiError = await response.json();
+      // エラーメッセージを抽出（複数のパターンに対応）
+      if (typeof error.message === 'string' && error.message) {
+        errorMessage = error.message;
+      } else if (typeof error.error === 'string' && error.error) {
+        errorMessage = error.error;
+      } else if (error.error && typeof error.error === 'object') {
+        // error.error がオブジェクトの場合（ネストされたエラー）
+        const nestedError = error.error as any;
+        errorMessage = nestedError.message || nestedError.error || JSON.stringify(error.error);
+      }
+    } catch (parseError) {
+      // JSONパースに失敗した場合はデフォルトメッセージを使用
+      console.error('Error response parse failed:', parseError);
+    }
+    
+    const err = new Error(errorMessage);
+    (err as any).status = response.status;
+    throw err;
   }
 
   return response.json();

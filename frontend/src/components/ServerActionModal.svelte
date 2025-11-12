@@ -56,6 +56,8 @@
             // サーバーが起動した
             status = 'completed';
             message = 'サーバーの再起動が完了しました';
+            // 初回ロードフラグをリセット（次回リロード時に待機させる）
+            sessionStorage.removeItem('novelListLoaded');
             if (checkInterval) {
               clearInterval(checkInterval);
             }
