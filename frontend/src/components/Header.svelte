@@ -10,6 +10,7 @@
   import { isServerStopped } from '../lib/stores/serverStatus';
   import ThemeToggle from './ThemeToggle.svelte';
   import PowerMenu from './PowerMenu.svelte';
+  import MobileMenu from './MobileMenu.svelte';
 
   let version = $state('...');
   let bootsnap = $state(false);
@@ -115,13 +116,15 @@
       </div>
       
       <div class="flex items-center space-x-2">
-        <!-- ナビゲーションボタン（アイコン） -->
-        <a
-          href="/"
-          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors {currentPath === '/' || currentPath === '/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : ''} {$isServerStopped ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}"
-          title="小説リスト"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <!-- デスクトップメニュー（md以上で表示） -->
+        <div class="hidden md:flex items-center space-x-2">
+          <!-- ナビゲーションボタン（アイコン） -->
+          <a
+            href="/"
+            class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors {currentPath === '/' || currentPath === '/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : ''} {$isServerStopped ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}"
+            title="小説リスト"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
         </a>
@@ -155,6 +158,10 @@
         <div class="ml-2">
           <ThemeToggle />
         </div>
+        </div>
+        
+        <!-- モバイルメニュー（md未満で表示） -->
+        <MobileMenu />
       </div>
     </div>
   </nav>
