@@ -67,7 +67,13 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'erubi', '~> 1.13.1'
   gem.add_runtime_dependency 'open_uri_redirections', '~> 0.2', '>= 0.2.1'
   gem.add_runtime_dependency 'activesupport', '~> 8.0', '>= 8.1.0'
-  gem.add_runtime_dependency 'unicode-display_width', '~> 3.2'
+  gem.add_runtime_dependency 'unicode-display_width', '>= 1.5', '< 3.0'
+  
+  # TUI libraries for enhanced CLI user experience
+  gem.add_runtime_dependency 'tty-markdown', '~> 0.7'
+  gem.add_runtime_dependency 'tty-spinner', '~> 0.9'
+  gem.add_runtime_dependency 'tty-box', '~> 0.7'
+  gem.add_runtime_dependency 'tty-prompt', '~> 0.23'
   gem.add_runtime_dependency 'psych', '~> 5.2'
   gem.add_runtime_dependency 'nkf', '~> 0.2.0'
   gem.add_runtime_dependency 'csv', '~> 3.3'

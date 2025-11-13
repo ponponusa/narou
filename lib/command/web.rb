@@ -5,6 +5,7 @@
 #
 
 require_relative "web_legacy"
+require_relative "output_helper"
 
 module Command
   class Web < CommandBase
@@ -19,14 +20,14 @@ module Command
         ・小説の管理及び設定をブラウザで行うことができます
         ・--port を指定しない場合、ポートは初回起動時にランダムで設定します
           (以降同じ設定を引き継ぎます)
-        ・デフォルトでバックグラウンドで起動します (--no-daemon で前面実行)
-        ・サーバの停止は 'narou-mod stop' または 'narou-mod process --stop'
+        ・フォアグラウンドで実行されます（Ctrl+Cで停止）
+        ・サーバの停止は Ctrl+C または 'narou-mod stop'
 
         Examples:
-          narou-mod web                    # バックグラウンドで起動
-          narou-mod web --no-daemon        # フォアグラウンドで起動（Ctrl+Cで停止）
-          narou-mod web -p 4567            # ポート4567で起動
-          narou-mod web --open-browser     # ブラウザを自動で開く
+          narou-mod web                           # サーバーを起動
+          narou-mod web -p 4567                   # ポート4567で起動
+          narou-mod web --open-browser            # ブラウザを自動で開く
+          narou-mod web --log-file app.log        # ログをファイルに出力
 
         Options:
       HELP
@@ -39,11 +40,8 @@ module Command
       @opt.on("-o", "--open-browser", "起動時にブラウザを開く") {
         @options["open-browser"] = true
       }
-      @opt.on("-d", "--daemon", "バックグラウンドで起動（デフォルト）") {
-        @options["daemon"] = true
-      }
-      @opt.on("--no-daemon", "フォアグラウンドで起動") {
-        @options["daemon"] = false
+      @opt.on("--log-file FILE", "ログをファイルに出力（デフォルト: 標準出力）") { |file|
+        @options["log-file"] = file
       }
       @opt.on("-l", "--legacy", "旧 Haml UI を使用する (デフォルトは新 Astro UI)") {
         @options["legacy"] = true
@@ -56,17 +54,36 @@ module Command
         return WebLegacy.new.execute(argv)
       end
 
-      # --boot オプションの処理
-      if argv.delete("--boot")
+      # --internal-boot オプションの処理（外部ループからの内部実行用）
+      if argv.include?("--internal-boot")
+        argv.delete("--internal-boot")
         @rebooted = !!argv.delete("--reboot")
         super
-        # デーモンモードのデフォルト設定（明示的に指定されていない場合のみ）
-        @options["daemon"] = true unless @options.key?("daemon")
+        
+        # OutputHelperの初期化
+        Command::OutputHelper.setup_logger(@options["log-file"])
+        
         boot
       else
+        # 外部ループで再起動に対応（legacy版と同じパターン）
+        # --bootオプションは外部ループ用のフラグとして使用し、内部では--internal-bootに置き換える
+        argv.delete("--boot")  # --bootオプションを削除
         super
-        $stdout.puts "サーバを起動するには --boot オプションを指定してください"
-        $stdout.puts "Example: narou-mod web --boot"
+        argv << "--backtrace" if $display_backtrace
+        argv << "--no-color" if $disable_color
+        argv << "--internal-boot"  # 内部実行用のフラグを追加
+        argv_copy = argv.dup
+        
+        begin
+          loop do
+            system(RbConfig.ruby, "-x", $0, "web", *argv)
+            break unless $?.exitstatus == Narou::EXIT_REQUEST_REBOOT
+            argv = argv_copy.dup
+            argv.push("--no-browser", "--reboot")
+          end
+        rescue Interrupt
+          sleep 1
+        end
       end
     end
 
@@ -76,57 +93,97 @@ module Command
       @options["host"] || "127.0.0.1"
     end
 
+    # 表示用のホスト名（127.0.0.1をlocalhostに変換）
+    def display_host
+      host == "127.0.0.1" ? "localhost" : host
+    end
+
     def boot
-      require_relative "../narou"
-      require_relative "../web/appserver"
-      
-      # 既にサーバーが起動しているかチェック
-      pid_file = pid_file_path
-      if File.exist?(pid_file)
-        existing_pid = File.read(pid_file).to_i
-        if process_running?(existing_pid)
-          puts "WEBサーバーはすでに起動しています (PID: #{existing_pid})"
-          puts "停止するには 'narou-mod stop' を実行してください"
-          exit 0
-        else
-          # 古いPIDファイルを削除
-          File.delete(pid_file)
-        end
-      end
-      
-      # デーモンモードフラグ
-      daemon_mode = @options.fetch("daemon", true)
-      
-      # フロントエンド設定を更新（デーモン化の前に実行）
+      # フロントエンド設定を更新（require前に実行）
       port = @options["port"] || 5678
       update_frontend_env(port) if should_start_frontend?
       
-      if daemon_mode
-        puts "WEBサーバーをバックグラウンドで起動しています..."
-        puts "ログ: tmp/logs/narou-web.log"
-        
-        daemonize
-        # daemonize内で親プロセスはexit、子プロセスだけがここに到達する
-        
-        # フロントエンドを起動（子プロセスで、ログファイルに出力）
-        start_frontend if should_start_frontend?
-      else
-        # フォアグラウンドモードの場合、起動メッセージを表示
-        display_startup_message
-        
-        # フロントエンドを起動
-        start_frontend if should_start_frontend?
+      # 起動メッセージを表示（require_relative "../narou" より前に実行）
+      # narou.rbをrequireすると$stdoutがNarou::Loggerに置き換わるため
+      Command::OutputHelper.render("web_starting", {
+        host: display_host,
+        port: port,
+        frontend_enabled: should_start_frontend?
+      })
+      
+      # Narouモジュールをロード（$stdoutがNarou::Loggerに置き換わる）
+      require_relative "../narou"
+      require_relative "../web/appserver"
+      
+      # シグナルハンドラを設定（Ctrl+Cで停止）
+      setup_signal_handlers
+      
+      # フロントエンドを起動
+      start_frontend if should_start_frontend?
+
+      # バックエンドサーバーを起動
+      start_server
+    end
+
+    def setup_signal_handlers
+      # Ctrl+C (SIGINT) と SIGTERM のハンドラを設定
+      Signal.trap("INT") do
+        Command::OutputHelper.info("\n\nサーバーを停止しています...")
+        stop_all_servers
+        exit 0
       end
 
-      # バックエンドサーバーを起動（子プロセスまたはフォアグラウンドモード）
-      start_server
+      Signal.trap("TERM") do
+        Command::OutputHelper.info("SIGTERMを受信しました。サーバーを停止しています...")
+        stop_all_servers
+        exit 0
+      end
+    end
+
+    def stop_all_servers
+      # WebWorkerを停止
+      begin
+        Narou::WebWorker.stop if defined?(Narou::WebWorker)
+      rescue StandardError => e
+        # エラーが発生してもクリーンアップを続行
+        Command::OutputHelper.error("WebWorkerの停止中にエラーが発生しました: #{e.message}")
+      end
+      
+      # PushServerを停止
+      begin
+        push_server = Narou::PushServer.instance
+        push_server.quit if push_server
+      rescue StandardError => e
+        Command::OutputHelper.error("PushServerの停止中にエラーが発生しました: #{e.message}")
+      end
+      
+      # フロントエンドサーバーを停止
+      stop_frontend if should_start_frontend?
+    end
+
+    def stop_frontend
+      frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+      
+      if File.exist?(frontend_pid_file)
+        pid = File.read(frontend_pid_file).to_i
+        begin
+          Process.kill("TERM", pid)
+          File.delete(frontend_pid_file)
+        rescue Errno::ESRCH
+          # プロセスが既に終了している
+          File.delete(frontend_pid_file) if File.exist?(frontend_pid_file)
+        end
+      end
     end
 
     def should_start_frontend?
       # テスト環境ではフロントエンドを起動しない
       return false if ENV["NAROU_ENV"] == "test"
       
-      # 開発環境（frontend/ディレクトリが存在）かつデーモンモードの場合のみ
+      # --no-frontendオプションが指定されている場合は起動しない
+      return false if @options["no-frontend"]
+      
+      # 開発環境（frontend/ディレクトリが存在）の場合のみ
       frontend_dir = File.join(Narou.root_dir, "frontend")
       File.directory?(frontend_dir) && File.exist?(File.join(frontend_dir, "package.json"))
     end
@@ -139,15 +196,16 @@ module Command
       # 既にフロントエンドサーバーが起動しているかチェック
       if File.exist?(frontend_pid_file)
         existing_pid = File.read(frontend_pid_file).to_i
-        if process_running?(existing_pid)
-          puts "フロントエンドサーバーは既に起動しています (PID: #{existing_pid})"
+        begin
+          ::Process.kill(0, existing_pid)
+          Command::OutputHelper.info("フロントエンドサーバーは既に起動しています (PID: #{existing_pid})")
           return
-        else
+        rescue Errno::ESRCH, Errno::EPERM
           File.delete(frontend_pid_file)
         end
       end
       
-      puts "フロントエンドサーバーを起動しています..."
+      Command::OutputHelper.info("フロントエンドサーバーを起動しています...")
       
       # フロントエンドサーバーをバックグラウンドで起動
       pid = fork do
@@ -178,11 +236,64 @@ module Command
       # プロセスをデタッチ（親プロセスが終了してもフロントエンドは継続）
       Process.detach(pid)
       
-      puts "フロントエンドサーバーを起動しました (PID: #{pid})"
+      Command::OutputHelper.success("フロントエンドサーバーを起動しました (PID: #{pid})")
+      sleep 1  # フロントエンドサーバーの起動を待つ
+    end
+
+    def stop_frontend
+      frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+      
+      return unless File.exist?(frontend_pid_file)
+      
+      pid = File.read(frontend_pid_file).to_i
+      begin
+        # プロセスグループごと停止
+        ::Process.kill("TERM", -pid)
+        sleep 0.5
+        
+        # 停止を確認
+        begin
+          ::Process.kill(0, pid)
+          # まだ生きている場合は強制終了
+          ::Process.kill("KILL", -pid)
+        rescue Errno::ESRCH
+          # 既に停止済み
+        end
+        
+        File.delete(frontend_pid_file)
+        Command::OutputHelper.success("フロントエンドサーバーを停止しました")
+      rescue Errno::ESRCH, Errno::EPERM
+        File.delete(frontend_pid_file)
+      end
+    end
+
+    def stop_all_servers
+      Command::OutputHelper.info("サーバーを停止しています...")
+      stop_frontend if should_start_frontend?
+      exit 0
+    end
+
+    def setup_signal_handlers
+      # Ctrl+C (SIGINT) と kill (SIGTERM) に対応
+      Signal.trap("INT") do
+        puts "\n"  # 改行を入れて見やすく
+        stop_all_servers
+      end
+      
+      Signal.trap("TERM") do
+        stop_all_servers
+      end
     end
 
     def start_server
       port = @options["port"] || 5678
+      
+      # サーバー起動完了メッセージ（$stdoutを置き換える前に表示）
+      Command::OutputHelper.render("web_started", {
+        host: display_host,
+        port: port,
+        frontend_enabled: should_start_frontend?
+      })
       
       # PushServerの初期化と起動
       push_server = Narou::PushServer.instance
@@ -208,10 +319,9 @@ module Command
       
       # WebWorkerを起動（タスクキュー処理用）
       Narou::WebWorker.run
-
       
       if @options["open-browser"]
-        frontend_url = "http://#{host}:4321/"
+        frontend_url = should_start_frontend? ? "http://#{display_host}:4321/" : "http://#{display_host}:#{port}/"
         Helper.open_browser(frontend_url)
       end
       
@@ -270,184 +380,10 @@ module Command
       File.write(port_info_file, JSON.pretty_generate(port_info))
     end
 
-    def display_startup_message
-      port = @options["port"] || 5678
-      # 表示用のホスト名（127.0.0.1の場合はlocalhostに変換）
-      display_host = host == "127.0.0.1" ? "localhost" : host
-      
-      $stdout.puts ""
-      $stdout.puts "✅ サーバーが起動しました！"
-      $stdout.puts ""
-      
-      if should_start_frontend?
-        $stdout.puts "  バックエンドAPI: http://#{display_host}:#{port}"
-        $stdout.puts "  Web UI:          http://#{display_host}:4321"
-        $stdout.puts ""
-        $stdout.puts "  ※ Web UIにアクセスしてください (http://#{display_host}:4321)"
-      else
-        $stdout.puts "  Web UI: http://#{display_host}:#{port}"
-        $stdout.puts ""
-        $stdout.puts "  ※ ブラウザで上記URLにアクセスしてください"
-      end
-      $stdout.puts ""
-    end
+    private
 
-    def daemonize
-      # Windows環境ではfork()がサポートされていないため、spawnを使用
-      if Gem.win_platform?
-        daemonize_windows
-      else
-        daemonize_unix
-      end
-    end
-
-    def daemonize_windows
-      # Windowsではspawn + Process.detachでバックグラウンド実行
-      log_file = File.join(Narou.root_dir, "tmp", "logs", "narou-web.log")
-      log_dir = File.dirname(log_file)
-      FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
-
-      # 現在のコマンドを再構築（--bootの代わりに--no-daemonを使用）
-      # gem経由でインストールされている場合はnarou-modコマンドを使用
-      # 開発環境ではnarou.rbを直接使用
-      narou_cmd = if File.exist?(File.join(__dir__, "..", "..", "narou.rb"))
-                    # 開発環境
-                    [RbConfig.ruby, File.join(__dir__, "..", "..", "narou.rb")]
-                  else
-                    # gem環境: narou-modコマンドを探す
-                    ["narou-mod"]
-                  end
-      
-      # コマンドライン引数を再構築
-      args = ["web", "--boot", "--no-daemon"]
-      args.concat(["--port", @options["port"].to_s]) if @options["port"]
-      args.concat(["--host", @options["host"]]) if @options["host"]
-      args << "--no-frontend" if @options["no-frontend"]
-      
-      # バックグラウンドでプロセスを起動
-      pid = spawn(
-        *narou_cmd, *args,
-        out: log_file,
-        err: log_file,
-        chdir: Narou.root_dir,
-        new_pgroup: true  # Windowsで新しいプロセスグループを作成
-      )
-      
-      # プロセスをデタッチ（親プロセスが終了しても子プロセスは継続）
-      ::Process.detach(pid)
-      
-      # PIDファイルに書き込む
-      pid_file = pid_file_path
-      pid_dir = File.dirname(pid_file)
-      FileUtils.mkdir_p(pid_dir) unless File.exist?(pid_dir)
-      File.write(pid_file, pid.to_s)
-      
-      # 起動メッセージを表示
-      $stdout.puts ""
-      $stdout.puts "✅ サーバーが起動しました！"
-      $stdout.puts ""
-      port = @options["port"] || 5678
-      $stdout.puts "  PID:             #{pid}"
-      
-      if should_start_frontend?
-        $stdout.puts "  バックエンドAPI: http://#{host}:#{port}"
-        $stdout.puts "  Web UI:          http://#{host}:4321"
-        $stdout.puts ""
-        $stdout.puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
-      else
-        $stdout.puts "  Web UI:          http://#{host}:#{port}"
-        $stdout.puts ""
-        $stdout.puts "  ※ ブラウザで上記URLにアクセスしてください"
-      end
-      $stdout.puts ""
-      $stdout.puts "サーバーを停止するには: narou-mod stop"
-      $stdout.puts "サーバーの状態を確認:   narou-mod process"
-      $stdout.puts ""
-      
-      exit 0
-    end
-
-    def daemonize_unix
-      # Unix/Linux/macOSではfork()を使用
-      pid = fork
-      
-      if pid
-        # 親プロセス
-        # 子プロセスのPIDをファイルに書き込む
-        pid_file = pid_file_path
-        pid_dir = File.dirname(pid_file)
-        FileUtils.mkdir_p(pid_dir) unless File.exist?(pid_dir)
-        File.write(pid_file, pid.to_s)
-        
-        $stdout.puts ""
-        $stdout.puts "✅ サーバーが起動しました！"
-        $stdout.puts ""
-        port = @options["port"] || 5678
-        $stdout.puts "  PID:             #{pid}"
-        
-        if should_start_frontend?
-          $stdout.puts "  バックエンドAPI: http://#{host}:#{port}"
-          $stdout.puts "  Web UI:          http://#{host}:4321"
-          $stdout.puts ""
-          $stdout.puts "  ※ Web UIにアクセスしてください (http://#{host}:4321)"
-        else
-          $stdout.puts "  Web UI:          http://#{host}:#{port}"
-          $stdout.puts ""
-          $stdout.puts "  ※ ブラウザで上記URLにアクセスしてください"
-        end
-        $stdout.puts ""
-        $stdout.puts "サーバーを停止するには: narou-mod stop"
-        $stdout.puts "サーバーの状態を確認:   narou-mod process"
-        $stdout.puts ""
-        $stdout.flush
-        $stderr.flush
-        exit 0
-      else
-        # 子プロセス
-        # 出力をフラッシュしてから新しいセッションを作成
-        $stdout.flush
-        $stderr.flush
-        
-        # 新しいセッションを作成
-        ::Process.setsid
-        
-        # ログファイルにリダイレクト
-        log_file = File.join(Narou.root_dir, "tmp", "logs", "narou-web.log")
-        log_dir = File.dirname(log_file)
-        FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
-        
-        # STDINをクローズ
-        STDIN.reopen("/dev/null")
-        
-        # STDOUT と STDERR をログファイルにリダイレクト
-        STDOUT.reopen(log_file, "a")
-        STDOUT.sync = true
-        STDERR.reopen(STDOUT)
-        STDERR.sync = true
-        
-        $stdout.puts "=========================================="
-        $stdout.puts "WEBサーバーが起動しました"
-        $stdout.puts "PID: #{::Process.pid}"
-        $stdout.puts "Time: #{Time.now}"
-        $stdout.puts "=========================================="
-        
-        # 処理を継続（このメソッドから戻る）
-      end
-    end
-
-    def pid_file_path
-      File.join(Narou.root_dir, "tmp", "pids", "narou-web.pid")
-    end
-
-    def delete_pid_file
-      File.delete(pid_file_path) if File.exist?(pid_file_path)
-    end
-
-    def process_running?(pid)
-      ::Process.kill(0, pid)
-      true
-    rescue Errno::ESRCH, Errno::EPERM
-      false
+    def host
+      @options["host"] || "127.0.0.1"
     end
   end
 end

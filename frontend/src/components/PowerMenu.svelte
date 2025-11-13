@@ -64,7 +64,7 @@
   }
 
   async function handleRestart() {
-    if (!confirm('サーバーを再起動しますか？')) {
+    if (!confirm('サーバーを再起動しますか？\n\n再起動後、このページは自動的にリロードされます。')) {
       return;
     }
 
@@ -73,10 +73,10 @@
       await restartServer();
       isOpen = false;
       currentAction = 'restart';
-    } catch (error) {
+      // モーダルがpollingチェックとリロードを処理
+    } catch (error: any) {
       console.error('サーバーの再起動に失敗:', error);
-      alert('サーバーの再起動に失敗しました');
-    } finally {
+      alert(error?.message || 'サーバーの再起動に失敗しました');
       isLoading = false;
     }
   }
@@ -91,9 +91,9 @@
       await stopServer();
       isOpen = false;
       currentAction = 'stop';
-    } catch (error) {
+    } catch (error: any) {
       console.error('サーバーの停止に失敗:', error);
-      alert('サーバーの停止に失敗しました');
+      alert(error?.message || 'サーバーの停止に失敗しました');
     } finally {
       isLoading = false;
     }
