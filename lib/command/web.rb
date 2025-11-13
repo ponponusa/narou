@@ -124,10 +124,24 @@ module Command
     end
 
     def stop_all_servers
+      # WebWorkerを停止
+      begin
+        Narou::WebWorker.stop if defined?(Narou::WebWorker)
+      rescue StandardError => e
+        # エラーが発生してもクリーンアップを続行
+        Command::OutputHelper.error("WebWorkerの停止中にエラーが発生しました: #{e.message}")
+      end
+      
+      # PushServerを停止
+      begin
+        push_server = Narou::PushServer.instance
+        push_server.quit if push_server
+      rescue StandardError => e
+        Command::OutputHelper.error("PushServerの停止中にエラーが発生しました: #{e.message}")
+      end
+      
       # フロントエンドサーバーを停止
       stop_frontend if should_start_frontend?
-      
-      # 必要に応じて追加のクリーンアップ処理
     end
 
     def stop_frontend
