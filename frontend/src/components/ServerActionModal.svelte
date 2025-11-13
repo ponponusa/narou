@@ -15,20 +15,24 @@
 
   let { action = $bindable(null), onClose }: Props = $props();
   
-  let status = $state<'processing' | 'checking' | 'completed' | 'error'>('processing');
+  let status = $state<'processing' | 'checking' | 'completed' | 'timeout'>('processing');
   let message = $state('');
   let checkInterval: number | null = null;
   let checkAttempts = $state(0);
   let maxAttempts = 30; // 最大30秒間チェック
+  let countdown = $state(30); // カウントダウン表示用
+  let countdownInterval: number | null = null;
 
   $effect(() => {
     if (action === 'restart') {
       status = 'processing';
       message = 'サーバーを再起動しています...';
+      countdown = 30;
       startRestartCheck();
     } else if (action === 'stop') {
       status = 'processing';
       message = 'サーバーを停止しています...';
+      countdown = 30;
       startStopCheck();
     }
   });
@@ -37,12 +41,24 @@
     if (checkInterval) {
       clearInterval(checkInterval);
     }
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+    }
   });
 
   function startRestartCheck() {
     checkAttempts = 0;
+    countdown = 30;
     status = 'checking';
     message = 'サーバーの再起動を確認中...';
+
+    // カウントダウンを開始
+    countdownInterval = window.setInterval(() => {
+      countdown--;
+      if (countdown <= 0 && countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+    }, 1000);
 
     // 3秒待ってからチェック開始
     setTimeout(() => {
@@ -56,26 +72,39 @@
             // サーバーが起動した
             status = 'completed';
             message = 'サーバーの再起動が完了しました';
-            // 初回ロードフラグをリセット（次回リロード時に待機させる）
+            // 初回ロードフラグをリセット
             sessionStorage.removeItem('novelListLoaded');
             if (checkInterval) {
               clearInterval(checkInterval);
             }
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
+            }
+            // 自動リロード
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
           } else if (checkAttempts >= maxAttempts) {
             // タイムアウト
-            status = 'error';
-            message = 'サーバーの再起動確認がタイムアウトしました';
+            status = 'timeout';
+            message = 'サーバーの起動確認がタイムアウトしました';
             if (checkInterval) {
               clearInterval(checkInterval);
+            }
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
             }
           }
         } catch (error) {
           // エラーは再起動中の一時的な切断の可能性があるので継続
           if (checkAttempts >= maxAttempts) {
-            status = 'error';
-            message = 'サーバーとの接続に失敗しました';
+            status = 'timeout';
+            message = 'サーバーの起動確認がタイムアウトしました';
             if (checkInterval) {
               clearInterval(checkInterval);
+            }
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
             }
           }
         }
@@ -85,8 +114,17 @@
 
   function startStopCheck() {
     checkAttempts = 0;
+    countdown = 30;
     status = 'checking';
     message = 'サーバーの停止を確認中...';
+
+    // カウントダウンを開始
+    countdownInterval = window.setInterval(() => {
+      countdown--;
+      if (countdown <= 0 && countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+    }, 1000);
 
     // 2秒待ってからチェック開始
     setTimeout(() => {
@@ -98,10 +136,13 @@
           
           // まだ応答がある場合は継続
           if (checkAttempts >= maxAttempts) {
-            status = 'error';
+            status = 'timeout';
             message = 'サーバーの停止確認がタイムアウトしました';
             if (checkInterval) {
               clearInterval(checkInterval);
+            }
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
             }
           }
         } catch (error) {
@@ -111,6 +152,9 @@
           isServerStopped.set(true); // グローバル状態を更新
           if (checkInterval) {
             clearInterval(checkInterval);
+          }
+          if (countdownInterval) {
+            clearInterval(countdownInterval);
           }
         }
       }, 1000);
@@ -159,7 +203,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
           </div>
-        {:else if status === 'error'}
+        {:else if status === 'timeout'}
           <div class="mb-6">
             <svg class="h-16 w-16 mx-auto text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -184,7 +228,13 @@
         {#if status === 'checking'}
           <div class="mb-6">
             <div class="text-sm text-gray-500 dark:text-gray-400">
-              確認中... ({checkAttempts}/{maxAttempts}秒)
+              確認中... {countdown}秒
+            </div>
+            <div class="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div 
+                class="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-1000"
+                style="width: {(countdown / 30) * 100}%"
+              ></div>
             </div>
           </div>
         {/if}
@@ -195,29 +245,34 @@
             {#if action === 'restart'}
               <button
                 onclick={handleReload}
-                class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors cursor-pointer"
+                class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
               >
-                Web UIを再読み込み
+                ページをリロード
               </button>
             {:else}
               <button
                 onclick={handleClose}
-                class="w-full px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors cursor-pointer"
+                class="w-full px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
               >
                 閉じる
               </button>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
-                このページを閉じてください
-              </p>
             {/if}
           </div>
-        {:else if status === 'error'}
-          <button
-            onclick={handleClose}
-            class="w-full px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors cursor-pointer"
-          >
-            閉じる
-          </button>
+        {:else if status === 'timeout'}
+          <div class="space-y-3">
+            <button
+              onclick={handleReload}
+              class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              ページをリロード
+            </button>
+            <button
+              onclick={handleClose}
+              class="w-full px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+            >
+              キャンセル
+            </button>
+          </div>
         {/if}
       </div>
     </div>
