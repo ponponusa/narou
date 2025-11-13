@@ -8,7 +8,7 @@
   - Puma 7.0以降でデーモン機能が削除されたため、フォアグラウンド実行のみに変更
   - `--daemon`, `--no-daemon` オプションを削除
   - サーバーは常にフォアグラウンドで実行され、`Ctrl+C`で停止
-  - `narou-mod restart` コマンドは使用不可（`Ctrl+C` → `narou-mod web --boot` で再起動）
+  - `narou-mod restart` コマンドは使用不可（`Ctrl+C` → `narou-mod web` で再起動）
 
 ### 新機能
 
@@ -18,7 +18,7 @@
   - スピナーやボックス表示でユーザビリティ向上
 
 - **ログファイル出力オプション追加**
-  - `--log-file FILE` オプションを追加（例: `narou-mod web --boot --log-file app.log`）
+  - `--log-file FILE` オプションを追加（例: `narou-mod web --log-file app.log`）
   - 標準出力とファイル出力を切り替え可能
 
 ### 変更点

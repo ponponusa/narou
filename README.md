@@ -101,7 +101,7 @@ After=network.target
 Type=simple
 User=your-user
 WorkingDirectory=/path/to/narou-mod
-ExecStart=/usr/bin/narou-mod web --boot --log-file /var/log/narou-mod.log
+ExecStart=/usr/bin/narou-mod web --log-file /var/log/narou-mod.log
 Restart=on-failure
 
 [Install]

@@ -24,10 +24,10 @@ module Command
         ・サーバの停止は Ctrl+C または 'narou-mod stop'
 
         Examples:
-          narou-mod web --boot                    # サーバーを起動
-          narou-mod web --boot -p 4567            # ポート4567で起動
-          narou-mod web --boot --open-browser     # ブラウザを自動で開く
-          narou-mod web --boot --log-file app.log # ログをファイルに出力
+          narou-mod web                           # サーバーを起動
+          narou-mod web -p 4567                   # ポート4567で起動
+          narou-mod web --open-browser            # ブラウザを自動で開く
+          narou-mod web --log-file app.log        # ログをファイルに出力
 
         Options:
       HELP
@@ -54,9 +54,9 @@ module Command
         return WebLegacy.new.execute(argv)
       end
 
-      # --boot オプションの処理（内部実行用）
-      if argv.include?("--boot")
-        argv.delete("--boot")
+      # --internal-boot オプションの処理（外部ループからの内部実行用）
+      if argv.include?("--internal-boot")
+        argv.delete("--internal-boot")
         @rebooted = !!argv.delete("--reboot")
         super
         
@@ -66,10 +66,12 @@ module Command
         boot
       else
         # 外部ループで再起動に対応（legacy版と同じパターン）
+        # --bootオプションは外部ループ用のフラグとして使用し、内部では--internal-bootに置き換える
+        argv.delete("--boot")  # --bootオプションを削除
         super
         argv << "--backtrace" if $display_backtrace
         argv << "--no-color" if $disable_color
-        argv << "--boot"
+        argv << "--internal-boot"  # 内部実行用のフラグを追加
         argv_copy = argv.dup
         
         begin
