@@ -192,8 +192,8 @@ module Narou
                 end
               end
               
-              # Sinatraを停止
-              Sinatra::Application.quit!
+              # 通常の終了コード（0）で終了（外部ループも停止）
+              exit 0
             end
             
             json({ success: true, message: "サーバーを停止しています..." })
