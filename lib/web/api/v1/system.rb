@@ -78,32 +78,15 @@ module Narou
 
           # サーバーステータス取得
           get "/api/server/status" do
-            backend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-web.pid")
+            # フォアグラウンド実行モードでは、このAPIが応答している時点でバックエンドは起動中
+            # PIDファイルはフォアグラウンド実行では作成されないため、チェックしない
+            backend_running = true  # このAPIが応答している = バックエンドは起動中
+            backend_pid = ::Process.pid  # 現在のプロセスのPID
+            
+            # フロントエンドのステータスは引き続きPIDファイルで判定
             frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
-            
-            backend_running = false
             frontend_running = false
-            backend_pid = nil
             frontend_pid = nil
-            
-            if File.exist?(backend_pid_file)
-              pid = File.read(backend_pid_file).to_i
-              begin
-                ::Process.kill(0, pid)
-                # プロセスが存在する
-                backend_running = true
-                backend_pid = pid
-              rescue Errno::ESRCH
-                # プロセスが存在しない -> PIDファイルを削除
-                File.delete(backend_pid_file)
-                backend_running = false
-                backend_pid = nil
-              rescue Errno::EPERM
-                # 権限がないが、プロセスは存在する
-                backend_running = true
-                backend_pid = pid
-              end
-            end
             
             if File.exist?(frontend_pid_file)
               pid = File.read(frontend_pid_file).to_i
@@ -138,24 +121,22 @@ module Narou
 
           # サーバー再起動
           post "/api/server/restart" do
-            # 別プロセスで再起動コマンドを実行
-            pid = fork do
-              exec("narou-mod", "restart")
-            end
-            ::Process.detach(pid)
-            
-            json({ success: true, message: "サーバーを再起動しています..." })
+            # フォアグラウンド実行モードでは再起動は使用不可
+            halt 400, json({
+              success: false,
+              error: "フォアグラウンド実行モードでは restart コマンドは使用できません。\nサーバーを停止して再起動する場合:\n  1. Ctrl+C でサーバーを停止\n  2. narou-mod web --boot で再起動"
+            })
           end
 
           # サーバー停止
           post "/api/server/stop" do
-            # 別プロセスで停止コマンドを実行
+            # フォアグラウンド実行モードでは、別プロセスでstopコマンドを実行
             pid = fork do
               exec("narou-mod", "stop")
             end
             ::Process.detach(pid)
             
-            json({ success: true, message: "サーバーを停止しています..." })
+            json({ success: true, message: "サーバーを停止しています...\nCtrl+C で即座に停止することもできます。" })
           end
         end
       end

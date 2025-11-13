@@ -64,18 +64,23 @@
   }
 
   async function handleRestart() {
-    if (!confirm('サーバーを再起動しますか？')) {
-      return;
-    }
-
     isLoading = true;
     try {
       await restartServer();
       isOpen = false;
       currentAction = 'restart';
-    } catch (error) {
+    } catch (error: any) {
       console.error('サーバーの再起動に失敗:', error);
-      alert('サーバーの再起動に失敗しました');
+      
+      // エラーメッセージを適切に表示
+      const errorMessage = error?.message || 'サーバーの再起動に失敗しました';
+      
+      // フォアグラウンド実行モードのエラーの場合
+      if (errorMessage.includes('フォアグラウンド実行モード')) {
+        alert('フォアグラウンド実行モードでは restart は使用できません。\n\nサーバーを停止して再起動する場合:\n  1. Ctrl+C でサーバーを停止\n  2. narou-mod web --boot で再起動');
+      } else {
+        alert(errorMessage);
+      }
     } finally {
       isLoading = false;
     }
@@ -91,9 +96,9 @@
       await stopServer();
       isOpen = false;
       currentAction = 'stop';
-    } catch (error) {
+    } catch (error: any) {
       console.error('サーバーの停止に失敗:', error);
-      alert('サーバーの停止に失敗しました');
+      alert(error?.message || 'サーバーの停止に失敗しました');
     } finally {
       isLoading = false;
     }
