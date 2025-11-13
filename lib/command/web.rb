@@ -64,9 +64,23 @@ module Command
         
         boot
       else
+        # 外部ループで再起動に対応（legacy版と同じパターン）
         super
-        $stdout.puts "サーバを起動するには --boot オプションを指定してください"
-        $stdout.puts "Example: narou-mod web --boot"
+        argv << "--backtrace" if $display_backtrace
+        argv << "--no-color" if $disable_color
+        argv << "--boot"
+        argv_copy = argv.dup
+        
+        begin
+          loop do
+            system(RbConfig.ruby, "-x", $0, "web", *argv)
+            break unless $?.exitstatus == Narou::EXIT_REQUEST_REBOOT
+            argv = argv_copy.dup
+            argv.push("--no-browser", "--reboot")
+          end
+        rescue Interrupt
+          sleep 1
+        end
       end
     end
 
