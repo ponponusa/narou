@@ -121,11 +121,42 @@ module Narou
 
           # サーバー再起動
           post "/api/server/restart" do
-            # フォアグラウンド実行モードでは再起動は使用不可
-            halt 400, json({
-              success: false,
-              error: "フォアグラウンド実行モードでは restart コマンドは使用できません。\nサーバーを停止して再起動する場合:\n  1. Ctrl+C でサーバーを停止\n  2. narou-mod web --boot で再起動"
-            })
+            # 再起動リクエストを設定してサーバーを停止（legacy版と同じ実装）
+            Thread.new do
+              sleep 0.5  # レスポンスを返してから停止
+              
+              # クリーンアップ処理
+              begin
+                Narou::WebWorker.stop if defined?(Narou::WebWorker)
+              rescue StandardError => e
+                $stderr.puts "WebWorkerの停止中にエラー: #{e.message}"
+              end
+              
+              begin
+                push_server = Narou::PushServer.instance
+                push_server.quit if push_server
+              rescue StandardError => e
+                $stderr.puts "PushServerの停止中にエラー: #{e.message}"
+              end
+              
+              # フロントエンドを停止
+              frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+              if File.exist?(frontend_pid_file)
+                pid = File.read(frontend_pid_file).to_i
+                begin
+                  ::Process.kill("TERM", -pid)  # プロセスグループごと停止
+                  sleep 0.3
+                  File.delete(frontend_pid_file)
+                rescue Errno::ESRCH, Errno::EPERM
+                  File.delete(frontend_pid_file) if File.exist?(frontend_pid_file)
+                end
+              end
+              
+              # EXIT_REQUEST_REBOOTで終了（外部ループが再起動する）
+              exit Narou::EXIT_REQUEST_REBOOT
+            end
+            
+            json({ success: true, message: "サーバーを再起動しています..." })
           end
 
           # サーバー停止
