@@ -130,13 +130,42 @@ module Narou
 
           # サーバー停止
           post "/api/server/stop" do
-            # フォアグラウンド実行モードでは、別プロセスでstopコマンドを実行
-            pid = fork do
-              exec("narou-mod", "stop")
+            # Sinatraサーバーを停止（legacy版と同じ実装）
+            Thread.new do
+              sleep 0.5  # レスポンスを返してから停止
+              
+              # クリーンアップ処理
+              begin
+                Narou::WebWorker.stop if defined?(Narou::WebWorker)
+              rescue StandardError => e
+                $stderr.puts "WebWorkerの停止中にエラー: #{e.message}"
+              end
+              
+              begin
+                push_server = Narou::PushServer.instance
+                push_server.quit if push_server
+              rescue StandardError => e
+                $stderr.puts "PushServerの停止中にエラー: #{e.message}"
+              end
+              
+              # フロントエンドを停止
+              frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+              if File.exist?(frontend_pid_file)
+                pid = File.read(frontend_pid_file).to_i
+                begin
+                  ::Process.kill("TERM", -pid)  # プロセスグループごと停止
+                  sleep 0.3
+                  File.delete(frontend_pid_file)
+                rescue Errno::ESRCH, Errno::EPERM
+                  File.delete(frontend_pid_file) if File.exist?(frontend_pid_file)
+                end
+              end
+              
+              # Sinatraを停止
+              Sinatra::Application.quit!
             end
-            ::Process.detach(pid)
             
-            json({ success: true, message: "サーバーを停止しています...\nCtrl+C で即座に停止することもできます。" })
+            json({ success: true, message: "サーバーを停止しています..." })
           end
         end
       end
