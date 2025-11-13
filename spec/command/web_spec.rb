@@ -94,25 +94,31 @@ RSpec.describe Command::Web do
       # execute を呼ぶだけでロジックを実行しないようにモック
       allow(command).to receive(:puts)
       allow(Inventory).to receive(:load).and_return({})
+      
+      # bootメソッドをモックして実際の起動処理を抑制
+      allow(command).to receive(:boot)
+      
+      # systemメソッドをモックして外部ループを抑制
+      allow(command).to receive(:system)
     end
 
     it "parses --port option" do
-      command.execute(["--port", "9999"])
+      command.execute(["--internal-boot", "--port", "9999"])
       expect(command.instance_variable_get(:@options)["port"]).to eq(9999)
     end
 
     it "parses --no-browser option" do
-      command.execute(["--no-browser"])
+      command.execute(["--internal-boot", "--no-browser"])
       expect(command.instance_variable_get(:@options)["no-browser"]).to be true
     end
 
     it "parses --open-browser option" do
-      command.execute(["--open-browser"])
+      command.execute(["--internal-boot", "--open-browser"])
       expect(command.instance_variable_get(:@options)["open-browser"]).to be true
     end
 
     it "parses --log-file option" do
-      command.execute(["--log-file", "custom.log"])
+      command.execute(["--internal-boot", "--log-file", "custom.log"])
       expect(command.instance_variable_get(:@options)["log-file"]).to eq("custom.log")
     end
 
