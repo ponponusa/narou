@@ -78,32 +78,15 @@ module Narou
 
           # サーバーステータス取得
           get "/api/server/status" do
-            backend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-web.pid")
+            # フォアグラウンド実行モードでは、このAPIが応答している時点でバックエンドは起動中
+            # PIDファイルはフォアグラウンド実行では作成されないため、チェックしない
+            backend_running = true  # このAPIが応答している = バックエンドは起動中
+            backend_pid = ::Process.pid  # 現在のプロセスのPID
+            
+            # フロントエンドのステータスは引き続きPIDファイルで判定
             frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
-            
-            backend_running = false
             frontend_running = false
-            backend_pid = nil
             frontend_pid = nil
-            
-            if File.exist?(backend_pid_file)
-              pid = File.read(backend_pid_file).to_i
-              begin
-                ::Process.kill(0, pid)
-                # プロセスが存在する
-                backend_running = true
-                backend_pid = pid
-              rescue Errno::ESRCH
-                # プロセスが存在しない -> PIDファイルを削除
-                File.delete(backend_pid_file)
-                backend_running = false
-                backend_pid = nil
-              rescue Errno::EPERM
-                # 権限がないが、プロセスは存在する
-                backend_running = true
-                backend_pid = pid
-              end
-            end
             
             if File.exist?(frontend_pid_file)
               pid = File.read(frontend_pid_file).to_i
@@ -138,22 +121,80 @@ module Narou
 
           # サーバー再起動
           post "/api/server/restart" do
-            # 別プロセスで再起動コマンドを実行
-            pid = fork do
-              exec("narou-mod", "restart")
+            # 再起動リクエストを設定してサーバーを停止（legacy版と同じ実装）
+            Thread.new do
+              sleep 0.5  # レスポンスを返してから停止
+              
+              # クリーンアップ処理
+              begin
+                Narou::WebWorker.stop if defined?(Narou::WebWorker)
+              rescue StandardError => e
+                $stderr.puts "WebWorkerの停止中にエラー: #{e.message}"
+              end
+              
+              begin
+                push_server = Narou::PushServer.instance
+                push_server.quit if push_server
+              rescue StandardError => e
+                $stderr.puts "PushServerの停止中にエラー: #{e.message}"
+              end
+              
+              # フロントエンドを停止
+              frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+              if File.exist?(frontend_pid_file)
+                pid = File.read(frontend_pid_file).to_i
+                begin
+                  ::Process.kill("TERM", -pid)  # プロセスグループごと停止
+                  sleep 0.3
+                  File.delete(frontend_pid_file)
+                rescue Errno::ESRCH, Errno::EPERM
+                  File.delete(frontend_pid_file) if File.exist?(frontend_pid_file)
+                end
+              end
+              
+              # EXIT_REQUEST_REBOOTで終了（外部ループが再起動する）
+              exit Narou::EXIT_REQUEST_REBOOT
             end
-            ::Process.detach(pid)
             
             json({ success: true, message: "サーバーを再起動しています..." })
           end
 
           # サーバー停止
           post "/api/server/stop" do
-            # 別プロセスで停止コマンドを実行
-            pid = fork do
-              exec("narou-mod", "stop")
+            # Sinatraサーバーを停止（legacy版と同じ実装）
+            Thread.new do
+              sleep 0.5  # レスポンスを返してから停止
+              
+              # クリーンアップ処理
+              begin
+                Narou::WebWorker.stop if defined?(Narou::WebWorker)
+              rescue StandardError => e
+                $stderr.puts "WebWorkerの停止中にエラー: #{e.message}"
+              end
+              
+              begin
+                push_server = Narou::PushServer.instance
+                push_server.quit if push_server
+              rescue StandardError => e
+                $stderr.puts "PushServerの停止中にエラー: #{e.message}"
+              end
+              
+              # フロントエンドを停止
+              frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+              if File.exist?(frontend_pid_file)
+                pid = File.read(frontend_pid_file).to_i
+                begin
+                  ::Process.kill("TERM", -pid)  # プロセスグループごと停止
+                  sleep 0.3
+                  File.delete(frontend_pid_file)
+                rescue Errno::ESRCH, Errno::EPERM
+                  File.delete(frontend_pid_file) if File.exist?(frontend_pid_file)
+                end
+              end
+              
+              # 通常の終了コード（0）で終了（外部ループも停止）
+              exit 0
             end
-            ::Process.detach(pid)
             
             json({ success: true, message: "サーバーを停止しています..." })
           end
