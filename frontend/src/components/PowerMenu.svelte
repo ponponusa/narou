@@ -73,11 +73,7 @@
       await restartServer();
       isOpen = false;
       currentAction = 'restart';
-      
-      // サーバーが再起動するまで待機してからリロード
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
+      // モーダルがpollingチェックとリロードを処理
     } catch (error: any) {
       console.error('サーバーの再起動に失敗:', error);
       alert(error?.message || 'サーバーの再起動に失敗しました');

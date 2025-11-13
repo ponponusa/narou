@@ -54,8 +54,9 @@ module Command
         return WebLegacy.new.execute(argv)
       end
 
-      # --boot オプションの処理
-      if argv.delete("--boot")
+      # --boot オプションの処理（内部実行用）
+      if argv.include?("--boot")
+        argv.delete("--boot")
         @rebooted = !!argv.delete("--reboot")
         super
         
