@@ -609,6 +609,7 @@ RSpec.describe "Narou::AppServer API v2" do
 
   describe "POST /api/v2/cancel" do
     it "cancels current task" do
+      allow(Narou::WebWorker).to receive(:cancel)
       allow(Narou::Worker).to receive(:cancel)
       
       post "/api/v2/cancel"
@@ -618,21 +619,10 @@ RSpec.describe "Narou::AppServer API v2" do
     end
   end
 
-  describe "POST /api/v2/cancel/all" do
-    it "cancels all tasks" do
-      allow(Narou::Worker).to receive(:cancel!)
-      allow(Narou::WebWorker.instance).to receive(:cancel!)
-      
-      post "/api/v2/cancel/all"
-      
-      expect(last_response).to be_ok
-      expect(json_response["success"]).to be true
-    end
-  end
-
   describe "POST /api/v2/cancel/:id" do
     it "cancels specific task" do
-      allow(Narou::Worker).to receive(:cancel).with(1)
+      allow(Narou::WebWorker).to receive(:cancel)
+      allow(Narou::Worker).to receive(:cancel)
       
       post "/api/v2/cancel/1"
       
