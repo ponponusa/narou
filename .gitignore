@@ -38,6 +38,9 @@ mail_setting.yaml
 .byebug_history
 *.log
 .agent/
+
+# Rsync configuration
+rsync.env
 commitversion
 frontend/public/backend-port.json
 rsync.env
