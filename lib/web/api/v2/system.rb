@@ -139,6 +139,29 @@ module Narou
               json error_response('CANCEL_ERROR', e.message)
             end
           end
+
+          # POST /api/v2/console/clear
+          # コンソール履歴をクリア
+          post '/api/v2/console/clear' do
+            set_cors_headers
+            
+            begin
+              push_server = self.class.push_server
+              if push_server
+                push_server.clear_history
+                json success_response(
+                  { cleared: true },
+                  message: 'Console history cleared'
+                )
+              else
+                status 503
+                json error_response('PUSH_SERVER_NOT_AVAILABLE', 'PushServer is not running')
+              end
+            rescue StandardError => e
+              status 500
+              json error_response('CLEAR_ERROR', e.message)
+            end
+          end
         end
       end
     end

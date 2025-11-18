@@ -218,7 +218,8 @@ class Narou::AppServer < Sinatra::Base
   end
 
   def puts_hello_messages
-    puts "<white>Narou.rb MOD version #{Narou::VERSION}</white>".termcolor
+    # バージョン情報は履歴に保存しない（STDERRに出力）
+    STDERR.puts "<white>Narou.rb MOD version #{Narou::VERSION}</white>".termcolor
   end
 
   def start_device_ejectable_event

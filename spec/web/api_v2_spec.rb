@@ -631,6 +631,30 @@ RSpec.describe "Narou::AppServer API v2" do
     end
   end
 
+  describe "POST /api/v2/console/clear" do
+    it "clears console history when PushServer is available" do
+      allow(push_server).to receive(:clear_history)
+      
+      post "/api/v2/console/clear"
+      
+      expect(last_response).to be_ok
+      expect(json_response["success"]).to be true
+      expect(json_response["data"]["cleared"]).to be true
+      expect(json_response["message"]).to eq("Console history cleared")
+      expect(push_server).to have_received(:clear_history)
+    end
+
+    it "returns 503 when PushServer is not available" do
+      Narou::AppServer.push_server = nil
+      
+      post "/api/v2/console/clear"
+      
+      expect(last_response.status).to eq(503)
+      expect(json_response["success"]).to be false
+      expect(json_response["error"]["code"]).to eq("PUSH_SERVER_NOT_AVAILABLE")
+    end
+  end
+
   describe "CORS Headers" do
     it "sets CORS headers for API v2 endpoints" do
       get "/api/v2/system/version"
