@@ -1432,7 +1432,7 @@
       <p>小説が登録されていません</p>
     </div>
   {:else}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto overflow-y-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
