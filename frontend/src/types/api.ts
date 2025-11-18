@@ -16,6 +16,42 @@ export interface ApiV2Response<T> {
 }
 
 /**
+ * タスクの型定義
+ */
+export type TaskType = 'download' | 'convert' | 'update' | 'remove';
+export type TaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
+
+export interface TaskError {
+  message: string;
+  class?: string;
+  backtrace?: string[];
+}
+
+export interface Task {
+  id: string;
+  type: TaskType;
+  novel_id?: number;
+  novel_title?: string;
+  novel_author?: string;
+  status: TaskStatus;
+  message?: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  elapsed_time: number;
+  error?: TaskError;
+  retry_count: number;
+  max_retries: number;
+}
+
+export interface TaskSummary {
+  current?: Task;
+  queued: Task[];
+  recent_completed: Task[];
+  recent_failed: Task[];
+}
+
+/**
  * 小説データの基本型
  */
 export interface Novel {

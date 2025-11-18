@@ -7,10 +7,10 @@
   import { onMount, onDestroy } from 'svelte';
   import { progressStore, type ProgressInfo } from '../lib/progressStore';
   import { getPushServer, type EchoMessage } from '../lib/pushserver';
-  import { cancelTask as apiCancelTask } from '../lib/api';
+  import { cancelTask as apiCancelTask, getTaskSummary, type Task, type TaskSummary } from '../lib/api';
 
   /**
-   * タスク情報
+   * タスク情報（ローカル管理用）
    */
   interface TaskInfo extends ProgressInfo {
     novelId: number | 'NEW';
@@ -18,14 +18,18 @@
     author: string;
     startTime: Date;
     endTime?: Date;
+    taskId?: string;  // バックエンドのタスクID
   }
 
   // ローカルストレージキー
   const STORAGE_KEY = 'narou-task-queue';
   const COLLAPSED_KEY = 'narou-task-queue-collapsed';
 
-  // タスクリスト
+  // タスクリスト（ローカル管理）
   let tasks = $state<TaskInfo[]>([]);
+  
+  // バックエンドからのタスク情報
+  let backendTaskSummary = $state<TaskSummary | null>(null);
   
   // ソート設定
   let sortBy = $state<'status' | 'startTime' | ''>('startTime');
@@ -33,6 +37,9 @@
   
   // 折りたたみ状態（デフォルトは折りたたみ）
   let isCollapsed = $state(true);
+  
+  // 定期更新用のタイマー
+  let updateTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * タスクをlocalStorageに保存
@@ -139,6 +146,17 @@
       return task;
     });
     saveTasks();
+  }
+
+  /**
+   * バックエンドからタスク情報を取得
+   */
+  async function fetchBackendTasks() {
+    try {
+      backendTaskSummary = await getTaskSummary();
+    } catch (err) {
+      console.error('[TaskQueue] Failed to fetch backend tasks:', err);
+    }
   }
 
   /**
@@ -303,6 +321,14 @@
   onMount(() => {
     loadTasks();
     
+    // バックエンドタスク情報を取得
+    fetchBackendTasks();
+    
+    // 定期的にバックエンドタスク情報を更新（5秒ごと）
+    updateTimer = setInterval(() => {
+      fetchBackendTasks();
+    }, 5000);
+    
     // progressStoreからの更新を監視
     const unsubscribeProgress = progressStore.subscribe(progressMap => {
       // progressMapの変更をtasksに反映
@@ -328,13 +354,31 @@
     };
     pushServer.on('notification.queue', queueHandler);
     
+    // PushServerからのnotification.task.updatedイベントを監視
+    const taskUpdatedHandler = (data: TaskSummary) => {
+      handleTaskUpdated(data);
+    };
+    pushServer.on('notification.task.updated', taskUpdatedHandler);
+    
     return () => {
+      if (updateTimer) {
+        clearInterval(updateTimer);
+      }
       unsubscribeProgress();
       pushServer.off('echo', echoHandler);
       pushServer.off('notification.queue', queueHandler);
+      pushServer.off('notification.task.updated', taskUpdatedHandler);
     };
   });
   
+  /**
+   * PushServerのnotification.task.updatedイベントを処理
+   */
+  function handleTaskUpdated(data: TaskSummary) {
+    console.log('[TaskQueue] Task updated notification received:', data);
+    backendTaskSummary = data;
+  }
+
   /**
    * PushServerのnotification.queueイベントを処理
    * バックエンドから [webWorkerSize, workerSize] の配列が送られてくる
@@ -464,7 +508,85 @@
 
   <!-- テーブル（折りたたみ可能） -->
   {#if !isCollapsed}
-    <div class="p-4">
+    <div class="p-4 space-y-6">
+      <!-- バックエンドタスク情報 -->
+      {#if backendTaskSummary}
+        <div class="space-y-4">
+          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b pb-2">
+            <i class="fas fa-server mr-2"></i>
+            サーバータスク状態
+          </h4>
+          
+          <!-- 実行中タスク -->
+          {#if backendTaskSummary.current}
+            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+              <div class="flex items-start gap-3">
+                <span class="px-2 py-1 text-xs rounded bg-blue-500 text-white animate-pulse">
+                  実行中
+                </span>
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {backendTaskSummary.current.novel_title || `タスク ${backendTaskSummary.current.type}`}
+                  </div>
+                  {#if backendTaskSummary.current.novel_author}
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                      {backendTaskSummary.current.novel_author}
+                    </div>
+                  {/if}
+                  <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    {backendTaskSummary.current.type} | 経過時間: {backendTaskSummary.current.elapsed_time.toFixed(1)}秒
+                  </div>
+                  {#if backendTaskSummary.current.message}
+                    <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      {backendTaskSummary.current.message}
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            </div>
+          {/if}
+          
+          <!-- キュー待ちタスク -->
+          {#if backendTaskSummary.queued.length > 0}
+            <div>
+              <div class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                キュー待ち ({backendTaskSummary.queued.length}件)
+              </div>
+              <div class="space-y-2">
+                {#each backendTaskSummary.queued.slice(0, 5) as task}
+                  <div class="bg-gray-50 dark:bg-gray-700/50 rounded p-2 text-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="px-2 py-0.5 text-xs rounded bg-gray-400 text-white">
+                        待機中
+                      </span>
+                      <span class="font-medium text-gray-900 dark:text-gray-100 truncate flex-1">
+                        {task.novel_title || `タスク ${task.type}`}
+                      </span>
+                      <span class="text-xs text-gray-500 dark:text-gray-500">
+                        {task.type}
+                      </span>
+                    </div>
+                  </div>
+                {/each}
+                {#if backendTaskSummary.queued.length > 5}
+                  <div class="text-xs text-gray-500 dark:text-gray-500 text-center">
+                    他 {backendTaskSummary.queued.length - 5} 件
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {/if}
+        </div>
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-4"></div>
+      {/if}
+      
+      <!-- ローカルタスク履歴 -->
+      <div>
+        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b pb-2 mb-4">
+          <i class="fas fa-history mr-2"></i>
+          タスク履歴（ローカル）
+        </h4>
+        
       {#if tasks.length === 0}
         <div class="text-center py-8 text-gray-600 dark:text-gray-400">
           <p>タスクはありません</p>
@@ -542,6 +664,7 @@
       </table>
     </div>
       {/if}
+      </div>
     </div>
   {/if}
 </div>

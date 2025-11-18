@@ -15,10 +15,13 @@ import type {
   TagInfo,
   VersionData,
   VersionInfo,
-  LogMessage
+  LogMessage,
+  Task,
+  TaskSummary,
+  TaskStatus
 } from '../types/api';
 
-export type { TagInfo };
+export type { TagInfo, Task, TaskSummary, TaskStatus };
 
 // 開発時はViteのプロキシを使用するため空文字列
 // 本番時は環境変数で指定されたURLを使用
@@ -683,4 +686,36 @@ export async function stopServer(): Promise<{ success: boolean; message: string 
     throw new Error(`サーバーの停止に失敗しました: ${response.statusText}`);
   }
   return response.json();
+}
+
+/**
+ * タスク一覧を取得
+ * @param status - フィルタするタスク状態（オプション）
+ * @param limit - 取得する最大件数（オプション）
+ */
+export async function getTasks(status?: TaskStatus, limit?: number): Promise<Task[]> {
+  const params = new URLSearchParams();
+  if (status) params.append('status', status);
+  if (limit) params.append('limit', limit.toString());
+  
+  const queryString = params.toString();
+  const endpoint = queryString ? `/api/v2/tasks?${queryString}` : '/api/v2/tasks';
+  
+  const result = await fetchApiV2<{ tasks: Task[]; count: number }>(endpoint);
+  return result.tasks;
+}
+
+/**
+ * タスクサマリーを取得
+ */
+export async function getTaskSummary(): Promise<TaskSummary> {
+  return await fetchApiV2<TaskSummary>('/api/v2/tasks/summary');
+}
+
+/**
+ * 特定のタスクを取得
+ * @param taskId - タスクID
+ */
+export async function getTask(taskId: string): Promise<Task> {
+  return await fetchApiV2<Task>(`/api/v2/tasks/${taskId}`);
 }

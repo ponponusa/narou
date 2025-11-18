@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright 2025 whiteleaf. All rights reserved.
+# Copyright 2025 ponponusa. All rights reserved.
 #
 
 require "securerandom"

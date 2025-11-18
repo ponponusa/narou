@@ -65,18 +65,26 @@
 ### Web UI機能追加
 
 - **タスクキュー管理の細分化**
-  - タスクオブジェクトを導入し、各タスクの詳細情報を管理
-  - タスク状態の詳細管理（queued, running, completed, failed, canceled）
-  - タスクごとにID、タイプ、小説情報、経過時間を追跡
-  - タスク履歴の保持（最大100件）
-  - エラー情報の詳細記録（エラーメッセージ、例外クラス、バックトレース）
-  - API v2に新規エンドポイント追加:
-    - `GET /api/v2/tasks`: タスク一覧取得
-    - `GET /api/v2/tasks/summary`: タスクサマリー取得
-    - `GET /api/v2/tasks/:id`: 特定タスク取得
-  - PushServerで `notification.task.updated` イベントを送信
-  - ダウンロード・変換APIがタスクIDを返すように変更
-  - テストコードを追加: `spec/web/task_spec.rb`
+  - バックエンド実装:
+    - タスクオブジェクトを導入し、各タスクの詳細情報を管理
+    - タスク状態の詳細管理（queued, running, completed, failed, canceled）
+    - タスクごとにID、タイプ、小説情報、経過時間を追跡
+    - タスク履歴の保持（最大100件）
+    - エラー情報の詳細記録（エラーメッセージ、例外クラス、バックトレース）
+    - API v2に新規エンドポイント追加:
+      - `GET /api/v2/tasks`: タスク一覧取得
+      - `GET /api/v2/tasks/summary`: タスクサマリー取得
+      - `GET /api/v2/tasks/:id`: 特定タスク取得
+    - PushServerで `notification.task.updated` イベントを送信
+    - ダウンロード・変換APIがタスクIDを返すように変更
+    - テストコードを追加: `spec/web/task_spec.rb`
+  - フロントエンド実装:
+    - TaskQueueコンポーネントでサーバータスク状態をリアルタイム表示
+    - 実行中タスク、キュー待ちタスクを可視化
+    - 経過時間、タスクタイプ、メッセージを表示
+    - 5秒ごとに自動更新 + PushServerからの即時通知
+    - API型定義を追加: `Task`, `TaskSummary`, `TaskStatus`
+    - Legacy APIは既存の一括管理のまま維持
 
 - **ヘッダーUIの改善**
   - PushServer アイコンのステータス表示を削除（サーバーステータスと機能が重複）
