@@ -51,6 +51,13 @@
   - テストケースを追加: `spec/web/api_v2_spec.rb`
   - OpenAPI ドキュメントを更新: `docs/openapi.yaml`
 
+- **Web コマンド実行時の標準出力問題を修正**
+  - `--verbose` オプションを追加し、CLI 側への詳細ログ出力を制御
+  - デフォルトでは Web UI のコンソールのみに出力、`--verbose` 指定時に CLI 側にも出力
+  - `lib/command/web.rb`: `--verbose` オプションを追加
+  - `lib/web/streaminglogger.rb`: `verbose` フラグに応じて STDERR への出力を制御
+  - テストケースを追加: `spec/command/web_spec.rb`
+
 ### systemd / タスクスケジューラについて
 
 - 本バージョンではsystemdユニットファイルやWindowsタスクスケジューラの提供は行いません

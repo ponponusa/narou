@@ -28,11 +28,13 @@ module Narou
     include Narou::LoggerModule
 
     attr_reader :push_server, :target_console
+    attr_accessor :verbose
 
-    def initialize(push_server, original_stream = $stdout, target_console: "stdout")
+    def initialize(push_server, original_stream = $stdout, target_console: "stdout", verbose: false)
       super()
       @push_server = push_server
       @target_console = target_console
+      @verbose = verbose
       self.log_postfix = original_stream.log_postfix
       original_stream.string.clear
     end
@@ -43,7 +45,7 @@ module Narou
     end
 
     def copy_instance
-      self.class.new(@push_server).tap do |obj|
+      self.class.new(@push_server, verbose: @verbose).tap do |obj|
         obj.silent = silent?
       end
     end
@@ -74,8 +76,8 @@ module Narou
       if str.encoding == Encoding::ASCII_8BIT
         str.force_encoding(Encoding::UTF_8)
       end
-      # デバッグログ（一時的に有効化）
-      STDERR.puts "[StreamingLogger#write] str=#{str.inspect[0..50]}, push_server=#{@push_server.class}, connections=#{@push_server.connections.size}"
+      # --verbose オプションが指定されている場合のみ CLI 側に出力
+      STDERR.write(str) if @verbose
       super(str)
       push_streaming(str)
       append_log(str)
