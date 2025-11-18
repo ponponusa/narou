@@ -609,6 +609,7 @@ RSpec.describe "Narou::AppServer API v2" do
 
   describe "POST /api/v2/cancel" do
     it "cancels current task" do
+      allow(Narou::WebWorker).to receive(:cancel)
       allow(Narou::Worker).to receive(:cancel)
       
       post "/api/v2/cancel"
@@ -618,26 +619,39 @@ RSpec.describe "Narou::AppServer API v2" do
     end
   end
 
-  describe "POST /api/v2/cancel/all" do
-    it "cancels all tasks" do
-      allow(Narou::Worker).to receive(:cancel!)
-      allow(Narou::WebWorker.instance).to receive(:cancel!)
+  describe "POST /api/v2/cancel/:id" do
+    it "cancels specific task" do
+      allow(Narou::WebWorker).to receive(:cancel)
+      allow(Narou::Worker).to receive(:cancel)
       
-      post "/api/v2/cancel/all"
+      post "/api/v2/cancel/1"
       
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
   end
 
-  describe "POST /api/v2/cancel/:id" do
-    it "cancels specific task" do
-      allow(Narou::Worker).to receive(:cancel).with(1)
+  describe "POST /api/v2/console/clear" do
+    it "clears console history when PushServer is available" do
+      allow(push_server).to receive(:clear_history)
       
-      post "/api/v2/cancel/1"
+      post "/api/v2/console/clear"
       
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
+      expect(json_response["data"]["cleared"]).to be true
+      expect(json_response["message"]).to eq("Console history cleared")
+      expect(push_server).to have_received(:clear_history)
+    end
+
+    it "returns 503 when PushServer is not available" do
+      Narou::AppServer.push_server = nil
+      
+      post "/api/v2/console/clear"
+      
+      expect(last_response.status).to eq(503)
+      expect(json_response["success"]).to be false
+      expect(json_response["error"]["code"]).to eq("PUSH_SERVER_NOT_AVAILABLE")
     end
   end
 

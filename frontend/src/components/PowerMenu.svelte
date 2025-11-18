@@ -102,10 +102,14 @@
   function getStatusText(): string {
     if (!serverStatus) return '確認中...';
     
-    if (serverStatus.backend.running && serverStatus.frontend.running) {
-      return '起動中（フルモード）';
-    } else if (serverStatus.backend.running) {
-      return '起動中（バックエンドのみ）';
+    // PushServerとキューの状態で判断
+    const hasQueue = serverStatus.queue.running;
+    const pushServerRunning = serverStatus.push_server.running;
+    
+    if (pushServerRunning && hasQueue) {
+      return '処理中';
+    } else if (pushServerRunning) {
+      return '起動中';
     } else {
       return '状態不明';
     }
@@ -114,7 +118,7 @@
   function getStatusColor(): string {
     if (!serverStatus) return 'text-gray-500';
     
-    if (serverStatus.backend.running) {
+    if (serverStatus.push_server.running) {
       return 'text-green-600 dark:text-green-400';
     } else {
       return 'text-red-600 dark:text-red-400';
@@ -134,7 +138,7 @@
     
     <!-- ステータスインジケーター -->
     {#if serverStatus}
-      <span class="absolute top-1 right-1 w-2 h-2 rounded-full {serverStatus.backend.running ? 'bg-green-500' : 'bg-red-500'}"></span>
+      <span class="absolute top-1 right-1 w-2 h-2 rounded-full {serverStatus.push_server.running ? 'bg-green-500' : 'bg-red-500'}"></span>
     {/if}
   </button>
 
@@ -152,23 +156,25 @@
           
           {#if serverStatus}
             <div class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">バックエンド:</span>
-              <span class="{serverStatus.backend.running ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
-                {serverStatus.backend.running ? '起動中' : '停止中'}
-                {#if serverStatus.backend.pid}
-                  <span class="text-xs text-gray-500">(PID: {serverStatus.backend.pid})</span>
+              <span class="text-gray-600 dark:text-gray-400">PushServer:</span>
+              <span class="{serverStatus.push_server.running ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+                {serverStatus.push_server.running ? '起動中' : '停止中'}
+                {#if serverStatus.push_server.port}
+                  <span class="text-xs text-gray-500">(Port: {serverStatus.push_server.port})</span>
                 {/if}
               </span>
             </div>
             
             <div class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">フロントエンド:</span>
-              <span class="{serverStatus.frontend.running ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-500'}">
-                {serverStatus.frontend.running ? '起動中' : '停止中'}
-                {#if serverStatus.frontend.pid}
-                  <span class="text-xs text-gray-500">(PID: {serverStatus.frontend.pid})</span>
-                {/if}
+              <span class="text-gray-600 dark:text-gray-400">キュー:</span>
+              <span class="{serverStatus.queue.running ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-500'}">
+                {serverStatus.queue.running ? `処理中 (${serverStatus.queue.total})` : 'アイドル'}
               </span>
+            </div>
+            
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-gray-600 dark:text-gray-400">バージョン:</span>
+              <span class="text-gray-500">Narou {serverStatus.version.narou}</span>
             </div>
           {/if}
         </div>

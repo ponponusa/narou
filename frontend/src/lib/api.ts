@@ -600,19 +600,9 @@ export async function patchSettings(settings: Record<string, string | boolean | 
  * @param id - 小説ID
  */
 export async function getNovelStory(id: number): Promise<{ title: string; story: string }> {
-  try {
-    // API v2を優先的に使用
-    const result = await fetchApiV2<{ title: string; story: string }>(`/api/v2/novels/${id}/story`);
-    return result;
-  } catch (error) {
-    // v2が失敗した場合はLegacy APIにフォールバック
-    console.warn('API v2 failed, falling back to legacy API:', error);
-    const response = await fetch(`${API_BASE_URL}/api/story?id=${id}&_=${Date.now()}`);
-    if (!response.ok) {
-      throw new Error(`あらすじの取得に失敗しました: ${response.statusText}`);
-    }
-    return response.json();
-  }
+  // API v2を使用
+  const result = await fetchApiV2<{ title: string; story: string }>(`/api/v2/novels/${id}/story`);
+  return result;
 }
 
 /**
@@ -645,13 +635,19 @@ export async function deleteNovel(id: number): Promise<void> {
  * サーバーステータス情報の型定義
  */
 export interface ServerStatus {
-  backend: {
+  queue: {
+    total: number;
+    web_worker: number;
+    worker: number;
     running: boolean;
-    pid: number | null;
   };
-  frontend: {
+  push_server: {
     running: boolean;
-    pid: number | null;
+    port: number | null;
+  };
+  version: {
+    narou: string;
+    ruby: string;
   };
 }
 
@@ -659,18 +655,15 @@ export interface ServerStatus {
  * サーバーステータスを取得
  */
 export async function getServerStatus(): Promise<ServerStatus> {
-  const response = await fetch(`${API_BASE_URL}/api/server/status?_=${Date.now()}`);
-  if (!response.ok) {
-    throw new Error(`サーバーステータスの取得に失敗しました: ${response.statusText}`);
-  }
-  return response.json();
+  const result = await fetchApiV2<ServerStatus>('/api/v2/system/status');
+  return result;
 }
 
 /**
  * サーバーを再起動
  */
 export async function restartServer(): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/server/restart`, {
+  const response = await fetch(`${API_BASE_URL}/api/v2/server/restart`, {
     method: 'POST',
   });
   if (!response.ok) {
@@ -683,7 +676,7 @@ export async function restartServer(): Promise<{ success: boolean; message: stri
  * サーバーを停止
  */
 export async function stopServer(): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/server/stop`, {
+  const response = await fetch(`${API_BASE_URL}/api/v2/server/stop`, {
     method: 'POST',
   });
   if (!response.ok) {

@@ -67,3 +67,4 @@ document
 # Temporary files
 tmp/pids/
 tmp/logs/
+rsync.env

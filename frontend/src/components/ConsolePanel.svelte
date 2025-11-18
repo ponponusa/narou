@@ -121,8 +121,24 @@
   /**
    * ログをクリア
    */
-  function clearLogs() {
+  async function clearLogs() {
     logs = [];
+    
+    // バックエンドの履歴もクリア
+    try {
+      const response = await fetch('/api/v2/console/clear', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to clear backend history:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error clearing backend history:', error);
+    }
   }
 
   /**
@@ -196,14 +212,6 @@
     
     // キャリッジリターン(\r)を削除（プログレスバーの上書き制御文字）
     cleanMessage = cleanMessage.replace(/\r/g, '');
-    
-    // デバッグ: すべてのメッセージを出力
-    console.log('[DEBUG] Raw message:', JSON.stringify(cleanMessage));
-    
-    // デバッグ: プログレスバーパターンを検出
-    if (/\[[#*]+[\s.-]*\]/.test(cleanMessage)) {
-      console.log('[DEBUG] Progress bar detected:', cleanMessage);
-    }
     
     // 処理タイプと小説IDを抽出
     const { processType, novelId } = extractProcessInfo(cleanMessage);
@@ -555,30 +563,24 @@
   }
 
   onMount(() => {
-    window.console.log('[DEBUG] ConsolePanel onMount started');
-    
     // 設定を読み込み
     loadSettings();
     
     const pushServer = getPushServer();
-    window.console.log('[DEBUG] PushServer instance:', pushServer);
     
     // 接続イベント
     pushServer.on('connected', () => {
-      window.console.log('[DEBUG] Connected event triggered');
       isConnected = true;
       addLog('stdout', '[PushServer] Connected');
     });
 
     pushServer.on('disconnected', () => {
-      window.console.log('[DEBUG] Disconnected event triggered');
       isConnected = false;
       addLog('stdout', '[PushServer] Disconnected');
     });
 
     // echoイベント
     pushServer.on('echo', (data: EchoMessage) => {
-      window.console.log('[DEBUG] WebSocket echo received:', data);
       if (!data.no_history) {
         addLog(data.target_console, data.body);
       }
@@ -586,7 +588,6 @@
 
     // プログレスバーイベント
     pushServer.on('progressbar.init', (data: any) => {
-      window.console.log('[DEBUG] Progress bar init:', data);
       const consoleType = (data.target_console || 'stdout') as 'stdout' | 'stdout2' | 'convert';
       
       // 進捗開始のログエントリを作成
@@ -605,12 +606,10 @@
       };
       
       logs = [...logs, newLog];
-      window.console.log('[DEBUG] Progress bar log created (init):', newLog);
       scrollIfNeeded();
     });
 
     pushServer.on('progressbar.step', (data: any) => {
-      window.console.log('[DEBUG] Progress bar step:', data);
       if (currentProgressBar) {
         currentProgressBar.percent = data.percent || 0;
         const consoleType = (data.target_console || currentProgressBar.console) as 'stdout' | 'stdout2' | 'convert';
@@ -633,7 +632,6 @@
               timestamp: new Date(),
             };
             logs = [...logs];
-            window.console.log('[DEBUG] Progress bar log updated:', logs[index]);
           } else {
             // ログが見つからない場合は新規作成
             const newLog: LogEntry = {
@@ -645,7 +643,6 @@
             };
             currentProgressBar.logId = newLog.id;
             logs = [...logs, newLog];
-            window.console.log('[DEBUG] Progress bar log created (not found):', newLog);
           }
         } else {
           // 初回のプログレスバー表示
@@ -658,7 +655,6 @@
           };
           currentProgressBar.logId = newLog.id;
           logs = [...logs, newLog];
-          window.console.log('[DEBUG] Progress bar log created (initial):', newLog);
         }
         
         scrollIfNeeded();
@@ -668,12 +664,10 @@
     });
 
     pushServer.on('progressbar.clear', (data: any) => {
-      window.console.log('[DEBUG] Progress bar clear:', data);
       // clearイベントは無視（プログレスバーを残す）
       currentProgressBar = null;
     });
 
-    window.console.log('[DEBUG] Event handlers registered, calling connect()');
     // 接続開始
     pushServer.connect();
   });

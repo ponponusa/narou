@@ -836,28 +836,90 @@ class ConverterBase
   end
 
   #
+  # かぎ括弧のペアを手動で探索してマッチングする（ReDoS回避）
+  #
+  def find_bracket_pairs(text, open_bracket, close_bracket)
+    pairs = []
+    stack = []
+    i = 0
+    
+    while i < text.length
+      char = text[i]
+      
+      if char == open_bracket
+        stack.push(i)
+      elsif char == close_bracket && !stack.empty?
+        start_pos = stack.pop
+        # ネストの深さ制限（最大50階層）
+        if stack.length < 50
+          pairs.push([start_pos, i + 1])
+        end
+      end
+      
+      i += 1
+    end
+    
+    # 最も外側のペアのみを抽出（ネストした内側は除外）
+    outermost_pairs = []
+    pairs.sort_by! { |pair| [pair[0], -pair[1]] }  # 開始位置順、終了位置逆順
+    
+    last_end = -1
+    pairs.each do |start_pos, end_pos|
+      if start_pos > last_end
+        outermost_pairs.push([start_pos, end_pos])
+        last_end = end_pos - 1
+      end
+    end
+    
+    outermost_pairs
+  end
+
+  #
   # かぎ括弧内自動連結
   #
   def auto_join_in_brackets(data)
     if !@setting.enable_auto_join_in_brackets && !@setting.enable_inspect
       return
     end
-    OPENCLOSE_REGEXPS.each_with_index do |openclose, i|
+    
+    BRACKETS.each_with_index do |bracket, i|
+      open_bracket, close_bracket = bracket
+      
+      # 括弧のペアを手動で探索
+      pairs = find_bracket_pairs(data, open_bracket, close_bracket)
+      
+      next if pairs.empty?
+      
       stack = {}
-      data.gsub!(openclose).with_index do |match, j|
+      replacements = []
+      
+      # 後ろから置換していく（位置がずれないように）
+      pairs.reverse.each_with_index do |pair, j|
+        start_pos, end_pos = pair
+        index = pairs.length - 1 - j
+        match = data[start_pos...end_pos]
+        
         joined_str = join_inner_bracket(match)
         if @setting.enable_auto_join_in_brackets && joined_str
-          error = @inspector.validate_joined_inner_brackets(match, joined_str, BRACKETS[i])
-          stack[j] = error ? match : joined_str
+          error = @inspector.validate_joined_inner_brackets(match, joined_str, bracket)
+          stack[index] = error ? match : joined_str
         else
-          stack[j] = match
+          stack[index] = match
         end
-        "［＃かぎ括弧＝#{j}］"
+        
+        replacements.push([start_pos, end_pos, index])
       end
+      
+      # 後ろから置換
+      replacements.each do |start_pos, end_pos, index|
+        data[start_pos...end_pos] = "［＃かぎ括弧＝#{index}］"
+      end
+      
       if @setting.enable_inspect
         # 正しく閉じてないかぎ括弧だけが data に残ってる
-        @inspector.inspect_invalid_openclose_brackets(data, BRACKETS[i], stack)
+        @inspector.inspect_invalid_openclose_brackets(data, bracket, stack)
       end
+      
       data.replace(ConverterBase.rebuild_brackets(data, stack))
     end
   end

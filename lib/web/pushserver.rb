@@ -50,6 +50,7 @@ module Narou
             que = Queue.new
             @connections.push(que)
 
+            # 接続時に履歴を送信
             @history.compact.each do |message|
               ws.send(JSON.generate(echo: message))
             end
