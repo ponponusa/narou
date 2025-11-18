@@ -1432,7 +1432,7 @@
       <p>小説が登録されていません</p>
     </div>
   {:else}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto overflow-y-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -1721,7 +1721,7 @@
                   {novel.general_all_no && novel.length ? formatCharCount(Math.floor(novel.length / novel.general_all_no)) : '-'}
                 </td>
                 {/if}
-                <td class="px-4 py-3 text-sm w-32 sm:w-20" onclick={(e) => e.stopPropagation()}>
+                <td class="px-4 py-3 text-sm w-32 sm:w-20 overflow-visible" onclick={(e) => e.stopPropagation()}>
                   <div class="flex items-center justify-center gap-2">
                     {#if processingNovelIds.has(novel.id)}
                       <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
