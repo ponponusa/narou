@@ -121,6 +121,14 @@
         </a>
         
         <a
+          href="/tasks"
+          class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors {currentPath === '/tasks' || currentPath === '/tasks/' || currentPath === '/tasks/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : ''} {$isServerStopped ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}"
+          title="タスクキュー"
+        >
+          <i class="fas fa-tasks w-5 h-5"></i>
+        </a>
+        
+        <a
           href="/settings"
           class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors {currentPath === '/settings' || currentPath === '/settings/' || currentPath === '/settings/index.html' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : ''} {$isServerStopped ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}"
           title="設定"
