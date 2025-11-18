@@ -798,6 +798,21 @@ components:
         author:
           type: string
           description: 作者名
+        author_url:
+          type: string
+          format: uri
+          description: 作者ページのURL（存在する場合）
+        site_name:
+          type: string
+          description: 小説掲載サイト名
+        site_top_url:
+          type: string
+          format: uri
+          description: 小説掲載サイトのトップページURL
+        toc_url:
+          type: string
+          format: uri
+          description: 小説の目次ページURL
         tags:
           type: array
           items:

@@ -46,17 +46,45 @@
 - **EPUB ダウンロードリンクが機能しない問題を修正**
   - API v2 に EPUB ダウンロードエンドポイント `GET /api/v2/novels/:id/epub` を追加
   - デバイスに応じた拡張子（`.epub`, `.kepub.epub` など）に対応
-  - ダウンロード時のファイル名を `[著者名] タイトル.拡張子` の形式に統一
+  - ダウンロード時のファイル名を `[著者名] タイトル.拡張子` の形式に統一（RFC 5987形式でエンコード）
+  - CORS設定に `Access-Control-Expose-Headers: Content-Disposition` を追加してブラウザがファイル名を取得できるように修正
+  - フロントエンドでRFC 5987形式（`filename*=UTF-8''...`）のデコード処理を実装
   - EPUB ファイルが存在しない場合は適切なエラーメッセージを返す
-  - テストケースを追加: `spec/web/api_v2_spec.rb`
-  - OpenAPI ドキュメントを更新: `docs/openapi.yaml`
-
-- **Web コマンド実行時の標準出力問題を修正**
-  - `--verbose` オプションを追加し、CLI 側への詳細ログ出力を制御
-  - デフォルトでは Web UI のコンソールのみに出力、`--verbose` 指定時に CLI 側にも出力
-  - `lib/command/web.rb`: `--verbose` オプションを追加
-  - `lib/web/streaminglogger.rb`: `verbose` フラグに応じて STDERR への出力を制御
+  
+- **Web UI実行時のCLI出力問題を修正**
+  - `web` コマンドに `--verbose` オプションを追加
+  - Web UI のコンソールへの出力は継続、CLI側は `--verbose` 指定時のみ出力
+  - `lib/web/streaminglogger.rb`: verbose フラグに応じて CLI 出力を制御
   - テストケースを追加: `spec/command/web_spec.rb`
+
+- **Web UI実行時のHTML出力問題を修正**
+  - `lib/web/appserver.rb`: Web UI コンソール向けのHTML出力がCLIのターミナルに表示される問題を修正
+  - `Narou.web?` をチェックし、Web UI 実行時は HTML 出力を `$stdout` ではなく `$stderr` に出力
+  - 起動メッセージなどのHTML形式出力がターミナルに表示されなくなった
+
+### Web UI機能追加
+
+- **ヘッダーUIの改善**
+  - PushServer アイコンのステータス表示を削除（サーバーステータスと機能が重複）
+  - より簡潔なヘッダーレイアウトに変更
+
+- **小説情報へのリンク追加**
+  - 著者名にクリック可能なリンクを追加（小説一覧とモーダル）
+  - サイト名にクリック可能なリンクを追加（小説一覧とモーダル）
+  - バックエンドで `author_url` と `site_top_url` を生成
+  - フロントエンドで条件付きリンク表示を実装
+
+### ドキュメント更新
+
+- **OpenAPI ドキュメントの更新**
+  - `docs/openapi.yaml`: Novel スキーマに `author_url`, `site_name`, `site_top_url`, `toc_url` フィールドを追加
+  - EPUB ダウンロードエンドポイントのドキュメント化済み
+
+- **データベース構造のドキュメント化**
+  - `docs/database_structure.md`: 新規作成
+  - 小説データのスキーマを詳細に文書化
+  - データベース操作APIの使用例を追加
+  - よく使われるクエリパターンを記載
 
 ### systemd / タスクスケジューラについて
 
