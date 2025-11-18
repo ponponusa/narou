@@ -28,7 +28,6 @@
   import NovelDetailModal from './NovelDetailModal.svelte';
   import ConsolePanel from './ConsolePanel.svelte';
   import Toast from './Toast.svelte';
-  import TaskQueue from './TaskQueue.svelte';
   import LoadingScreen from './LoadingScreen.svelte';
 
   let novels = $state<Novel[]>([]);
@@ -44,7 +43,6 @@
   let conversionSettingsModal: ConversionSettingsModal;
   let novelDetailModal: NovelDetailModal;
   let consolePanel = $state<ConsolePanel>();
-  let taskQueue: TaskQueue;
   let retryCount = $state(0);
   let maxRetries = 10; // 最大10回リトライ（約20秒）
   let isInitialLoad = $state(true); // 初回ロードフラグ
@@ -614,16 +612,10 @@
     const ids = Array.from(selectedIds);
     try {
       console.log('[NovelList] Starting download for IDs:', ids);
-      console.log('[NovelList] taskQueue:', taskQueue);
       
-      // タスクキューに登録（WAIT状態）
+      // 進捗状態を設定
       ids.forEach(id => {
-        const novel = novels.find(n => n.id === id);
-        if (novel) {
-          console.log(`[NovelList] Calling taskQueue.addTask for ID=${id}`);
-          taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
-          progressStore.setProgress(id, 'waiting', 'キュー待ち...');
-        }
+        progressStore.setProgress(id, 'waiting', 'キュー待ち...');
       });
       
       // API呼び出し（バックグラウンド処理開始）
@@ -651,11 +643,7 @@
     const ids = Array.from(selectedIds);
     try {
       ids.forEach(id => {
-        const novel = novels.find(n => n.id === id);
-        if (novel) {
-          taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
-          progressStore.setProgress(id, 'waiting', 'キュー待ち...');
-        }
+        progressStore.setProgress(id, 'waiting', 'キュー待ち...');
       });
       
       await downloadNovels(ids, true);
@@ -679,11 +667,7 @@
     const ids = Array.from(selectedIds);
     try {
       ids.forEach(id => {
-        const novel = novels.find(n => n.id === id);
-        if (novel) {
-          taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
-          progressStore.setProgress(id, 'waiting', 'キュー待ち...');
-        }
+        progressStore.setProgress(id, 'waiting', 'キュー待ち...');
       });
       
       await convertNovels(ids);
@@ -866,12 +850,6 @@
           processingNovelIds.add(novelId);
           processingNovelIds = new Set(processingNovelIds);
           
-          // タスクキューに追加（小説情報を取得）
-          const novel = novels.find(n => n.id === novelId);
-          if (novel && taskQueue) {
-            taskQueue.addTask(novelId, novel.title, novel.author, 'waiting');
-          }
-          
           // 強制更新（force=true）
           await downloadNovel(novelId, true);
           
@@ -899,12 +877,6 @@
         try {
           processingNovelIds.add(novelId);
           processingNovelIds = new Set(processingNovelIds);
-          
-          // タスクキューに追加
-          const novel = novels.find(n => n.id === novelId);
-          if (novel && taskQueue) {
-            taskQueue.addTask(novelId, novel.title, novel.author, 'converting');
-          }
           
           await convertNovel(novelId);
           
@@ -1199,9 +1171,6 @@
     </div>
     {/if}
   </div>
-
-  <!-- タスクキュー -->
-  <TaskQueue bind:this={taskQueue} />
 
   <!-- アクションバー -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
