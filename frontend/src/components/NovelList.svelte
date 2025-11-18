@@ -1013,7 +1013,7 @@
 
   <div class="container mx-auto px-2.5 py-6">
     <!-- フィルター・検索バー -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 lg:mx-12">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4">
     <!-- ヘッダー（常に表示） -->
     <div 
       class="flex items-center justify-between p-4 cursor-pointer" 
@@ -1173,7 +1173,7 @@
   </div>
 
   <!-- アクションバー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
     <div class="flex flex-wrap gap-4 items-center justify-between">
       <div class="flex gap-2 flex-wrap">
         <button
@@ -1228,7 +1228,7 @@
   </div>
 
   <!-- テーブルコントロール -->
-  <div class="flex justify-end items-center gap-3 mb-3 lg:mx-12">
+  <div class="flex justify-end items-center gap-3 mb-3">
     <button
       onclick={selectAll}
       class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
@@ -1414,7 +1414,7 @@
   {/if}
 
   <!-- 小説リストテーブル -->
-  <div class="lg:mx-12">
+  <div>
   {#if loading}
     <LoadingScreen 
       message="小説リストを読み込んでいます..." 
@@ -1432,7 +1432,7 @@
       <p>小説が登録されていません</p>
     </div>
   {:else}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto overflow-y-hidden">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
