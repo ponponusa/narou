@@ -162,6 +162,104 @@ module Narou
               json error_response('CLEAR_ERROR', e.message)
             end
           end
+
+          # POST /api/v2/server/stop
+          # サーバー停止
+          post '/api/v2/server/stop' do
+            set_cors_headers
+            
+            begin
+              # レスポンスを返してから停止処理を実行
+              Thread.new do
+                sleep 0.5
+                
+                # クリーンアップ処理
+                begin
+                  Narou::WebWorker.stop if defined?(Narou::WebWorker)
+                rescue StandardError => e
+                  $stderr.puts "WebWorkerの停止中にエラー: #{e.message}"
+                end
+                
+                begin
+                  push_server = Narou::PushServer.instance
+                  push_server.quit if push_server
+                rescue StandardError => e
+                  $stderr.puts "PushServerの停止中にエラー: #{e.message}"
+                end
+                
+                # ProcessManagerを使用してフロントエンドを停止
+                begin
+                  require_relative '../../../narou/process_manager'
+                  frontend_manager = Narou::ProcessManager.new('narou-frontend')
+                  if frontend_manager.process_running?
+                    frontend_manager.stop_process(timeout: 5)
+                  end
+                rescue StandardError => e
+                  $stderr.puts "フロントエンドの停止中にエラー: #{e.message}"
+                end
+                
+                # 通常の終了コード（0）で終了（外部ループも停止）
+                exit 0
+              end
+              
+              json success_response(
+                { stopping: true },
+                message: 'Server is stopping...'
+              )
+            rescue StandardError => e
+              status 500
+              json error_response('STOP_ERROR', e.message)
+            end
+          end
+
+          # POST /api/v2/server/restart
+          # サーバー再起動
+          post '/api/v2/server/restart' do
+            set_cors_headers
+            
+            begin
+              # レスポンスを返してから再起動処理を実行
+              Thread.new do
+                sleep 0.5
+                
+                # クリーンアップ処理
+                begin
+                  Narou::WebWorker.stop if defined?(Narou::WebWorker)
+                rescue StandardError => e
+                  $stderr.puts "WebWorkerの停止中にエラー: #{e.message}"
+                end
+                
+                begin
+                  push_server = Narou::PushServer.instance
+                  push_server.quit if push_server
+                rescue StandardError => e
+                  $stderr.puts "PushServerの停止中にエラー: #{e.message}"
+                end
+                
+                # ProcessManagerを使用してフロントエンドを停止
+                begin
+                  require_relative '../../../narou/process_manager'
+                  frontend_manager = Narou::ProcessManager.new('narou-frontend')
+                  if frontend_manager.process_running?
+                    frontend_manager.stop_process(timeout: 5)
+                  end
+                rescue StandardError => e
+                  $stderr.puts "フロントエンドの停止中にエラー: #{e.message}"
+                end
+                
+                # EXIT_REQUEST_REBOOTで終了（外部ループが再起動する）
+                exit Narou::EXIT_REQUEST_REBOOT
+              end
+              
+              json success_response(
+                { restarting: true },
+                message: 'Server is restarting...'
+              )
+            rescue StandardError => e
+              status 500
+              json error_response('RESTART_ERROR', e.message)
+            end
+          end
         end
       end
     end

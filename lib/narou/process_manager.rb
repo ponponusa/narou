@@ -28,12 +28,15 @@ module Narou
     end
 
     # 現在のプロセスのPIDを記録
-    def register_process(port: nil, metadata: {})
+    # pid: 登録するプロセスのPID（未指定時は現在のプロセス）
+    def register_process(pid: nil, port: nil, metadata: {})
       ensure_directories
       
+      target_pid = pid || Process.pid
+      
       pid_data = {
-        pid: Process.pid,
-        ppid: Process.ppid,
+        pid: target_pid,
+        ppid: pid ? nil : Process.ppid,  # 外部プロセスの場合はppidを記録しない
         started_at: Time.now.iso8601,
         platform: RUBY_PLATFORM,
         ruby_version: RUBY_VERSION,
@@ -174,6 +177,7 @@ module Narou
       return false unless info
       
       pid = info[:pid]
+      pgid = info.dig(:metadata, :pgid)  # プロセスグループID
       
       # プロセスが既に終了している場合はクリーンアップのみ
       unless process_running?(pid)
@@ -182,8 +186,11 @@ module Narou
       end
       
       begin
+        # プロセスグループIDがある場合はグループごと停止
+        target_pid = pgid || pid
+        
         # シグナルを送信
-        Process.kill(signal, pid)
+        Process.kill(signal, target_pid)
         
         # タイムアウトまで待機
         deadline = Time.now + timeout
@@ -197,7 +204,7 @@ module Narou
         
         # タイムアウトした場合は強制終了
         if process_running?(pid)
-          Process.kill("KILL", pid)
+          Process.kill("KILL", target_pid)
           sleep 0.5
           cleanup_files
         end

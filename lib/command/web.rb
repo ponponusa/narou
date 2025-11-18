@@ -77,6 +77,18 @@ module Command
         argv << "--internal-boot"  # 内部実行用のフラグを追加
         argv_copy = argv.dup
         
+        # 外部ループでのシグナルハンドラ（クリーンアップ用）
+        require_relative "../narou/process_manager"
+        backend_manager = Narou::ProcessManager.new("narou-backend")
+        frontend_manager = Narou::ProcessManager.new("narou-frontend")
+        
+        Signal.trap("INT") do
+          puts "\n\nサーバーを停止しています..."
+          backend_manager.stop_process(timeout: 3) if backend_manager.process_running?
+          frontend_manager.stop_process(timeout: 3) if frontend_manager.process_running?
+          exit 0
+        end
+        
         begin
           loop do
             system(RbConfig.ruby, "-x", $0, "web", *argv)
@@ -85,6 +97,7 @@ module Command
             argv.push("--no-browser", "--reboot")
           end
         rescue Interrupt
+          # シグナルハンドラで処理されるのでここには来ない
           sleep 1
         end
       end
@@ -106,7 +119,7 @@ module Command
       # バックエンドプロセスのチェック
       if @backend_manager.process_running?
         info = @backend_manager.read_process_info
-        Command::OutputHelper.warn("既存のバックエンドプロセスを検出しました (PID: #{info[:pid]})")
+        Command::OutputHelper.warning("既存のバックエンドプロセスを検出しました (PID: #{info[:pid]})")
         
         if @options["force"]
           Command::OutputHelper.info("既存プロセスを停止しています...")
@@ -125,7 +138,7 @@ module Command
       if should_start_frontend? && @frontend_manager
         if @frontend_manager.process_running?
           info = @frontend_manager.read_process_info
-          Command::OutputHelper.warn("既存のフロントエンドプロセスを検出しました (PID: #{info[:pid]})")
+          Command::OutputHelper.warning("既存のフロントエンドプロセスを検出しました (PID: #{info[:pid]})")
           
           if @options["force"]
             Command::OutputHelper.info("既存プロセスを停止しています...")
@@ -219,6 +232,8 @@ module Command
     end
 
     def stop_all_servers
+      Command::OutputHelper.info("関連プロセスを停止しています...")
+      
       # WebWorkerを停止
       begin
         Narou::WebWorker.stop if defined?(Narou::WebWorker)
@@ -235,12 +250,29 @@ module Command
         Command::OutputHelper.error("PushServerの停止中にエラーが発生しました: #{e.message}")
       end
       
-      # ProcessManagerを使ってPIDファイルをクリーンアップ
-      @backend_manager&.cleanup_files
-      @frontend_manager&.cleanup_files
+      stop_frontend_process
       
-      # フロントエンドサーバーを停止
-      stop_frontend if should_start_frontend?
+      # バックエンドのPIDファイルをクリーンアップ
+      @backend_manager&.cleanup_files
+      
+      Command::OutputHelper.success("すべてのプロセスを停止しました")
+    end
+    
+    # フロントエンドプロセスのみを停止
+    def stop_frontend_process
+      # フロントエンドサーバーをProcessManager経由で停止
+      if should_start_frontend? && @frontend_manager
+        begin
+          if @frontend_manager.process_running?
+            Command::OutputHelper.info("フロントエンドサーバーを停止中...")
+            @frontend_manager.stop_process(timeout: 5)
+          end
+        rescue StandardError => e
+          Command::OutputHelper.error("フロントエンドの停止中にエラーが発生しました: #{e.message}")
+        ensure
+          @frontend_manager.cleanup_files
+        end
+      end
     end
 
     def stop_frontend
@@ -297,9 +329,9 @@ module Command
         exec("npm", "run", "dev")
       end
       
-      # ProcessManagerにプロセス情報を登録
-      @frontend_manager.register_process(port: 4321, metadata: {
-        pid: pid,
+      # ProcessManagerにプロセス情報を登録（プロセスグループIDを記録）
+      @frontend_manager.register_process(pid: pid, port: 4321, metadata: {
+        pgid: -pid,  # プロセスグループIDは負の値で記録
         command: "npm run dev",
         log_file: frontend_log
       })
