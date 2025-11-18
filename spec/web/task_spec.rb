@@ -84,6 +84,63 @@ describe Narou::Task do
     end
   end
 
+  describe "#pause!" do
+    it "changes status to paused from running" do
+      task = Narou::Task.new(type: :download)
+      task.start!
+      task.pause!
+      
+      expect(task.status).to eq(:paused)
+      expect(task.paused?).to be true
+      expect(task.pause_requested?).to be true
+    end
+
+    it "changes status to paused from queued" do
+      task = Narou::Task.new(type: :download)
+      task.pause!
+      
+      expect(task.status).to eq(:paused)
+    end
+
+    it "does nothing if already completed" do
+      task = Narou::Task.new(type: :download)
+      task.start!
+      task.complete!
+      task.pause!
+      
+      expect(task.status).to eq(:completed)
+    end
+  end
+
+  describe "#resume!" do
+    it "changes status back to running" do
+      task = Narou::Task.new(type: :download)
+      task.start!
+      task.pause!
+      task.resume!
+      
+      expect(task.status).to eq(:running)
+      expect(task.paused?).to be false
+      expect(task.pause_requested?).to be false
+    end
+
+    it "changes status back to queued if not started" do
+      task = Narou::Task.new(type: :download)
+      task.pause!
+      task.resume!
+      
+      expect(task.status).to eq(:queued)
+    end
+
+    it "does nothing if not paused" do
+      task = Narou::Task.new(type: :download)
+      original_status = task.status
+      task.resume!
+      
+      expect(task.status).to eq(original_status)
+    end
+  end
+
   describe "#retryable?" do
     it "returns false when not failed" do
       task = Narou::Task.new(type: :download, max_retries: 3)
@@ -168,6 +225,45 @@ describe Narou::Task do
       
       # 完了後は時間が進まない
       expect(task.elapsed_time).to eq(elapsed)
+    end
+  end
+
+  describe "#update_progress" do
+    it "updates progress percentage" do
+      task = Narou::Task.new(type: :download)
+      task.update_progress(50.0, "50% complete")
+      
+      expect(task.progress).to eq(50.0)
+      expect(task.message).to eq("50% complete")
+    end
+
+    it "clamps progress to 0-100 range" do
+      task = Narou::Task.new(type: :download)
+      task.update_progress(-10.0)
+      expect(task.progress).to eq(0.0)
+      
+      task.update_progress(150.0)
+      expect(task.progress).to eq(100.0)
+    end
+  end
+
+  describe "#set_total_steps and #advance_step" do
+    it "tracks progress by steps" do
+      task = Narou::Task.new(type: :download)
+      task.set_total_steps(10)
+      
+      expect(task.total_steps).to eq(10)
+      expect(task.current_step).to eq(0)
+      expect(task.progress).to eq(0.0)
+      
+      task.advance_step("Step 1")
+      expect(task.current_step).to eq(1)
+      expect(task.progress).to eq(10.0)
+      expect(task.message).to eq("Step 1")
+      
+      task.advance_step("Step 2")
+      expect(task.current_step).to eq(2)
+      expect(task.progress).to eq(20.0)
     end
   end
 end

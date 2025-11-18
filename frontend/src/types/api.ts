@@ -19,7 +19,7 @@ export interface ApiV2Response<T> {
  * タスクの型定義
  */
 export type TaskType = 'download' | 'convert' | 'update' | 'remove';
-export type TaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
+export type TaskStatus = 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'canceled';
 
 export interface TaskError {
   message: string;
@@ -37,11 +37,15 @@ export interface Task {
   message?: string;
   created_at: string;
   started_at?: string;
+  paused_at?: string;
   completed_at?: string;
   elapsed_time: number;
   error?: TaskError;
   retry_count: number;
   max_retries: number;
+  progress: number;
+  total_steps?: number;
+  current_step: number;
 }
 
 export interface TaskSummary {

@@ -7,7 +7,15 @@
   import { onMount, onDestroy } from 'svelte';
   import { progressStore, type ProgressInfo } from '../lib/progressStore';
   import { getPushServer, type EchoMessage } from '../lib/pushserver';
-  import { cancelTask as apiCancelTask, getTaskSummary, type Task, type TaskSummary } from '../lib/api';
+  import { 
+    cancelTask as apiCancelTask, 
+    cancelTaskById, 
+    pauseTask, 
+    resumeTask,
+    getTaskSummary, 
+    type Task, 
+    type TaskSummary 
+  } from '../lib/api';
 
   /**
    * タスク情報（ローカル管理用）
@@ -222,6 +230,48 @@
   function clearCompleted() {
     tasks = tasks.filter(task => task.status !== 'completed' && task.status !== 'error');
     saveTasks();
+  }
+
+  /**
+   * バックエンドタスクをキャンセル
+   */
+  async function cancelBackendTask(taskId: string) {
+    try {
+      await cancelTaskById(taskId);
+      // タスク情報を更新
+      await fetchBackendTasks();
+    } catch (err) {
+      console.error('タスクのキャンセルに失敗:', err);
+      alert('タスクのキャンセルに失敗しました');
+    }
+  }
+
+  /**
+   * バックエンドタスクを一時停止
+   */
+  async function pauseBackendTask(taskId: string) {
+    try {
+      await pauseTask(taskId);
+      // タスク情報を更新
+      await fetchBackendTasks();
+    } catch (err) {
+      console.error('タスクの一時停止に失敗:', err);
+      alert('タスクの一時停止に失敗しました');
+    }
+  }
+
+  /**
+   * バックエンドタスクを再開
+   */
+  async function resumeBackendTask(taskId: string) {
+    try {
+      await resumeTask(taskId);
+      // タスク情報を更新
+      await fetchBackendTasks();
+    } catch (err) {
+      console.error('タスクの再開に失敗:', err);
+      alert('タスクの再開に失敗しました');
+    }
   }
 
   /**
@@ -536,11 +586,45 @@
                   <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">
                     {backendTaskSummary.current.type} | 経過時間: {backendTaskSummary.current.elapsed_time.toFixed(1)}秒
                   </div>
+                  {#if backendTaskSummary.current.progress > 0}
+                    <div class="mt-2">
+                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div 
+                          class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                          style="width: {backendTaskSummary.current.progress}%"
+                        ></div>
+                      </div>
+                      <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        進捗: {backendTaskSummary.current.progress.toFixed(1)}%
+                        {#if backendTaskSummary.current.total_steps}
+                          ({backendTaskSummary.current.current_step}/{backendTaskSummary.current.total_steps})
+                        {/if}
+                      </div>
+                    </div>
+                  {/if}
                   {#if backendTaskSummary.current.message}
                     <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
                       {backendTaskSummary.current.message}
                     </div>
                   {/if}
+                </div>
+                <div class="flex gap-1">
+                  {#if backendTaskSummary.current.status === 'running'}
+                    <button
+                      onclick={() => pauseBackendTask(backendTaskSummary!.current!.id)}
+                      class="px-2 py-1 text-xs rounded bg-yellow-500 hover:bg-yellow-600 text-white"
+                      title="一時停止"
+                    >
+                      <i class="fas fa-pause"></i>
+                    </button>
+                  {/if}
+                  <button
+                    onclick={() => cancelBackendTask(backendTaskSummary!.current!.id)}
+                    class="px-2 py-1 text-xs rounded bg-red-500 hover:bg-red-600 text-white"
+                    title="キャンセル"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
                 </div>
               </div>
             </div>
@@ -556,15 +640,47 @@
                 {#each backendTaskSummary.queued.slice(0, 5) as task}
                   <div class="bg-gray-50 dark:bg-gray-700/50 rounded p-2 text-sm">
                     <div class="flex items-center gap-2">
-                      <span class="px-2 py-0.5 text-xs rounded bg-gray-400 text-white">
-                        待機中
-                      </span>
+                      {#if task.status === 'paused'}
+                        <span class="px-2 py-0.5 text-xs rounded bg-yellow-500 text-white">
+                          一時停止
+                        </span>
+                      {:else}
+                        <span class="px-2 py-0.5 text-xs rounded bg-gray-400 text-white">
+                          待機中
+                        </span>
+                      {/if}
                       <span class="font-medium text-gray-900 dark:text-gray-100 truncate flex-1">
                         {task.novel_title || `タスク ${task.type}`}
                       </span>
                       <span class="text-xs text-gray-500 dark:text-gray-500">
                         {task.type}
                       </span>
+                      <div class="flex gap-1">
+                        {#if task.status === 'paused'}
+                          <button
+                            onclick={() => resumeBackendTask(task.id)}
+                            class="px-2 py-0.5 text-xs rounded bg-green-500 hover:bg-green-600 text-white"
+                            title="再開"
+                          >
+                            <i class="fas fa-play"></i>
+                          </button>
+                        {:else}
+                          <button
+                            onclick={() => pauseBackendTask(task.id)}
+                            class="px-2 py-0.5 text-xs rounded bg-yellow-500 hover:bg-yellow-600 text-white"
+                            title="一時停止"
+                          >
+                            <i class="fas fa-pause"></i>
+                          </button>
+                        {/if}
+                        <button
+                          onclick={() => cancelBackendTask(task.id)}
+                          class="px-2 py-0.5 text-xs rounded bg-red-500 hover:bg-red-600 text-white"
+                          title="キャンセル"
+                        >
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 {/each}

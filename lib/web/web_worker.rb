@@ -195,7 +195,7 @@ module Narou
       push_server = Narou::AppServer.push_server
       return unless push_server
       
-      push_server.send_all("notification.task.updated" => get_tasks_summary)
+      push_server.send_all("notification.task.updated" => get_tasks_summary_impl)
     end
 
     def countup
@@ -259,6 +259,86 @@ module Narou
       @mutex.synchronize do
         task = @tasks[task_id] || @task_history.find { |t| t.id == task_id }
         task&.to_h
+      end
+    end
+
+    #
+    # 特定のタスクをキャンセル
+    #
+    def self.cancel_task(task_id)
+      instance.cancel_task_impl(task_id)
+    end
+
+    def cancel_task_impl(task_id)
+      @mutex.synchronize do
+        task = @tasks[task_id]
+        return { success: false, message: "Task not found" } unless task
+        
+        if task.queued?
+          # キュー待ちの場合は即座にキャンセル
+          task.cancel!("ユーザーによりキャンセルされました")
+          move_to_history(task)
+          notification_task_updated
+          return { success: true, message: "Task canceled" }
+        elsif task.running? && task == @current_task
+          # 実行中のタスクの場合は中断シグナルを送る
+          task.cancel!("ユーザーによりキャンセルされました")
+          @thread_of_block_executing&.raise(Interrupt)
+          notification_task_updated
+          return { success: true, message: "Task cancellation requested" }
+        elsif task.paused?
+          # 一時停止中の場合はキャンセル
+          task.cancel!("ユーザーによりキャンセルされました")
+          move_to_history(task)
+          notification_task_updated
+          return { success: true, message: "Task canceled" }
+        else
+          return { success: false, message: "Task cannot be canceled in current state" }
+        end
+      end
+    end
+
+    #
+    # 特定のタスクを一時停止
+    #
+    def self.pause_task(task_id)
+      instance.pause_task_impl(task_id)
+    end
+
+    def pause_task_impl(task_id)
+      @mutex.synchronize do
+        task = @tasks[task_id]
+        return { success: false, message: "Task not found" } unless task
+        
+        if task.running? || task.queued?
+          task.pause!("ユーザーにより一時停止されました")
+          notification_task_updated
+          return { success: true, message: "Task paused" }
+        else
+          return { success: false, message: "Task cannot be paused in current state" }
+        end
+      end
+    end
+
+    #
+    # 特定のタスクを再開
+    #
+    def self.resume_task(task_id)
+      instance.resume_task_impl(task_id)
+    end
+
+    def resume_task_impl(task_id)
+      @mutex.synchronize do
+        task = @tasks[task_id]
+        return { success: false, message: "Task not found" } unless task
+        
+        if task.paused?
+          task.resume!("ユーザーにより再開されました")
+          notification_task_updated
+          return { success: true, message: "Task resumed" }
+        else
+          return { success: false, message: "Task is not paused" }
+        end
       end
     end
 
