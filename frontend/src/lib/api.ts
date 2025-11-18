@@ -322,14 +322,20 @@ export async function toggleFreeze(ids: number[]): Promise<void> {
  * 単一小説を凍結（API v2）
  */
 export async function freezeNovel(id: number): Promise<void> {
-  await toggleFreeze([id]);
+  await fetchApiV2<null>('/api/v2/novels/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ ids: [id], freeze: true }),
+  });
 }
 
 /**
  * 単一小説の凍結を解除（API v2）
  */
 export async function unfreezeNovel(id: number): Promise<void> {
-  await toggleFreeze([id]);
+  await fetchApiV2<null>('/api/v2/novels/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ ids: [id], freeze: false }),
+  });
 }
 
 /**
