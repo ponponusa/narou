@@ -296,64 +296,6 @@ module Narou
             end
           end
 
-          # POST /api/v2/novels/freeze_on
-          # 凍結する
-          post '/api/v2/novels/freeze_on' do
-            set_cors_headers
-
-            body = parse_json_body
-            ids = validate_ids(body['ids'])
-
-            unless ids
-              status 400
-              return json error_response('INVALID_PARAMS', 'Valid novel IDs are required')
-            end
-
-            begin
-              Narou::WebWorker.push do
-                CommandLine.run!('freeze', '--on', ids)
-                Narou::AppServer.clear_all_cache
-              end
-
-              json success_response(
-                { ids: ids, count: ids.length },
-                message: 'Novels frozen'
-              )
-            rescue StandardError => e
-              status 500
-              json error_response('FREEZE_ERROR', e.message)
-            end
-          end
-
-          # POST /api/v2/novels/freeze_off
-          # 凍結解除する
-          post '/api/v2/novels/freeze_off' do
-            set_cors_headers
-
-            body = parse_json_body
-            ids = validate_ids(body['ids'])
-
-            unless ids
-              status 400
-              return json error_response('INVALID_PARAMS', 'Valid novel IDs are required')
-            end
-
-            begin
-              Narou::WebWorker.push do
-                CommandLine.run!('freeze', '--off', ids)
-                Narou::AppServer.clear_all_cache
-              end
-
-              json success_response(
-                { ids: ids, count: ids.length },
-                message: 'Novels unfrozen'
-              )
-            rescue StandardError => e
-              status 500
-              json error_response('FREEZE_ERROR', e.message)
-            end
-          end
-
           # GET /api/v2/novels/:id/epub
           # EPUB ファイルダウンロード
           get '/api/v2/novels/:id/epub' do

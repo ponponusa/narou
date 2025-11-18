@@ -598,10 +598,14 @@ paths:
     post:
       tags:
         - novels
-      summary: 小説凍結
+      summary: 小説凍結/凍結解除
       description: |
         指定された小説の凍結状態を変更します。
         凍結された小説は自動更新の対象外になります。
+        
+        - `freeze: true` - 凍結する
+        - `freeze: false` - 凍結を解除する
+        - パラメータ省略 - 現在の状態をトグル（反転）する
       operationId: freezeNovels
       requestBody:
         required: true
@@ -618,11 +622,13 @@ paths:
                     type: string
                   description: 対象の小説ID
                   example: ["1", "2"]
-                action:
-                  type: string
-                  enum: [toggle, on, off]
-                  description: 凍結操作（toggle=切り替え、on=凍結、off=解除）
-                  default: toggle
+                freeze:
+                  type: boolean
+                  description: |
+                    凍結状態の指定（省略時はトグル）
+                    - true: 凍結する
+                    - false: 凍結を解除する
+                  example: true
       responses:
         '200':
           description: 成功
@@ -630,6 +636,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                data:
+                  ids: ["1", "2"]
+                  count: 2
+                message: "Novels frozen"
+                timestamp: 1699999999
         '400':
           $ref: '#/components/responses/BadRequest'
   
