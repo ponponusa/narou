@@ -46,6 +46,9 @@ module Command
       @opt.on("-l", "--legacy", "旧 Haml UI を使用する (デフォルトは新 Astro UI)") {
         @options["legacy"] = true
       }
+      @opt.on("-f", "--force", "既存のプロセスを強制的に停止して起動") {
+        @options["force"] = true
+      }
     end
 
     def execute(argv)
@@ -98,6 +101,64 @@ module Command
       host == "127.0.0.1" ? "localhost" : host
     end
 
+    # 既存プロセスをクリーンアップ
+    def cleanup_existing_processes(port)
+      # バックエンドプロセスのチェック
+      if @backend_manager.process_running?
+        info = @backend_manager.read_process_info
+        Command::OutputHelper.warn("既存のバックエンドプロセスを検出しました (PID: #{info[:pid]})")
+        
+        if @options["force"]
+          Command::OutputHelper.info("既存プロセスを停止しています...")
+          @backend_manager.stop_process
+        else
+          # プロセスが存在する場合はエラー
+          @backend_manager.cleanup_stale_process!
+        end
+      end
+      
+      # ポート競合のチェック
+      @backend_manager.check_port_conflict!(port, host)
+      @backend_manager.check_port_conflict!(port + 1, host) # PushServerポート
+      
+      # フロントエンドプロセスのチェック
+      if should_start_frontend? && @frontend_manager
+        if @frontend_manager.process_running?
+          info = @frontend_manager.read_process_info
+          Command::OutputHelper.warn("既存のフロントエンドプロセスを検出しました (PID: #{info[:pid]})")
+          
+          if @options["force"]
+            Command::OutputHelper.info("既存プロセスを停止しています...")
+            @frontend_manager.stop_process
+          else
+            # プロセスが存在する場合はエラー
+            @frontend_manager.cleanup_stale_process!
+          end
+        end
+        
+        # フロントエンドポートの競合チェック
+        @frontend_manager.check_port_conflict!(4321, host)
+      end
+    rescue Narou::ProcessManager::ProcessConflictError => e
+      # プロセス競合の場合、ユーザーに選択肢を提示
+      Command::OutputHelper.error(e.message)
+      Command::OutputHelper.info("\n自動的にクリーンアップしますか? (y/N): ")
+      
+      response = STDIN.gets&.strip&.downcase
+      if response == "y" || response == "yes"
+        Command::OutputHelper.info("既存プロセスをクリーンアップしています...")
+        @backend_manager.stop_process
+        @frontend_manager.stop_process if @frontend_manager
+        sleep 1
+        # 再度チェック
+        @backend_manager.check_port_conflict!(port, host)
+        @backend_manager.check_port_conflict!(port + 1, host)
+        @frontend_manager.check_port_conflict!(4321, host) if @frontend_manager
+      else
+        raise e
+      end
+    end
+
     def boot
       # フロントエンド設定を更新（require前に実行）
       port = @options["port"] || 5678
@@ -113,16 +174,33 @@ module Command
       
       # Narouモジュールをロード（$stdoutがNarou::Loggerに置き換わる）
       require_relative "../narou"
+      require_relative "../narou/process_manager"
       require_relative "../web/appserver"
+      
+      # プロセスマネージャーを初期化
+      @backend_manager = Narou::ProcessManager.new("narou-backend")
+      @frontend_manager = Narou::ProcessManager.new("narou-frontend") if should_start_frontend?
+      
+      # 既存プロセスのクリーンアップ
+      cleanup_existing_processes(port)
       
       # シグナルハンドラを設定（Ctrl+Cで停止）
       setup_signal_handlers
+      
+      # プロセス情報を登録
+      @backend_manager.register_process(port: port, metadata: {
+        host: host,
+        frontend_enabled: should_start_frontend?
+      })
       
       # フロントエンドを起動
       start_frontend if should_start_frontend?
 
       # バックエンドサーバーを起動
       start_server
+    rescue Narou::ProcessManager::ProcessConflictError, Narou::ProcessManager::PortConflictError => e
+      Command::OutputHelper.error(e.message)
+      exit 1
     end
 
     def setup_signal_handlers
@@ -156,6 +234,10 @@ module Command
       rescue StandardError => e
         Command::OutputHelper.error("PushServerの停止中にエラーが発生しました: #{e.message}")
       end
+      
+      # ProcessManagerを使ってPIDファイルをクリーンアップ
+      @backend_manager&.cleanup_files
+      @frontend_manager&.cleanup_files
       
       # フロントエンドサーバーを停止
       stop_frontend if should_start_frontend?
@@ -191,19 +273,6 @@ module Command
     def start_frontend
       frontend_dir = File.join(Narou.root_dir, "frontend")
       frontend_log = File.join(Narou.root_dir, "tmp", "logs", "narou-frontend.log")
-      frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
-      
-      # 既にフロントエンドサーバーが起動しているかチェック
-      if File.exist?(frontend_pid_file)
-        existing_pid = File.read(frontend_pid_file).to_i
-        begin
-          ::Process.kill(0, existing_pid)
-          Command::OutputHelper.info("フロントエンドサーバーは既に起動しています (PID: #{existing_pid})")
-          return
-        rescue Errno::ESRCH, Errno::EPERM
-          File.delete(frontend_pid_file)
-        end
-      end
       
       Command::OutputHelper.info("フロントエンドサーバーを起動しています...")
       
@@ -228,10 +297,12 @@ module Command
         exec("npm", "run", "dev")
       end
       
-      # PIDファイルに書き込み
-      pid_dir = File.dirname(frontend_pid_file)
-      FileUtils.mkdir_p(pid_dir) unless File.exist?(pid_dir)
-      File.write(frontend_pid_file, pid.to_s)
+      # ProcessManagerにプロセス情報を登録
+      @frontend_manager.register_process(port: 4321, metadata: {
+        pid: pid,
+        command: "npm run dev",
+        log_file: frontend_log
+      })
       
       # プロセスをデタッチ（親プロセスが終了してもフロントエンドは継続）
       Process.detach(pid)
@@ -241,11 +312,12 @@ module Command
     end
 
     def stop_frontend
-      frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+      return unless @frontend_manager
       
-      return unless File.exist?(frontend_pid_file)
+      info = @frontend_manager.read_process_info
+      return unless info
       
-      pid = File.read(frontend_pid_file).to_i
+      pid = info[:pid]
       begin
         # プロセスグループごと停止
         ::Process.kill("TERM", -pid)
@@ -260,10 +332,10 @@ module Command
           # 既に停止済み
         end
         
-        File.delete(frontend_pid_file)
+        @frontend_manager.cleanup_files
         Command::OutputHelper.success("フロントエンドサーバーを停止しました")
       rescue Errno::ESRCH, Errno::EPERM
-        File.delete(frontend_pid_file)
+        @frontend_manager.cleanup_files
       end
     end
 
