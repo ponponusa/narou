@@ -224,7 +224,11 @@ module Narou
             paths = Narou.get_ebook_file_paths(id, ext)
 
             if !paths.empty? && File.exist?(paths[0])
-              send_file(paths[0], filename: File.basename(paths[0]), type: "application/epub+zip")
+              # ファイル名を "[著者名] タイトル.拡張子" の形式にする
+              author = data["author"] || "Unknown"
+              title = data["title"] || "Untitled"
+              filename = "[#{author}] #{title}#{ext}"
+              send_file(paths[0], filename: filename, type: "application/epub+zip")
             else
               status 404
               json error_response('EPUB_NOT_FOUND', 'EPUB file not found. Please convert the novel first.')

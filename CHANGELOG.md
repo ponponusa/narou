@@ -46,8 +46,10 @@
 - **EPUB ダウンロードリンクが機能しない問題を修正**
   - API v2 に EPUB ダウンロードエンドポイント `GET /api/v2/novels/:id/epub` を追加
   - デバイスに応じた拡張子（`.epub`, `.kepub.epub` など）に対応
+  - ダウンロード時のファイル名を `[著者名] タイトル.拡張子` の形式に統一
   - EPUB ファイルが存在しない場合は適切なエラーメッセージを返す
   - テストケースを追加: `spec/web/api_v2_spec.rb`
+  - OpenAPI ドキュメントを更新: `docs/openapi.yaml`
 
 ### systemd / タスクスケジューラについて
 
