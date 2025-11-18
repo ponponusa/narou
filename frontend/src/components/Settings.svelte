@@ -31,6 +31,7 @@
   
   // トップに戻るボタンの表示制御
   let showScrollTopButton = $state(false);
+  let consolePanelOpen = $state(false);
 
   // 利用可能なタブ一覧（リアクティブ）
   let availableTabs = $derived.by(() => {
@@ -334,6 +335,9 @@
   function handleScroll() {
     if (typeof window !== 'undefined') {
       showScrollTopButton = window.scrollY > 300;
+      // コンソールパネルの状態を確認
+      const consoleElement = document.querySelector('[data-console-panel]');
+      consolePanelOpen = consoleElement?.getAttribute('data-is-open') === 'true';
     }
   }
 
@@ -869,7 +873,8 @@
 {#if showScrollTopButton}
   <button
     onclick={scrollToTop}
-    class="fixed bottom-4 right-4 z-40 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
+    class="fixed z-40 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
+    style={consolePanelOpen ? "bottom: calc(1px + 38vh); right: 1rem;" : "bottom: 62px; right: 1rem;"}
     title="トップに戻る"
     aria-label="トップに戻る"
   >

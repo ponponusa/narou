@@ -28,7 +28,6 @@
   import NovelDetailModal from './NovelDetailModal.svelte';
   import ConsolePanel from './ConsolePanel.svelte';
   import Toast from './Toast.svelte';
-  import TaskQueue from './TaskQueue.svelte';
   import LoadingScreen from './LoadingScreen.svelte';
 
   let novels = $state<Novel[]>([]);
@@ -44,7 +43,6 @@
   let conversionSettingsModal: ConversionSettingsModal;
   let novelDetailModal: NovelDetailModal;
   let consolePanel = $state<ConsolePanel>();
-  let taskQueue: TaskQueue;
   let retryCount = $state(0);
   let maxRetries = 10; // 最大10回リトライ（約20秒）
   let isInitialLoad = $state(true); // 初回ロードフラグ
@@ -614,16 +612,10 @@
     const ids = Array.from(selectedIds);
     try {
       console.log('[NovelList] Starting download for IDs:', ids);
-      console.log('[NovelList] taskQueue:', taskQueue);
       
-      // タスクキューに登録（WAIT状態）
+      // 進捗状態を設定
       ids.forEach(id => {
-        const novel = novels.find(n => n.id === id);
-        if (novel) {
-          console.log(`[NovelList] Calling taskQueue.addTask for ID=${id}`);
-          taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
-          progressStore.setProgress(id, 'waiting', 'キュー待ち...');
-        }
+        progressStore.setProgress(id, 'waiting', 'キュー待ち...');
       });
       
       // API呼び出し（バックグラウンド処理開始）
@@ -651,11 +643,7 @@
     const ids = Array.from(selectedIds);
     try {
       ids.forEach(id => {
-        const novel = novels.find(n => n.id === id);
-        if (novel) {
-          taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
-          progressStore.setProgress(id, 'waiting', 'キュー待ち...');
-        }
+        progressStore.setProgress(id, 'waiting', 'キュー待ち...');
       });
       
       await downloadNovels(ids, true);
@@ -679,11 +667,7 @@
     const ids = Array.from(selectedIds);
     try {
       ids.forEach(id => {
-        const novel = novels.find(n => n.id === id);
-        if (novel) {
-          taskQueue?.addTask(id, novel.title, novel.author, 'waiting');
-          progressStore.setProgress(id, 'waiting', 'キュー待ち...');
-        }
+        progressStore.setProgress(id, 'waiting', 'キュー待ち...');
       });
       
       await convertNovels(ids);
@@ -866,12 +850,6 @@
           processingNovelIds.add(novelId);
           processingNovelIds = new Set(processingNovelIds);
           
-          // タスクキューに追加（小説情報を取得）
-          const novel = novels.find(n => n.id === novelId);
-          if (novel && taskQueue) {
-            taskQueue.addTask(novelId, novel.title, novel.author, 'waiting');
-          }
-          
           // 強制更新（force=true）
           await downloadNovel(novelId, true);
           
@@ -899,12 +877,6 @@
         try {
           processingNovelIds.add(novelId);
           processingNovelIds = new Set(processingNovelIds);
-          
-          // タスクキューに追加
-          const novel = novels.find(n => n.id === novelId);
-          if (novel && taskQueue) {
-            taskQueue.addTask(novelId, novel.title, novel.author, 'converting');
-          }
           
           await convertNovel(novelId);
           
@@ -1041,7 +1013,7 @@
 
   <div class="container mx-auto px-2.5 py-6">
     <!-- フィルター・検索バー -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4 lg:mx-12">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-4">
     <!-- ヘッダー（常に表示） -->
     <div 
       class="flex items-center justify-between p-4 cursor-pointer" 
@@ -1200,11 +1172,8 @@
     {/if}
   </div>
 
-  <!-- タスクキュー -->
-  <TaskQueue bind:this={taskQueue} />
-
   <!-- アクションバー -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 lg:mx-12">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
     <div class="flex flex-wrap gap-4 items-center justify-between">
       <div class="flex gap-2 flex-wrap">
         <button
@@ -1259,7 +1228,7 @@
   </div>
 
   <!-- テーブルコントロール -->
-  <div class="flex justify-end items-center gap-3 mb-3 lg:mx-12">
+  <div class="flex justify-end items-center gap-3 mb-3">
     <button
       onclick={selectAll}
       class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
@@ -1445,7 +1414,7 @@
   {/if}
 
   <!-- 小説リストテーブル -->
-  <div class="lg:mx-12">
+  <div>
   {#if loading}
     <LoadingScreen 
       message="小説リストを読み込んでいます..." 
@@ -1463,7 +1432,7 @@
       <p>小説が登録されていません</p>
     </div>
   {:else}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto overflow-y-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -1752,7 +1721,7 @@
                   {novel.general_all_no && novel.length ? formatCharCount(Math.floor(novel.length / novel.general_all_no)) : '-'}
                 </td>
                 {/if}
-                <td class="px-4 py-3 text-sm w-32 sm:w-20" onclick={(e) => e.stopPropagation()}>
+                <td class="px-4 py-3 text-sm w-32 sm:w-20 overflow-visible" onclick={(e) => e.stopPropagation()}>
                   <div class="flex items-center justify-center gap-2">
                     {#if processingNovelIds.has(novel.id)}
                       <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>

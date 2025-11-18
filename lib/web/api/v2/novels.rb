@@ -167,15 +167,24 @@ module Narou
             end
             
             begin
-              task_ids = ids.map do |id|
+              # 存在しない小説IDをチェック
+              not_found_ids = []
+              task_ids = []
+              
+              ids.each do |id|
                 data = Database.instance[id.to_i]
+                
+                unless data
+                  not_found_ids << id
+                  next
+                end
                 
                 # タスクを作成
                 task = Narou::Task.new(
                   type: :convert,
-                  novel_id: data ? data["id"] : id.to_i,
-                  novel_title: data ? data["title"] : "ID: #{id}",
-                  novel_author: data ? data["author"] : nil,
+                  novel_id: data["id"],
+                  novel_title: data["title"],
+                  novel_author: data["author"],
                   max_retries: 0
                 )
                 
@@ -185,13 +194,26 @@ module Narou
                   Narou::AppServer.clear_all_cache
                 end
                 
-                task.id
+                task_ids << task.id
               end
               
-              json success_response(
-                { ids: ids, count: ids.length, task_ids: task_ids },
-                message: 'Convert started'
-              )
+              # エラーがある場合はwarning付きで返す
+              if not_found_ids.any?
+                json success_response(
+                  { 
+                    ids: ids - not_found_ids,
+                    not_found: not_found_ids,
+                    count: task_ids.length, 
+                    task_ids: task_ids 
+                  },
+                  message: "Convert started (#{not_found_ids.length} novels not found)"
+                )
+              else
+                json success_response(
+                  { ids: ids, count: task_ids.length, task_ids: task_ids },
+                  message: 'Convert started'
+                )
+              end
             rescue StandardError => e
               status 500
               json error_response('CONVERT_ERROR', e.message)
@@ -231,7 +253,10 @@ module Narou
           end
 
           # POST /api/v2/novels/freeze
-          # 凍結トグル
+          # 凍結/凍結解除
+          # Parameters:
+          #   - ids: 小説IDの配列
+          #   - freeze: true(凍結) または false(凍結解除)、省略時はトグル
           post '/api/v2/novels/freeze' do
             set_cors_headers
 
@@ -244,14 +269,26 @@ module Narou
             end
 
             begin
+              freeze_param = body['freeze']
+              
               Narou::WebWorker.push do
-                CommandLine.run!('freeze', '--on', ids)
+                if freeze_param == true
+                  # 明示的に凍結
+                  CommandLine.run!('freeze', '--on', ids)
+                elsif freeze_param == false
+                  # 明示的に凍結解除
+                  CommandLine.run!('freeze', '--off', ids)
+                else
+                  # パラメータなしの場合はトグル
+                  CommandLine.run!('freeze', ids)
+                end
                 Narou::AppServer.clear_all_cache
               end
 
+              action = freeze_param == true ? 'frozen' : (freeze_param == false ? 'unfrozen' : 'toggled')
               json success_response(
                 { ids: ids, count: ids.length },
-                message: 'Freeze toggled'
+                message: "Novels #{action}"
               )
             rescue StandardError => e
               status 500

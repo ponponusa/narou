@@ -1,23 +1,23 @@
 ---
 /**
- * 設定画面
+ * タスクキューページ
  * 
- * ローカル設定とグローバル設定をタブ別に表示・編集
+ * サーバータスクの詳細一覧と管理UI
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.svelte';
 import ServerStoppedBanner from '../components/ServerStoppedBanner.svelte';
-import SettingsComponent from '../components/Settings.svelte';
+import TaskQueuePage from '../components/TaskQueuePage.svelte';
 import ConsolePanel from '../components/ConsolePanel.svelte';
 import Footer from '../components/Footer.svelte';
 ---
 
-<BaseLayout title="設定 - Narou">
+<BaseLayout title="Narou.rb MOD - タスクキュー">
   <div class="min-h-screen flex flex-col">
     <Header client:load />
     <ServerStoppedBanner client:load />
-    <main class="container mx-auto px-2.5 py-6 flex-1">
-      <SettingsComponent client:load />
+    <main class="flex-1 relative">
+      <TaskQueuePage client:load />
     </main>
     <ConsolePanel client:load />
     <Footer client:load />

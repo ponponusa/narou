@@ -322,14 +322,20 @@ export async function toggleFreeze(ids: number[]): Promise<void> {
  * 単一小説を凍結（API v2）
  */
 export async function freezeNovel(id: number): Promise<void> {
-  await toggleFreeze([id]);
+  await fetchApiV2<null>('/api/v2/novels/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ ids: [id], freeze: true }),
+  });
 }
 
 /**
  * 単一小説の凍結を解除（API v2）
  */
 export async function unfreezeNovel(id: number): Promise<void> {
-  await toggleFreeze([id]);
+  await fetchApiV2<null>('/api/v2/novels/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ ids: [id], freeze: false }),
+  });
 }
 
 /**
@@ -718,4 +724,34 @@ export async function getTaskSummary(): Promise<TaskSummary> {
  */
 export async function getTask(taskId: string): Promise<Task> {
   return await fetchApiV2<Task>(`/api/v2/tasks/${taskId}`);
+}
+
+/**
+ * タスクをキャンセル
+ * @param taskId - タスクID
+ */
+export async function cancelTaskById(taskId: string): Promise<{ message: string }> {
+  return await fetchApiV2<{ message: string }>(`/api/v2/tasks/${taskId}/cancel`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * タスクを一時停止
+ * @param taskId - タスクID
+ */
+export async function pauseTask(taskId: string): Promise<{ message: string }> {
+  return await fetchApiV2<{ message: string }>(`/api/v2/tasks/${taskId}/pause`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * タスクを再開
+ * @param taskId - タスクID
+ */
+export async function resumeTask(taskId: string): Promise<{ message: string }> {
+  return await fetchApiV2<{ message: string }>(`/api/v2/tasks/${taskId}/resume`, {
+    method: 'POST',
+  });
 }

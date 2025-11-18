@@ -3,6 +3,7 @@
  * デバッグ用テストページ
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ConsolePanel from '../components/ConsolePanel.svelte';
 ---
 
 <BaseLayout title="設定デバッグ - Narou">
@@ -165,4 +166,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       }
     }
   </script>
+  
+  <ConsolePanel client:load />
 </BaseLayout>
