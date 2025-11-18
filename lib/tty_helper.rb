@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
-# 
+#
 # Copyright 2025 ponponUSA. All rights reserved.
 #
 
 module TTYHelper
   def self.non_interactive?(input = $stdin)
     return true if ENV["NAROU_NONINTERACTIVE"] == "1"
+    return true if defined?(Narou) && Narou.respond_to?(:web?) && Narou.web?
     io = input || $stdin
     return true unless io.respond_to?(:tty?) && io.tty?
     false
@@ -18,7 +19,7 @@ module TTYHelper
     out_io.print("#{message} [y/N]: ")
     ans = in_io.gets&.strip&.downcase
     return default if ans.nil? || ans.empty?
-    %w[y yes].include?(ans)
+    %w(y yes).include?(ans)
   end
 
   # 「Enterで続行」待ち（非対話時はスキップ）

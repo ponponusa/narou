@@ -62,33 +62,33 @@ module Command
         argv.delete("--internal-boot")
         @rebooted = !!argv.delete("--reboot")
         super
-        
+
         # OutputHelperの初期化
         Command::OutputHelper.setup_logger(@options["log-file"])
-        
+
         boot
       else
         # 外部ループで再起動に対応（legacy版と同じパターン）
         # --bootオプションは外部ループ用のフラグとして使用し、内部では--internal-bootに置き換える
-        argv.delete("--boot")  # --bootオプションを削除
+        argv.delete("--boot") # --bootオプションを削除
         super
         argv << "--backtrace" if $display_backtrace
         argv << "--no-color" if $disable_color
-        argv << "--internal-boot"  # 内部実行用のフラグを追加
+        argv << "--internal-boot" # 内部実行用のフラグを追加
         argv_copy = argv.dup
-        
+
         # 外部ループでのシグナルハンドラ（クリーンアップ用）
         require_relative "../narou/process_manager"
         backend_manager = Narou::ProcessManager.new("narou-backend")
         frontend_manager = Narou::ProcessManager.new("narou-frontend")
-        
+
         Signal.trap("INT") do
           puts "\n\nサーバーを停止しています..."
           backend_manager.stop_process(timeout: 3) if backend_manager.process_running?
           frontend_manager.stop_process(timeout: 3) if frontend_manager.process_running?
           exit 0
         end
-        
+
         begin
           loop do
             system(RbConfig.ruby, "-x", $0, "web", *argv)
@@ -120,7 +120,7 @@ module Command
       if @backend_manager.process_running?
         info = @backend_manager.read_process_info
         Command::OutputHelper.warning("既存のバックエンドプロセスを検出しました (PID: #{info[:pid]})")
-        
+
         if @options["force"]
           Command::OutputHelper.info("既存プロセスを停止しています...")
           @backend_manager.stop_process
@@ -129,17 +129,17 @@ module Command
           @backend_manager.cleanup_stale_process!
         end
       end
-      
+
       # ポート競合のチェック
       @backend_manager.check_port_conflict!(port, host)
       @backend_manager.check_port_conflict!(port + 1, host) # PushServerポート
-      
+
       # フロントエンドプロセスのチェック
       if should_start_frontend? && @frontend_manager
         if @frontend_manager.process_running?
           info = @frontend_manager.read_process_info
           Command::OutputHelper.warning("既存のフロントエンドプロセスを検出しました (PID: #{info[:pid]})")
-          
+
           if @options["force"]
             Command::OutputHelper.info("既存プロセスを停止しています...")
             @frontend_manager.stop_process
@@ -148,35 +148,31 @@ module Command
             @frontend_manager.cleanup_stale_process!
           end
         end
-        
+
         # フロントエンドポートの競合チェック
         @frontend_manager.check_port_conflict!(4321, host)
       end
     rescue Narou::ProcessManager::ProcessConflictError => e
       # プロセス競合の場合、ユーザーに選択肢を提示
       Command::OutputHelper.error(e.message)
-      Command::OutputHelper.info("\n自動的にクリーンアップしますか? (y/N): ")
-      
-      response = STDIN.gets&.strip&.downcase
-      if response == "y" || response == "yes"
-        Command::OutputHelper.info("既存プロセスをクリーンアップしています...")
-        @backend_manager.stop_process
-        @frontend_manager.stop_process if @frontend_manager
-        sleep 1
-        # 再度チェック
-        @backend_manager.check_port_conflict!(port, host)
-        @backend_manager.check_port_conflict!(port + 1, host)
-        @frontend_manager.check_port_conflict!(4321, host) if @frontend_manager
-      else
-        raise e
-      end
+
+      require_relative "../tty_helper"
+      raise e unless TTYHelper.ask_yes_no("自動的にクリーンアップしますか?", default: false)
+      Command::OutputHelper.info("既存プロセスをクリーンアップしています...")
+      @backend_manager.stop_process
+      @frontend_manager&.stop_process
+      sleep 1
+      # 再度チェック
+      @backend_manager.check_port_conflict!(port, host)
+      @backend_manager.check_port_conflict!(port + 1, host)
+      @frontend_manager&.check_port_conflict!(4321, host)
     end
 
     def boot
       # フロントエンド設定を更新（require前に実行）
       port = @options["port"] || 5678
       update_frontend_env(port) if should_start_frontend?
-      
+
       # 起動メッセージを表示（require_relative "../narou" より前に実行）
       # narou.rbをrequireすると$stdoutがNarou::Loggerに置き換わるため
       Command::OutputHelper.render("web_starting", {
@@ -184,28 +180,28 @@ module Command
         port: port,
         frontend_enabled: should_start_frontend?
       })
-      
+
       # Narouモジュールをロード（$stdoutがNarou::Loggerに置き換わる）
       require_relative "../narou"
       require_relative "../narou/process_manager"
       require_relative "../web/appserver"
-      
+
       # プロセスマネージャーを初期化
       @backend_manager = Narou::ProcessManager.new("narou-backend")
       @frontend_manager = Narou::ProcessManager.new("narou-frontend") if should_start_frontend?
-      
+
       # 既存プロセスのクリーンアップ
       cleanup_existing_processes(port)
-      
+
       # シグナルハンドラを設定（Ctrl+Cで停止）
       setup_signal_handlers
-      
+
       # プロセス情報を登録
       @backend_manager.register_process(port: port, metadata: {
         host: host,
         frontend_enabled: should_start_frontend?
       })
-      
+
       # フロントエンドを起動
       start_frontend if should_start_frontend?
 
@@ -233,7 +229,7 @@ module Command
 
     def stop_all_servers
       Command::OutputHelper.info("関連プロセスを停止しています...")
-      
+
       # WebWorkerを停止
       begin
         Narou::WebWorker.stop if defined?(Narou::WebWorker)
@@ -241,62 +237,60 @@ module Command
         # エラーが発生してもクリーンアップを続行
         Command::OutputHelper.error("WebWorkerの停止中にエラーが発生しました: #{e.message}")
       end
-      
+
       # PushServerを停止
       begin
         push_server = Narou::PushServer.instance
-        push_server.quit if push_server
+        push_server&.quit
       rescue StandardError => e
         Command::OutputHelper.error("PushServerの停止中にエラーが発生しました: #{e.message}")
       end
-      
+
       stop_frontend_process
-      
+
       # バックエンドのPIDファイルをクリーンアップ
       @backend_manager&.cleanup_files
-      
+
       Command::OutputHelper.success("すべてのプロセスを停止しました")
     end
-    
+
     # フロントエンドプロセスのみを停止
     def stop_frontend_process
       # フロントエンドサーバーをProcessManager経由で停止
-      if should_start_frontend? && @frontend_manager
-        begin
-          if @frontend_manager.process_running?
-            Command::OutputHelper.info("フロントエンドサーバーを停止中...")
-            @frontend_manager.stop_process(timeout: 5)
-          end
-        rescue StandardError => e
-          Command::OutputHelper.error("フロントエンドの停止中にエラーが発生しました: #{e.message}")
-        ensure
-          @frontend_manager.cleanup_files
+      return unless should_start_frontend? && @frontend_manager
+      begin
+        if @frontend_manager.process_running?
+          Command::OutputHelper.info("フロントエンドサーバーを停止中...")
+          @frontend_manager.stop_process(timeout: 5)
         end
+      rescue StandardError => e
+        Command::OutputHelper.error("フロントエンドの停止中にエラーが発生しました: #{e.message}")
+      ensure
+        @frontend_manager.cleanup_files
       end
     end
 
     def stop_frontend
       frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
-      
-      if File.exist?(frontend_pid_file)
-        pid = File.read(frontend_pid_file).to_i
-        begin
-          Process.kill("TERM", pid)
-          File.delete(frontend_pid_file)
-        rescue Errno::ESRCH
-          # プロセスが既に終了している
-          File.delete(frontend_pid_file) if File.exist?(frontend_pid_file)
-        end
+
+      return unless File.exist?(frontend_pid_file)
+      pid = File.read(frontend_pid_file).to_i
+      begin
+        Process.kill("TERM", pid)
+        File.delete(frontend_pid_file)
+      rescue Errno::ESRCH
+        # プロセスが既に終了している
+        File.delete(frontend_pid_file) if File.exist?(frontend_pid_file)
       end
     end
 
     def should_start_frontend?
       # テスト環境ではフロントエンドを起動しない
       return false if ENV["NAROU_ENV"] == "test"
-      
+
       # --no-frontendオプションが指定されている場合は起動しない
       return false if @options["no-frontend"]
-      
+
       # 開発環境（frontend/ディレクトリが存在）の場合のみ
       frontend_dir = File.join(Narou.root_dir, "frontend")
       File.directory?(frontend_dir) && File.exist?(File.join(frontend_dir, "package.json"))
@@ -305,113 +299,74 @@ module Command
     def start_frontend
       frontend_dir = File.join(Narou.root_dir, "frontend")
       frontend_log = File.join(Narou.root_dir, "tmp", "logs", "narou-frontend.log")
-      
+
       Command::OutputHelper.info("フロントエンドサーバーを起動しています...")
-      
+
       # フロントエンドサーバーをバックグラウンドで起動
       pid = fork do
         # 新しいプロセスグループを作成（stop時に子プロセスも停止できるようにする）
         ::Process.setpgid(0, 0)
-        
+
         Dir.chdir(frontend_dir)
-        
+
         # 標準入力・出力・エラーをリダイレクト
         log_dir = File.dirname(frontend_log)
         FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
-        
+
+        # 注意: この時点で親プロセスの$stdoutはNarou::Loggerに置き換わっているため、
+        # オリジナルのSTDOUT, STDERR, STDIN定数を使用する必要がある
+        # rubocop:disable Style/GlobalStdStream
         STDIN.reopen("/dev/null")
         STDOUT.reopen(frontend_log, "a")
         STDERR.reopen(STDOUT)
         STDOUT.sync = true
         STDERR.sync = true
-        
+        # rubocop:enable Style/GlobalStdStream
+
         # npm run dev を実行
         exec("npm", "run", "dev")
       end
-      
+
       # ProcessManagerにプロセス情報を登録（プロセスグループIDを記録）
       @frontend_manager.register_process(pid: pid, port: 4321, metadata: {
-        pgid: -pid,  # プロセスグループIDは負の値で記録
+        pgid: -pid, # プロセスグループIDは負の値で記録
         command: "npm run dev",
         log_file: frontend_log
       })
-      
+
       # プロセスをデタッチ（親プロセスが終了してもフロントエンドは継続）
       Process.detach(pid)
-      
+
       Command::OutputHelper.success("フロントエンドサーバーを起動しました (PID: #{pid})")
-      sleep 1  # フロントエンドサーバーの起動を待つ
-    end
-
-    def stop_frontend
-      return unless @frontend_manager
-      
-      info = @frontend_manager.read_process_info
-      return unless info
-      
-      pid = info[:pid]
-      begin
-        # プロセスグループごと停止
-        ::Process.kill("TERM", -pid)
-        sleep 0.5
-        
-        # 停止を確認
-        begin
-          ::Process.kill(0, pid)
-          # まだ生きている場合は強制終了
-          ::Process.kill("KILL", -pid)
-        rescue Errno::ESRCH
-          # 既に停止済み
-        end
-        
-        @frontend_manager.cleanup_files
-        Command::OutputHelper.success("フロントエンドサーバーを停止しました")
-      rescue Errno::ESRCH, Errno::EPERM
-        @frontend_manager.cleanup_files
-      end
-    end
-
-    def stop_all_servers
-      Command::OutputHelper.info("サーバーを停止しています...")
-      stop_frontend if should_start_frontend?
-      exit 0
-    end
-
-    def setup_signal_handlers
-      # Ctrl+C (SIGINT) と kill (SIGTERM) に対応
-      Signal.trap("INT") do
-        puts "\n"  # 改行を入れて見やすく
-        stop_all_servers
-      end
-      
-      Signal.trap("TERM") do
-        stop_all_servers
-      end
+      sleep 1 # フロントエンドサーバーの起動を待つ
     end
 
     def start_server
       port = @options["port"] || 5678
-      
+
+      # Web UIモードを有効化（インタラクティブプロンプトを無効化）
+      Narou.web = true
+
       # サーバー起動完了メッセージ（$stdoutを置き換える前に表示）
       Command::OutputHelper.render("web_started", {
         host: display_host,
         port: port,
         frontend_enabled: should_start_frontend?
       })
-      
+
       # PushServerの初期化と起動
       push_server = Narou::PushServer.instance
       push_server.port = port + 1
       push_server.host = host
       push_server.accepted_domains = ["*"]
       Narou::AppServer.push_server = push_server
-      
+
       # WorkerとWebWorkerにもpush_serverを設定
       Narou::Worker.push_server = push_server
-      
+
       # PushServerを起動
       push_server.run
-      
+
       # StreamingLoggerを設定（標準出力をPushServerに送信）
       require_relative "../web/streaminglogger"
       $stdout = Narou::StreamingLogger.new(push_server)
@@ -420,15 +375,15 @@ module Command
                  else
                    $stdout
                  end
-      
+
       # WebWorkerを起動（タスクキュー処理用）
       Narou::WebWorker.run
-      
+
       if @options["open-browser"]
         frontend_url = should_start_frontend? ? "http://#{display_host}:4321/" : "http://#{display_host}:#{port}/"
         Helper.open_browser(frontend_url)
       end
-      
+
       Narou::AppServer.set(:bind, host)
       Narou::AppServer.set(:port, port)
       Narou::AppServer.run!
@@ -437,9 +392,9 @@ module Command
     def update_frontend_env(port)
       frontend_dir = File.join(Narou.root_dir, "frontend")
       env_file = File.join(frontend_dir, ".env")
-      
+
       ws_port = port + 1
-      
+
       # .envファイルを読み込むか、なければテンプレートを使用
       env_content = if File.exist?(env_file)
                       File.read(env_file)
@@ -448,46 +403,40 @@ module Command
                         # バックエンドAPIサーバーのURL
                         # 開発時はViteのプロキシを使用するため空文字列
                         PUBLIC_API_BASE_URL=
-                        
+
                         # PushServer WebSocketポート（HTTPサーバーポート + 1）
                         PUBLIC_PUSH_SERVER_PORT=5679
-                        
+
                         # 開発モード設定
                         PUBLIC_DEV_MODE=true
                       ENV
                     end
-      
+
       # PUBLIC_PUSH_SERVER_PORTを更新
       env_content.gsub!(/^PUBLIC_PUSH_SERVER_PORT=.*$/, "PUBLIC_PUSH_SERVER_PORT=#{ws_port}")
-      
+
       File.write(env_file, env_content)
-      
+
       # astro.config.mjsのプロキシ設定も更新
       config_file = File.join(frontend_dir, "astro.config.mjs")
       if File.exist?(config_file)
         config_content = File.read(config_file)
-        config_content.gsub!(/target:\s*['"]http:\/\/localhost:\d+['"]/, "target: 'http://localhost:#{port}'")
+        config_content.gsub!(%r!target:\s*['"]http://localhost:\d+['"]!, "target: 'http://localhost:#{port}'")
         File.write(config_file, config_content)
       end
-      
+
       # ポート情報をJSONファイルとして保存（フロントエンドから読み込み可能にする）
       port_info_file = File.join(frontend_dir, "public", "backend-port.json")
       port_info_dir = File.dirname(port_info_file)
       FileUtils.mkdir_p(port_info_dir) unless File.exist?(port_info_dir)
-      
-      require 'json'
+
+      require "json"
       port_info = {
         backend_port: port,
         push_server_port: ws_port,
         updated_at: Time.now.iso8601
       }
       File.write(port_info_file, JSON.pretty_generate(port_info))
-    end
-
-    private
-
-    def host
-      @options["host"] || "127.0.0.1"
     end
   end
 end

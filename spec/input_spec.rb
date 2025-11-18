@@ -1,4 +1,6 @@
 # -*- Encoding: utf-8 -*-
+# frozen_string_literal: true
+
 #
 # Copyright 2013 whiteleaf. All rights reserved.
 #
@@ -16,7 +18,7 @@ describe Narou::Input, :show_output do
     $stdout.silent = false
     $stdin = @original_stdin
   end
-  
+
   after :each do
     # 各テスト後に$stdinを復元（他テストへのリークを防ぐ）
     $stdin = @original_stdin
@@ -51,6 +53,12 @@ describe Narou::Input, :show_output do
     it "pipe で接続された時 true を返すべき" do
       $stdin = double("$stdin nontty", tty?: false)
       expect(Narou::Input.confirm("")).to eq true
+    end
+
+    it "Web UI 実行時は nontty_default を返すべき" do
+      $stdin = double("$stdin tty", tty?: true)
+      allow(Narou).to receive(:web?).and_return(true)
+      expect(Narou::Input.confirm("", false, true)).to eq true
     end
   end
 

@@ -40,6 +40,10 @@ module Narou
     # nontty_default : 入力不能(EOF等)や非TTY時の返値
     #
     def confirm(message, default = false, nontty_default = true)
+      # Web UI実行時は非対話モード
+      if defined?(Narou) && Narou.respond_to?(:web?) && Narou.web?
+        return nontty_default
+      end
       # 非TTY（pipe等）は旧挙動どおり nontty_default を返す
       unless _tty?
         return nontty_default
@@ -57,9 +61,9 @@ module Narou
         ch = ch.to_s
         _puts(ch)
         case ch.downcase
-        when "y" then return true
-        when "n" then return false
-        when "\r", "\n" then return default
+        when "y" then true
+        when "n" then false
+        when "\r", "\n" then default
         else
           loop do
             _print(prompt)

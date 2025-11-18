@@ -33,5 +33,11 @@ RSpec.describe TTYHelper do
       fake_tty = instance_double(IO, tty?: true)
       expect(described_class.non_interactive?(fake_tty)).to be(false)
     end
+
+    it "returns true when Narou.web? is true" do
+      fake_tty = instance_double(IO, tty?: true)
+      allow(Narou).to receive(:web?).and_return(true)
+      expect(described_class.non_interactive?(fake_tty)).to be(true)
+    end
   end
 end
