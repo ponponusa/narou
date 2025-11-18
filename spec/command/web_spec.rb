@@ -134,4 +134,61 @@ RSpec.describe Command::Web do
       command.execute(["--legacy"])
     end
   end
+
+  describe "#start_frontend" do
+    let(:frontend_dir) { File.join(Narou.root_dir, "frontend") }
+    let(:frontend_log) { File.join(Narou.root_dir, "tmp", "logs", "narou-frontend.log") }
+
+    before do
+      # frontend ディレクトリが存在することを前提とする
+      allow(File).to receive(:directory?).with(frontend_dir).and_return(true)
+      allow(File).to receive(:exist?).with(File.join(frontend_dir, "package.json")).and_return(true)
+      allow(File).to receive(:exist?).with(anything).and_call_original
+      
+      # ProcessManager のモック
+      frontend_manager = instance_double(Narou::ProcessManager)
+      allow(frontend_manager).to receive(:register_process)
+      command.instance_variable_set(:@frontend_manager, frontend_manager)
+      
+      # OutputHelper のモック
+      allow(Command::OutputHelper).to receive(:info)
+      allow(Command::OutputHelper).to receive(:success)
+    end
+
+    it "uses STDOUT/STDERR/STDIN constants in fork block (not $stdout/$stderr/$stdin)" do
+      # fork をモックして、ブロック内のコードが STDOUT/STDERR/STDIN を使用することを確認
+      # 実際に fork を実行すると子プロセスが作成されてしまうため、モックする
+      
+      # fork が呼ばれたときにブロックを即座に実行する（子プロセスを作らない）
+      block_executed = false
+      allow(command).to receive(:fork) do |&block|
+        # ブロック内で STDOUT が使用されることを検証するため、
+        # STDOUT.reopen が呼ばれることを確認
+        expect(STDOUT).to receive(:reopen).with(frontend_log, "a")
+        expect(STDERR).to receive(:reopen).with(STDOUT)
+        expect(STDIN).to receive(:reopen).with("/dev/null")
+        expect(STDOUT).to receive(:sync=).with(true)
+        expect(STDERR).to receive(:sync=).with(true)
+        
+        # exec は実際には呼ばない（プロセスが置き換わってしまうため）
+        allow(command).to receive(:exec)
+        
+        # ブロックを実行（ただし、実際のプロセス操作はモックされている）
+        begin
+          block.call
+        rescue SystemExit
+          # exec の代わりに exit が呼ばれる可能性があるため、キャッチ
+        end
+        
+        block_executed = true
+        123 # 仮の PID を返す
+      end
+      
+      allow(Process).to receive(:detach)
+      
+      command.send(:start_frontend)
+      
+      expect(block_executed).to be true
+    end
+  end
 end

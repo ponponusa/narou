@@ -313,11 +313,15 @@ module Command
         log_dir = File.dirname(frontend_log)
         FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
 
-        $stdin.reopen("/dev/null")
-        $stdout.reopen(frontend_log, "a")
-        $stderr.reopen($stdout)
-        $stdout.sync = true
-        $stderr.sync = true
+        # 注意: この時点で親プロセスの$stdoutはNarou::Loggerに置き換わっているため、
+        # オリジナルのSTDOUT, STDERR, STDIN定数を使用する必要がある
+        # rubocop:disable Style/GlobalStdStream
+        STDIN.reopen("/dev/null")
+        STDOUT.reopen(frontend_log, "a")
+        STDERR.reopen(STDOUT)
+        STDOUT.sync = true
+        STDERR.sync = true
+        # rubocop:enable Style/GlobalStdStream
 
         # npm run dev を実行
         exec("npm", "run", "dev")

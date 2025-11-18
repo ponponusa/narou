@@ -37,6 +37,12 @@
   - `lib/command/web.rb`: `start_server` メソッドで `Narou.web = true` を設定し、Web UI モードを有効化
   - テストケースを追加: `spec/input_spec.rb`, `spec/tty_helper_spec.rb`
 
+- **フロントエンドサーバー起動時のエラーを修正**
+  - `lib/command/web.rb`: `start_frontend` メソッドの `fork` ブロック内で `STDOUT`/`STDERR`/`STDIN` 定数を使用
+  - 親プロセスで `$stdout` が `Narou::Logger` に置き換わった後に `fork` すると、子プロセスで `$stdout.reopen` がエラーになる問題を修正
+  - Rubocop の `Style/GlobalStdStream` 警告を該当箇所で無効化（コメントで理由を説明）
+  - テストケースを追加: `spec/command/web_spec.rb` に `#start_frontend` のテスト
+
 ### systemd / タスクスケジューラについて
 
 - 本バージョンではsystemdユニットファイルやWindowsタスクスケジューラの提供は行いません
