@@ -43,6 +43,12 @@
   - Rubocop の `Style/GlobalStdStream` 警告を該当箇所で無効化（コメントで理由を説明）
   - テストケースを追加: `spec/command/web_spec.rb` に `#start_frontend` のテスト
 
+- **EPUB ダウンロードリンクが機能しない問題を修正**
+  - API v2 に EPUB ダウンロードエンドポイント `GET /api/v2/novels/:id/epub` を追加
+  - デバイスに応じた拡張子（`.epub`, `.kepub.epub` など）に対応
+  - EPUB ファイルが存在しない場合は適切なエラーメッセージを返す
+  - テストケースを追加: `spec/web/api_v2_spec.rb`
+
 ### systemd / タスクスケジューラについて
 
 - 本バージョンではsystemdユニットファイルやWindowsタスクスケジューラの提供は行いません

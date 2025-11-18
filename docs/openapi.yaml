@@ -206,6 +206,56 @@ paths:
                 $ref: '#/components/schemas/NovelResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/v2/novels/{id}/epub:
+    get:
+      tags:
+        - novels
+      summary: EPUB ファイルダウンロード
+      description: |
+        指定された小説の EPUB ファイルをダウンロードします。
+        デバイス設定に応じて適切な拡張子のファイル（.epub, .kepub.epub など）を返します。
+        EPUB ファイルが存在しない場合は 404 エラーを返します。
+      operationId: downloadNovelEpub
+      parameters:
+        - $ref: '#/components/parameters/NovelId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/epub+zip:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: ダウンロードファイル名
+              schema:
+                type: string
+                example: 'attachment; filename="novel.epub"'
+        '404':
+          description: 小説が見つからない、または EPUB ファイルが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                novelNotFound:
+                  summary: 小説が見つからない
+                  value:
+                    success: false
+                    error:
+                      code: NOT_FOUND
+                      message: "Novel ID 123 not found"
+                    timestamp: "2025-11-18T00:00:00Z"
+                epubNotFound:
+                  summary: EPUB ファイルが見つからない
+                  value:
+                    success: false
+                    error:
+                      code: EPUB_NOT_FOUND
+                      message: "EPUB file not found. Please convert the novel first."
+                    timestamp: "2025-11-18T00:00:00Z"
   
   /api/v2/novels/download:
     post:
