@@ -27,6 +27,16 @@
 - `lib/command/web.rb`, `stop.rb`, `restart.rb` の出力を `OutputHelper` 経由に変更
 - フロントエンド起動処理を簡素化（フォアグラウンド実行に最適化）
 
+### バグ修正
+
+- **Web UI実行時のインタラクティブプロンプト問題を修正**
+  - Web UI経由でコマンドを実行した際に、コンソールに `**** y/N` などのインタラクティブなプロンプトが表示される問題を修正
+  - `lib/command/web.rb`: `TTYHelper.ask_yes_no` を使用してプロセス競合時の確認プロンプトを非対話モード対応に変更
+  - `lib/tty_helper.rb`: `Narou.web?` をチェックし、Web UI実行時は自動的に非対話モードにする
+  - `lib/input.rb`: `Narou::Input.confirm` でも `Narou.web?` をチェックし、Web UI実行時は `nontty_default` を返すように修正
+  - `lib/command/web.rb`: `start_server` メソッドで `Narou.web = true` を設定し、Web UI モードを有効化
+  - テストケースを追加: `spec/input_spec.rb`, `spec/tty_helper_spec.rb`
+
 ### systemd / タスクスケジューラについて
 
 - 本バージョンではsystemdユニットファイルやWindowsタスクスケジューラの提供は行いません
