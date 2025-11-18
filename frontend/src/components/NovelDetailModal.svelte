@@ -415,7 +415,13 @@
               著者
             </dt>
             <dd class="mt-1 text-base text-gray-900 dark:text-white">
-              {novel.author}
+              {#if novel.author_url}
+                <a href={novel.author_url} target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">
+                  {novel.author}
+                </a>
+              {:else}
+                {novel.author}
+              {/if}
               {#if novel.promo_tags_author}
                 <span class="text-sm text-gray-600 dark:text-gray-400">
                   (元: {novel.promo_tags_author})
@@ -429,7 +435,13 @@
               掲載サイト
             </dt>
             <dd class="mt-1 text-base text-gray-900 dark:text-white">
-              {novel.sitename}
+              {#if novel.site_top_url}
+                <a href={novel.site_top_url} target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">
+                  {novel.sitename}
+                </a>
+              {:else}
+                {novel.sitename}
+              {/if}
             </dd>
           </div>
 

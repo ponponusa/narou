@@ -942,6 +942,18 @@ class Narou::AppServer < Sinatra::Base
         promo_tags_title = data["promo_tags_title"].is_a?(Array) ? data["promo_tags_title"] : []
         promo_tags_author = data["promo_tags_author"].is_a?(Array) ? data["promo_tags_author"] : []
         author_url = data["author_url"]
+        
+        # サイトトップURLを生成（toc_urlから）
+        toc_url = data["toc_url"]
+        site_top_url = nil
+        if toc_url
+          begin
+            uri = URI.parse(toc_url)
+            site_top_url = "#{uri.scheme}://#{uri.host}/"
+          rescue URI::InvalidURIError
+            # URL解析に失敗した場合はnil
+          end
+        end
 
         # 軽量モードではタグ処理を簡素化（表示のみ）
         tags_html = if lightweight_mode
@@ -1003,6 +1015,7 @@ class Narou::AppServer < Sinatra::Base
           promo_tags_author: promo_tags_author,
           promo_tags_text: promo_tags.join(" "),
           author_url: author_url,
+          site_top_url: site_top_url,
           actions: "",  # アクションボタンはJavaScript側で動的に生成
           frozen: is_frozen,
           new_arrivals_date: data["new_arrivals_date"].tap { |m| break m.to_i if m },

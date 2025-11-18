@@ -1684,8 +1684,24 @@
                     {/if}
                   </div>
                 </td>
-                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{novel.author}</td>
-                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{novel.sitename}</td>
+                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  {#if novel.author_url}
+                    <a href={novel.author_url} target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">
+                      {novel.author}
+                    </a>
+                  {:else}
+                    {novel.author}
+                  {/if}
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  {#if novel.site_top_url}
+                    <a href={novel.site_top_url} target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">
+                      {novel.sitename}
+                    </a>
+                  {:else}
+                    {novel.sitename}
+                  {/if}
+                </td>
                 {#if columnVisibility.status}
                 <td class="px-4 py-3 text-sm">
                   <div class="flex flex-wrap gap-1">

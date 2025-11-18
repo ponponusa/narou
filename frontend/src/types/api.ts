@@ -22,7 +22,9 @@ export interface Novel {
   id: number;
   title: string;
   author: string;
+  author_url?: string;     // 著者ページURL
   sitename: string;
+  site_top_url?: string;   // サイトトップURL
   status: string;
   story?: string;          // あらすじ
   frozen: boolean;

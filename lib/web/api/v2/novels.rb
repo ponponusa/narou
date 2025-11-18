@@ -67,12 +67,23 @@ module Narou
             data = database[id]
             
             if data
-              # タグ情報を配列に変換
-              tags = data["tags"] || []
-              novel_data = data.dup
-              novel_data["tags"] = tags
-              
-              json success_response(novel_data)
+            # タグ情報を配列に変換
+            tags = data["tags"] || []
+            novel_data = data.dup
+            novel_data["tags"] = tags
+            
+            # サイトトップURLを生成（toc_urlから）
+            toc_url = data["toc_url"]
+            if toc_url
+              begin
+                uri = URI.parse(toc_url)
+                novel_data["site_top_url"] = "#{uri.scheme}://#{uri.host}/"
+              rescue URI::InvalidURIError
+                # URL解析に失敗した場合はnil
+              end
+            end
+            
+            json success_response(novel_data)
             else
               status 404
               json error_response('NOT_FOUND', "Novel ID #{id} not found")

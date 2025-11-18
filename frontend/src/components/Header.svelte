@@ -84,15 +84,6 @@
         
         <!-- 接続状態インジケーター -->
         <div class="flex items-baseline gap-6 mx-4">
-          <!-- PushServer状態 -->
-          <div class="flex items-baseline gap-1.5">
-            <i 
-              class="fas fa-server text-xs {isConnected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}"
-              title={isConnected ? 'PushServer接続中' : 'PushServer未接続'}
-            ></i>
-            <span class="text-xs text-gray-600 dark:text-gray-400">Push</span>
-          </div>
-          
           <!-- AozoraEpub3設定状態 -->
           {#if hasAozoraEpub3 !== null}
             <div class="flex items-baseline gap-1.5">
