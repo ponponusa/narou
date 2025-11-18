@@ -12,6 +12,21 @@
 
 ### 新機能
 
+- **タスクキュー管理機能の大幅強化**
+  - **一時停止・再開機能**: 実行中またはキュー待ちのタスクを一時停止し、後で再開可能
+  - **進捗トラッキング**: タスクの進捗率（0-100%）、総ステップ数、現在のステップ数を管理・表示
+  - **個別タスク操作**: タスクごとにキャンセル、一時停止、再開が可能
+  - **タスクキュー専用ページ**: `/tasks` でタスクの詳細一覧を表示
+    - フィルタリング機能（ステータス別）
+    - ソート機能（作成日時、開始日時、ステータス）
+    - ページング機能（1ページ20件、最大数千件対応）
+    - リアルタイム更新（5秒ポーリング + PushServer通知）
+  - **API v2 拡張**:
+    - `POST /api/v2/tasks/:id/cancel` - タスクをキャンセル
+    - `POST /api/v2/tasks/:id/pause` - タスクを一時停止
+    - `POST /api/v2/tasks/:id/resume` - タスクを再開
+  - **バグ修正**: `notification_task_updated` の `NameError` を修正（`get_tasks_summary` → `get_tasks_summary_impl`）
+
 - **TUI（Text User Interface）強化**
   - `tty-markdown`, `tty-spinner`, `tty-box`, `tty-prompt` を導入
   - CLI出力をMarkdown形式で見やすく表示

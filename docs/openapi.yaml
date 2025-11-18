@@ -34,6 +34,8 @@ tags:
     description: システム管理 API
   - name: novels
     description: 小説管理 API
+  - name: tasks
+    description: タスク管理 API
   - name: tags
     description: タグ管理 API
   - name: settings
@@ -120,6 +122,265 @@ paths:
                   uptime_seconds: 3600
                 meta:
                   timestamp: "2025-11-11T00:00:00Z"
+  
+  # ========================================
+  # Tasks API
+  # ========================================
+  
+  /api/v2/tasks:
+    get:
+      tags:
+        - tasks
+      summary: タスク一覧取得
+      description: |
+        サーバーで管理されているタスクの一覧を取得します。
+        ステータスでフィルタリング可能。
+      operationId: getTasks
+      parameters:
+        - name: status
+          in: query
+          description: タスクステータスでフィルタ
+          schema:
+            type: string
+            enum: [queued, running, paused, completed, failed, canceled]
+        - name: limit
+          in: query
+          description: 取得する最大件数
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      tasks:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Task'
+                      count:
+                        type: integer
+                        example: 5
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/v2/tasks/summary:
+    get:
+      tags:
+        - tasks
+      summary: タスクサマリー取得
+      description: |
+        実行中タスク、キュー待ちタスク、最近の完了・失敗タスクのサマリーを取得します。
+      operationId: getTasksSummary
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/TaskSummary'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/v2/tasks/{id}:
+    get:
+      tags:
+        - tasks
+      summary: タスク詳細取得
+      description: 特定のタスクの詳細情報を取得します。
+      operationId: getTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: タスクID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '404':
+          description: タスクが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/v2/tasks/{id}/cancel:
+    post:
+      tags:
+        - tasks
+      summary: タスクをキャンセル
+      description: 実行中またはキュー待ちのタスクをキャンセルします。
+      operationId: cancelTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: タスクID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Task canceled
+        '400':
+          description: タスクをキャンセルできない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/v2/tasks/{id}/pause:
+    post:
+      tags:
+        - tasks
+      summary: タスクを一時停止
+      description: 実行中またはキュー待ちのタスクを一時停止します。
+      operationId: pauseTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: タスクID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Task paused
+        '400':
+          description: タスクを一時停止できない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/v2/tasks/{id}/resume:
+    post:
+      tags:
+        - tasks
+      summary: タスクを再開
+      description: 一時停止中のタスクを再開します。
+      operationId: resumeTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: タスクID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Task resumed
+        '400':
+          description: タスクを再開できない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   
   # ========================================
   # Novels API
@@ -781,6 +1042,123 @@ components:
         status:
           type: string
           enum: [queued, running, completed, failed]
+    
+    # Task Schemas
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: タスクID
+        type:
+          type: string
+          enum: [download, convert, update, remove]
+          description: タスクタイプ
+        novel_id:
+          type: integer
+          description: 小説ID（該当する場合）
+        novel_title:
+          type: string
+          description: 小説タイトル（該当する場合）
+        novel_author:
+          type: string
+          description: 小説著者（該当する場合）
+        status:
+          type: string
+          enum: [queued, running, paused, completed, failed, canceled]
+          description: タスクステータス
+        message:
+          type: string
+          description: タスクのメッセージ
+        created_at:
+          type: string
+          format: date-time
+          description: タスク作成日時
+        started_at:
+          type: string
+          format: date-time
+          description: タスク開始日時
+        paused_at:
+          type: string
+          format: date-time
+          description: タスク一時停止日時
+        completed_at:
+          type: string
+          format: date-time
+          description: タスク完了日時
+        elapsed_time:
+          type: number
+          format: float
+          description: 経過時間（秒）
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            class:
+              type: string
+            backtrace:
+              type: array
+              items:
+                type: string
+          description: エラー情報（失敗時）
+        retry_count:
+          type: integer
+          description: 再試行回数
+        max_retries:
+          type: integer
+          description: 最大再試行回数
+        progress:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          description: 進捗率（0-100%）
+        total_steps:
+          type: integer
+          description: 総ステップ数
+        current_step:
+          type: integer
+          description: 現在のステップ数
+      example:
+        id: "550e8400-e29b-41d4-a716-446655440000"
+        type: download
+        novel_id: 1
+        novel_title: "サンプル小説"
+        novel_author: "サンプル作者"
+        status: running
+        message: "ダウンロード中..."
+        created_at: "2025-11-18T10:00:00Z"
+        started_at: "2025-11-18T10:00:05Z"
+        elapsed_time: 15.5
+        retry_count: 0
+        max_retries: 3
+        progress: 45.5
+        total_steps: 100
+        current_step: 45
+    
+    TaskSummary:
+      type: object
+      properties:
+        current:
+          $ref: '#/components/schemas/Task'
+          description: 現在実行中のタスク
+        queued:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: キュー待ちタスク一覧
+        recent_completed:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: 最近完了したタスク一覧（最大10件）
+        recent_failed:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: 最近失敗したタスク一覧（最大10件）
     
     # Novel Schemas
     Novel:
