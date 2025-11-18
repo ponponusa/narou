@@ -247,13 +247,12 @@
     // PushServer通知を購読
     const pushServer = getPushServer();
     if (pushServer) {
-      const listener = (data: EchoMessage) => {
-        if ('notification.task.updated' in data) {
-          fetchTasks();
-        }
+      const listener = (data: any) => {
+        // notification.task.updated イベントをリッスン
+        fetchTasks();
       };
-      pushServer.addListener(listener);
-      pushServerUnsubscribe = () => pushServer.removeListener(listener);
+      pushServer.on('notification.task.updated', listener);
+      pushServerUnsubscribe = () => pushServer.off('notification.task.updated', listener);
     }
   });
 
