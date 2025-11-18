@@ -179,21 +179,21 @@ module Narou
           # 凍結トグル
           post '/api/v2/novels/freeze' do
             set_cors_headers
-            
+
             body = parse_json_body
             ids = validate_ids(body['ids'])
-            
+
             unless ids
               status 400
               return json error_response('INVALID_PARAMS', 'Valid novel IDs are required')
             end
-            
+
             begin
               Narou::WebWorker.push do
                 CommandLine.run!('freeze', '--on', ids)
                 Narou::AppServer.clear_all_cache
               end
-              
+
               json success_response(
                 { ids: ids, count: ids.length },
                 message: 'Freeze toggled'
@@ -201,6 +201,37 @@ module Narou
             rescue StandardError => e
               status 500
               json error_response('FREEZE_ERROR', e.message)
+            end
+          end
+
+          # GET /api/v2/novels/:id/epub
+          # EPUB ファイルダウンロード
+          get '/api/v2/novels/:id/epub' do
+            set_cors_headers
+
+            id = params['id'].to_i
+            database = Database.instance
+            data = database[id]
+
+            unless data
+              status 404
+              return json error_response('NOT_FOUND', "Novel ID #{id} not found")
+            end
+
+            # デバイスに応じた拡張子を取得
+            device = Narou.get_device
+            ext = device ? device.ebook_file_ext : ".epub"
+            paths = Narou.get_ebook_file_paths(id, ext)
+
+            if !paths.empty? && File.exist?(paths[0])
+              # ファイル名を "[著者名] タイトル.拡張子" の形式にする
+              author = data["author"] || "Unknown"
+              title = data["title"] || "Untitled"
+              filename = "[#{author}] #{title}#{ext}"
+              send_file(paths[0], filename: filename, type: "application/epub+zip")
+            else
+              status 404
+              json error_response('EPUB_NOT_FOUND', 'EPUB file not found. Please convert the novel first.')
             end
           end
         end

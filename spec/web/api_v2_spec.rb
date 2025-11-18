@@ -673,4 +673,102 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response.headers["access-control-allow-origin"]).to eq("*")
     end
   end
+
+  describe "GET /api/v2/novels/:id/epub" do
+    let(:novel_id) { 1 }
+    let(:epub_path) { "/tmp/test_novel.epub" }
+
+    before do
+      # データベースのモック
+      database = instance_double(Database)
+      allow(Database).to receive(:instance).and_return(database)
+      allow(database).to receive(:[]).with(novel_id).and_return({
+        "id" => novel_id,
+        "title" => "Test Novel",
+        "author" => "Test Author"
+      })
+      allow(database).to receive(:[]).with(9999).and_return(nil)
+    end
+
+    context "when EPUB file exists" do
+      before do
+        # デバイスとEPUBパスのモック
+        allow(Narou).to receive(:get_device).and_return(nil)
+        allow(Narou).to receive(:get_ebook_file_paths).with(novel_id, ".epub").and_return([epub_path])
+        allow(File).to receive(:exist?).with(epub_path).and_return(true)
+      end
+
+      it "returns EPUB file with formatted filename" do
+        # send_file の呼び出しを検証するために、モックを設定
+        received_filename = nil
+        allow_any_instance_of(Sinatra::Base).to receive(:send_file) do |_instance, path, options|
+          received_filename = options[:filename]
+        end
+
+        get "/api/v2/novels/#{novel_id}/epub"
+
+        expect(last_response).to be_ok
+        # send_file が呼ばれたことを確認
+        expect(Narou).to have_received(:get_ebook_file_paths).with(novel_id, ".epub")
+        
+        # ファイル名が "[著者名] タイトル.拡張子" の形式になっていることを確認
+        expect(received_filename).to eq("[Test Author] Test Novel.epub")
+      end
+    end
+
+    context "when EPUB file does not exist" do
+      before do
+        allow(Narou).to receive(:get_device).and_return(nil)
+        allow(Narou).to receive(:get_ebook_file_paths).with(novel_id, ".epub").and_return([epub_path])
+        allow(File).to receive(:exist?).with(epub_path).and_return(false)
+      end
+
+      it "returns 404 error" do
+        get "/api/v2/novels/#{novel_id}/epub"
+
+        expect(last_response.status).to eq(404)
+        expect(json_response["success"]).to be false
+        expect(json_response["error"]["code"]).to eq("EPUB_NOT_FOUND")
+      end
+    end
+
+    context "when novel does not exist" do
+      it "returns 404 error" do
+        get "/api/v2/novels/9999/epub"
+
+        expect(last_response.status).to eq(404)
+        expect(json_response["success"]).to be false
+        expect(json_response["error"]["code"]).to eq("NOT_FOUND")
+      end
+    end
+
+    context "with Kobo device (.kepub.epub)" do
+      let(:kepub_path) { "/tmp/test_novel.kepub.epub" }
+
+      before do
+        # Device インスタンスをモック
+        kobo_device = instance_double(Device, ebook_file_ext: ".kepub.epub")
+        allow(Narou).to receive(:get_device).and_return(kobo_device)
+        allow(Narou).to receive(:get_ebook_file_paths).with(novel_id, ".kepub.epub").and_return([kepub_path])
+        allow(File).to receive(:exist?).with(kepub_path).and_return(true)
+      end
+
+      it "returns Kobo EPUB file with formatted filename" do
+        # send_file の呼び出しを検証するために、モックを設定
+        received_filename = nil
+        allow_any_instance_of(Sinatra::Base).to receive(:send_file) do |_instance, path, options|
+          received_filename = options[:filename]
+        end
+
+        get "/api/v2/novels/#{novel_id}/epub"
+
+        expect(last_response).to be_ok
+        # Kobo用の拡張子でファイルパスが取得されたことを確認
+        expect(Narou).to have_received(:get_ebook_file_paths).with(novel_id, ".kepub.epub")
+        
+        # ファイル名が "[著者名] タイトル.kepub.epub" の形式になっていることを確認
+        expect(received_filename).to eq("[Test Author] Test Novel.kepub.epub")
+      end
+    end
+  end
 end
