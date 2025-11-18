@@ -270,6 +270,9 @@ module Narou
     end
 
     def cancel_task_impl(task_id)
+      result = nil
+      should_notify = false
+      
       @mutex.synchronize do
         task = @tasks[task_id]
         return { success: false, message: "Task not found" } unless task
@@ -278,24 +281,27 @@ module Narou
           # キュー待ちの場合は即座にキャンセル
           task.cancel!("ユーザーによりキャンセルされました")
           move_to_history(task)
-          notification_task_updated
-          return { success: true, message: "Task canceled" }
+          should_notify = true
+          result = { success: true, message: "Task canceled" }
         elsif task.running? && task == @current_task
           # 実行中のタスクの場合は中断シグナルを送る
           task.cancel!("ユーザーによりキャンセルされました")
           @thread_of_block_executing&.raise(Interrupt)
-          notification_task_updated
-          return { success: true, message: "Task cancellation requested" }
+          should_notify = true
+          result = { success: true, message: "Task cancellation requested" }
         elsif task.paused?
           # 一時停止中の場合はキャンセル
           task.cancel!("ユーザーによりキャンセルされました")
           move_to_history(task)
-          notification_task_updated
-          return { success: true, message: "Task canceled" }
+          should_notify = true
+          result = { success: true, message: "Task canceled" }
         else
-          return { success: false, message: "Task cannot be canceled in current state" }
+          result = { success: false, message: "Task cannot be canceled in current state" }
         end
       end
+      
+      notification_task_updated if should_notify
+      result
     end
 
     #
@@ -306,18 +312,24 @@ module Narou
     end
 
     def pause_task_impl(task_id)
+      result = nil
+      should_notify = false
+      
       @mutex.synchronize do
         task = @tasks[task_id]
         return { success: false, message: "Task not found" } unless task
         
         if task.running? || task.queued?
           task.pause!("ユーザーにより一時停止されました")
-          notification_task_updated
-          return { success: true, message: "Task paused" }
+          should_notify = true
+          result = { success: true, message: "Task paused" }
         else
-          return { success: false, message: "Task cannot be paused in current state" }
+          result = { success: false, message: "Task cannot be paused in current state" }
         end
       end
+      
+      notification_task_updated if should_notify
+      result
     end
 
     #
@@ -328,18 +340,24 @@ module Narou
     end
 
     def resume_task_impl(task_id)
+      result = nil
+      should_notify = false
+      
       @mutex.synchronize do
         task = @tasks[task_id]
         return { success: false, message: "Task not found" } unless task
         
         if task.paused?
           task.resume!("ユーザーにより再開されました")
-          notification_task_updated
-          return { success: true, message: "Task resumed" }
+          should_notify = true
+          result = { success: true, message: "Task resumed" }
         else
-          return { success: false, message: "Task is not paused" }
+          result = { success: false, message: "Task is not paused" }
         end
       end
+      
+      notification_task_updated if should_notify
+      result
     end
 
     #
