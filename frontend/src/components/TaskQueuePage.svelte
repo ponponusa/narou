@@ -121,7 +121,7 @@
   /**
    * ページ数を計算
    */
-  $derived totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+  let totalPages = $derived(Math.ceil(filteredTasks.length / itemsPerPage));
 
   /**
    * フィルタ変更時
@@ -247,11 +247,13 @@
     // PushServer通知を購読
     const pushServer = getPushServer();
     if (pushServer) {
-      pushServerUnsubscribe = pushServer.subscribe((data: EchoMessage) => {
-        if (data['notification.task.updated']) {
+      const listener = (data: EchoMessage) => {
+        if ('notification.task.updated' in data) {
           fetchTasks();
         }
-      });
+      };
+      pushServer.addListener(listener);
+      pushServerUnsubscribe = () => pushServer.removeListener(listener);
     }
   });
 
@@ -318,10 +320,11 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <!-- ステータスフィルタ -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label for="status-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           ステータス
         </label>
         <select
+          id="status-filter"
           bind:value={statusFilter}
           onchange={handleFilterChange}
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -338,10 +341,11 @@
 
       <!-- ソート項目 -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label for="sort-by" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           ソート
         </label>
         <select
+          id="sort-by"
           bind:value={sortBy}
           onchange={handleSortChange}
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -354,10 +358,11 @@
 
       <!-- ソート順 -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label for="sort-order" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           順序
         </label>
         <select
+          id="sort-order"
           bind:value={sortOrder}
           onchange={handleSortChange}
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
