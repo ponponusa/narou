@@ -28,6 +28,7 @@ module Command
           narou-mod web -p 4567                   # ポート4567で起動
           narou-mod web --open-browser            # ブラウザを自動で開く
           narou-mod web --log-file app.log        # ログをファイルに出力
+          narou-mod web --verbose                 # CLI側に詳細ログを出力
 
         Options:
       HELP
@@ -42,6 +43,9 @@ module Command
       }
       @opt.on("--log-file FILE", "ログをファイルに出力（デフォルト: 標準出力）") { |file|
         @options["log-file"] = file
+      }
+      @opt.on("-v", "--verbose", "CLI側に詳細ログを出力（デフォルト: Web UIコンソールのみ）") {
+        @options["verbose"] = true
       }
       @opt.on("-l", "--legacy", "旧 Haml UI を使用する (デフォルトは新 Astro UI)") {
         @options["legacy"] = true
@@ -369,9 +373,10 @@ module Command
 
       # StreamingLoggerを設定（標準出力をPushServerに送信）
       require_relative "../web/streaminglogger"
-      $stdout = Narou::StreamingLogger.new(push_server)
+      verbose = @options["verbose"] || false
+      $stdout = Narou::StreamingLogger.new(push_server, $stdout, verbose: verbose)
       $stdout2 = if Inventory.load["concurrency"]
-                   Narou::StreamingLogger.new(push_server, $stdout2, target_console: "stdout2")
+                   Narou::StreamingLogger.new(push_server, $stdout2, target_console: "stdout2", verbose: verbose)
                  else
                    $stdout
                  end

@@ -122,6 +122,11 @@ RSpec.describe Command::Web do
       expect(command.instance_variable_get(:@options)["log-file"]).to eq("custom.log")
     end
 
+    it "parses --verbose option" do
+      command.execute(["--internal-boot", "--verbose", "--no-browser"])
+      expect(command.instance_variable_get(:@options)["verbose"]).to be true
+    end
+
     it "parses --legacy option" do
       web_legacy = instance_double(Command::WebLegacy)
       allow(Command::WebLegacy).to receive(:new).and_return(web_legacy)
