@@ -219,7 +219,12 @@ class Narou::AppServer < Sinatra::Base
 
   def puts_hello_messages
     # バージョン情報は履歴に保存しない（STDERRに出力）
-    STDERR.puts "<white>Narou.rb MOD version #{Narou::VERSION}</white>".termcolor
+    # Web UI モードでは $stdout 経由で出力（StreamingLogger が制御）
+    if Narou.web?
+      $stdout.puts "<white>Narou.rb MOD version #{Narou::VERSION}</white>".termcolor
+    else
+      STDERR.puts "<white>Narou.rb MOD version #{Narou::VERSION}</white>".termcolor
+    end
   end
 
   def start_device_ejectable_event

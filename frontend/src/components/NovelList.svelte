@@ -807,11 +807,38 @@
       processingNovelIds.add(novelId);
       processingNovelIds = new Set(processingNovelIds);
       
-      const blob = await downloadEpub(novelId);
+      const downloadUrl = `http://localhost:5678/api/v2/novels/${novelId}/epub`;
+      const response = await fetch(downloadUrl);
+      
+      if (!response.ok) {
+        toast?.show('EPUBのダウンロードに失敗しました', 'error');
+        return;
+      }
+
+      // Content-Dispositionヘッダーからファイル名を取得
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `novel_${novelId}.epub`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (filenameMatch) {
+          // RFC 5987形式のデコード
+          filename = decodeURIComponent(filenameMatch[1]);
+        } else {
+          // 通常のfilename形式も試す
+          const normalMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+          if (normalMatch) {
+            filename = normalMatch[1];
+          }
+        }
+      }
+
+      // Blobとしてダウンロード
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `novel_${novelId}.epub`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

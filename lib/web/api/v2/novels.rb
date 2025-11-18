@@ -228,7 +228,14 @@ module Narou
               author = data["author"] || "Unknown"
               title = data["title"] || "Untitled"
               filename = "[#{author}] #{title}#{ext}"
-              send_file(paths[0], filename: filename, type: "application/epub+zip")
+              
+              # UTF-8ファイル名をRFC 5987形式でエンコード
+              encoded_filename = CGI.escape(filename).gsub('+', '%20')
+              
+              # Content-Dispositionヘッダーを明示的に設定
+              content_type "application/epub+zip"
+              headers "Content-Disposition" => "attachment; filename*=UTF-8''#{encoded_filename}"
+              send_file(paths[0])
             else
               status 404
               json error_response('EPUB_NOT_FOUND', 'EPUB file not found. Please convert the novel first.')

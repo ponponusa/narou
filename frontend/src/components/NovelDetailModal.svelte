@@ -97,19 +97,50 @@
   /**
    * EPUBダウンロード
    */
-  function handleDownloadEpub() {
+  async function handleDownloadEpub() {
     if (!novel) return;
 
-    const filename = `${novel.title}.epub`;
-    const downloadUrl = `http://localhost:5678/novels/${novel.id}/download`;
+    try {
+      const downloadUrl = `http://localhost:5678/api/v2/novels/${novel.id}/epub`;
+      const response = await fetch(downloadUrl);
+      
+      if (!response.ok) {
+        toast?.show(`EPUBダウンロードに失敗しました`, "error");
+        return;
+      }
 
-    // ダウンロード用のリンクを生成してクリック
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.download = filename;
-    link.click();
+      // Content-Dispositionヘッダーからファイル名を取得
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `${novel.title}.epub`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (filenameMatch) {
+          // RFC 5987形式のデコード
+          filename = decodeURIComponent(filenameMatch[1]);
+        } else {
+          // 通常のfilename形式も試す
+          const normalMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+          if (normalMatch) {
+            filename = normalMatch[1];
+          }
+        }
+      }
 
-    toast?.show(`${novel.title} のEPUBダウンロードを開始しました`, "info");
+      // Blobとしてダウンロード
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      toast?.show(`${novel.title} のEPUBダウンロードを開始しました`, "info");
+    } catch (error) {
+      console.error("EPUB download error:", error);
+      toast?.show(`EPUBダウンロードに失敗しました`, "error");
+    }
   }
 
   /**

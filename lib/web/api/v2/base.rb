@@ -47,6 +47,7 @@ module Narou
         headers['Access-Control-Allow-Origin'] = '*'
         headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
         headers['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization'
+        headers['Access-Control-Expose-Headers'] = 'Content-Disposition'
         headers['Access-Control-Max-Age'] = '86400'
       end
 
