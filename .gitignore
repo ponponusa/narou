@@ -40,6 +40,7 @@ mail_setting.yaml
 .agent/
 commitversion
 frontend/public/backend-port.json
+rsync.env
 
 #
 # for gem
