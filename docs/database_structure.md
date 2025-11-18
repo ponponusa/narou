@@ -46,9 +46,10 @@ Narou.rb MOD は、ローカルファイルシステム上に YAML 形式でデ�
 
 | フィールド名 | 型 | 必須 | 説明 |
 |------------|-----|------|------|
-| `tags` | Array<String> | - | ユーザー定義タグ + 自動タグ（例: `["end", "404", "modified"]`） |
+| `tags` | `Array<String>` | - | ユーザー定義タグ + 自動タグ（例: `["end", "404", "modified"]`） |
 
 **自動タグの種類**:
+
 - `end`: 完結済み
 - `404`: 削除済み/非公開
 - `modified`: ユーザーが手動で編集
@@ -83,7 +84,7 @@ Narou.rb MOD は、ローカルファイルシステム上に YAML 形式でデ�
 | `title_original` | String | - | プロモタグ除去前の元タイトル |
 | `title_raw_latest` | String | - | 最新の生タイトル |
 | `author_original` | String | - | プロモタグ除去前の元作者名 |
-| `promo_tags` | Array<String> | - | 抽出されたプロモタグリスト |
+| `promo_tags` | `Array<String>` | - | 抽出されたプロモタグリスト |
 | `promo_tags_title` | String | - | タイトルから抽出されたプロモタグ |
 | `promo_tags_author` | String | - | 作者名から抽出されたプロモタグ |
 | `info` | Hash | - | サイトAPIから取得した生の情報 |

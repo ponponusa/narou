@@ -105,18 +105,46 @@ module Narou
             end
             
             begin
-              Narou::WebWorker.push do
-                if force
-                  CommandLine.run!('download', '--force', targets)
-                else
-                  CommandLine.run!('download', targets)
+              task_ids = targets.map do |target|
+                # target が小説IDの場合、タイトルと作者を取得
+                novel_id = nil
+                novel_title = nil
+                novel_author = nil
+                
+                if target.is_a?(Integer) || target.to_s.match?(/^\d+$/)
+                  data = Database.instance[target.to_i]
+                  if data
+                    novel_id = data["id"]
+                    novel_title = data["title"]
+                    novel_author = data["author"]
+                  end
                 end
-                Narou::AppServer.clear_all_cache
-                @@push_server.send_all(:'table.reload') if defined?(@@push_server)
+                
+                # タスクを作成
+                task = Narou::Task.new(
+                  type: :download,
+                  novel_id: novel_id,
+                  novel_title: novel_title || target,
+                  novel_author: novel_author,
+                  max_retries: 0
+                )
+                
+                # タスクをキューに追加
+                Narou::WebWorker.push_task(task) do
+                  if force
+                    CommandLine.run!('download', '--force', target)
+                  else
+                    CommandLine.run!('download', target)
+                  end
+                  Narou::AppServer.clear_all_cache
+                  @@push_server.send_all(:'table.reload') if defined?(@@push_server)
+                end
+                
+                task.id
               end
               
               json success_response(
-                { targets: targets, force: force },
+                { targets: targets, force: force, task_ids: task_ids },
                 message: 'Download started'
               )
             rescue StandardError => e
@@ -139,13 +167,29 @@ module Narou
             end
             
             begin
-              Narou::WebWorker.push do
-                CommandLine.run!('convert', '--no-open', ids)
-                Narou::AppServer.clear_all_cache
+              task_ids = ids.map do |id|
+                data = Database.instance[id.to_i]
+                
+                # タスクを作成
+                task = Narou::Task.new(
+                  type: :convert,
+                  novel_id: data ? data["id"] : id.to_i,
+                  novel_title: data ? data["title"] : "ID: #{id}",
+                  novel_author: data ? data["author"] : nil,
+                  max_retries: 0
+                )
+                
+                # タスクをキューに追加
+                Narou::WebWorker.push_task(task) do
+                  CommandLine.run!('convert', '--no-open', id)
+                  Narou::AppServer.clear_all_cache
+                end
+                
+                task.id
               end
               
               json success_response(
-                { ids: ids, count: ids.length },
+                { ids: ids, count: ids.length, task_ids: task_ids },
                 message: 'Convert started'
               )
             rescue StandardError => e

@@ -6,6 +6,7 @@
 
 require "singleton"
 require_relative "pushserver"
+require_relative "task"
 require_relative "../mixin/all"
 
 module Narou
@@ -14,6 +15,9 @@ module Narou
     include Mixin::OutputError
 
     attr_reader :size
+
+    # タスク履歴の最大保持数
+    MAX_TASK_HISTORY = 100
 
     def self.run
       instance.start
@@ -26,6 +30,11 @@ module Narou
       @worker_thread = nil
       @cancel_signal = false
       @thread_of_block_executing = nil
+      
+      # タスク管理用
+      @tasks = {}                    # task_id => Task
+      @current_task = nil            # 現在実行中のTask
+      @task_history = []             # 完了したタスクの履歴
     end
 
     def running?
@@ -38,24 +47,61 @@ module Narou
         loop do
           begin
             q = @queue.pop
+            task = q[:task]
+            
             if canceled?
               @queue.clear
               @cancel_signal = false
+              # キューに残っているタスクをすべてキャンセル
+              @mutex.synchronize do
+                @tasks.each_value do |t|
+                  t.cancel! if t.queued?
+                end
+              end
             else
+              # タスクを実行中状態にする
+              @mutex.synchronize do
+                @current_task = task
+              end
+              task.start! if task
+              
+              # ブロックを実行
               @thread_of_block_executing = Thread.new do
                 q[:block].call
               end
               @thread_of_block_executing.join
               @thread_of_block_executing = nil
+              
+              # タスクを完了状態にする
+              task.complete! if task
+              @mutex.synchronize do
+                move_to_history(task) if task
+                @current_task = nil
+              end
+            end
+          rescue Interrupt
+            # タスクをキャンセル状態にする
+            task&.cancel!("中断されました")
+            @mutex.synchronize do
+              move_to_history(task) if task
+              @current_task = nil
             end
           rescue SystemExit
+            # 正常終了
           rescue Exception => e
             # WebWorkerスレッド内での例外は表示するだけしてスレッドは生かしたままにする
             output_error($stdout, e)
+            # タスクを失敗状態にする
+            task&.fail!(e.message, e)
+            @mutex.synchronize do
+              move_to_history(task) if task
+              @current_task = nil
+            end
           ensure
             if q && q[:counting]
               countdown
             end
+            notification_task_updated if task
           end
         end
       end
@@ -71,6 +117,8 @@ module Narou
           @cancel_signal = true
           @size = 0
           @thread_of_block_executing&.raise(Interrupt)
+          # 現在実行中のタスクをキャンセル
+          @current_task&.cancel!("ユーザーによりキャンセルされました")
         end
       end
       Thread.pass
@@ -104,9 +152,33 @@ module Narou
       instance.push(&block)
     end
 
+    #
+    # タスクを追加（新しいAPI）
+    #
+    def self.push_task(task, &block)
+      instance.push_task_impl(task, &block)
+    end
+
+    def push_task_impl(task, &block)
+      raise ArgumentError, "Task must be a Narou::Task" unless task.is_a?(Narou::Task)
+      
+      @mutex.synchronize do
+        @tasks[task.id] = task
+      end
+      
+      countup
+      @queue.push(block: block, counting: true, task: task)
+      
+      notification_task_updated
+      task.id
+    end
+
+    #
+    # 後方互換性のための従来のpushメソッド
+    #
     def push(counting = true, &block)
       countup if counting
-      @queue.push(block: block, counting: counting)
+      @queue.push(block: block, counting: counting, task: nil)
     end
 
     def notification_queue
@@ -114,6 +186,16 @@ module Narou
       return unless push_server
       
       push_server.send_all("notification.queue" => [@size, Narou::Worker.size])
+    end
+
+    #
+    # タスク更新通知
+    #
+    def notification_task_updated
+      push_server = Narou::AppServer.push_server
+      return unless push_server
+      
+      push_server.send_all("notification.task.updated" => get_tasks_summary)
     end
 
     def countup
@@ -129,6 +211,67 @@ module Narou
         @size = 0 if @size < 0
         notification_queue
       end
+    end
+
+    #
+    # タスク一覧を取得
+    #
+    def self.get_tasks(status: nil, limit: nil)
+      instance.get_tasks_impl(status: status, limit: limit)
+    end
+
+    def get_tasks_impl(status: nil, limit: nil)
+      @mutex.synchronize do
+        tasks = @tasks.values + @task_history
+        tasks = tasks.select { |t| t.status == status.to_sym } if status
+        tasks = tasks.sort_by(&:created_at).reverse
+        tasks = tasks.first(limit) if limit
+        tasks.map(&:to_h)
+      end
+    end
+
+    #
+    # タスクサマリーを取得
+    #
+    def self.get_tasks_summary
+      instance.get_tasks_summary_impl
+    end
+
+    def get_tasks_summary_impl
+      @mutex.synchronize do
+        {
+          current: @current_task&.to_h,
+          queued: @tasks.values.select(&:queued?).map(&:to_h),
+          recent_completed: @task_history.select { |t| t.status == :completed }.first(10).map(&:to_h),
+          recent_failed: @task_history.select { |t| t.status == :failed }.first(10).map(&:to_h)
+        }
+      end
+    end
+
+    #
+    # 特定のタスクを取得
+    #
+    def self.get_task(task_id)
+      instance.get_task_impl(task_id)
+    end
+
+    def get_task_impl(task_id)
+      @mutex.synchronize do
+        task = @tasks[task_id] || @task_history.find { |t| t.id == task_id }
+        task&.to_h
+      end
+    end
+
+    #
+    # タスクを履歴に移動
+    #
+    private
+
+    def move_to_history(task)
+      @tasks.delete(task.id)
+      @task_history.unshift(task)
+      # 履歴の上限を超えたら古いものを削除
+      @task_history = @task_history.first(MAX_TASK_HISTORY) if @task_history.size > MAX_TASK_HISTORY
     end
   end
 end

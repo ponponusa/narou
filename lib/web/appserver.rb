@@ -39,6 +39,7 @@ require_relative "api/v2/novel_settings"
 require_relative "api/v2/system"
 require_relative "api/v2/tags"
 require_relative "api/v2/settings"
+require_relative "api/v2/tasks"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -89,6 +90,7 @@ class Narou::AppServer < Sinatra::Base
   Narou::ApiV2::System.register(self)
   Narou::ApiV2::Tags.register(self)
   Narou::ApiV2::Settings.register(self)
+  Narou::ApiV2::Tasks.register(self)
 
   # Swagger UI と OpenAPI 仕様書のエンドポイント
   get "/api/docs" do
