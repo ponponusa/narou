@@ -104,8 +104,9 @@
         <!-- ロゴ（クリック可能） -->
         <a
           href="/"
-          class="flex items-baseline space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+          class="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
         >
+          <img src="/logo_icon.svg" alt="Narou.rb MOD Logo" class="w-5 h-5" />
           <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400" style="font-family: 'Stack Sans Headline', sans-serif; font-optical-sizing: auto; font-weight: 700;">
             Narou.rb MOD
             {#if bootsnap}

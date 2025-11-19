@@ -83,9 +83,12 @@
       <div class="p-6 space-y-6">
         <!-- ロゴとタイトル -->
         <div class="text-center">
-          <h3 class="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2" style="font-family: 'Stack Sans Headline', sans-serif; font-optical-sizing: auto; font-weight: 700;">
-            Narou.rb MOD
-          </h3>
+          <div class="flex items-center justify-center gap-3 mb-2">
+            <img src="/logo_icon.svg" alt="Narou.rb MOD Logo" class="w-8 h-8" />
+            <h3 class="text-3xl font-bold text-blue-600 dark:text-blue-400" style="font-family: 'Stack Sans Headline', sans-serif; font-optical-sizing: auto; font-weight: 700;">
+              Narou.rb MOD
+            </h3>
+          </div>
           <p class="text-gray-600 dark:text-gray-400">
             小説家になろう ダウンロード＆変換ツール
           </p>
