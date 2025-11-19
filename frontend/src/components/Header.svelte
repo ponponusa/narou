@@ -11,6 +11,7 @@
   import ThemeToggle from "./ThemeToggle.svelte";
   import PowerMenu from "./PowerMenu.svelte";
   import MobileMenu from "./MobileMenu.svelte";
+  import AboutModal from "./AboutModal.svelte";
 
   let version = $state("...");
   let bootsnap = $state(false);
@@ -20,6 +21,7 @@
   let pushServer = getPushServer();
   let currentPath = $state("/");
   let helpMenuOpen = $state(false);
+  let aboutModalOpen = $state(false);
 
   onMount(() => {
     // 現在のパスを取得
@@ -271,7 +273,7 @@
                   class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg"
                   onclick={() => {
                     helpMenuOpen = false;
-                    // TODO: 「Narou.rb MODについて」モーダルを表示
+                    aboutModalOpen = true;
                   }}
                 >
                   Narou.rb MODについて
@@ -313,8 +315,11 @@
         </div>
 
         <!-- モバイルメニュー（md未満で表示） -->
-        <MobileMenu />
+        <MobileMenu bind:aboutModalOpen={aboutModalOpen} />
       </div>
     </div>
   </nav>
 </header>
+
+<!-- Aboutモーダル -->
+<AboutModal bind:isOpen={aboutModalOpen} />

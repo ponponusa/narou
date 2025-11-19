@@ -9,6 +9,12 @@
   import PowerMenu from './PowerMenu.svelte';
   import { isServerStopped } from '../lib/stores/serverStatus';
 
+  interface Props {
+    aboutModalOpen?: boolean;
+  }
+
+  let { aboutModalOpen = $bindable(false) }: Props = $props();
+
   let isOpen = $state(false);
   let currentPath = $state('/');
 
@@ -116,7 +122,7 @@
         class="w-full px-4 py-3 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors {$isServerStopped ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}"
         onclick={() => {
           closeMenu();
-          // TODO: 「Narou.rb MODについて」モーダルを表示
+          aboutModalOpen = true;
         }}
         disabled={$isServerStopped}
       >

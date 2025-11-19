@@ -31,9 +31,17 @@
   - `/help` ページを新規作成（Under Construction表示）
   - デスクトップ版ヘッダーに「？」アイコンでドロップダウンメニュー追加
     - 「ヘルプ」リンク
-    - 「Narou.rb MODについて」ボタン（モーダル実装は今後の予定）
+    - 「Narou.rb MODについて」ボタン
   - モバイル版ハンバーガーメニューにヘルプとAboutのエントリー追加
   - モバイル版に「タスク」ページへのリンクも追加
+
+- **Aboutモーダルの実装**
+  - `AboutModal.svelte` コンポーネントを新規作成
+  - バージョン情報（Narou.rb MOD, Ruby）を動的に取得・表示
+  - 開発者情報（Original: whiteleaf7, MOD: ponponusa）を表示
+  - GitHubリポジトリへのリンク、ライセンス情報を表示
+  - デスクトップ・モバイル両方のメニューから起動可能
+  - アクセシビリティ対応（ARIA属性、キーボード操作）
 
 - **TUI（Text User Interface）強化**
   - `tty-markdown`, `tty-spinner`, `tty-box`, `tty-prompt` を導入
