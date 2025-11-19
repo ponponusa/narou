@@ -19,42 +19,67 @@
   let hasAozoraEpub3 = $state<boolean | null>(null);
   let pushServer = getPushServer();
   let currentPath = $state("/");
+  let helpMenuOpen = $state(false);
 
-  onMount(async () => {
+  onMount(() => {
     // 現在のパスを取得
     currentPath = window.location.pathname;
 
-    try {
-      const versionData = await getVersion();
-      version = versionData.narou;
-      bootsnap = false; // TODO: APIから取得
-    } catch (error) {
-      console.error("バージョン情報の取得に失敗:", error);
-    }
+    // 非同期処理は即座に実行
+    (async () => {
+      try {
+        const versionData = await getVersion();
+        version = versionData.narou;
+        bootsnap = false; // TODO: APIから取得
+      } catch (error) {
+        console.error("バージョン情報の取得に失敗:", error);
+      }
 
-    // 設定を取得してaozoraepub3dirの状態をチェック
-    try {
-      const settings = await getSettings();
-      const aozoraepub3dir =
-        settings.global?.aozoraepub3dir?.value ||
-        settings.local?.aozoraepub3dir?.value;
-      hasAozoraEpub3 = !!aozoraepub3dir && aozoraepub3dir !== "";
-    } catch (error) {
-      console.error("設定の取得に失敗:", error);
-      hasAozoraEpub3 = null;
-    }
+      // 設定を取得してaozoraepub3dirの状態をチェック
+      try {
+        const settings = await getSettings();
+        const aozoraepub3dir =
+          settings.global?.aozoraepub3dir?.value ||
+          settings.local?.aozoraepub3dir?.value;
+        hasAozoraEpub3 = !!aozoraepub3dir && aozoraepub3dir !== "";
+      } catch (error) {
+        console.error("設定の取得に失敗:", error);
+        hasAozoraEpub3 = null;
+      }
+    })();
 
     // PushServerイベントリスナー設定
     pushServer.on("connected", handleConnected);
     pushServer.on("disconnected", handleDisconnected);
     pushServer.on("notification.queue", handleQueueNotification);
+
+    // クリック外でヘルプメニューを閉じる（ブラウザ環境のみ）
+    if (typeof document !== 'undefined') {
+      document.addEventListener("click", handleOutsideClick);
+    }
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener("click", handleOutsideClick);
+      }
+    };
   });
 
   onDestroy(() => {
     pushServer.off("connected", handleConnected);
     pushServer.off("disconnected", handleDisconnected);
     pushServer.off("notification.queue", handleQueueNotification);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener("click", handleOutsideClick);
+    }
   });
+
+  function handleOutsideClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest(".help-menu-container")) {
+      helpMenuOpen = false;
+    }
+  }
 
   function handleConnected() {
     isConnected = true;
@@ -195,6 +220,65 @@
               />
             </svg>
           </a>
+
+          <!-- ヘルプメニュー（ドロップダウン） -->
+          <div class="relative help-menu-container">
+            <button
+              class="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors {currentPath ===
+                '/help' ||
+              currentPath === '/help/' ||
+              currentPath === '/help/index.html'
+                ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                : ''} {$isServerStopped
+                ? 'opacity-50 cursor-not-allowed'
+                : 'cursor-pointer'}"
+              onclick={(e) => {
+                e.stopPropagation();
+                helpMenuOpen = !helpMenuOpen;
+              }}
+              title="ヘルプ"
+              disabled={$isServerStopped}
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <circle cx="12" cy="12" r="10" stroke-width="2" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"
+                />
+                <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+
+            {#if helpMenuOpen}
+              <div
+                class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+              >
+                <a
+                  href="/help"
+                  class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg"
+                  onclick={() => (helpMenuOpen = false)}
+                >
+                  ヘルプ
+                </a>
+                <button
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg"
+                  onclick={() => {
+                    helpMenuOpen = false;
+                    // TODO: 「Narou.rb MODについて」モーダルを表示
+                  }}
+                >
+                  Narou.rb MODについて
+                </button>
+              </div>
+            {/if}
+          </div>
 
           <!-- 更新ボタン（アイコンのみ） -->
           <button

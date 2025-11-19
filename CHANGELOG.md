@@ -27,6 +27,14 @@
     - `POST /api/v2/tasks/:id/resume` - タスクを再開
   - **バグ修正**: `notification_task_updated` の `NameError` を修正（`get_tasks_summary` → `get_tasks_summary_impl`）
 
+- **Web UI ヘルプページ追加**
+  - `/help` ページを新規作成（Under Construction表示）
+  - デスクトップ版ヘッダーに「？」アイコンでドロップダウンメニュー追加
+    - 「ヘルプ」リンク
+    - 「Narou.rb MODについて」ボタン（モーダル実装は今後の予定）
+  - モバイル版ハンバーガーメニューにヘルプとAboutのエントリー追加
+  - モバイル版に「タスク」ページへのリンクも追加
+
 - **TUI（Text User Interface）強化**
   - `tty-markdown`, `tty-spinner`, `tty-box`, `tty-prompt` を導入
   - CLI出力をMarkdown形式で見やすく表示
