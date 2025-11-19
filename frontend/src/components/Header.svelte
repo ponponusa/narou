@@ -106,7 +106,7 @@
           href="/"
           class="flex items-baseline space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
         >
-          <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+          <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400" style="font-family: 'Stack Sans Headline', sans-serif; font-optical-sizing: auto; font-weight: 700;">
             Narou.rb MOD
             {#if bootsnap}
               <span class="text-yellow-500" title="Bootsnap enabled">⚡︎</span>

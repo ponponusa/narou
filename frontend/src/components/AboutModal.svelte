@@ -65,7 +65,7 @@
     >
       <!-- ヘッダー -->
       <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-        <h2 id="about-modal-title" class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 id="about-modal-title" class="text-2xl font-bold text-gray-900 dark:text-white" style="font-family: 'Stack Sans Headline', sans-serif; font-optical-sizing: auto; font-weight: 700;">
           Narou.rb MODについて
         </h2>
         <button
@@ -83,7 +83,7 @@
       <div class="p-6 space-y-6">
         <!-- ロゴとタイトル -->
         <div class="text-center">
-          <h3 class="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+          <h3 class="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2" style="font-family: 'Stack Sans Headline', sans-serif; font-optical-sizing: auto; font-weight: 700;">
             Narou.rb MOD
           </h3>
           <p class="text-gray-600 dark:text-gray-400">

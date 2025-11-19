@@ -68,7 +68,7 @@
         try {
           const serverStatus = await getServerStatus();
           
-          if (serverStatus.backend.running) {
+          if (serverStatus.queue.running || serverStatus.push_server.running) {
             // サーバーが起動した
             status = 'completed';
             message = 'サーバーの再起動が完了しました';
