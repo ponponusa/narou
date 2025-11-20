@@ -239,21 +239,27 @@ export function getPushServer(): PushServerClient {
       ? window.location.hostname 
       : (import.meta.env.PUBLIC_API_BASE_URL?.replace(/^https?:\/\//, '').split(':')[0] || 'localhost');
     
-    // 初期はデフォルトポートで作成（後でinitializePushServerで更新）
+    // 初期はデフォルトポートで作成
     const port = cachedPort || parseInt(import.meta.env.PUBLIC_PUSH_SERVER_PORT || '5679');
     
     globalPushServer = new PushServerClient(host, port);
     
-    // 非同期でポート番号を取得して再接続
+    // 初回作成時に自動接続
+    globalPushServer.connect();
+    
+    // 非同期でポート番号を取得して、ポートが異なる場合のみ再接続
     if (!portInitialized) {
       portInitialized = true;
       fetchPushServerPort().then(actualPort => {
         if (actualPort !== port && globalPushServer) {
-          console.log(`[PushServer] Updating port from ${port} to ${actualPort}`);
-          // 新しいポートで再作成
+          console.log(`[PushServer] Port changed from ${port} to ${actualPort}, reconnecting`);
+          // 既存の接続を切断
           globalPushServer.disconnect();
+          // 新しいポートで再作成して接続
           globalPushServer = new PushServerClient(host, actualPort);
           globalPushServer.connect();
+        } else {
+          console.log(`[PushServer] Port ${actualPort} confirmed, using existing connection`);
         }
       });
     }

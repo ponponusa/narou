@@ -474,9 +474,15 @@
       }
     }
 
-    // 非進捗 + プログレスバー + 最新の進捗メッセージを結合し、タイムスタンプ順にソート
+    // 非進捗 + プログレスバー + 最新の進捗メッセージを結合し、タイムスタンプとID順にソート
     return [...nonProgressLogs, ...Array.from(progressMap.values())]
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      .sort((a, b) => {
+        // まずタイムスタンプで比較
+        const timeDiff = a.timestamp.getTime() - b.timestamp.getTime();
+        if (timeDiff !== 0) return timeDiff;
+        // タイムスタンプが同じ場合はIDで比較（追加順を保持）
+        return a.id - b.id;
+      });
   }
 
   /**
@@ -576,6 +582,10 @@
     
     const pushServer = getPushServer();
     
+    // デバッグ: インスタンスIDを生成
+    const instanceId = Math.random().toString(36).substring(7);
+    console.log(`[ConsolePanel ${instanceId}] Mounting, current handlers:`, pushServer['eventHandlers']?.size || 0);
+    
     // 接続イベント
     handleConnected = () => {
       isConnected = true;
@@ -591,6 +601,7 @@
 
     // echoイベント
     handleEcho = (data: EchoMessage) => {
+      console.log(`[ConsolePanel ${instanceId}] Received echo event:`, data.body);
       if (!data.no_history) {
         addLog(data.target_console, data.body);
       }
@@ -682,15 +693,15 @@
     };
     pushServer.on('progressbar.clear', handleProgressBarClear);
 
-    // 接続開始（共有インスタンスなので既に接続されている場合は何もしない）
-    if (!pushServer.isConnected()) {
-      pushServer.connect();
-    }
+    // getPushServer()が自動的に接続を管理するため、ここでは何もしない
+    // 既に接続されている場合は再接続しない
   });
 
   onDestroy(() => {
     // イベントハンドラを解除（重複登録を防ぐため）
     const pushServer = getPushServer();
+    
+    console.log(`[ConsolePanel] Destroying, removing handlers`);
     
     if (handleConnected) {
       pushServer.off('connected', handleConnected);
@@ -700,6 +711,7 @@
     }
     if (handleEcho) {
       pushServer.off('echo', handleEcho);
+      console.log(`[ConsolePanel] Removed echo handler`);
     }
     if (handleProgressBarInit) {
       pushServer.off('progressbar.init', handleProgressBarInit);

@@ -19,7 +19,7 @@ import Footer from '../components/Footer.svelte';
     <main class="container mx-auto px-2.5 py-6 flex-1">
       <SettingsComponent client:load />
     </main>
-    <ConsolePanel client:load />
+    <ConsolePanel client:only="svelte" />
     <Footer client:load />
   </div>
 </BaseLayout>
