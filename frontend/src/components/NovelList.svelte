@@ -14,6 +14,7 @@
     convertNovel,
     freezeNovel,
     unfreezeNovel,
+    toggleFreeze,
     removeNovels,
     deleteNovel,
     getTagList,
@@ -26,6 +27,7 @@
   import TagModal from "./TagModal.svelte";
   import ConversionSettingsModal from "./ConversionSettingsModal.svelte";
   import NovelDetailModal from "./NovelDetailModal.svelte";
+  import NovelUpdateModal from "./NovelUpdateModal.svelte";
   import ConsolePanel from "./ConsolePanel.svelte";
   import Toast from "./Toast.svelte";
   import LoadingScreen from "./LoadingScreen.svelte";
@@ -42,6 +44,7 @@
   let tagModal: TagModal;
   let conversionSettingsModal: ConversionSettingsModal;
   let novelDetailModal: NovelDetailModal;
+  let novelUpdateModal: NovelUpdateModal;
   let consolePanel = $state<ConsolePanel>();
   let retryCount = $state(0);
   let maxRetries = 10; // 最大10回リトライ（約20秒）
@@ -640,6 +643,53 @@
       toast?.show("小説を選択してください", "warning");
       return;
     }
+    // 更新オプションモーダルを開く
+    novelUpdateModal?.open();
+  }
+
+  /**
+   * 更新モーダルからの確認処理
+   */
+  async function handleUpdateConfirm(
+    mode: "update" | "force-download",
+    options: { fromEpisode?: number; limit?: number }
+  ) {
+    const ids = Array.from(selectedIds);
+    const isForceDownload = mode === "force-download";
+    
+    try {
+      console.log(`[NovelList] Starting ${mode} for IDs:`, ids, "options:", options);
+
+      // 進捗状態を設定
+      ids.forEach((id) => {
+        progressStore.setProgress(id, "waiting", "キュー待ち...");
+      });
+
+      // API呼び出し（バックグラウンド処理開始）
+      // 注意: 現在のAPIはoptionsを受け取らないため、将来的に拡張が必要
+      await downloadNovels(ids, isForceDownload);
+
+      const action = isForceDownload ? "再取得" : "更新";
+      toast?.show(`${action}を開始しました`, "success");
+      selectedIds = new Set();
+
+      // 注意: 実際の進捗はPushServerイベントから更新されます
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "不明なエラー";
+      // エラー状態に設定
+      ids.forEach((id) => {
+        progressStore.setProgress(id, "error", message);
+      });
+      const action = isForceDownload ? "再取得" : "更新";
+      toast?.show(`${action}に失敗しました: ${message}`, "error");
+    }
+  }
+
+  async function handleForceDownload() {
+    if (selectedIds.size === 0) {
+      toast?.show("小説を選択してください", "warning");
+      return;
+    }
     const ids = Array.from(selectedIds);
     try {
       console.log("[NovelList] Starting download for IDs:", ids);
@@ -663,30 +713,6 @@
         progressStore.setProgress(id, "error", message);
       });
       toast?.show(`更新に失敗しました: ${message}`, "error");
-    }
-  }
-
-  async function handleForceDownload() {
-    if (selectedIds.size === 0) {
-      toast?.show("小説を選択してください", "warning");
-      return;
-    }
-    const ids = Array.from(selectedIds);
-    try {
-      ids.forEach((id) => {
-        progressStore.setProgress(id, "waiting", "キュー待ち...");
-      });
-
-      await downloadNovels(ids, true);
-
-      toast?.show("再取得を開始しました", "success");
-      selectedIds = new Set();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "不明なエラー";
-      ids.forEach((id) => {
-        progressStore.setProgress(id, "error", message);
-      });
-      toast?.show(`再取得に失敗しました: ${message}`, "error");
     }
   }
 
@@ -739,6 +765,45 @@
       return;
     }
     tagModal.open(Array.from(selectedIds), null, () => loadNovels());
+  }
+
+  /**
+   * 一括凍結/解除
+   */
+  async function handleToggleFreeze() {
+    if (selectedIds.size === 0) {
+      toast?.show("小説を選択してください", "warning");
+      return;
+    }
+
+    // 選択された小説の凍結状態を確認
+    const selectedNovels = novels.filter((n) => selectedIds.has(n.id));
+    const frozenCount = selectedNovels.filter((n) => n.frozen).length;
+    const unfrozenCount = selectedNovels.length - frozenCount;
+
+    let action = "";
+    let confirmMessage = "";
+    
+    if (frozenCount > unfrozenCount) {
+      action = "解除";
+      confirmMessage = `選択した ${selectedIds.size} 件の小説の凍結を解除しますか？`;
+    } else {
+      action = "凍結";
+      confirmMessage = `選択した ${selectedIds.size} 件の小説を凍結しますか？`;
+    }
+
+    showConfirm(`${action}の確認`, confirmMessage, async () => {
+      try {
+        await toggleFreeze(Array.from(selectedIds));
+        toast?.show(`${action}しました`, "success");
+        selectedIds = new Set();
+        await loadNovels();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "不明なエラー";
+        toast?.show(`${action}に失敗しました: ${message}`, "error");
+      }
+      closeConfirmDialog();
+    });
   }
 
   function handleSearch() {
@@ -1273,53 +1338,67 @@
     <!-- アクションバー -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
       <div class="flex flex-wrap gap-4 items-center justify-between">
-        <div class="flex gap-2 flex-wrap">
+        <div class="flex gap-2 flex-wrap items-center">
+          <!-- 小説追加ボタン -->
           <button
             onclick={openAddNovelModal}
             class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
           >
             <i class="fas fa-plus"></i> 小説を追加
           </button>
-          <button
-            onclick={handleDownload}
-            disabled={selectedIds.size === 0}
-            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            <i class="fas fa-sync"></i> 更新チェック ({selectedIds.size})
-          </button>
-          <button
-            onclick={handleForceDownload}
-            disabled={selectedIds.size === 0}
-            class="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            <i class="fas fa-cloud-download-alt"></i> 再取得 ({selectedIds.size})
-          </button>
-          <button
-            onclick={handleConvert}
-            disabled={selectedIds.size === 0}
-            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            <i class="fas fa-file-export"></i> 変換 ({selectedIds.size})
-          </button>
-          <button
-            onclick={handleTagEdit}
-            disabled={selectedIds.size === 0}
-            class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            <i class="fas fa-tags"></i> タグ編集 ({selectedIds.size})
-          </button>
-          <button
-            onclick={handleRemove}
-            disabled={selectedIds.size === 0}
-            class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            <i class="fas fa-trash-alt"></i> 削除 ({selectedIds.size})
-          </button>
+
+          <!-- 更新・変換グループ -->
+          <div class="flex gap-2">
+            <button
+              onclick={handleDownload}
+              disabled={selectedIds.size === 0}
+              class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              title="更新オプションを選択"
+            >
+              <i class="fas fa-sync"></i> 更新
+            </button>
+            <button
+              onclick={handleConvert}
+              disabled={selectedIds.size === 0}
+              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              <i class="fas fa-file-export"></i> 変換
+            </button>
+          </div>
+
+          <!-- 編集・管理グループ -->
+          <div class="flex gap-0 border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+            <button
+              onclick={handleTagEdit}
+              disabled={selectedIds.size === 0}
+              class="px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors border-r border-purple-700"
+              title="タグを編集"
+            >
+              <i class="fas fa-tags"></i> タグ
+            </button>
+            <button
+              onclick={handleToggleFreeze}
+              disabled={selectedIds.size === 0}
+              class="px-4 py-2 bg-yellow-600 text-white hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors border-r border-yellow-700"
+              title="凍結/凍結解除を切り替え"
+            >
+              <i class="fas fa-snowflake"></i> 凍結
+            </button>
+            <button
+              onclick={handleRemove}
+              disabled={selectedIds.size === 0}
+              class="px-4 py-2 bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              title="削除"
+            >
+              <i class="fas fa-trash-alt"></i> 削除
+            </button>
+          </div>
         </div>
 
+        <!-- 選択数表示（右端のみ） -->
         {#if selectedIds.size > 0}
-          <div class="text-sm text-gray-600 dark:text-gray-400">
-            {selectedIds.size}件選択中
+          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded">
+            <i class="fas fa-check-square text-blue-600 dark:text-blue-400"></i> {selectedIds.size}件選択中
           </div>
         {/if}
       </div>
@@ -2336,6 +2415,13 @@
 
 <!-- タグ編集モーダル -->
 <TagModal bind:this={tagModal} />
+
+<!-- 小説更新オプションモーダル -->
+<NovelUpdateModal 
+  bind:this={novelUpdateModal} 
+  selectedCount={selectedIds.size}
+  onConfirm={handleUpdateConfirm}
+/>
 
 <!-- 個別変換設定モーダル -->
 <ConversionSettingsModal bind:this={conversionSettingsModal} />
