@@ -29,7 +29,7 @@
 
   let isOpen = $state(false);
   let mode = $state<UpdateMode>("update");
-  let convertAfterUpdate = $state(false);
+  let convertAfterUpdate = $state(true);
   let createBackup = $state(false);
   let includeFrozen = $state(false);
   let selectedTags = $state<string[]>([]);
@@ -70,7 +70,7 @@
   export async function open() {
     isOpen = true;
     mode = "update";
-    convertAfterUpdate = false;
+    convertAfterUpdate = true;
     createBackup = false;
     includeFrozen = false;
     selectedTags = [];
@@ -131,7 +131,7 @@
 
 <dialog
   bind:this={dialog}
-  class="rounded-lg shadow-xl backdrop:bg-black backdrop:bg-opacity-50 max-w-2xl w-full p-0"
+  class="rounded-lg shadow-xl backdrop:bg-black backdrop:bg-opacity-50 max-w-2xl w-full p-0 m-auto"
 >
   {#if isOpen}
     <div class="bg-white dark:bg-gray-800 rounded-lg">
@@ -152,32 +152,18 @@
 
       <!-- ボディ -->
       <div class="p-6 space-y-6">
-        <!-- 選択数表示 -->
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <p class="text-sm text-blue-800 dark:text-blue-200">
-            <i class="fas fa-info-circle"></i> 
-            {#if selectedTags.length > 0 || includeFrozen}
-              <span class="font-semibold">{effectiveCount}件</span>の小説を更新します
-              {#if effectiveCount !== selectedCount}
-                <span class="text-xs ml-2">（選択: {selectedCount}件）</span>
-              {/if}
-            {:else}
-              <span class="font-semibold">{selectedCount}件</span>の小説を更新します
-            {/if}
-          </p>
-        </div>
-
         <!-- 更新モード選択 -->
         <div class="space-y-3">
           <div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             更新モード
           </div>
-          <div class="space-y-2">
+          <div class="flex flex-col sm:flex-row gap-2">
             <label
-              class="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer transition-colors"
-              class:border-green-500={mode === "update"}
-              class:bg-green-50={mode === "update"}
-              class:border-gray-300={mode !== "update"}
+              class={`flex flex-1 items-start space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                mode === "update"
+                  ? "border-green-500 bg-green-50 dark:bg-green-900/20"
+                  : "border-gray-300 dark:border-gray-600"
+              }`}
             >
               <input
                 type="radio"
@@ -196,10 +182,11 @@
             </label>
 
             <label
-              class="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer transition-colors"
-              class:border-green-500={mode === "force-download"}
-              class:bg-green-50={mode === "force-download"}
-              class:border-gray-300={mode !== "force-download"}
+              class={`flex flex-1 items-start space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                mode === "force-download"
+                  ? "border-green-500 bg-green-50 dark:bg-green-900/20"
+                  : "border-gray-300 dark:border-gray-600"
+              }`}
             >
               <input
                 type="radio"
@@ -330,19 +317,35 @@
       </div>
 
       <!-- フッター -->
-      <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
-        <button
-          onclick={handleCancel}
-          class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-        >
-          キャンセル
-        </button>
-        <button
-          onclick={handleConfirm}
-          class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-        >
-          <i class="fas fa-check"></i> 実行
-        </button>
+      <div class="flex items-center justify-between gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+        <!-- 対象件数表示 -->
+        <div class="text-sm text-gray-700 dark:text-gray-300">
+          <i class="fas fa-info-circle text-blue-600 dark:text-blue-400"></i>
+          {#if selectedTags.length > 0 || includeFrozen}
+            対象: <span class="font-semibold text-blue-600 dark:text-blue-400">{effectiveCount}件</span>
+            {#if effectiveCount !== selectedCount}
+              <span class="text-xs ml-1">（選択: {selectedCount}件）</span>
+            {/if}
+          {:else}
+            対象: <span class="font-semibold text-blue-600 dark:text-blue-400">{selectedCount}件</span>
+          {/if}
+        </div>
+        
+        <!-- アクションボタン -->
+        <div class="flex gap-3">
+          <button
+            onclick={handleCancel}
+            class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+          >
+            キャンセル
+          </button>
+          <button
+            onclick={handleConfirm}
+            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <i class="fas fa-check"></i> 実行
+          </button>
+        </div>
       </div>
     </div>
   {/if}
