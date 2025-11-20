@@ -22,8 +22,9 @@
   } from '../lib/api';
 
   // フィルタ・ソート設定
+  let searchText = $state('');
   let statusFilter = $state<TaskStatus | ''>('');
-  let sortBy = $state<'created_at' | 'started_at' | 'status'>('created_at');
+  let sortBy = $state<'created_at' | 'started_at' | 'status' | 'novel_id' | 'novel_title' | 'novel_author'>('status');
   let sortOrder = $state<'asc' | 'desc'>('desc');
   
   // ページング設定
@@ -76,6 +77,18 @@
   function applyFiltersAndSort() {
     // フィルタ適用
     let tasks = allTasks;
+    
+    // テキスト検索フィルタ
+    if (searchText.trim()) {
+      const search = searchText.toLowerCase();
+      tasks = tasks.filter(t => 
+        t.novel_id?.toString().includes(search) ||
+        t.novel_title?.toLowerCase().includes(search) ||
+        t.novel_author?.toLowerCase().includes(search)
+      );
+    }
+    
+    // ステータスフィルタ
     if (statusFilter) {
       tasks = tasks.filter(t => t.status === statusFilter);
     }
@@ -94,6 +107,15 @@
       } else if (sortBy === 'status') {
         aVal = a.status;
         bVal = b.status;
+      } else if (sortBy === 'novel_id') {
+        aVal = a.novel_id || 0;
+        bVal = b.novel_id || 0;
+      } else if (sortBy === 'novel_title') {
+        aVal = a.novel_title || '';
+        bVal = b.novel_title || '';
+      } else if (sortBy === 'novel_author') {
+        aVal = a.novel_author || '';
+        bVal = b.novel_author || '';
       }
       
       if (sortOrder === 'asc') {
@@ -122,6 +144,21 @@
    * ページ数を計算
    */
   let totalPages = $derived(Math.ceil(filteredTasks.length / itemsPerPage));
+
+  /**
+   * カラムヘッダークリックでソート
+   */
+  function handleColumnSort(column: typeof sortBy) {
+    if (sortBy === column) {
+      // 同じカラムをクリックした場合は順序を反転
+      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      // 異なるカラムをクリックした場合は降順から開始
+      sortBy = column;
+      sortOrder = 'desc';
+    }
+    applyFiltersAndSort();
+  }
 
   /**
    * フィルタ変更時
@@ -276,7 +313,19 @@
   <!-- ページヘッダー -->
   <div class="mb-6">
     <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-      <i class="fas fa-tasks mr-2"></i>
+      <svg
+        class="w-8 h-8 inline-block align-text-top"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+        />
+      </svg>
       タスクキュー管理
     </h1>
     <p class="text-gray-600 dark:text-gray-400">
@@ -284,91 +333,124 @@
     </p>
   </div>
 
-  <!-- サマリーカード -->
-  {#if taskSummary}
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-        <div class="text-sm text-blue-600 dark:text-blue-400 mb-1">実行中</div>
-        <div class="text-2xl font-bold text-blue-700 dark:text-blue-300">
-          {taskSummary.current ? 1 : 0}
+  <!-- サマリーカードとフィルタ・ソートコントロール -->
+  <div class="mb-6">
+    <div class="flex flex-col lg:flex-row gap-4">
+      <!-- サマリーカード -->
+      {#if taskSummary}
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:w-1/2">
+          <button
+            onclick={() => {
+              statusFilter = 'running';
+              handleFilterChange();
+            }}
+            class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer text-left"
+          >
+            <div class="flex flex-col items-center justify-center h-full">
+              <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">実行中</div>
+              <div class="text-xl font-bold text-blue-700 dark:text-blue-300">
+                {taskSummary.current ? 1 : 0}
+              </div>
+            </div>
+          </button>
+          <button
+            onclick={() => {
+              statusFilter = 'queued';
+              handleFilterChange();
+            }}
+            class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer text-left"
+          >
+            <div class="flex flex-col items-center justify-center h-full">
+              <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">待機中</div>
+              <div class="text-xl font-bold text-gray-700 dark:text-gray-300">
+                {taskSummary.queued.length}
+              </div>
+            </div>
+          </button>
+          <button
+            onclick={() => {
+              statusFilter = 'paused';
+              handleFilterChange();
+            }}
+            class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors cursor-pointer text-left"
+          >
+            <div class="flex flex-col items-center justify-center h-full">
+              <div class="text-xs text-yellow-600 dark:text-yellow-400 mb-1">一時停止</div>
+              <div class="text-xl font-bold text-yellow-700 dark:text-yellow-300">
+                {allTasks.filter(t => t.status === 'paused').length}
+              </div>
+            </div>
+          </button>
+          <button
+            onclick={() => {
+              statusFilter = 'completed';
+              handleFilterChange();
+            }}
+            class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors cursor-pointer text-left"
+          >
+            <div class="flex flex-col items-center justify-center h-full">
+              <div class="text-xs text-green-600 dark:text-green-400 mb-1">完了</div>
+              <div class="text-xl font-bold text-green-700 dark:text-green-300">
+                {taskSummary.recent_completed.length}
+              </div>
+            </div>
+          </button>
+          <button
+            onclick={() => {
+              statusFilter = 'failed';
+              handleFilterChange();
+            }}
+            class="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer text-left"
+          >
+            <div class="flex flex-col items-center justify-center h-full">
+              <div class="text-xs text-red-600 dark:text-red-400 mb-1">失敗</div>
+              <div class="text-xl font-bold text-red-700 dark:text-red-300">
+                {taskSummary.recent_failed.length}
+              </div>
+            </div>
+          </button>
         </div>
-      </div>
-      <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-        <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">待機中</div>
-        <div class="text-2xl font-bold text-gray-700 dark:text-gray-300">
-          {taskSummary.queued.length}
-        </div>
-      </div>
-      <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-        <div class="text-sm text-green-600 dark:text-green-400 mb-1">完了</div>
-        <div class="text-2xl font-bold text-green-700 dark:text-green-300">
-          {taskSummary.recent_completed.length}
-        </div>
-      </div>
-      <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
-        <div class="text-sm text-red-600 dark:text-red-400 mb-1">失敗</div>
-        <div class="text-2xl font-bold text-red-700 dark:text-red-300">
-          {taskSummary.recent_failed.length}
-        </div>
-      </div>
-    </div>
-  {/if}
+      {/if}
 
-  <!-- フィルタ・ソートコントロール -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <!-- ステータスフィルタ -->
-      <div>
-        <label for="status-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          ステータス
-        </label>
-        <select
-          id="status-filter"
-          bind:value={statusFilter}
-          onchange={handleFilterChange}
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-        >
-          <option value="">すべて</option>
-          <option value="queued">待機中</option>
-          <option value="running">実行中</option>
-          <option value="paused">一時停止</option>
-          <option value="completed">完了</option>
-          <option value="failed">失敗</option>
-          <option value="canceled">キャンセル</option>
-        </select>
-      </div>
+      <!-- フィルタ・ソートコントロール -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 lg:w-1/2">
+        <div class="flex flex-col sm:flex-row gap-4">
+          <!-- テキスト検索 -->
+          <div class="flex-1">
+            <label for="search-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              検索（ID, タイトル, 著者名）
+            </label>
+            <input
+              id="search-text"
+              type="text"
+              bind:value={searchText}
+              oninput={handleFilterChange}
+              placeholder="検索..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            />
+          </div>
 
-      <!-- ソート項目 -->
-      <div>
-        <label for="sort-by" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          ソート
-        </label>
-        <select
-          id="sort-by"
-          bind:value={sortBy}
-          onchange={handleSortChange}
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-        >
-          <option value="created_at">作成日時</option>
-          <option value="started_at">開始日時</option>
-          <option value="status">ステータス</option>
-        </select>
-      </div>
-
-      <!-- ソート順 -->
-      <div>
-        <label for="sort-order" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          順序
-        </label>
-        <select
-          id="sort-order"
-          bind:value={sortOrder}
-          onchange={handleSortChange}
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-        >
-          <option value="desc">降順</option>
-          <option value="asc">昇順</option>
-        </select>
+          <!-- ステータスフィルタ -->
+          <div class="sm:w-40">
+            <label for="status-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              ステータス
+            </label>
+            <select
+              id="status-filter"
+              bind:value={statusFilter}
+              onchange={handleFilterChange}
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              <option value="">すべて</option>
+              <option value="queued">待機中</option>
+              <option value="running">実行中</option>
+              <option value="paused">一時停止</option>
+              <option value="completed">完了</option>
+              <option value="failed">失敗</option>
+              <option value="canceled">キャンセル</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -385,124 +467,191 @@
         <i class="fas fa-exclamation-circle text-4xl mb-2"></i>
         <p>{error}</p>
       </div>
-    {:else if paginatedTasks.length === 0}
-      <div class="p-8 text-center text-gray-600 dark:text-gray-400">
-        <i class="fas fa-inbox text-4xl mb-2"></i>
-        <p>タスクはありません</p>
-      </div>
     {:else}
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700 whitespace-nowrap">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                ステータス
+              <th 
+                class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                onclick={() => handleColumnSort('status')}
+              >
+                <span class="flex items-center gap-1">
+                  ステータス
+                  {#if sortBy === 'status'}
+                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {:else}
+                    <i class="fas fa-sort text-gray-400"></i>
+                  {/if}
+                </span>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                タイプ
+              <th 
+                class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                onclick={() => handleColumnSort('novel_id')}
+              >
+                <span class="flex items-center gap-1">
+                  小説ID
+                  {#if sortBy === 'novel_id'}
+                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {:else}
+                    <i class="fas fa-sort text-gray-400"></i>
+                  {/if}
+                </span>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                タイトル
+              <th 
+                class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                onclick={() => handleColumnSort('novel_title')}
+              >
+                <span class="flex items-center gap-1">
+                  タイトル
+                  {#if sortBy === 'novel_title'}
+                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {:else}
+                    <i class="fas fa-sort text-gray-400"></i>
+                  {/if}
+                </span>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+              <th 
+                class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                onclick={() => handleColumnSort('novel_author')}
+              >
+                <span class="flex items-center gap-1">
+                  著者名
+                  {#if sortBy === 'novel_author'}
+                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {:else}
+                    <i class="fas fa-sort text-gray-400"></i>
+                  {/if}
+                </span>
+              </th>
+              <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                 進捗
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                作成日時
+              <th 
+                class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                onclick={() => handleColumnSort('created_at')}
+              >
+                <span class="flex items-center gap-1">
+                  作成日時
+                  {#if sortBy === 'created_at'}
+                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {:else}
+                    <i class="fas fa-sort text-gray-400"></i>
+                  {/if}
+                </span>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+              <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                 経過時間
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                操作
+              <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                アクション
               </th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {#each paginatedTasks as task}
-              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="px-2 py-1 text-xs rounded text-white {getStatusClass(task.status)}">
-                    {getStatusLabel(task.status)}
-                  </span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {task.type}
-                </td>
-                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                  <div class="max-w-md">
-                    <div class="font-medium truncate">{task.novel_title || '-'}</div>
-                    {#if task.novel_author}
-                      <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{task.novel_author}</div>
-                    {/if}
-                    {#if task.message}
-                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{task.message}</div>
-                    {/if}
-                  </div>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm">
-                  {#if task.progress > 0}
-                    <div class="w-24">
-                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div 
-                          class="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                          style="width: {task.progress}%"
-                        ></div>
-                      </div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {task.progress.toFixed(1)}%
-                      </div>
-                    </div>
-                  {:else}
-                    <span class="text-gray-400 dark:text-gray-500">-</span>
-                  {/if}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                  {formatDateTime(task.created_at)}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {task.elapsed_time.toFixed(1)}秒
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm">
-                  <div class="flex gap-1">
-                    {#if task.status === 'running'}
-                      <button
-                        onclick={() => handlePauseTask(task.id)}
-                        class="px-2 py-1 text-xs rounded bg-yellow-500 hover:bg-yellow-600 text-white"
-                        title="一時停止"
-                      >
-                        <i class="fas fa-pause"></i>
-                      </button>
-                    {/if}
-                    {#if task.status === 'paused'}
-                      <button
-                        onclick={() => handleResumeTask(task.id)}
-                        class="px-2 py-1 text-xs rounded bg-green-500 hover:bg-green-600 text-white"
-                        title="再開"
-                      >
-                        <i class="fas fa-play"></i>
-                      </button>
-                    {/if}
-                    {#if task.status === 'queued' || task.status === 'running' || task.status === 'paused'}
-                      <button
-                        onclick={() => handleCancelTask(task.id)}
-                        class="px-2 py-1 text-xs rounded bg-red-500 hover:bg-red-600 text-white"
-                        title="キャンセル"
-                      >
-                        <i class="fas fa-times"></i>
-                      </button>
-                    {/if}
-                  </div>
+            {#if paginatedTasks.length === 0}
+              <tr>
+                <td colspan="8" class="px-4 py-8 text-center text-gray-600 dark:text-gray-400">
+                  <i class="fas fa-inbox text-4xl mb-2 block"></i>
+                  現在、処理中のタスクはありません。
                 </td>
               </tr>
-            {/each}
+            {:else}
+              {#each paginatedTasks as task}
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs rounded text-white {getStatusClass(task.status)}">
+                      {getStatusLabel(task.status)}
+                    </span>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100">
+                    {task.novel_id || '-'}
+                  </td>
+                  <td class="px-4 py-3 text-xs text-gray-900 dark:text-gray-100">
+                    <div class="max-w-xs">
+                      <div class="font-medium truncate">{task.novel_title || '-'}</div>
+                      {#if task.message}
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{task.message}</div>
+                      {/if}
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-xs text-gray-900 dark:text-gray-100">
+                    <div class="max-w-xs truncate">
+                      {task.novel_author || '-'}
+                    </div>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap text-xs">
+                    {#if task.progress > 0}
+                      <div class="w-24">
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div 
+                            class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            style="width: {task.progress}%"
+                          ></div>
+                        </div>
+                        <div class="text-gray-500 dark:text-gray-400 mt-1">
+                          {task.progress.toFixed(1)}%
+                        </div>
+                      </div>
+                    {:else}
+                      <span class="text-gray-400 dark:text-gray-500">-</span>
+                    {/if}
+                  </td>
+                  <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                    <div class="whitespace-nowrap">
+                      {#if task.created_at}
+                        {@const date = new Date(task.created_at)}
+                        <div>{date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
+                        <div>{date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+                      {:else}
+                        -
+                      {/if}
+                    </div>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100">
+                    {task.elapsed_time.toFixed(1)}秒
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap text-sm">
+                    <div class="flex gap-1">
+                      {#if task.status === 'running'}
+                        <button
+                          onclick={() => handlePauseTask(task.id)}
+                          class="p-1.5 text-gray-600 hover:text-yellow-600 dark:text-gray-400 dark:hover:text-yellow-400 transition-colors cursor-pointer"
+                          title="一時停止"
+                        >
+                          <i class="fas fa-pause"></i>
+                        </button>
+                      {/if}
+                      {#if task.status === 'paused'}
+                        <button
+                          onclick={() => handleResumeTask(task.id)}
+                          class="p-1.5 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors cursor-pointer"
+                          title="再開"
+                        >
+                          <i class="fas fa-play"></i>
+                        </button>
+                      {/if}
+                      {#if task.status === 'queued' || task.status === 'running' || task.status === 'paused'}
+                        <button
+                          onclick={() => handleCancelTask(task.id)}
+                          class="p-1.5 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"
+                          title="キャンセル"
+                        >
+                          <i class="fas fa-times"></i>
+                        </button>
+                      {/if}
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            {/if}
           </tbody>
         </table>
       </div>
 
       <!-- ページネーション -->
       {#if totalPages > 1}
-        <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+        <div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
           <div class="flex items-center justify-between">
             <div class="text-sm text-gray-700 dark:text-gray-300">
               {filteredTasks.length}件中 {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredTasks.length)}件を表示

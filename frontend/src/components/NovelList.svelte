@@ -1088,10 +1088,10 @@
         tabindex="0"
         aria-label="検索フォームの表示切替"
       >
-        <h3 class="text-base font-semibold text-gray-700 dark:text-gray-300">
+        <h5 class="text-base font-semibold text-gray-700 dark:text-gray-300">
           <i class="fas fa-search mr-2"></i>
           検索・フィルター
-        </h3>
+        </h5>
         <button
           class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           aria-label={isSearchFormCollapsed
@@ -1210,7 +1210,7 @@
           <!-- アクティブフィルター表示 -->
           {#if filterText || selectedTag || selectedSite || selectedStatus || sortBy}
             <div class="mt-3 flex flex-wrap gap-2 items-center">
-              <span class="text-sm text-gray-600 dark:text-gray-400"
+              <span class="text-xs text-gray-600 dark:text-gray-400"
                 >フィルター:</span
               >
               {#if filterText}
@@ -1285,14 +1285,14 @@
             disabled={selectedIds.size === 0}
             class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
-            <i class="fas fa-cloud-download-alt"></i> 更新 ({selectedIds.size})
+            <i class="fas fa-sync"></i> 更新チェック ({selectedIds.size})
           </button>
           <button
             onclick={handleForceDownload}
             disabled={selectedIds.size === 0}
             class="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
-            <i class="fas fa-sync"></i> 再取得 ({selectedIds.size})
+            <i class="fas fa-cloud-download-alt"></i> 再取得 ({selectedIds.size})
           </button>
           <button
             onclick={handleConvert}
@@ -1329,14 +1329,14 @@
     <div class="flex justify-end items-center gap-3 mb-3">
       <button
         onclick={selectAll}
-        class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+        class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs"
         title="全ての小説を選択/解除"
       >
         <i class="fas fa-check-square"></i> 全て選択/解除
       </button>
       <button
         onclick={() => (showColumnSettings = !showColumnSettings)}
-        class="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors text-sm"
+        class="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors text-xs"
         title="列の表示設定"
       >
         <i class="fas fa-cog"></i> カラム設定表示
@@ -1624,7 +1624,7 @@
               <tr>
                 {#if columnVisibility.id}
                   <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                   >
                     <button
                       onclick={() => handleSort("id")}
@@ -1639,7 +1639,7 @@
                 {/if}
                 {#if columnVisibility.updated_at}
                   <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                   >
                     <button
                       onclick={() => handleSort("updated_at")}
@@ -1654,7 +1654,7 @@
                 {/if}
                 {#if columnVisibility.newest_article_date}
                   <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
                     <button
                       onclick={() => handleSort("newest_article_date")}
@@ -1672,7 +1672,7 @@
                 {/if}
                 {#if columnVisibility.last_update}
                   <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                   >
                     <button
                       onclick={() => handleSort("last_update")}
@@ -1686,7 +1686,7 @@
                   </th>
                 {/if}
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                 >
                   <button
                     onclick={() => handleSort("title")}
@@ -1699,7 +1699,7 @@
                   </button>
                 </th>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                 >
                   <button
                     onclick={() => handleSort("author")}
@@ -1712,7 +1712,7 @@
                   </button>
                 </th>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                 >
                   <button
                     onclick={() => handleSort("sitename")}
@@ -1726,7 +1726,7 @@
                 </th>
                 {#if columnVisibility.status}
                   <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                   >
                     <button
                       onclick={() => handleSort("status")}
@@ -1741,7 +1741,7 @@
                 {/if}
                 {#if columnVisibility.tags}
                   <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                   >
                     <button
                       onclick={() => handleSort("tags")}
@@ -1756,7 +1756,7 @@
                 {/if}
                 {#if columnVisibility.episode_count}
                   <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                   >
                     <button
                       onclick={() => handleSort("episode_count")}
@@ -1771,7 +1771,7 @@
                 {/if}
                 {#if columnVisibility.total_chars}
                   <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                   >
                     <button
                       onclick={() => handleSort("total_chars")}
@@ -1786,7 +1786,7 @@
                 {/if}
                 {#if columnVisibility.avg_chars_per_episode}
                   <th
-                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
                   >
                     <button
                       onclick={() => handleSort("avg_chars_per_episode")}
@@ -1800,7 +1800,7 @@
                   </th>
                 {/if}
                 <th
-                  class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap w-40"
+                  class="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap w-40"
                 >
                   アクション
                 </th>
@@ -1831,30 +1831,30 @@
                   }}
                 >
                   {#if columnVisibility.id}
-                    <td class="px-4 py-3 text-sm">{novel.id}</td>
+                    <td class="px-3 py-2 text-sm">{novel.id}</td>
                   {/if}
                   {#if columnVisibility.updated_at}
                     <td
-                      class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400"
+                      class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400"
                     >
                       {@html formatDateTime(novel.last_update)}
                     </td>
                   {/if}
                   {#if columnVisibility.newest_article_date}
                     <td
-                      class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400"
+                      class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400"
                     >
                       {@html formatDateTime(novel.general_lastup)}
                     </td>
                   {/if}
                   {#if columnVisibility.last_update}
                     <td
-                      class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400"
+                      class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400"
                     >
                       {@html formatDateTime(novel.last_update)}
                     </td>
                   {/if}
-                  <td class="px-4 py-3 text-sm font-medium max-w-md">
+                  <td class="px-3 py-2 text-sm font-medium max-w-md">
                     <div class="flex flex-col gap-1">
                       <div class="flex items-center gap-2">
                         <button
@@ -1887,7 +1887,7 @@
                     </div>
                   </td>
                   <td
-                    class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400"
+                    class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400"
                   >
                     {#if novel.author_url}
                       <a
@@ -1903,7 +1903,7 @@
                     {/if}
                   </td>
                   <td
-                    class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400"
+                    class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400"
                   >
                     {#if novel.site_top_url}
                       <a
@@ -1919,7 +1919,7 @@
                     {/if}
                   </td>
                   {#if columnVisibility.status}
-                    <td class="px-4 py-3 text-sm">
+                    <td class="px-3 py-2 text-sm">
                       <div class="flex flex-wrap gap-1">
                         {#if novel.frozen}
                           <span
@@ -1946,7 +1946,7 @@
                     </td>
                   {/if}
                   {#if columnVisibility.tags}
-                    <td class="px-4 py-3 text-sm">
+                    <td class="px-3 py-2 text-sm">
                       <div class="flex flex-wrap gap-1">
                         {#each novel.tags || [] as tag}
                           <span
@@ -1963,21 +1963,21 @@
                   {/if}
                   {#if columnVisibility.episode_count}
                     <td
-                      class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400"
+                      class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
                     >
                       {novel.general_all_no ? novel.general_all_no : "-"}
                     </td>
                   {/if}
                   {#if columnVisibility.total_chars}
                     <td
-                      class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400"
+                      class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
                     >
                       {formatCharCount(novel.length)}
                     </td>
                   {/if}
                   {#if columnVisibility.avg_chars_per_episode}
                     <td
-                      class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400"
+                      class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
                     >
                       {novel.general_all_no && novel.length
                         ? formatCharCount(
@@ -1987,7 +1987,7 @@
                     </td>
                   {/if}
                   <td
-                    class="px-4 py-3 text-sm w-32 sm:w-20 overflow-visible"
+                    class="px-3 py-2 text-sm w-32 sm:w-20 overflow-visible"
                     onclick={(e) => e.stopPropagation()}
                   >
                     <div class="flex items-center justify-center gap-2">
@@ -1998,7 +1998,7 @@
                       {:else}
                         <!-- デスクトップ表示（md以上） -->
                         <div
-                          class="hidden md:flex items-center gap-2 flex-wrap"
+                          class="hidden md:flex items-center gap-1 flex-wrap"
                         >
                           <!-- EPUBダウンロード -->
                           <button
@@ -2016,7 +2016,7 @@
                             class="p-1.5 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors cursor-pointer"
                             title="再取得"
                           >
-                            <i class="fas fa-sync"></i>
+                            <i class="fas fa-cloud-download-alt"></i>
                           </button>
 
                           <!-- 変換再実行 -->
@@ -2026,7 +2026,7 @@
                             class="p-1.5 text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors cursor-pointer"
                             title="変換再実行"
                           >
-                            <i class="fas fa-redo"></i>
+                            <i class="fas fa-file-export"></i>
                           </button>
 
                           <!-- その他メニュー -->
@@ -2178,10 +2178,10 @@
 
           <!-- ページネーション -->
           <div
-            class="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-t border-gray-200 dark:border-gray-600"
+            class="bg-gray-50 dark:bg-gray-700 px-3 py-2 border-t border-gray-200 dark:border-gray-600"
           >
             <div
-              class="flex flex-col sm:flex-row items-center justify-between gap-4"
+              class="flex flex-col sm:flex-row items-center justify-between gap-3"
             >
               <!-- 表示情報と件数選択 -->
               <div class="flex items-center gap-4">
