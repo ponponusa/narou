@@ -19,7 +19,7 @@ import Footer from '../components/Footer.svelte';
     <main class="flex-1 relative">
       <TaskQueuePage client:load />
     </main>
-    <ConsolePanel client:load />
+    <ConsolePanel client:only="svelte" />
     <Footer client:load />
   </div>
 </BaseLayout>

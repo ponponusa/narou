@@ -263,7 +263,9 @@ class WebSocket
       if @header[name]
         return @header[name]
       else
-        raise(WebSocket::Error, "%s header is missing" % name)
+        # Origin ヘッダーが存在しない場合はデフォルト値を返す
+        # 開発環境やローカルホストからの接続では Origin が送信されないことがある
+        return "http://#{self.host}"
       end
     end
 

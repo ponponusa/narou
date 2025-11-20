@@ -222,8 +222,13 @@ export async function getAllNovelIds(): Promise<number[]> {
  * 小説をダウンロード（API v2）
  * @param targets - 小説ID配列または小説情報配列（IDまたはURLを含む）
  * @param force - 強制ダウンロードフラグ
+ * @param convertAfterDownload - ダウンロード後に自動変換を実行するフラグ
  */
-export async function downloadNovels(targets: (number | string | { id?: number; toc_url?: string })[], force = false): Promise<void> {
+export async function downloadNovels(
+  targets: (number | string | { id?: number; toc_url?: string })[], 
+  force = false,
+  convertAfterDownload = false
+): Promise<void> {
   // targetsを文字列配列に変換
   const targetStrings = targets.map(target => {
     if (typeof target === 'number') {
@@ -240,7 +245,11 @@ export async function downloadNovels(targets: (number | string | { id?: number; 
 
   await fetchApiV2<null>('/api/v2/novels/download', {
     method: 'POST',
-    body: JSON.stringify({ targets: targetStrings, force }),
+    body: JSON.stringify({ 
+      targets: targetStrings, 
+      force,
+      convert_after_download: convertAfterDownload 
+    }),
   });
 }
 

@@ -526,6 +526,9 @@ paths:
       description: |
         指定された小説をダウンロードします。
         WebWorker を通じて非同期で実行されます。
+        
+        `convert_after_download` オプションを `true` に設定すると、
+        ダウンロード完了後に自動的に EPUB 変換が実行されます。
       operationId: downloadNovels
       requestBody:
         required: true
@@ -545,6 +548,10 @@ paths:
                 force:
                   type: boolean
                   description: 強制ダウンロード
+                  default: false
+                convert_after_download:
+                  type: boolean
+                  description: ダウンロード完了後に自動変換を実行
                   default: false
                 mail:
                   type: boolean

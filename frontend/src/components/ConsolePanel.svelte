@@ -474,9 +474,15 @@
       }
     }
 
-    // 非進捗 + プログレスバー + 最新の進捗メッセージを結合し、タイムスタンプ順にソート
+    // 非進捗 + プログレスバー + 最新の進捗メッセージを結合し、タイムスタンプとID順にソート
     return [...nonProgressLogs, ...Array.from(progressMap.values())]
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      .sort((a, b) => {
+        // まずタイムスタンプで比較
+        const timeDiff = a.timestamp.getTime() - b.timestamp.getTime();
+        if (timeDiff !== 0) return timeDiff;
+        // タイムスタンプが同じ場合はIDで比較（追加順を保持）
+        return a.id - b.id;
+      });
   }
 
   /**
@@ -562,32 +568,48 @@
     return 'stdout';
   }
 
+  // イベントハンドラの参照を保持
+  let handleConnected: ((data: any) => void) | null = null;
+  let handleDisconnected: ((data: any) => void) | null = null;
+  let handleEcho: ((data: any) => void) | null = null;
+  let handleProgressBarInit: ((data: any) => void) | null = null;
+  let handleProgressBarStep: ((data: any) => void) | null = null;
+  let handleProgressBarClear: ((data: any) => void) | null = null;
+
   onMount(() => {
     // 設定を読み込み
     loadSettings();
     
     const pushServer = getPushServer();
     
+    // デバッグ: インスタンスIDを生成
+    const instanceId = Math.random().toString(36).substring(7);
+    console.log(`[ConsolePanel ${instanceId}] Mounting, current handlers:`, pushServer['eventHandlers']?.size || 0);
+    
     // 接続イベント
-    pushServer.on('connected', () => {
+    handleConnected = () => {
       isConnected = true;
       addLog('stdout', '[PushServer] Connected');
-    });
+    };
+    pushServer.on('connected', handleConnected);
 
-    pushServer.on('disconnected', () => {
+    handleDisconnected = () => {
       isConnected = false;
       addLog('stdout', '[PushServer] Disconnected');
-    });
+    };
+    pushServer.on('disconnected', handleDisconnected);
 
     // echoイベント
-    pushServer.on('echo', (data: EchoMessage) => {
+    handleEcho = (data: EchoMessage) => {
+      console.log(`[ConsolePanel ${instanceId}] Received echo event:`, data.body);
       if (!data.no_history) {
         addLog(data.target_console, data.body);
       }
-    });
+    };
+    pushServer.on('echo', handleEcho);
 
     // プログレスバーイベント
-    pushServer.on('progressbar.init', (data: any) => {
+    handleProgressBarInit = (data: any) => {
       const consoleType = (data.target_console || 'stdout') as 'stdout' | 'stdout2' | 'convert';
       
       // 進捗開始のログエントリを作成
@@ -607,9 +629,10 @@
       
       logs = [...logs, newLog];
       scrollIfNeeded();
-    });
+    };
+    pushServer.on('progressbar.init', handleProgressBarInit);
 
-    pushServer.on('progressbar.step', (data: any) => {
+    handleProgressBarStep = (data: any) => {
       if (currentProgressBar) {
         currentProgressBar.percent = data.percent || 0;
         const consoleType = (data.target_console || currentProgressBar.console) as 'stdout' | 'stdout2' | 'convert';
@@ -661,20 +684,47 @@
       } else {
         window.console.warn('[DEBUG] Progress bar step received but no currentProgressBar');
       }
-    });
+    };
+    pushServer.on('progressbar.step', handleProgressBarStep);
 
-    pushServer.on('progressbar.clear', (data: any) => {
+    handleProgressBarClear = (data: any) => {
       // clearイベントは無視（プログレスバーを残す）
       currentProgressBar = null;
-    });
+    };
+    pushServer.on('progressbar.clear', handleProgressBarClear);
 
-    // 接続開始
-    pushServer.connect();
+    // getPushServer()が自動的に接続を管理するため、ここでは何もしない
+    // 既に接続されている場合は再接続しない
   });
 
   onDestroy(() => {
+    // イベントハンドラを解除（重複登録を防ぐため）
     const pushServer = getPushServer();
-    pushServer.disconnect();
+    
+    console.log(`[ConsolePanel] Destroying, removing handlers`);
+    
+    if (handleConnected) {
+      pushServer.off('connected', handleConnected);
+    }
+    if (handleDisconnected) {
+      pushServer.off('disconnected', handleDisconnected);
+    }
+    if (handleEcho) {
+      pushServer.off('echo', handleEcho);
+      console.log(`[ConsolePanel] Removed echo handler`);
+    }
+    if (handleProgressBarInit) {
+      pushServer.off('progressbar.init', handleProgressBarInit);
+    }
+    if (handleProgressBarStep) {
+      pushServer.off('progressbar.step', handleProgressBarStep);
+    }
+    if (handleProgressBarClear) {
+      pushServer.off('progressbar.clear', handleProgressBarClear);
+    }
+    
+    // 共有インスタンスなので切断しない（他のページで使用される可能性がある）
+    // pushServer.disconnect();
   });
 </script>
 
