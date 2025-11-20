@@ -98,6 +98,7 @@ module Narou
             body = parse_json_body
             targets = body['targets']
             force = body['force'] || false
+            convert_after_download = body['convert_after_download'] || false
             
             if targets.nil? || targets.empty?
               status 400
@@ -131,20 +132,48 @@ module Narou
                 
                 # タスクをキューに追加
                 Narou::WebWorker.push_task(task) do
-                  if force
-                    CommandLine.run!('download', '--force', target)
-                  else
-                    CommandLine.run!('download', target)
+                  begin
+                    if force
+                      CommandLine.run!('download', '--force', target)
+                    else
+                      CommandLine.run!('download', target)
+                    end
+                    Narou::AppServer.clear_all_cache
+                    @@push_server.send_all(:'table.reload') if defined?(@@push_server)
+                    
+                    # ダウンロード完了後に変換を実行
+                    if convert_after_download && novel_id
+                      # 変換タスクを作成
+                      convert_task = Narou::Task.new(
+                        type: :convert,
+                        novel_id: novel_id,
+                        novel_title: novel_title,
+                        novel_author: novel_author,
+                        max_retries: 0
+                      )
+                      
+                      # 変換タスクをキューに追加
+                      Narou::WebWorker.push_task(convert_task) do
+                        CommandLine.run!('convert', '--no-open', novel_id.to_s)
+                        Narou::AppServer.clear_all_cache
+                      end
+                    end
+                  rescue => e
+                    # エラー時はログに記録してタスクを失敗状態にする
+                    raise e
                   end
-                  Narou::AppServer.clear_all_cache
-                  @@push_server.send_all(:'table.reload') if defined?(@@push_server)
                 end
                 
                 task.id
               end
               
               json success_response(
-                { targets: targets, force: force, task_ids: task_ids },
+                { 
+                  targets: targets, 
+                  force: force, 
+                  convert_after_download: convert_after_download,
+                  task_ids: task_ids 
+                },
                 message: 'Download started'
               )
             rescue StandardError => e

@@ -212,7 +212,7 @@
             更新オプション
           </h4>
 
-          <div class="space-y-3">
+          <div class="space-y-3 pl-3">
             <!-- 変換も同時実行 -->
             <label class="flex items-start space-x-3 cursor-pointer">
               <input
@@ -242,7 +242,7 @@
                   <i class="fas fa-save text-yellow-600"></i> 更新前にバックアップを作成
                 </div>
                 <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  更新前に現在のデータをバックアップします
+                  更新前に現在のデータをバックアップします（未実装）
                 </div>
               </div>
             </label>
@@ -268,11 +268,11 @@
 
         <!-- タグフィルター -->
         {#if allTags.length > 0}
-          <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="space-y-1 pt-4 border-t border-gray-200 dark:border-gray-700">
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
               タグで絞り込み（任意）
             </h4>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
+            <p class="text-xs text-gray-600 dark:text-gray-400 pl-2 pb-2">
               特定のタグを持つ小説のみを更新対象にできます
             </p>
 

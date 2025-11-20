@@ -705,18 +705,12 @@
       });
 
       // API呼び出し（バックグラウンド処理開始）
-      await downloadNovels(targetIds, isForceDownload);
-
-      // 変換も実行する場合
-      if (options.convertAfterUpdate) {
-        console.log("[NovelList] Will convert after download completes");
-        // TODO: ダウンロード完了後に自動変換を実行する仕組みの実装
-        // 現状は手動で変換を実行する必要がある
-        toast?.show("更新後の自動変換は未実装です。更新完了後に手動で変換してください。", "warning");
-      }
+      // convertAfterUpdateオプションをAPIに渡す
+      await downloadNovels(targetIds, isForceDownload, options.convertAfterUpdate || false);
 
       const action = isForceDownload ? "再取得" : "更新";
-      toast?.show(`${targetIds.length}件の${action}を開始しました`, "success");
+      const convertMessage = options.convertAfterUpdate ? "（更新後に自動変換を実行します）" : "";
+      toast?.show(`${targetIds.length}件の${action}を開始しました${convertMessage}`, "success");
       selectedIds = new Set();
 
       // 注意: 実際の進捗はPushServerイベントから更新されます
