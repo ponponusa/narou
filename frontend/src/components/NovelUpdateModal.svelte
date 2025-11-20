@@ -5,33 +5,84 @@
 -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { getTagList } from "../lib/api";
+  import type { TagInfo, Novel } from "../types/api";
 
   type UpdateMode = "update" | "force-download";
 
   interface Props {
     selectedCount: number;
+    allNovels?: Novel[];
+    selectedIds?: Set<number>;
     onConfirm?: (mode: UpdateMode, options: UpdateOptions) => void;
     onCancel?: () => void;
   }
 
   interface UpdateOptions {
-    fromEpisode?: number;
-    limit?: number;
+    convertAfterUpdate?: boolean;
+    createBackup?: boolean;
+    includeFrozen?: boolean;
+    filterByTags?: string[];
   }
 
-  let { selectedCount = 0, onConfirm, onCancel }: Props = $props();
+  let { selectedCount = 0, allNovels = [], selectedIds = new Set(), onConfirm, onCancel }: Props = $props();
 
   let isOpen = $state(false);
   let mode = $state<UpdateMode>("update");
-  let fromEpisode = $state<number | undefined>(undefined);
-  let limit = $state<number | undefined>(undefined);
+  let convertAfterUpdate = $state(false);
+  let createBackup = $state(false);
+  let includeFrozen = $state(false);
+  let selectedTags = $state<string[]>([]);
+  let allTags = $state<TagInfo[]>([]);
   let dialog: HTMLDialogElement;
 
-  export function open() {
+  // 実際の対象件数を計算
+  let effectiveCount = $derived.by(() => {
+    if (selectedTags.length === 0 && includeFrozen === false) {
+      return selectedCount;
+    }
+    
+    if (!allNovels || allNovels.length === 0) {
+      return selectedCount;
+    }
+
+    let count = 0;
+    for (const novel of allNovels) {
+      // 選択されている小説のみを対象
+      if (!selectedIds.has(novel.id)) continue;
+      
+      // タグフィルター
+      if (selectedTags.length > 0) {
+        const novelTags = novel.tags || [];
+        const hasMatchingTag = selectedTags.some(tag => novelTags.includes(tag));
+        if (!hasMatchingTag) continue;
+      }
+      
+      // 凍結フィルター（includeFrozenがfalseの場合は凍結中を除外）
+      if (includeFrozen === false && novel.frozen) continue;
+      
+      count++;
+    }
+    
+    return count;
+  });
+
+  export async function open() {
     isOpen = true;
     mode = "update";
-    fromEpisode = undefined;
-    limit = undefined;
+    convertAfterUpdate = false;
+    createBackup = false;
+    includeFrozen = false;
+    selectedTags = [];
+    
+    // タグリストを取得
+    try {
+      allTags = await getTagList();
+    } catch (err) {
+      console.error("Failed to load tags:", err);
+      allTags = [];
+    }
+    
     dialog?.showModal();
   }
 
@@ -46,15 +97,22 @@
   }
 
   function handleConfirm() {
-    const options: UpdateOptions = {};
-    if (fromEpisode !== undefined && fromEpisode > 0) {
-      options.fromEpisode = fromEpisode;
-    }
-    if (limit !== undefined && limit > 0) {
-      options.limit = limit;
-    }
+    const options: UpdateOptions = {
+      convertAfterUpdate,
+      createBackup,
+      includeFrozen,
+      filterByTags: selectedTags.length > 0 ? selectedTags : undefined,
+    };
     close();
     onConfirm?.(mode, options);
+  }
+
+  function toggleTag(tagName: string) {
+    if (selectedTags.includes(tagName)) {
+      selectedTags = selectedTags.filter(t => t !== tagName);
+    } else {
+      selectedTags = [...selectedTags, tagName];
+    }
   }
 
   function handleBackdropClick(e: MouseEvent) {
@@ -97,7 +155,15 @@
         <!-- 選択数表示 -->
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <p class="text-sm text-blue-800 dark:text-blue-200">
-            <i class="fas fa-info-circle"></i> {selectedCount}件の小説を更新します
+            <i class="fas fa-info-circle"></i> 
+            {#if selectedTags.length > 0 || includeFrozen}
+              <span class="font-semibold">{effectiveCount}件</span>の小説を更新します
+              {#if effectiveCount !== selectedCount}
+                <span class="text-xs ml-2">（選択: {selectedCount}件）</span>
+              {/if}
+            {:else}
+              <span class="font-semibold">{selectedCount}件</span>の小説を更新します
+            {/if}
           </p>
         </div>
 
@@ -153,50 +219,114 @@
           </div>
         </div>
 
-        <!-- 詳細オプション -->
+        <!-- 更新オプション -->
         <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
-            詳細オプション（任意）
+            更新オプション
           </h4>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- 開始話数 -->
-            <div>
-              <label for="fromEpisode" class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
-                開始話数
-              </label>
+          <div class="space-y-3">
+            <!-- 変換も同時実行 -->
+            <label class="flex items-start space-x-3 cursor-pointer">
               <input
-                id="fromEpisode"
-                type="number"
-                bind:value={fromEpisode}
-                min="1"
-                placeholder="指定しない"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                type="checkbox"
+                bind:checked={convertAfterUpdate}
+                class="mt-1"
               />
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                この話数から取得開始
-              </p>
-            </div>
+              <div class="flex-1">
+                <div class="text-sm font-medium text-gray-900 dark:text-white">
+                  <i class="fas fa-file-export text-blue-600"></i> 更新後に変換も実行
+                </div>
+                <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  更新完了後、自動的に EPUB 変換を実行します
+                </div>
+              </div>
+            </label>
 
-            <!-- 取得数制限 -->
-            <div>
-              <label for="limit" class="block text-sm text-gray-600 dark:text-gray-400 mb-2">
-                取得数制限
-              </label>
+            <!-- バックアップ作成 -->
+            <label class="flex items-start space-x-3 cursor-pointer">
               <input
-                id="limit"
-                type="number"
-                bind:value={limit}
-                min="1"
-                placeholder="制限なし"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                type="checkbox"
+                bind:checked={createBackup}
+                class="mt-1"
               />
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                最大取得話数
-              </p>
-            </div>
+              <div class="flex-1">
+                <div class="text-sm font-medium text-gray-900 dark:text-white">
+                  <i class="fas fa-save text-yellow-600"></i> 更新前にバックアップを作成
+                </div>
+                <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  更新前に現在のデータをバックアップします
+                </div>
+              </div>
+            </label>
+
+            <!-- 凍結中も含める -->
+            <label class="flex items-start space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                bind:checked={includeFrozen}
+                class="mt-1"
+              />
+              <div class="flex-1">
+                <div class="text-sm font-medium text-gray-900 dark:text-white">
+                  <i class="fas fa-snowflake text-blue-400"></i> 凍結中の小説も更新対象に含める
+                </div>
+                <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  通常はスキップされる凍結中の小説も更新します
+                </div>
+              </div>
+            </label>
           </div>
         </div>
+
+        <!-- タグフィルター -->
+        {#if allTags.length > 0}
+          <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              タグで絞り込み（任意）
+            </h4>
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+              特定のタグを持つ小説のみを更新対象にできます
+            </p>
+
+            <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              {#each allTags as tag}
+                <button
+                  type="button"
+                  onclick={() => toggleTag(tag.name)}
+                  class="px-3 py-1 text-sm rounded-full transition-colors"
+                  class:bg-purple-600={selectedTags.includes(tag.name)}
+                  class:text-white={selectedTags.includes(tag.name)}
+                  class:bg-gray-200={!selectedTags.includes(tag.name)}
+                  class:dark:bg-gray-700={!selectedTags.includes(tag.name)}
+                  class:text-gray-700={!selectedTags.includes(tag.name)}
+                  class:dark:text-gray-300={!selectedTags.includes(tag.name)}
+                  class:hover:bg-purple-500={selectedTags.includes(tag.name)}
+                  class:hover:bg-gray-300={!selectedTags.includes(tag.name)}
+                  class:dark:hover:bg-gray-600={!selectedTags.includes(tag.name)}
+                >
+                  {#if selectedTags.includes(tag.name)}
+                    <i class="fas fa-check-circle mr-1"></i>
+                  {/if}
+                  {tag.name} ({tag.count})
+                </button>
+              {/each}
+            </div>
+
+            {#if selectedTags.length > 0}
+              <div class="text-xs text-purple-600 dark:text-purple-400">
+                <i class="fas fa-filter"></i> 選択中のタグ: {selectedTags.join(", ")}
+                <button
+                  type="button"
+                  onclick={() => selectedTags = []}
+                  class="ml-2 underline hover:no-underline"
+                >
+                  クリア
+                </button>
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
 
       <!-- フッター -->

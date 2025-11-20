@@ -652,32 +652,78 @@
    */
   async function handleUpdateConfirm(
     mode: "update" | "force-download",
-    options: { fromEpisode?: number; limit?: number }
+    options: { 
+      convertAfterUpdate?: boolean;
+      createBackup?: boolean;
+      includeFrozen?: boolean;
+      filterByTags?: string[];
+    }
   ) {
-    const ids = Array.from(selectedIds);
+    let targetIds = Array.from(selectedIds);
     const isForceDownload = mode === "force-download";
     
+    // タグフィルターや凍結フィルターが適用されている場合、対象小説を絞り込む
+    if (options.filterByTags || options.includeFrozen !== undefined) {
+      const filteredNovels = novels.filter(novel => {
+        if (!selectedIds.has(novel.id)) return false;
+        
+        // タグフィルター
+        if (options.filterByTags && options.filterByTags.length > 0) {
+          const novelTags = novel.tags || [];
+          const hasMatchingTag = options.filterByTags.some(tag => novelTags.includes(tag));
+          if (!hasMatchingTag) return false;
+        }
+        
+        // 凍結フィルター（includeFrozenがfalseの場合、凍結中を除外）
+        if (options.includeFrozen === false && novel.frozen) {
+          return false;
+        }
+        
+        return true;
+      });
+      
+      targetIds = filteredNovels.map(n => n.id);
+      
+      if (targetIds.length === 0) {
+        toast?.show("指定した条件に一致する小説がありません", "warning");
+        return;
+      }
+    }
+    
     try {
-      console.log(`[NovelList] Starting ${mode} for IDs:`, ids, "options:", options);
+      console.log(`[NovelList] Starting ${mode} for ${targetIds.length} novels:`, targetIds, "options:", options);
+
+      // バックアップオプションの警告表示（実装は今後）
+      if (options.createBackup) {
+        console.warn("[NovelList] Backup option is not yet implemented");
+        // TODO: バックアップ機能の実装
+      }
 
       // 進捗状態を設定
-      ids.forEach((id) => {
+      targetIds.forEach((id) => {
         progressStore.setProgress(id, "waiting", "キュー待ち...");
       });
 
       // API呼び出し（バックグラウンド処理開始）
-      // 注意: 現在のAPIはoptionsを受け取らないため、将来的に拡張が必要
-      await downloadNovels(ids, isForceDownload);
+      await downloadNovels(targetIds, isForceDownload);
+
+      // 変換も実行する場合
+      if (options.convertAfterUpdate) {
+        console.log("[NovelList] Will convert after download completes");
+        // TODO: ダウンロード完了後に自動変換を実行する仕組みの実装
+        // 現状は手動で変換を実行する必要がある
+        toast?.show("更新後の自動変換は未実装です。更新完了後に手動で変換してください。", "warning");
+      }
 
       const action = isForceDownload ? "再取得" : "更新";
-      toast?.show(`${action}を開始しました`, "success");
+      toast?.show(`${targetIds.length}件の${action}を開始しました`, "success");
       selectedIds = new Set();
 
       // 注意: 実際の進捗はPushServerイベントから更新されます
     } catch (err) {
       const message = err instanceof Error ? err.message : "不明なエラー";
       // エラー状態に設定
-      ids.forEach((id) => {
+      targetIds.forEach((id) => {
         progressStore.setProgress(id, "error", message);
       });
       const action = isForceDownload ? "再取得" : "更新";
@@ -2420,6 +2466,8 @@
 <NovelUpdateModal 
   bind:this={novelUpdateModal} 
   selectedCount={selectedIds.size}
+  selectedIds={selectedIds}
+  allNovels={novels}
   onConfirm={handleUpdateConfirm}
 />
 
