@@ -39,6 +39,11 @@ mail_setting.yaml
 *.log
 .agent/
 
+# Performance test data
+.narou_perf_test/
+小説データ_perf_test/
+performance_report.txt
+
 # Rsync configuration
 rsync.env
 commitversion
