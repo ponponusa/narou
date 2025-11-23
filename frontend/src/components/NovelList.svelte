@@ -1743,179 +1743,179 @@
               <tr>
                 {#if columnVisibility.id}
                   <th
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("id")}
                   >
-                    <button
-                      onclick={() => handleSort("id")}
-                      class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                    >
+                    <span class="flex items-center gap-1">
                       ID
                       {#if sortBy === "id"}
-                        <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
                       {/if}
-                    </button>
+                    </span>
                   </th>
                 {/if}
                 {#if columnVisibility.updated_at}
                   <th
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("updated_at")}
                   >
-                    <button
-                      onclick={() => handleSort("updated_at")}
-                      class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                    >
+                    <span class="flex items-center gap-1">
                       更新日
                       {#if sortBy === "updated_at"}
-                        <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
                       {/if}
-                    </button>
+                    </span>
                   </th>
                 {/if}
                 {#if columnVisibility.newest_article_date}
                   <th
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("newest_article_date")}
                   >
-                    <button
-                      onclick={() => handleSort("newest_article_date")}
-                      class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                    >
+                    <span class="flex items-center gap-1">
                       <div class="flex flex-col">
                         <span>最新話</span>
                         <span>掲載日</span>
                       </div>
                       {#if sortBy === "newest_article_date"}
-                        <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
                       {/if}
-                    </button>
+                    </span>
                   </th>
                 {/if}
                 {#if columnVisibility.last_update}
                   <th
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("last_update")}
                   >
-                    <button
-                      onclick={() => handleSort("last_update")}
-                      class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                    >
+                    <span class="flex items-center gap-1">
                       更新チェック日
                       {#if sortBy === "last_update"}
-                        <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
                       {/if}
-                    </button>
+                    </span>
                   </th>
                 {/if}
                 <th
-                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                  onclick={() => handleSort("title")}
                 >
-                  <button
-                    onclick={() => handleSort("title")}
-                    class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                  >
+                  <span class="flex items-center gap-1">
                     タイトル
                     {#if sortBy === "title"}
-                      <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                      <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                    {:else}
+                      <i class="fas fa-sort text-gray-400"></i>
                     {/if}
-                  </button>
+                  </span>
                 </th>
                 <th
-                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                  onclick={() => handleSort("author")}
                 >
-                  <button
-                    onclick={() => handleSort("author")}
-                    class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                  >
+                  <span class="flex items-center gap-1">
                     著者
                     {#if sortBy === "author"}
-                      <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                      <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                    {:else}
+                      <i class="fas fa-sort text-gray-400"></i>
                     {/if}
-                  </button>
+                  </span>
                 </th>
                 <th
-                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                  class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                  onclick={() => handleSort("sitename")}
                 >
-                  <button
-                    onclick={() => handleSort("sitename")}
-                    class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                  >
+                  <span class="flex items-center gap-1">
                     掲載サイト
                     {#if sortBy === "sitename"}
-                      <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                      <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                    {:else}
+                      <i class="fas fa-sort text-gray-400"></i>
                     {/if}
-                  </button>
+                  </span>
                 </th>
                 {#if columnVisibility.status}
                   <th
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("status")}
                   >
-                    <button
-                      onclick={() => handleSort("status")}
-                      class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                    >
+                    <span class="flex items-center gap-1">
                       状態
                       {#if sortBy === "status"}
-                        <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
                       {/if}
-                    </button>
+                    </span>
                   </th>
                 {/if}
                 {#if columnVisibility.tags}
                   <th
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("tags")}
                   >
-                    <button
-                      onclick={() => handleSort("tags")}
-                      class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                    >
+                    <span class="flex items-center gap-1">
                       タグ
                       {#if sortBy === "tags"}
-                        <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
                       {/if}
-                    </button>
+                    </span>
                   </th>
                 {/if}
                 {#if columnVisibility.episode_count}
                   <th
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("episode_count")}
                   >
-                    <button
-                      onclick={() => handleSort("episode_count")}
-                      class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                    >
+                    <span class="flex items-center gap-1">
                       話数
                       {#if sortBy === "episode_count"}
-                        <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
                       {/if}
-                    </button>
+                    </span>
                   </th>
                 {/if}
                 {#if columnVisibility.total_chars}
                   <th
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("total_chars")}
                   >
-                    <button
-                      onclick={() => handleSort("total_chars")}
-                      class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                    >
+                    <span class="flex items-center gap-1">
                       文字数
                       {#if sortBy === "total_chars"}
-                        <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
                       {/if}
-                    </button>
+                    </span>
                   </th>
                 {/if}
                 {#if columnVisibility.avg_chars_per_episode}
                   <th
-                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("avg_chars_per_episode")}
                   >
-                    <button
-                      onclick={() => handleSort("avg_chars_per_episode")}
-                      class="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-100"
-                    >
+                    <span class="flex items-center gap-1">
                       平均文字数
                       {#if sortBy === "avg_chars_per_episode"}
-                        <span>{sortOrder === "asc" ? "▲" : "▼"}</span>
+                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
                       {/if}
-                    </button>
+                    </span>
                   </th>
                 {/if}
                 <th
@@ -1978,7 +1978,7 @@
                       <div class="flex items-center gap-2">
                         <button
                           onclick={() => openNovelDetail(novel)}
-                          class="text-blue-600 dark:text-blue-400 hover:underline break-words text-left font-medium"
+                          class="text-blue-600 dark:text-blue-400 hover:underline wrap-break-word text-left font-medium"
                         >
                           {(typeof novel.promo_tags_title === "string" &&
                             novel.promo_tags_title.trim()) ||
@@ -2397,7 +2397,7 @@
                         currentPage = page;
                         loadNovels();
                       }}
-                      class="min-w-[2.5rem] px-3 py-1.5 {page === currentPage
+                      class="min-w-10 px-3 py-1.5 {page === currentPage
                         ? 'bg-blue-600 text-white font-semibold'
                         : 'bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200'} border border-gray-300 dark:border-gray-500 rounded hover:bg-blue-500 hover:text-white transition-colors"
                     >

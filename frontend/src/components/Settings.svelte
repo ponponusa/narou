@@ -33,6 +33,9 @@
   let showScrollTopButton = $state(false);
   let consolePanelOpen = $state(false);
 
+  // フィルタ機能
+  let filterKeyword = $state('');
+
   // 利用可能なタブ一覧（リアクティブ）
   let availableTabs = $derived.by(() => {
     if (!variablesData) return [];
@@ -81,8 +84,24 @@
         // invisibleチェックを削除 - タブがあれば表示
         // タブが指定されていない場合は general に表示
         const tab = variable.tab || 'general';
-        if (tab === currentTab) {
-          result.push([key, variable, scope]);
+        
+        // フィルタキーワードが指定されている場合は、全タブから検索
+        // それ以外は現在のタブのみ
+        const shouldInclude = filterKeyword.trim() ? true : tab === currentTab;
+        
+        if (shouldInclude) {
+          // フィルタキーワードが指定されている場合、該当するものだけを追加
+          if (filterKeyword.trim()) {
+            const keyword = filterKeyword.toLowerCase();
+            const matchesKey = key.toLowerCase().includes(keyword);
+            const matchesHelp = variable.help?.toLowerCase().includes(keyword) || false;
+            
+            if (matchesKey || matchesHelp) {
+              result.push([key, variable, scope]);
+            }
+          } else {
+            result.push([key, variable, scope]);
+          }
         }
       });
     });
@@ -404,6 +423,35 @@
       </div>
     {/if}
 
+    <!-- フィルタ入力欄 -->
+    <div class="mb-6">
+      <div class="relative">
+        <input
+          type="text"
+          bind:value={filterKeyword}
+          placeholder="設定項目を検索（キーまたは説明文で絞り込み）"
+          class="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+          <i class="fas fa-search"></i>
+        </div>
+        {#if filterKeyword.trim()}
+          <button
+            onclick={() => filterKeyword = ''}
+            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            title="クリア"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        {/if}
+      </div>
+      {#if filterKeyword.trim()}
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          {settingsForCurrentTab.length} 件の設定項目が見つかりました
+        </p>
+      {/if}
+    </div>
+
     <!-- 成功メッセージ -->
     {#if successMessage}
       <div class="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
@@ -560,7 +608,13 @@
         {/each}
 
         {#if settingsForCurrentTab.length === 0}
-          <p class="text-center text-gray-500 py-8">このタブに設定項目はありません</p>
+          <p class="text-center text-gray-500 py-8">
+            {#if filterKeyword.trim()}
+              「{filterKeyword}」に一致する設定項目が見つかりませんでした
+            {:else}
+              このタブに設定項目はありません
+            {/if}
+          </p>
         {/if}
       </div>
     </div>
