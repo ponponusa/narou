@@ -10,6 +10,7 @@ require "ostruct"
 require "cgi"
 require_relative "narou"
 require_relative "narou/promo_tag_extractor"
+require_relative "narou/parsers/parser_selector"
 require_relative "helper"
 require_relative "sitesetting"
 require_relative "novelsetting"
@@ -383,6 +384,10 @@ class Downloader
     @nosave_diff = Narou.economy?("nosave_diff")
     @nosave_raw = Narou.economy?("nosave_raw")
     @gurad_spoiler = Inventory.load("local_setting")["guard-spoiler"]
+    
+    # 新パーサーの初期化
+    @parser = Narou::Parsers::ParserSelector.select(@setting, novel_id: @id) rescue nil
+    
     initialize_wait_counter
   end
 
@@ -1337,12 +1342,26 @@ class Downloader
       end
     raw = download_raw_data(subtitle_url)
     save_raw_data(raw, subtitle_info, ".html")
-    %w(introduction postscript body).each { |type| @setting[type] = nil }
-    @setting.multi_match(raw, "body_pattern", "introduction_pattern", "postscript_pattern")
-    element = { "data_type" => @setting["data_type"] || "html" }
-    %w(introduction postscript body).each { |type|
-      element[type] = @setting[type].to_s
-    }
+    
+    # 新パーサーが利用可能な場合は新パーサーを使用
+    if @parser
+      result = @parser.parse_section(raw, subtitle_info)
+      element = {
+        "data_type" => result["data_type"] || "html",
+        "introduction" => result["introduction"].to_s,
+        "postscript" => result["postscript"].to_s,
+        "body" => result["body"].to_s
+      }
+    else
+      # パーサーが初期化されていない場合は既存の multi_match を使用
+      %w(introduction postscript body).each { |type| @setting[type] = nil }
+      @setting.multi_match(raw, "body_pattern", "introduction_pattern", "postscript_pattern")
+      element = { "data_type" => @setting["data_type"] || "html" }
+      %w(introduction postscript body).each { |type|
+        element[type] = @setting[type].to_s
+      }
+    end
+    
     subtitle_info["download_time"] = Time.now
     @section_download_cache[index] = element
     element

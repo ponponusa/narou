@@ -12,6 +12,7 @@ PATH
       mail (~> 2.9, >= 2.9.0)
       memoist (~> 0.16.2)
       nkf (~> 0.2.0)
+      nokogiri (~> 1.18)
       open_uri_redirections (~> 0.2, >= 0.2.1)
       ostruct (~> 0.6.3)
       pony (~> 1, >= 1.13)
@@ -113,6 +114,10 @@ GEM
       net-protocol
     nio4r (2.7.4)
     nkf (0.2.0)
+    nokogiri (1.18.10-x64-mingw-ucrt)
+      racc (~> 1.4)
+    nokogiri (1.18.10-x86_64-linux-gnu)
+      racc (~> 1.4)
     open_uri_redirections (0.2.1)
     ostruct (0.6.3)
     parallel (1.27.0)
@@ -257,7 +262,6 @@ GEM
     wisper (2.0.1)
 
 PLATFORMS
-  ruby
   x64-mingw-ucrt
   x86_64-linux
 

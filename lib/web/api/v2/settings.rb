@@ -224,6 +224,107 @@ module Narou
               json error_response('SETTINGS_UPDATE_ERROR', e.message)
             end
           end
+
+          # GET /api/v2/settings/parser
+          # パーサー設定を取得
+          get '/api/v2/settings/parser' do
+            set_cors_headers
+            
+            begin
+              require_relative '../../../narou/parsers/config_manager'
+              
+              # グローバル設定を読み込み
+              global_config = Narou::Parsers::ConfigManager.load_global_config
+              
+              # サポートしているドメイン一覧
+              domains = []
+              
+              # preset/parsers/ からドメイン一覧を取得
+              preset_dir = Narou.script_dir.join("preset", "parsers")
+              if preset_dir.exist?
+                Dir.glob(preset_dir.join("*.yaml")).each do |path|
+                  domain = File.basename(path, ".yaml")
+                  domains << domain unless domain.start_with?("_")
+                end
+              end
+              
+              # .narou/parsers/ からカスタム設定を取得
+              user_parser_dir = Narou.root_dir.join(".narou", "parsers")
+              user_configs = {}
+              if user_parser_dir.exist?
+                Dir.glob(user_parser_dir.join("*.yaml")).each do |path|
+                  domain = File.basename(path, ".yaml")
+                  next if domain.start_with?("_")
+                  begin
+                    user_configs[domain] = YAML.load_file(path)
+                  rescue => e
+                    # エラーは無視して続行
+                  end
+                end
+              end
+              
+              result = {
+                global_config: global_config,
+                domains: domains.sort,
+                user_configs: user_configs
+              }
+              
+              json success_response(result)
+            rescue StandardError => e
+              status 500
+              json error_response('PARSER_CONFIG_GET_ERROR', e.message)
+            end
+          end
+
+          # POST /api/v2/settings/parser
+          # パーサー設定を更新
+          post '/api/v2/settings/parser' do
+            set_cors_headers
+            
+            body = parse_json_body
+            
+            begin
+              require_relative '../../../narou/parsers/config_manager'
+              
+              updated = []
+              
+              # グローバル設定の更新
+              if body['default_engine']
+                global_config = Narou::Parsers::ConfigManager.load_global_config
+                global_config['default_engine'] = body['default_engine']
+                Narou::Parsers::ConfigManager.save_global_config(global_config)
+                updated << 'default_engine'
+              end
+              
+              # 小説ごとのエンジン設定
+              if body['novel_engines'] && body['novel_engines'].is_a?(Hash)
+                body['novel_engines'].each do |novel_id, engine|
+                  Narou::Parsers::ConfigManager.set_engine_for_novel(novel_id, engine)
+                  updated << "novel_#{novel_id}"
+                end
+              end
+              
+              # ドメイン別設定の更新
+              if body['domain_config'] && body['domain_config'].is_a?(Hash)
+                domain = body['domain_config']['domain']
+                config = body['domain_config']['config']
+                engine = body['domain_config']['engine'] || 'nokogiri'
+                
+                if domain && config
+                  Narou::Parsers::ConfigManager.save_parser_config(domain, config, engine)
+                  updated << "domain_#{domain}"
+                end
+              end
+              
+              json success_response(
+                { updated: updated },
+                message: 'Parser settings updated successfully'
+              )
+            rescue StandardError => e
+              status 500
+              json error_response('PARSER_CONFIG_UPDATE_ERROR', e.message)
+            end
+          end
         end
       end
     end
