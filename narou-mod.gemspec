@@ -21,15 +21,18 @@ Gem::Specification.new do |gem|
   gem.license       = "MIT"
   gem.authors       = ["whiteleaf7 (original)", "Rumia-Channel (fork from)", "ponponusa (mod maintainer)"]
   gem.email         = ["init0531.usa@gmail.com"]
-  gem.homepage      = "https://github.com/ponponusa/narou"
+  gem.homepage      = "https://github.com/ponponusa/narou-mod"
   gem.summary       = "Narou.rb MOD ― 小説家になろうダウンローダ＆縦書用整形スクリプト"
   gem.description   = "小説家になろうで公開されている小説を管理し電子書籍データへ変換します。"
   install_message   = <<~MSG
     ============================================================
      Narou.rb_MOD v#{::Narou::VERSION} がインストールされました 🎉
 
-      コマンドヘルプ:   narou-mod help
-      Webサーバー起動:  narou-mod web
+      コマンドヘルプ　　　:  narou-mod --help
+      初期設定　　　　　　:  narou-mod init #既に存在するDBは上書きされません
+      小説の追加　　　　　:  narou-mod add <小説ID>
+      小説ダウンロード　　:  narou-mod download <小説ID>
+      Ｗｅｂサーバー起動　:  narou-mod web
 
      更新情報: https://github.com/ponponusa/narou/releases
     ============================================================
