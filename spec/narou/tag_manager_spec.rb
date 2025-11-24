@@ -4,7 +4,7 @@
 # Copyright 2024 ponponusa. All rights reserved.
 #
 
-require_relative "../spec_helper"
+require "spec/spec_helper"
 require "narou/tag_manager"
 
 RSpec.describe Narou::TagManager do

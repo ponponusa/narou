@@ -4,6 +4,8 @@ require "simplecov"
 
 # プロジェクトのlibディレクトリをロードパスに追加（相対パス地獄回避）
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+# specディレクトリもロードパスに追加（spec_helperを require "spec_helper" で参照可能に）
+$LOAD_PATH.unshift File.expand_path("..", __dir__)
 
 # ARGV退避: lib/配下のコードがrequire時にARGVを誤解釈しないように
 original_argv = ARGV.dup

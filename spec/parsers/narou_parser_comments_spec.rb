@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../spec_helper"
+require "spec/spec_helper"
 require "narou/parsers/narou_parser"
 require "narou/parsers/config_manager"
 
