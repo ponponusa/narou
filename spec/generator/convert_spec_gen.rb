@@ -86,8 +86,16 @@ describe "convert" do
   def check_answer(path)
     dir = File.dirname(path)
     filename = File.basename(path)
-    Narou::Logger.new.silence do
+    # テスト実行中の出力を抑制するため、$stdoutと$stdout2を一時的にStringIOに置き換える
+    original_stdout = $stdout
+    original_stdout2 = $stdout2
+    $stdout = StringIO.new
+    $stdout2 = StringIO.new
+    begin
       CommandLine.run(["convert", path, "--no-epub", "--no-open", "--ignore-force", "--ignore-default"])
+    ensure
+      $stdout = original_stdout
+      $stdout2 = original_stdout2
     end
     output_file = File.join(dir, "[#{AUTHOR}] #{filename}")
     correct_file = File.join(dir, "correct_#{filename}")
