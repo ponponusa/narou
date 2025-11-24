@@ -2,8 +2,8 @@
 
 require "sinatra/base"
 require_relative "base"
-require_relative "../../web_worker"
-require_relative "../../task"
+require_relative "../../workers/web_worker"
+require_relative "../../workers/task"
 
 module Narou
   module ApiV2

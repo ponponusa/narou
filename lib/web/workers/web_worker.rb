@@ -5,9 +5,9 @@
 #
 
 require "singleton"
-require_relative "pushserver"
+require_relative "../server/push_server"
 require_relative "task"
-require_relative "../mixin/all"
+require_relative "../../mixin/all"
 
 module Narou
   class WebWorker
