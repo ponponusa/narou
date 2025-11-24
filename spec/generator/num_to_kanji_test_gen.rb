@@ -5,7 +5,6 @@
 
 #require "pry"
 
-require_relative "../spec_helper"
 require "lib/novel/converterbase"
 
 converter = ConverterBase.new(nil, nil, nil)

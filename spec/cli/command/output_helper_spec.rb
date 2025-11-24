@@ -1,11 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../../spec_helper"
 require "lib/cli/command/output_helper"
 
 RSpec.describe Command::OutputHelper do
-  let(:test_template_dir) { File.join(__dir__, "..", "fixtures", "templates") }
-  let(:test_log_file) { File.join(__dir__, "..", "..", "tmp", "test_output.log") }
+  let(:test_template_dir) { File.join("spec", "fixtures", "templates") }
+  let(:test_log_file) { File.join("tmp", "test_output.log") }
 
   before do
     # テスト用テンプレートディレクトリを作成

@@ -5,7 +5,8 @@
 
 require "lib/conversion/ini"
 
-data_test_ini_path = File.expand_path(File.dirname(__FILE__) + "/../data/test.ini")
+spec_dir = File.expand_path("..", __dir__)
+data_test_ini_path = File.join(spec_dir, "data", "test.ini")
 
 describe Ini, "#cast" do
   before do
