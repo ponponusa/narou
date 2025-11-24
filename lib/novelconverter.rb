@@ -8,13 +8,6 @@ require "fileutils"
 require "stringio"
 
 begin
-  require "zip"
-rescue LoadError
-  # rubyzipが利用できない場合のフラグ
-  ZIP_UNAVAILABLE = true
-end
-
-begin
   require "rexml/document"
 rescue LoadError
   # rexmlが利用できない場合のフラグ
@@ -31,9 +24,17 @@ require_relative "helper"
 require_relative "inventory"
 require_relative "html"
 require_relative "eventable"
+require_relative "database"
+require_relative "novel_converter/font_manager"
+require_relative "novel_converter/ebook_builder"
+require_relative "novel_converter/output_helper"
+require_relative "novel_converter/title_decorator"
+require_relative "novel_converter/text_processor"
 
 class NovelConverter
   include Narou::Eventable
+  include TitleDecorator
+  include TextProcessor
 
   NOVEL_TEXT_TEMPLATE_NAME = "novel.txt"
   NOVEL_TEXT_TEMPLATE_NAME_FOR_IBUNKO = "ibunko_novel.txt"
@@ -80,16 +81,16 @@ class NovelConverter
       ignore_force: false, ignore_default: false
     }.merge(options)
     output_filename = options[:output_filename]
-    if output_filename
-      archive_path = File.dirname(output_filename) + "/"
-    else
-      archive_path = File.dirname(filename) + "/"
-    end
+    archive_path = if output_filename
+                     "#{File.dirname(output_filename)}/"
+                   else
+                     "#{File.dirname(filename)}/"
+                   end
     setting = NovelSetting.create(archive_path, options[:ignore_force], options[:ignore_default])
     setting.author = ""
     setting.title = File.basename(filename)
     novel_converter = new(setting, output_filename, options[:display_inspector])
-    text = File.open(filename, "r:BOM|UTF-8") { |fp| fp.read }.gsub("\r", "")
+    text = File.open(filename, "r:BOM|UTF-8", &:read).gsub("\r", "")
     if options[:encoding]
       text.force_encoding(options[:encoding]).encode!(Encoding::UTF_8)
     end
@@ -99,368 +100,39 @@ class NovelConverter
     }
   end
 
-  DAKUTEN_FROM = ["vertical_font_with_dakuten.css", "DMincho.ttf"]
-  DAKUTEN_TO = ["template/OPS/css_custom/vertical_font.css", "template/OPS/fonts/DMincho.ttf"]
-  DAKUTEN_ERB = [true, false]
-
+  # FontManagerへの委譲
   def self.activate_dakuten_font_files
-    preset_dir = Narou.preset_dir
-    aozora_dir = File.dirname(Narou.aozoraepub3_path)
-    line_height = Narou.line_height
-
-    DAKUTEN_FROM.each_with_index do |name, i|
-      src = File.join(preset_dir, name)
-      dst = File.join(aozora_dir, DAKUTEN_TO[i])
-      if DAKUTEN_ERB[i]
-        Helper.erb_copy(src, dst, binding)
-      else
-        FileUtils.mkdir_p(File.dirname(dst))
-        FileUtils.copy(src, dst)
-      end
-    end
+    FontManager.activate_dakuten_font_files
   end
 
   def self.inactivate_dakuten_font_files
-    preset_dir = Narou.preset_dir
-    aozora_dir = File.dirname(Narou.aozoraepub3_path)
-    path_normal_vertical_css = File.join(preset_dir, "vertical_font.css")
-    line_height = Narou.line_height
-
-    Helper.erb_copy(path_normal_vertical_css, File.join(aozora_dir, DAKUTEN_TO[0]), binding)
-    FileUtils.remove(File.join(aozora_dir, DAKUTEN_TO[1]))
+    FontManager.inactivate_dakuten_font_files
   end
 
-  #
-  # AozoraEpub3でEPUBファイル作成
-  #
-  # AozoraEpub3は.jarがあるところがカレントディレクトリじゃないとうまく動かない
-  # MEMO:
-  # 逆にカレントディレクトリにAozoraEpub3の必須ファイルを置いて手を加えることで、
-  # テンプレート等の差し替えが容易になる
-  #
-  # 返り値：正常終了 :success、エラー終了 :error、AozoraEpub3が見つからなかった nil
-  #
-  def self.txt_to_epub(filename, dst_dir: nil, device: nil, verbose: false, yokogaki: false, use_dakuten_font: false, stream_io: $stdout2)
-    abs_srcpath = File.expand_path(filename)
-    src_dir = File.dirname(abs_srcpath)
-
-    cover_option = ""
-    # MEMO: 外部実行からだと -c FILENAME, -c 1 オプションはぬるぽが出て動かない
-    cover_filename = get_cover_filename(src_dir)
-    if cover_filename
-      cover_option = "-c 0"   # 先頭の挿絵を表紙として利用
-    end
-
-    dst_option = ""
-    if dst_dir
-      dst_option = %!-dst "#{File.expand_path(dst_dir)}"!
-    end
-
-    ext_option = ""
-    device_option = ""
-    if device
-      case device.name
-      when "Kobo"
-        ext_option = "-ext " + device.ebook_file_ext
-      when "Kindle"
-        device_option = "-device kindle"
-      end
-    end
-
-    yokogaki_option = yokogaki ? "-hor" : ""
-
-    pwd = Dir.pwd
-
-    aozoraepub3_path = Narou.aozoraepub3_path
-    unless aozoraepub3_path
-      error "AozoraEpub3が見つからなかったのでEPUBが出力出来ませんでした。" +
-            "narou initでAozoraEpub3の設定を行なって下さい"
-      return nil
-    end
-    aozoraepub3_basename = File.basename(aozoraepub3_path)
-    aozoraepub3_dir = File.dirname(aozoraepub3_path)
-
-    java_encoding = "-Dfile.encoding=UTF-8" +
-                    " -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8" +
-                    " -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8"
-
-    if Helper.os_cygwin?
-      abs_srcpath = Helper.convert_to_windows_path(abs_srcpath)
-    end
-    Dir.chdir(aozoraepub3_dir)
-    command = %!java #{java_encoding} -cp #{aozoraepub3_basename} AozoraEpub3 -enc UTF-8 -of #{device_option} ! +
-              %!#{cover_option} #{dst_option} #{ext_option} #{yokogaki_option} "#{abs_srcpath}"!
-    if Helper.os_windows?
-      command = "cmd /c #{command}".encode(Encoding::Windows_31J)
-    end
-    activate_dakuten_font_files if use_dakuten_font
-    stream_io.print "AozoraEpub3でEPUBに変換しています"
-    begin
-      res = Helper::AsyncCommand.exec(command) do
-        stream_io.print "."
-      end
-    ensure
-      Dir.chdir(pwd)
-      inactivate_dakuten_font_files if use_dakuten_font
-    end
-
-    # AozoraEpub3はエラーだとしてもexitコードは0なので、
-    # 失敗した場合はjavaが実行できない場合と確定できる
-    unless res[2].success?
-      stream_io.puts
-      stream_io.puts res
-      stream_io.error "JavaがインストールされていないかAozoraEpub3実行時にエラーが発生しました。EPUBを作成出来ませんでした"
-      return :error
-    end
-
-    stdout_capture = res[0]
-
-    # Javaの実行環境に由来するであろうエラー
-    if stdout_capture =~ /Error occurred during initialization of VM/
-      stream_io.puts
-      stream_io.puts stdout_capture.strip
-      stream_io.puts "-" * 70
-      stream_io.error "Javaの実行エラーが発生しました。EPUBを作成出来ませんでした\n" \
-                     "Hint: 複数のJava環境が混じっていると起きやすいエラーのようです"
-      return :error
-    end
-
-    error_list = stdout_capture.scan(/^(?:\[ERROR\]|エラーが発生しました :).+$/)
-    warn_list = stdout_capture.scan(/^\[WARN\].+$/)
-    info_list = stdout_capture.scan(/^\[INFO\].+$/)
-
-    if verbose
-      stream_io.puts
-      stream_io.puts "==== AozoraEpub3 stdout capture " + "=" * 47
-      stream_io.puts stdout_capture.strip
-      stream_io.puts "=" * 79
-    end
-
-    if !error_list.empty? || !warn_list.empty?
-      unless verbose
-        stream_io.puts
-        stream_io.puts error_list, warn_list
-      end
-      unless error_list.empty?
-        # AozoraEpub3 のエラーにはEPUBが出力されないエラーとEPUBが出力されるエラーの2種類ある。
-        # EPUBが出力される場合は「変換完了」という文字があるのでそれを検出する
-        if stdout_capture !~ /^変換完了/
-          stream_io.error "AozoraEpub3実行中にエラーが発生したため、EPUBが出力出来ませんでした"
-          return :error
-        end
-      end
-    end
-    stream_io.puts "変換しました"
-    :success
+  # EbookBuilderへの委譲
+  def self.txt_to_epub(*args, **kwargs)
+    EbookBuilder.txt_to_epub(*args, **kwargs)
   end
 
-  #
-  # EPUBファイルのstandard.opfにdc:subjectを追加する
-  #
-  def self.add_dc_subject_to_epub(epub_path, subjects, stream_io: $stdout2)
-    return :success if subjects.nil? || subjects.empty?
-    if defined?(ZIP_UNAVAILABLE)
-      stream_io.error "dc:subject埋め込み機能を使用するにはrubyzip gemが必要です"
-      return :error
-    end
-
-    entries = {}
-    begin
-      # EPUBをメモリ上に展開
-      Zip::File.open(epub_path) do |zip_file|
-        zip_file.each do |entry|
-          entries[entry.name] = entry.get_input_stream.read
-        end
-      end
-
-      # standard.opf 書き換え
-      opf_name, opf_body = entries.find { |name, _| name.end_with?("standard.opf") }
-      unless opf_name
-        stream_io.error "standard.opfファイルが見つかりませんでした"
-        return :error
-      end
-
-      content = opf_body.dup
-      content.gsub!(/<dc:subject>.*?<\/dc:subject>\s*\n?\s*/m, "")
-      dc_subject_lines = subjects.map(&:strip).reject(&:empty?).map { |s|
-        esc = s.gsub("&","&amp;").gsub("<","&lt;").gsub(">","&gt;").gsub("\"","&quot;").gsub("'","&apos;")
-        "    <dc:subject>#{esc}</dc:subject>"
-      }
-      if dc_subject_lines.any?
-        dc_subjects_xml = dc_subject_lines.join("\n") + "\n"
-        content.sub!(/(\s*)<\/metadata>/, "\n#{dc_subjects_xml}\\1</metadata>")
-      end
-      entries[opf_name] = content
-
-      # Windowsでのスレッド内ファイル操作対策: GCを強制実行してファイルハンドルを解放
-      GC.start
-      sleep 0.1
-
-      # 再Zip化 (mimetypeは無圧縮で先頭)
-      File.delete(epub_path)
-      Zip::OutputStream.open(epub_path) do |zos|
-        # mimetype必須
-        if !entries["mimetype"]
-          stream_io.error "mimetypeファイルが見つかりません"
-          return :error
-        end
-
-        # 第1引数に名前、第4引数にZip::Entry::STORED を渡す
-        zos.put_next_entry("mimetype", nil, nil, Zip::Entry::STORED)
-        zos.write entries["mimetype"]
-
-        entries.each do |name, body|
-          next if name == "mimetype"
-          zos.put_next_entry(name)
-          zos.write body
-        end
-      end
-
-      stream_io.puts "dc:subjectを追加しました: #{subjects.join(', ')}"
-      :success
-    rescue => e
-      stream_io.error "dc:subject追加中にエラーが発生しました: #{e.class} - #{e.message}"
-      :error
-    end
+  def self.add_dc_subject_to_epub(*args, **kwargs)
+    EbookBuilder.add_dc_subject_to_epub(*args, **kwargs)
   end
 
-  #
-  # EPUBファイルをkindlegenでMOBIへ
-  # AozoraEpub3.jar と同じ場所に kindlegen が無ければ何もしない
-  #
-  # 返り値：正常終了 :success、エラー終了 :error、中断終了 :abort
-  #
-  def self.epub_to_mobi(epub_path, verbose = false, stream_io: $stdout2)
-    kindlegen_path = Narou.kindlegen_path
-    unless File.exist?(kindlegen_path)
-      stream_io.error "kindlegenが見つかりませんでした。AozoraEpub3と同じフォルダにインストールして下さい"
-      return :error
-    end
-
-    if Helper.os_cygwin?
-      epub_path = Helper.convert_to_windows_path(epub_path)
-    end
-    command = +%!"#{kindlegen_path}" -locale ja "#{epub_path}"!
-    if Helper.os_windows?
-      command.encode!(Encoding::Windows_31J)
-    end
-    stream_io.print "kindlegen実行中"
-    res = Helper::AsyncCommand.exec(command) do
-      stream_io.print "."
-    end
-    stdout_capture, _, proccess_status = res
-    stdout_capture.force_encoding(Encoding::UTF_8)
-
-    if verbose
-      stream_io.puts
-      stream_io.puts "==== kindlegen stdout capture " + "=" * 49
-      stream_io.puts stdout_capture.gsub("\n\n", "\n").strip
-      stream_io.puts "=" * 79
-    end
-
-    if proccess_status.exited?
-      if proccess_status.exitstatus == 2
-        stream_io.puts
-        stream_io.error "kindlegen実行中にエラーが発生したため、MOBIが出力出来ませんでした"
-        if stdout_capture.scan(/(エラー\(.+?\):\w+?:.+)$/)
-          stream_io.error $1
-        end
-        return :error
-      end
-    else
-      stream_io.puts
-      return :abort
-    end
-    stream_io.puts "変換しました"
-    :success
+  def self.epub_to_mobi(*args, **kwargs)
+    EbookBuilder.epub_to_mobi(*args, **kwargs)
   end
 
-  #
-  # 変換された整形済みテキストファイルをデバイスに対応した書籍データに変換する
-  #
-  def self.convert_txt_to_ebook_file(txt_path, options)
-    options = {
-      dst_dir: nil,
-      device: nil,
-      verbose: false,
-      no_epub: false,
-      no_mobi: false,
-      no_strip: false,
-      no_cleanup_txt: false,
-      yokogaki: false,
-      use_dakuten_font: false,
-      stream_io: $stdout2
-    }.merge(options)
-    stream_io = options[:stream_io]
-
-    device = options[:device]
-    clean_up_file_list = []
-
-    return false if options[:no_epub]
-    clean_up_file_list << txt_path unless options[:no_cleanup_txt]
-    # epub
-    status = NovelConverter.txt_to_epub(
-      txt_path,
-      dst_dir: options[:dst_dir], device: device,
-      verbose: options[:verbose], yokogaki: options[:yokogaki],
-      use_dakuten_font: options[:use_dakuten_font],
-      stream_io: stream_io
-    )
-    return nil if status != :success
-    if device && device.kobo?
-      epub_ext = device.ebook_file_ext
-    else
-      epub_ext = ".epub"
-    end
-    epub_path = txt_path.sub(/\.txt$/, epub_ext)
-    
-    # dc:subject埋め込み処理
-    if options[:dc_subjects] && !options[:dc_subjects].empty?
-      add_dc_subject_status = NovelConverter.add_dc_subject_to_epub(
-        epub_path, options[:dc_subjects], stream_io: stream_io
-      )
-      if add_dc_subject_status == :error
-        stream_io.error "dc:subject埋め込み処理に失敗しましたが、変換を続行します"
-      end
-    end
-
-    if !device || !device.kindle? || options[:no_mobi]
-      stream_io.puts File.basename(epub_path) + " を出力しました"
-      stream_io.puts "<bold><green>EPUBファイルを出力しました</green></bold>".termcolor
-      return epub_path
-    end
-
-    clean_up_file_list << epub_path
-    # mobi
-    status = NovelConverter.epub_to_mobi(epub_path, options[:verbose], stream_io: stream_io)
-    return nil if status != :success
-    mobi_path = epub_path.sub(/\.epub$/, device.ebook_file_ext)
-
-    # strip
-    unless options[:no_strip]
-      stream_io.puts "kindlestrip実行中"
-      begin
-        SectionStripper.strip(mobi_path, nil, false)
-      rescue StripException => e
-        stream_io.error e.message
-      end
-    end
-    stream_io.puts File.basename(mobi_path).encode(Encoding::UTF_8) + " を出力しました"
-    stream_io.puts "<bold><green>MOBIファイルを出力しました</green></bold>".termcolor
-
-    return mobi_path
-  ensure
-    if Narou.economy?("cleanup_temp")
-      # 作業用ファイルを削除
-      clean_up_temp_files(clean_up_file_list)
-    end
+  def self.convert_txt_to_ebook_file(*args, **kwargs)
+    EbookBuilder.convert_txt_to_ebook_file(*args, **kwargs)
   end
 
+  # OutputHelperへの委譲
   def self.clean_up_temp_files(path_list)
-    return unless path_list
-    path_list.each do |path|
-      FileUtils.rm_f(path)
-    end
+    OutputHelper.clean_up_temp_files(path_list)
+  end
+
+  def self.get_cover_filename(archive_path)
+    OutputHelper.get_cover_filename(archive_path)
   end
 
   def initialize(setting, output_filename = nil, display_inspector = false, output_text_dir = nil, stream_io: $stdout2)
@@ -468,7 +140,7 @@ class NovelConverter
     @novel_id = setting.id
     @novel_author = setting.novel_author.empty? ? setting.author : setting.novel_author
     @novel_title = setting.novel_title.empty? ? setting.title : setting.novel_title
-    @output_filename = (output_filename || setting.output_filename)
+    @output_filename = output_filename || setting.output_filename
     @output_filename = nil if @output_filename.empty?
     @inspector = Inspector.new(@setting)
     @illustration = Illustration.new(@setting, @inspector)
@@ -488,7 +160,7 @@ class NovelConverter
     @inspector&.cleanup if @inspector.respond_to?(:cleanup)
     @illustration&.cleanup if @illustration.respond_to?(:cleanup)
     @converter&.cleanup if @converter.respond_to?(:cleanup)
-    
+
     # 重いオブジェクトのみ解放
     @inspector = nil
     @illustration = nil
@@ -504,7 +176,7 @@ class NovelConverter
     return [] unless @data && @data["tags"]
     tags = @data["tags"]
     return [] unless tags.is_a?(Array)
-    
+
     # 除外タグの設定を解析
     excluded_tags = exclude_tags_setting.split(",").map(&:strip).reject(&:empty?)
     tags.reject { |tag| excluded_tags.include?(tag) }.map(&:strip).reject(&:empty?)
@@ -553,7 +225,7 @@ class NovelConverter
     end
 
     on(:"convert_main.finish") do
-      progressbar.clear if progressbar
+      progressbar&.clear
     end
   end
 
@@ -564,143 +236,6 @@ class NovelConverter
 
   def display_footer
     stream_io.puts "縦書用の変換が終了しました"
-  end
-
-  def load_novel_section(subtitle_info, section_save_dir)
-    file_subtitle = subtitle_info["file_subtitle"] || subtitle_info["subtitle"]   # 互換性維持のため
-    path = section_save_dir.join("#{subtitle_info["index"]} #{file_subtitle}.yaml")
-    begin
-      YAML.unsafe_load_file(path)
-    rescue SystemCallError => e
-      # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
-      raise if e.is_a?(Errno::ENOENT)
-      YAML.unsafe_load(File.read(path))
-    end
-  rescue Errno::ENOENT => e
-    stream_io.puts
-    stream_io.error(<<~MSG.termcolor)
-      <yellow>"#{path.basename}"</yellow> を見つけることが出来ませんでした。
-      対象の小説を一度 Update を実行することで、ファイルをダウンロード出来ます。
-    MSG
-    exit Narou::EXIT_ERROR_CODE
-  end
-
-  # is_hotentry を有効にすると、テンプレートで作成するテキストファイルに
-  # あらすじ、作品タイトル、本の読み終わり表示が付与されなくなる
-  def create_novel_text_by_template(sections, toc, is_hotentry = false, index = nil)
-    cover_chuki = create_cover_chuki
-    device = Narou.get_device
-    setting = @setting
-
-    toc["title"]  = setting.novel_title  unless setting.novel_title.empty?
-    toc["author"] = setting.novel_author unless setting.novel_author.empty?
-
-    processing_title = toc["title"]
-    processing_title += "_#{index}" if index
-    processed_title = decorate_title(processing_title)
-    template_name = (device && device.ibunko? ? NOVEL_TEXT_TEMPLATE_NAME_FOR_IBUNKO : NOVEL_TEXT_TEMPLATE_NAME)
-
-    # テンプレートをキャッシュする
-    # コンパイル済みERB（またはProc）をキャッシュして binding だけ都度差し込む
-    @__template_cache ||= {}
-    compiled = @__template_cache[template_name]
-    unless compiled
-      compiled = Template.compile(template_name, 1.1)
-      @__template_cache[template_name] = compiled
-    end
-
-    Template.render(compiled, binding)
-  end
-
-  #
-  # 2035年くらいまでの残り時間を10分単位の36進数で取得する
-  # hyff のような文字列が取得可能
-  # 小説家になろうで、もっとも古い作品が2004年5月1日11時49分なので、
-  # その小説がちょうど4桁の zzzz となるように調整してある
-  #
-  def calc_reverse_short_time(time)
-    ((2091149000 - time.to_i) / (10 * 60)).to_s(36).rjust(4, "0")
-  end
-
-  #
-  # タイトルに日付を付与する。
-  # 日付の種類は title_date_target で指定する
-  #
-  # strftime の書式の他に拡張書式として $s, $t をサポートする
-  # $s 2035年くらいまでの残り時間を10分単位の36進数（4桁）
-  # $t タイトル自身。書式の中で自由な位置にタイトルを埋め込める
-  # $ns 小説が掲載されているサイト名
-  # $nt 小説種別（短編 or 連載）
-  # $ntag 小説のタグをカンマ区切りにしたもの
-  #
-  # ※ $t を使用した場合、title_date_align を無視する
-  #
-  def add_date_to_title(title)
-    result = title
-
-    if @setting.enable_add_date_to_title
-      new_arrivals_date = @data[@setting.title_date_target] || Time.now
-      special_format_chars = [
-        ["$s", calc_reverse_short_time(new_arrivals_date)],
-        ["$ns", @data["sitename"]],
-        ["$ntag", tags_join_comma(@data)],
-        ["$nt", Narou.novel_type_text(@data["novel_type"])],
-        ["$t", title]
-      ]
-
-      date_str = new_arrivals_date.strftime(@setting.title_date_format)
-      doller_t_included = date_str.include?("$t")
-
-      special_format_chars.each do |(symbol, replace_text)|
-        date_str.gsub!(symbol, replace_text)
-      end
-
-      if doller_t_included
-        # $t で任意の位置にタイトルを埋め込むために title_date_align は無視する
-        result = date_str
-      else
-        if @setting.title_date_align == "left"
-          result = date_str + result
-        else  # right
-          result = title + date_str
-        end
-      end
-    end
-    result
-  end
-
-  def tags_join_comma(data)
-    tags = data["tags"] || []
-    tags.sort.join(",")
-  end
-
-  def decorate_title(title)
-    processed_title = add_date_to_title(title)
-    # タイトルに完結したかどうかを付加する
-    if @setting.enable_add_end_to_title
-      tags = @data["tags"] || []
-      if tags.include?("end")
-        processed_title += " (完結)"
-      end
-    end
-    # タイトルがルビ化されてしまうのを抑制
-    processed_title = processed_title.gsub("《", "※［＃始め二重山括弧］")
-                                     .gsub("》", "※［＃終わり二重山括弧］")
-    processed_title
-  end
-
-  #
-  # 表紙用の画像名取得
-  #
-  def self.get_cover_filename(archive_path)
-    [".jpg", ".png", ".jpeg"].each do |ext|
-      filename = "cover#{ext}"
-      cover_path = File.join(archive_path, filename)
-      if File.exist?(cover_path)
-        return filename
-      end
-    end
-    nil
   end
 
   #
@@ -753,175 +288,6 @@ class NovelConverter
       output_path += "_#{index}#{ext}"
     end
     output_path
-  end
-
-  #
-  # テキストファイル変換時の実質的なメイン処理
-  #
-  def convert_main_for_text(text)
-    result = @converter.convert(text, "textfile")
-    unless @setting.enable_enchant_midashi
-      @inspector.info "テキストファイルの処理を実行しましたが、改行直後の見出し付与は有効になっていません。" +
-                      "setting.ini の enable_enchant_midashi を true にすることをお薦めします。"
-    end
-    splited = result.split("\n", 3)
-    # 表紙の挿絵注記を3行目に挟み込む
-    converted_text = [splited[0], splited[1], create_cover_chuki, splited[2]].join("\n")
-
-    @use_dakuten_font = @converter.use_dakuten_font
-
-    [converted_text]
-  end
-
-  #
-  # 管理小説変換時の実質的なメイン処理
-  #
-  # 引数 subtitles にデータを渡した場合はそれを直接使う
-  # is_hotentry を有効にすると出力されるテキストファイルにあらすじや作品タイトル等が含まれなくなる
-  # また、 is_hotentry を有効にすると分割も行われなくなる
-  #
-  def convert_main_for_novel(subtitles = nil, is_hotentry = false)
-    toc = Downloader.get_toc_data(@setting.archive_path)
-    unless subtitles
-      subtitles = cut_subtitles(toc["subtitles"])
-    end
-    if is_hotentry == false && @setting.slice_size > 0 && subtitles.length > @setting.slice_size
-      stream_io.puts "#{@setting.slice_size}話ごとに分割して変換します"
-      array_of_subtitles = subtitles.each_slice(@setting.slice_size).to_a
-    else
-      array_of_subtitles = [subtitles]
-    end
-    toc["story"] = @converter.convert(toc["story"], "story")
-    site_setting = SiteSetting.find(toc["toc_url"])
-    html = HTML.new
-    html.strip_decoration_tag = @setting.enable_strip_decoration_tag
-    html.set_illust_setting(
-      current_url: site_setting["illust_current_url"],
-      grep_pattern: site_setting["illust_grep_pattern"]
-    )
-    array_of_converted_text = []
-    array_of_subtitles.each_with_index do |sliced_subtitles, index|
-      @converter.subtitles = sliced_subtitles
-      html.clear
-      sections = subtitles_to_sections(sliced_subtitles, html)
-      array_of_converted_text.push(
-        create_novel_text_by_template(
-          sections, toc, is_hotentry,
-          array_of_subtitles.length == 1 ? nil : index + 1
-        )
-      )
-    end
-
-    if is_hotentry
-      array_of_converted_text[0]
-    else
-      array_of_converted_text
-    end
-  end
-
-  def cut_subtitles(subtitles)
-    case cut_size = @setting.cut_old_subtitles
-    when 0
-      result = subtitles
-    when 1...subtitles.size
-      stream_io.puts "#{cut_size}話分カットして変換します"
-      result = subtitles[cut_size..-1]
-    else
-      stream_io.puts "最新話のみ変換します"
-      result = [subtitles[-1]]
-    end
-    result
-  end
-
-  #
-  # subtitle info から変換処理をする
-  #
-  def subtitles_to_sections(subtitles, html)
-    # 章データをキャッシュ
-    @__section_cache ||= {}
-
-    sections = []
-    section_save_dir = Downloader.get_novel_section_save_dir(@setting.archive_path)
-
-    trigger(:"convert_main.init", subtitles)
-
-    subtitles.each_with_index do |subinfo, i|
-      trigger(:"convert_main.loop", i)
-      @converter.current_index = i
-
-      # YAMLロードをキャッシュ
-      key = subinfo["index"]
-      original_section = @__section_cache[key]
-      unless original_section
-        original_section = load_novel_section(subinfo, section_save_dir)
-        @__section_cache[key] = original_section
-      end
-
-      # キャッシュを壊さないようディープ寄りにdup
-      # （chapter/subtitle/elementなど後で書き換えるので）
-      section = original_section.dup
-      section["element"] = original_section["element"].dup
-
-      # data_type 判定
-      element = section["element"]
-      data_type = element.delete("data_type") || "text"
-      @converter.data_type = data_type
-
-      # HTML→青空変換が必要なやつを先にプレーンテキスト化
-      preprocessed_element_texts = {}
-      element.each do |text_type, elm_text|
-        if data_type != "text"
-          html.string = elm_text
-          elm_text = html.to_aozora(pre_html: data_type == "pre_html")
-        end
-        preprocessed_element_texts[text_type] = elm_text
-      end
-
-      # まとめてコンバータに渡すためのバッチ入力を作る
-      batch_inputs = {}
-
-      # chapter
-      if section["chapter"] && !section["chapter"].empty?
-        batch_inputs[:chapter] = [section["chapter"], "chapter"]
-      end
-
-      # subtitle
-      @inspector.subtitle = section["subtitle"]
-      batch_inputs[:subtitle] = [section["subtitle"], "subtitle"]
-
-      # element 各種
-      preprocessed_element_texts.each do |text_type, body_text|
-        batch_inputs[[:element, text_type]] = [body_text, text_type]
-      end
-
-      # 一括変換
-      converted = @converter.convert_multi(batch_inputs)
-      if batch_inputs[:chapter]
-        section["chapter"] = converted[:chapter]
-      end
-
-      section["subtitle"] = converted[:subtitle]
-
-      element.keys.each do |text_type|
-        section["element"][text_type] = converted[[:element, text_type]]
-      end
-
-      sections << section
-    end
-
-    @use_dakuten_font = @converter.use_dakuten_font
-    sections
-  ensure
-    trigger(:"convert_main.finish")
-  end
-
-
-  #
-  # テキストデータ先頭二行からタイトルと著者名を取得
-  #
-  def get_title_and_author_by_text(text)
-    title, author = text.split("\n", 3)
-    { "title" => title, "author" => author }
   end
 
   def inspect_novel(array_of_text)
