@@ -20,7 +20,7 @@ module Narou
             set_cors_headers
             
             begin
-              require "command/setting"
+              require "cli/command/setting"
               require "core/inventory"
               
               settings = {
@@ -61,7 +61,7 @@ module Narou
             set_cors_headers
             
             begin
-              require "command/setting"
+              require "cli/command/setting"
               
               setting_variables = Command::Setting.get_setting_variables
               tab_names = Command::Setting.get_setting_tab_names
@@ -92,7 +92,7 @@ module Narou
             end
             
             begin
-              require "command/setting"
+              require "cli/command/setting"
               require "core/inventory"
               require "narou_logger"
               
@@ -169,7 +169,7 @@ module Narou
             end
             
             begin
-              require "command/setting"
+              require "cli/command/setting"
               require "core/inventory"
               require "narou_logger"
               
