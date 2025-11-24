@@ -4,7 +4,6 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-# rubocop:disable Metrics/ClassLength
 # rubocop:disable Style/ClassAndModuleChildren
 
 require "socket"
@@ -46,7 +45,8 @@ require_relative "static_file_routes"
 require_relative "system_management_routes"
 require_relative "settings_routes"
 require_relative "novels_routes"
-require_relative "api_and_widget_routes"
+require_relative "widget_routes"
+require_relative "api/documentation"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -58,7 +58,8 @@ class Narou::AppServer < Sinatra::Base
   register SystemManagementRoutes
   register SettingsRoutes
   register NovelsRoutes
-  register ApiAndWidgetRoutes
+  register WidgetRoutes
+  register Narou::ApiV1::Documentation
 
   @@request_reboot = false
   @@already_update_system = false
@@ -71,7 +72,7 @@ class Narou::AppServer < Sinatra::Base
     enable :protection
     enable :sessions
     enable :static
-    
+
     # 静的ファイルの配信設定は動的に決定できないため、
     # デフォルトでlib/web/publicを設定（Legacyモード用）
     # 新しいUIのフロントエンドファイルはルーティングで個別に処理
@@ -110,14 +111,14 @@ class Narou::AppServer < Sinatra::Base
   # CORS設定（新しいフロントエンドとの連携用）
   before do
     # プリフライトリクエストとAPIエンドポイントにCORSヘッダーを追加
-    if request.path.start_with?('/api') || request.request_method == 'OPTIONS'
-      headers['Access-Control-Allow-Origin'] = '*'
-      headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-      headers['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization'
-      headers['Access-Control-Max-Age'] = '86400'
-      
+    if request.path.start_with?("/api") || request.request_method == "OPTIONS"
+      headers["Access-Control-Allow-Origin"] = "*"
+      headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+      headers["Access-Control-Allow-Headers"] = "Content-Type, Accept, Authorization"
+      headers["Access-Control-Max-Age"] = "86400"
+
       # OPTIONSリクエスト（プリフライト）の場合は200を返して終了
-      halt 200 if request.request_method == 'OPTIONS'
+      halt 200 if request.request_method == "OPTIONS"
     end
   end
 
@@ -153,11 +154,12 @@ class Narou::AppServer < Sinatra::Base
   # bindは設定しなかった場合は起動したPCのプライベートIPアドレスが設定される。
   # この場合はLAN内からアクセス出来る。
   # bindがlocalhostの場合は実際には127.0.0.1で処理される。(起動したPCでしかアクセス出来ない)
-  # 0.0.0.0 はDocker利用時しか許容しない。 
+  # 0.0.0.0 はDocker利用時しか許容しない。
   #
   def self.create_address(user_port = nil)
     global_setting = Inventory.load("global_setting", :global)
-    port, bind = global_setting["server-port"], global_setting["server-bind"]
+    port = global_setting["server-port"]
+    bind = global_setting["server-bind"]
     port = user_port if user_port
     ipaddress = my_ipaddress
 
@@ -176,7 +178,7 @@ class Narou::AppServer < Sinatra::Base
 
     # localhost は内部的に 127.0.0.1 扱いにしておく（任意）
     # bind = "127.0.0.1" if bind == "localhost"
-    host = bind ? bind : ipaddress
+    host = bind || ipaddress
     set :port, port
     set :bind, host
     {
@@ -206,7 +208,6 @@ class Narou::AppServer < Sinatra::Base
     }.call
   end
 
-
   # ===================================================================
   # ルーティング
   # ===================================================================
@@ -216,7 +217,7 @@ class Narou::AppServer < Sinatra::Base
     @bootstrap_theme = case params["webui.theme"]
                        when nil
                          Narou.theme
-                       when ""   # 環境設定画面で未設定が選択された時
+                       when "" # 環境設定画面で未設定が選択された時
                          nil
                        else
                          params["webui.theme"]
