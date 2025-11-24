@@ -1459,50 +1459,6 @@ class Downloader
   end
 
   #
-  # 本文を解析して前書き・本文・後書きの要素に分解する
-  #
-  # 本文に含まれるタイトルは消す
-  #
-  def extract_elements_in_section(section, subtitle)
-    lines = section.lstrip.lines.map(&:rstrip)
-    introduction = slice_introduction(lines)
-    postscript = slice_postscript(lines)
-    if lines[0] == subtitle.strip
-      if lines[1] == ""
-        lines.slice!(0, 2)
-      else
-        lines.slice!(0, 1)
-      end
-    end
-    {
-      "data_type" => "text",
-      "introduction" => introduction,
-      "postscript" => postscript,
-      "body" => lines.join("\n")
-    }
-  end
-
-  def slice_introduction(lines)
-    lines.each_with_index do |line, lineno|
-      if line =~ ConverterBase::AUTHOR_INTRODUCTION_SPLITTER
-        lines.slice!(lineno, 1)
-        return lines.slice!(0...lineno).join("\n")
-      end
-    end
-    ""
-  end
-
-  def slice_postscript(lines)
-    lines.each_with_index do |line, lineno|
-      if line =~ ConverterBase::AUTHOR_POSTSCRIPT_SPLITTER
-        lines.slice!(lineno, 1)
-        return lines.slice!(lineno..-1).join("\n")
-      end
-    end
-    ""
-  end
-
-  #
   # 小説データの格納ディレクトリパス
   #
   def get_novel_data_dir
