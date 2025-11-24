@@ -6,7 +6,7 @@
 
 require "json"
 require "singleton"
-require "lib/web/web-socket-ruby/lib/web_socket"
+require "lib/web/workers/web_socket"
 require "lib/utilities/eventable"
 
 module Narou
@@ -46,7 +46,9 @@ module Narou
           que = nil
           thread = nil
           begin
+            $stderr.puts "[PushServer] New connection attempt from #{ws.socket.peeraddr[2]}"
             ws.handshake
+            $stderr.puts "[PushServer] Handshake successful"
             que = Queue.new
             @connections.push(que)
 
@@ -83,15 +85,15 @@ module Narou
             end
           rescue WebSocket::Error => e
             # WebSocketハンドシェイクエラー（通常はクライアントの切断）
-            # デバッグレベルでログ出力（エラーレベルだと大量に出力される）
-            puts "[DEBUG] WebSocket handshake failed: #{e.message}" if $DEBUG
+            $stderr.puts "[PushServer] WebSocket error: #{e.message}"
+            $stderr.puts e.backtrace.first(5).join("\n") if $DEBUG
           rescue Errno::ECONNRESET => e
             # 接続リセットエラー
-            puts "[DEBUG] WebSocket connection reset: #{e.message}" if $DEBUG
+            $stderr.puts "[PushServer] Connection reset: #{e.message}" if $DEBUG
           rescue StandardError => e
             # その他の予期しないエラー
-            puts "[ERROR] WebSocket unexpected error: #{e.class}: #{e.message}"
-            puts e.backtrace.first(5).join("\n") if $DEBUG
+            $stderr.puts "[PushServer] Unexpected error: #{e.class}: #{e.message}"
+            $stderr.puts e.backtrace.first(5).join("\n")
           ensure
             @connections.delete(que) if que
             thread.terminate if thread

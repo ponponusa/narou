@@ -95,21 +95,7 @@ class Downloader
     end
 
     def sleep_for_download
-      if Time.now - @@__last_download_time > @@max_steps_wait_time
-        @@__wait_counter = 0
-      end
-      if @download_wait_steps > 0 && @@__wait_counter % @download_wait_steps == 0 \
-        && @@__wait_counter >= @download_wait_steps
-        # MEMO:
-        # 小説家になろうは連続DL規制があるため、ウェイトを入れる必要がある。
-        # 10話ごとに規制が入るため、10話ごとにウェイトを挟む。
-        # 1話ごとに1秒待機を10回繰り返そうと、11回目に規制が入るため、ウェイトは必ず必要。
-        sleep(@@max_steps_wait_time)
-      else
-        sleep(@@interval_sleep_time) if @@__wait_counter > 0
-      end
-      @@__wait_counter += 1
-      @@__last_download_time = Time.now
+      @rate_limiter.wait_for_download(@download_wait_steps)
     end
 
     #

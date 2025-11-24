@@ -27,6 +27,7 @@ require "lib/novel/downloader/sanitize"
 require "lib/novel/downloader/class_methods"
 require "lib/novel/downloader/file_operations"
 require "lib/novel/downloader/database_updater"
+require "lib/novel/downloader/rate_limiter"
 require "lib/novel/downloader/section_downloader"
 require "lib/novel/downloader/toc_processor"
 
@@ -105,7 +106,8 @@ class Downloader
     # 新パーサーの初期化
     @parser = Narou::Parsers::ParserSelector.select(@setting, novel_id: @id) rescue nil
     
-    initialize_wait_counter
+    # RateLimiter のシングルトンインスタンスを取得
+    @rate_limiter = RateLimiter.instance
   end
 
   def database
@@ -114,21 +116,6 @@ class Downloader
 
   def record
     database[@id]
-  end
-
-  #
-  # ウェイト関係初期化
-  #
-  def initialize_wait_counter
-    @@__run_once ||= false
-    unless @@__run_once
-      @@__run_once = true
-      @@__wait_counter = 0
-      @@__last_download_time = Time.now - 20
-    end
-    @@interval_sleep_time = Inventory.load("local_setting")["download.interval"] || DEFAULT_INTERVAL_WAIT
-    @@interval_sleep_time = 0 if @@interval_sleep_time < 0
-    @@max_steps_wait_time = [STEPS_WAIT_TIME, @@interval_sleep_time].max
   end
 
   #
