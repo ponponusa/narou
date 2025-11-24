@@ -5,7 +5,7 @@
 
 #require "pry"
 
-require_relative "../../lib/converterbase"
+require_relative "../../lib/novel/converterbase"
 
 converter = ConverterBase.new(nil, nil, nil)
 
