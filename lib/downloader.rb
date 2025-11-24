@@ -24,11 +24,13 @@ require_relative "input"
 require_relative "narou/yaml_loader"
 require_relative "downloader/errors"
 require_relative "downloader/sanitize"
+require_relative "downloader/class_methods"
 
 #
 # 小説サイトからのダウンロード
 #
 class Downloader
+  extend Downloader::ClassMethods
   include Narou::Eventable
   extend Memoist
 
@@ -66,194 +68,6 @@ class Downloader
     end
 
     initialize_variables(id, setting, options)
-  end
-
-  #
-  # 小説サイト設定を取得する
-  #
-  def self.get_sitesetting_by_target(target)
-    toc_url = get_toc_url(target)
-    setting = nil
-    if toc_url
-      setting = SiteSetting.find(toc_url)
-    end
-    setting
-  end
-
-  #
-  # 本文格納用ディレクトリを取得
-  #
-  def self.get_novel_section_save_dir(archive_path)
-    Pathname(File.join(archive_path, SECTION_SAVE_DIR_NAME))
-  end
-
-  #
-  # target の種別を判別する
-  #
-  # ncodeの場合、targetを破壊的に変更する
-  #
-  def self.get_target_type(target)
-    case target
-    when URI::DEFAULT_PARSER.make_regexp
-      :url
-    when /^n\d+[a-z]+$/i
-      target.downcase!
-      :ncode
-    when /^\d+$/, Integer
-      :id
-    else
-      :other
-    end
-  end
-
-  #
-  # 指定されたIDとかから小説の保存ディレクトリを取得
-  #
-  def self.get_novel_data_dir_by_target(target)
-    data = get_data_by_target(target) or return nil
-    id = data["id"]
-    file_title = data["file_title"] || data["title"]   # 互換性維持のための処理
-    use_subdirectory = data["use_subdirectory"] || false
-    subdirectory = use_subdirectory ? create_subdirecotry_name(file_title) : ""
-    path = Database.archive_root_path.join(data["sitename"], subdirectory, file_title)
-    return path if path.exist?
-    database.delete(id)
-    database.save_database
-    error "#{path} が見つかりません。\n" \
-          "保存フォルダが消去されていたため、データベースのインデックスを削除しました。"
-    nil
-  end
-
-  #
-  # target のIDを取得
-  #
-  def self.get_id_by_target(target)
-    data = get_data_by_target(target)
-    data && data["id"]
-  end
-
-  #
-  # target からデータベースのデータを取得
-  #
-  def self.get_data_by_target(target)
-    target = Narou.alias_to_id(target)
-    case get_target_type(target)
-    when :url
-      setting = SiteSetting.find(target)
-      if setting
-        toc_url = setting["toc_url"]
-        return database.get_data_by_toc_url(toc_url, setting)
-      end
-    when :ncode
-      database.each_value do |data|
-        return data if data["toc_url"] =~ %r!#{Regexp.escape(target)}/$!
-      end
-    when :id
-      data = database[target.to_i]
-      return data if data
-    when :other
-      data = database.get_data("title", target)
-      return data if data
-    end
-    nil
-  end
-
-  #
-  # toc 読込
-  #
-  def self.get_toc_data(archive_path)
-    path = File.join(archive_path, TOC_FILE_NAME)
-    Narou::YAMLLoader.load_file(path)
-  rescue SystemCallError
-    # bootsnap on Windows can raise Errno::E01 errors, fallback to standard IO read
-    Narou::YAMLLoader.load(File.read(path), filename: path)
-  end
-
-  def self.get_toc_by_target(target)
-    dir = Downloader.get_novel_data_dir_by_target(target)
-    get_toc_data(dir)
-  end
-
-  #
-  # 指定の小説の目次ページのURLを取得する
-  #
-  # targetがURLかNコードの場合、実際には小説が存在しないURLが返ってくることがあるのを留意する
-  #
-  def self.get_toc_url(target)
-    target = Narou.alias_to_id(target)
-    case get_target_type(target)
-    when :url
-      setting = SiteSetting.find(target)
-      return setting["toc_url"] if setting
-    when :ncode
-      database.each_value do |data|
-        if data["toc_url"] =~ %r!#{target}/$!
-          return data["toc_url"]
-        end
-      end
-      return "#{SiteSetting.narou["top_url"]}/#{target}/"
-    when :id
-      data = database[target.to_i]
-      return data["toc_url"] if data
-    when :other
-      data = database.get_data("title", target)
-      return data["toc_url"] if data
-    end
-    nil
-  end
-
-  def self.novel_exists?(target)
-    id = get_id_by_target(target) or return nil
-    database.novel_exists?(id)
-  end
-
-  def self.remove_novel(target, with_file = false)
-    data = get_data_by_target(target) or return nil
-    data_dir = get_novel_data_dir_by_target(target)
-    if with_file
-      FileUtils.remove_entry_secure(data_dir, true)
-      puts "#{data_dir} を完全に削除しました"
-    else
-      # TOCは消しておかないと再DL時に古いデータがあると誤認する
-      data_dir.join(TOC_FILE_NAME).delete
-    end
-    database.delete(data["id"])
-    database.save_database
-    data["title"]
-  end
-
-  #
-  # 差分用キャッシュの保存ディレクトリ取得
-  #
-  def self.get_cache_root_dir(target)
-    dir = get_novel_data_dir_by_target(target)
-    if dir
-      return dir.join(SECTION_SAVE_DIR_NAME, CACHE_SAVE_DIR_NAME)
-    end
-    nil
-  end
-
-  #
-  # 差分用キャッシュのディレクトリ一覧取得
-  #
-  def self.get_cache_list(target)
-    dir = get_cache_root_dir(target)
-    if dir
-      return Dir.glob("#{dir}/*")
-    end
-    nil
-  end
-
-  #
-  # サブディレクトリ名を生成
-  #
-  def self.create_subdirecotry_name(title)
-    name = title.start_with?("n") ? title[1..2] : title[0..1]
-    name.strip
-  end
-
-  def self.database
-    Database.instance
   end
 
   #
@@ -487,12 +301,6 @@ class Downloader
     "8" => "変換する",
     default: "2"
   }.freeze
-
-  def self.choices_to_string(width: 0)
-    CHOICES.dup.tap { |h| h.delete(:default) }.map { |key, summary|
-      "#{key.rjust(width)}: #{summary}"
-    }.join("\n")
-  end
 
   #
   # ダイジェスト化に関する処理
@@ -770,15 +578,6 @@ class Downloader
       @title = @title.gsub(/#{@setting["title_strip_pattern"]}/, "").gsub(/^[　\s]*(.+?)[　\s]*?$/, "\\1")
     end
     @title
-  end
-
-  #
-  # HTMLの中から小説が削除されたか非公開なことを示すメッセージを検出する
-  #
-  def self.detect_error_message(setting, source)
-    message = setting["error_message"]
-    return false unless message
-    source.match(message)
   end
 
   def get_toc_source
