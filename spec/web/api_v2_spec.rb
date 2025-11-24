@@ -26,7 +26,7 @@ RSpec.describe "Narou::AppServer API v2" do
   before do
     Narou::AppServer.push_server = push_server
     allow(Narou::PushServer).to receive(:instance).and_return(push_server)
-    allow(Narou::AppServer).to receive(:clear_all_cache)
+    allow(NovelListProcessor).to receive(:clear_all_cache)
     allow_any_instance_of(Narou::AppServer).to receive(:puts_hello_messages)
     allow_any_instance_of(Narou::AppServer).to receive(:start_device_ejectable_event)
     allow_any_instance_of(Narou::AppServer).to receive(:fill_general_all_no_in_database)
@@ -185,7 +185,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "queues download when targets are provided" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { targets: ["n9669bk"] }.to_json
       post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
@@ -193,6 +193,17 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["targets"]).to eq(["n9669bk"])
+    end
+
+    it "calls NovelListProcessor.clear_all_cache after download" do
+      allow(Narou::WebWorker).to receive(:push).and_yield
+      allow(CommandLine).to receive(:run!)
+      expect(NovelListProcessor).to receive(:clear_all_cache)
+      
+      payload = { targets: ["n9669bk"] }.to_json
+      post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response).to be_ok
     end
 
     it "returns 400 when targets are missing" do
@@ -213,7 +224,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "handles multiple targets" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { targets: ["n9669bk", "n0000xx"] }.to_json
       post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
@@ -242,7 +253,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "queues convert when IDs are provided" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(CommandLine).to receive(:run!)
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/novels/convert", payload, { "CONTENT_TYPE" => "application/json" }
@@ -252,6 +263,17 @@ RSpec.describe "Narou::AppServer API v2" do
       actual = json_response["data"]["ids"]
       # JSONは文字列として返される可能性があるため、文字列に変換して比較
       expect(actual.map(&:to_s)).to match_array(["1", "2"])
+    end
+
+    it "calls NovelListProcessor.clear_all_cache after convert" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(CommandLine).to receive(:run!)
+      expect(NovelListProcessor).to receive(:clear_all_cache).at_least(:once)
+      
+      payload = { ids: [1] }.to_json
+      post "/api/v2/novels/convert", payload, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response).to be_ok
     end
 
     it "returns 400 when IDs are missing" do
@@ -266,7 +288,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "queues remove when IDs are provided" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/novels/remove", payload, { "CONTENT_TYPE" => "application/json" }
@@ -274,6 +296,17 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["ids"]).to eq(["1", "2"])
+    end
+
+    it "calls NovelListProcessor.clear_all_cache after remove" do
+      allow(Narou::WebWorker).to receive(:push).and_yield
+      allow(CommandLine).to receive(:run!)
+      expect(NovelListProcessor).to receive(:clear_all_cache)
+      
+      payload = { ids: [1] }.to_json
+      post "/api/v2/novels/remove", payload, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response).to be_ok
     end
 
     it "returns 400 when IDs are missing" do
@@ -288,7 +321,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "queues freeze when IDs are provided" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/novels/freeze", payload, { "CONTENT_TYPE" => "application/json" }
@@ -296,6 +329,17 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["ids"]).to eq(["1", "2"])
+    end
+
+    it "calls NovelListProcessor.clear_all_cache after freeze" do
+      allow(Narou::WebWorker).to receive(:push).and_yield
+      allow(CommandLine).to receive(:run!)
+      expect(NovelListProcessor).to receive(:clear_all_cache)
+      
+      payload = { ids: [1] }.to_json
+      post "/api/v2/novels/freeze", payload, { "CONTENT_TYPE" => "application/json" }
+      
+      expect(last_response).to be_ok
     end
 
     it "returns 400 when IDs are missing" do
@@ -357,7 +401,7 @@ RSpec.describe "Narou::AppServer API v2" do
         deleted: 1,
         novel_count: 3
       })
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { ids: [1, 2], states: { "tag1" => 2, "tag2" => 0 } }.to_json
       post "/api/v2/tags/edit", payload, { "CONTENT_TYPE" => "application/json" }
@@ -398,7 +442,7 @@ RSpec.describe "Narou::AppServer API v2" do
         added: 2,
         novel_count: 3
       })
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { ids: [1, 2], tags: ["tag1", "tag2"] }.to_json
       post "/api/v2/tags/add", payload, { "CONTENT_TYPE" => "application/json" }
@@ -431,7 +475,7 @@ RSpec.describe "Narou::AppServer API v2" do
         deleted: 2,
         novel_count: 3
       })
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { ids: [1, 2], tags: ["tag1", "tag2"] }.to_json
       post "/api/v2/tags/delete", payload, { "CONTENT_TYPE" => "application/json" }
@@ -460,7 +504,7 @@ RSpec.describe "Narou::AppServer API v2" do
   describe "POST /api/v2/tags/color" do
     it "sets colors for tags" do
       allow(Narou::TagManager).to receive(:set_colors).and_return(true)
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { colors: { "tag1" => "red", "tag2" => "blue" } }.to_json
       post "/api/v2/tags/color", payload, { "CONTENT_TYPE" => "application/json" }
@@ -538,7 +582,7 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(setting_cmd).to receive(:on)
       allow(setting_cmd).to receive(:execute!)
       allow(Inventory).to receive(:clear)
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { settings: { "key1" => "value1" } }.to_json
       put "/api/v2/settings", payload, { "CONTENT_TYPE" => "application/json" }
@@ -604,7 +648,7 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(novel_setting).to receive(:load_setting_ini).and_return({ "global" => {} })
       allow(novel_setting).to receive(:[]=)
       allow(novel_setting).to receive(:save_settings)
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
       
       payload = { settings: { "author" => "New Author" } }.to_json
       put "/api/v2/novels/1/settings", payload, { "CONTENT_TYPE" => "application/json" }
@@ -685,7 +729,7 @@ RSpec.describe "Narou::AppServer API v2" do
       payload = { targets: ["n9669bk"] }.to_json
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
-      allow(Narou::AppServer).to receive(:clear_all_cache)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
 
       post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
       

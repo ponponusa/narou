@@ -87,7 +87,7 @@ module Narou
               
               if result[:success]
                 # キャッシュをクリア
-                Narou::AppServer.clear_all_cache
+                NovelListProcessor.clear_all_cache
                 
                 # PushServerでイベント送信
                 if defined?(@@push_server) && @@push_server
@@ -138,7 +138,7 @@ module Narou
               
               if result[:success]
                 # キャッシュをクリア
-                Narou::AppServer.clear_all_cache
+                NovelListProcessor.clear_all_cache
                 
                 # PushServerでイベント送信
                 if defined?(@@push_server) && @@push_server
@@ -185,7 +185,7 @@ module Narou
               
               if result[:success]
                 # キャッシュをクリア
-                Narou::AppServer.clear_all_cache
+                NovelListProcessor.clear_all_cache
                 
                 # PushServerでイベント送信
                 if defined?(@@push_server) && @@push_server

@@ -96,7 +96,7 @@ module Narou
             opt_mail = "--mail" if query_to_boolean(params["mail"])
             Narou::WebWorker.push do
               CommandLine.run!("download", targets, opt_mail)
-              Narou::AppServer.clear_all_cache # 全キャッシュ無効化
+              NovelListProcessor.clear_all_cache # 全キャッシュ無効化
               Narou::AppServer.push_server.send_all(:"table.reload")
             end
             status 200
@@ -108,7 +108,7 @@ module Narou
             bad_request!("小説が選択されていません") unless ids
             Narou::WebWorker.push do
               CommandLine.run!("download", "--force", ids)
-              Narou::AppServer.clear_all_cache # 全キャッシュ無効化
+              NovelListProcessor.clear_all_cache # 全キャッシュ無効化
               Narou::AppServer.push_server.send_all(:"table.reload")
             end
             status 200
@@ -149,7 +149,7 @@ module Narou
                   end
                 end
                 cmd.execute!(sorted_ids, opt_arguments)
-                Narou::AppServer.clear_all_cache # 全キャッシュ無効化
+                NovelListProcessor.clear_all_cache # 全キャッシュ無効化
                 Narou::AppServer.push_server.send_all(:"table.reload")
               end
             else
@@ -190,7 +190,7 @@ module Narou
                   end
                 end
                 cmd.execute!(sorted_ids, opt_arguments)
-                Narou::AppServer.clear_all_cache # 全キャッシュ無効化
+                NovelListProcessor.clear_all_cache # 全キャッシュ無効化
                 Narou::AppServer.push_server.send_all(:"table.reload")
               end
             end
@@ -216,7 +216,7 @@ module Narou
                 end
               end
               cmd.execute!(tag_params)
-              Narou::AppServer.clear_all_cache # 全キャッシュ無効化
+              NovelListProcessor.clear_all_cache # 全キャッシュ無効化
               Narou::AppServer.push_server.send_all(:"table.reload")
             end
           end
@@ -243,7 +243,7 @@ module Narou
             ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
             Narou::WebWorker.push do
               CommandLine.run!("freeze", ids)
-              Narou::AppServer.clear_all_cache
+              NovelListProcessor.clear_all_cache
               Narou::AppServer.push_server.send_all(:"table.reload")
             end
             json({ success: true, message: "凍結状態を切り替えました", count: ids.length })
@@ -258,7 +258,7 @@ module Narou
             ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
             Narou::WebWorker.push do
               CommandLine.run!("freeze", "--on", ids)
-              Narou::AppServer.clear_all_cache
+              NovelListProcessor.clear_all_cache
               Narou::AppServer.push_server.send_all(:"table.reload")
             end
             json({ success: true, message: "凍結しました", count: ids.length })
@@ -273,7 +273,7 @@ module Narou
             ids = select_valid_novel_ids(params["ids"]) or halt(400, json({ error: "小説が選択されていません" }))
             Narou::WebWorker.push do
               CommandLine.run!("freeze", "--off", ids)
-              Narou::AppServer.clear_all_cache
+              NovelListProcessor.clear_all_cache
               Narou::AppServer.push_server.send_all(:"table.reload")
             end
             json({ success: true, message: "凍結を解除しました", count: ids.length })

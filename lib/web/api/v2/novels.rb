@@ -137,7 +137,7 @@ module Narou
                   else
                     CommandLine.run!("download", target)
                   end
-                  Narou::AppServer.clear_all_cache
+                  NovelListProcessor.clear_all_cache
                   @@push_server.send_all(:'table.reload') if defined?(@@push_server)
 
                   # ダウンロード完了後に変換を実行
@@ -154,7 +154,7 @@ module Narou
                     # 変換タスクをキューに追加
                     Narou::WebWorker.push_task(convert_task) do
                       CommandLine.run!("convert", "--no-open", novel_id.to_s)
-                      Narou::AppServer.clear_all_cache
+                      NovelListProcessor.clear_all_cache
                     end
                   end
                 rescue StandardError => e
@@ -218,7 +218,7 @@ module Narou
                 # タスクをキューに追加
                 Narou::WebWorker.push_task(task) do
                   CommandLine.run!("convert", "--no-open", id)
-                  Narou::AppServer.clear_all_cache
+                  NovelListProcessor.clear_all_cache
                 end
 
                 task_ids << task.id
@@ -265,7 +265,7 @@ module Narou
               args = with_file ? ["--with-file", "--yes", *ids] : ["--yes", *ids]
               Narou::WebWorker.push do
                 CommandLine.run!("remove", *args)
-                Narou::AppServer.clear_all_cache
+                NovelListProcessor.clear_all_cache
                 @@push_server.send_all(:'table.reload') if defined?(@@push_server)
               end
 
@@ -309,7 +309,7 @@ module Narou
                   # パラメータなしの場合はトグル
                   CommandLine.run!("freeze", ids)
                 end
-                Narou::AppServer.clear_all_cache
+                NovelListProcessor.clear_all_cache
               end
 
               action = if freeze_param == true
