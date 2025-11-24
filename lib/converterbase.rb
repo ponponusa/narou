@@ -12,8 +12,11 @@ require "pathname"
 require_relative "narou"
 require_relative "progressbar"
 require_relative "inspector"
+require_relative "converterbase/utilities"
 
 class ConverterBase
+  include ConverterBase::Utilities
+
   KANJI_NUM = "〇一二三四五六七八九"
   ENGLISH_SENTENCES_CHARACTERS = /[\w.,!?'" &:;-]+/
   ENGLISH_SENTENCES_MIN_LENGTH = 8   # この文字数以上アルファベットが続くと半角のまま
@@ -78,13 +81,6 @@ class ConverterBase
     unless @request_skip_output_line
       @delay_outputs_buffer << data + "\n"
     end
-  end
-
-  #
-  # すべての行の行末空白を削除
-  #
-  def rstrip_all_lines(data)
-    data.gsub(/[ 　\t]+$/m, "")
   end
 
   #
@@ -1046,13 +1042,6 @@ class ConverterBase
                        "あいうえおやゆよわつアイウエオヤユヨワツカケ")
     end
     result
-  end
-
-  #
-  # 全角版 String#rstrip!
-  #
-  def zenkaku_rstrip(line)
-    line.gsub!(/[　\s]+\z/, "")
   end
 
   #
