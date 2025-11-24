@@ -10,10 +10,10 @@
 # これによりネットワークアクセスやDB書き込みを伴わず即終了させています。
 # 
 
-require "commandline"
-require "narou_logger"
-require "database"
-require "downloader"
+require "cli/commandline"
+require "output/narou_logger"
+require "core/database"
+require "novel/downloader"
 
 describe "exit code", :show_output do
   before(:all) do
@@ -21,7 +21,7 @@ describe "exit code", :show_output do
     @original_db_data = Database.instance.get_object.dup
     
     # Inventoryキャッシュもバックアップ（frozen状態を保存）
-    require_relative "../lib/inventory"
+    require "core/inventory"
     @original_inventory_cache = defined?(Inventory.class_variable_get(:@@cache)) ? 
       Inventory.class_variable_get(:@@cache).dup : {}
   end

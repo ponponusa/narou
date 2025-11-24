@@ -4,7 +4,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require_relative "../progressbar"
+require "output/progressbar"
 
 #
 # コンソール用のプログレスバーはWEB UIでは使えないため置き換える

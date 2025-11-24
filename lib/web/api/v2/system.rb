@@ -4,7 +4,7 @@
 # Copyright 2025 ponponusa. All rights reserved.
 #
 
-require_relative 'base'
+require "web/api/v2/base"
 
 module Narou
   module ApiV2
@@ -189,7 +189,7 @@ module Narou
                 
                 # ProcessManagerを使用してフロントエンドを停止
                 begin
-                  require_relative '../../../narou/process_manager'
+                  require "narou/process_manager"
                   frontend_manager = Narou::ProcessManager.new('narou-frontend')
                   if frontend_manager.process_running?
                     frontend_manager.stop_process(timeout: 5)
@@ -238,7 +238,7 @@ module Narou
                 
                 # ProcessManagerを使用してフロントエンドを停止
                 begin
-                  require_relative '../../../narou/process_manager'
+                  require "narou/process_manager"
                   frontend_manager = Narou::ProcessManager.new('narou-frontend')
                   if frontend_manager.process_running?
                     frontend_manager.stop_process(timeout: 5)

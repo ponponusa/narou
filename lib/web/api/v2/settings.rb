@@ -4,7 +4,7 @@
 # Copyright 2025 ponponusa. All rights reserved.
 #
 
-require_relative 'base'
+require "web/api/v2/base"
 
 module Narou
   module ApiV2
@@ -20,8 +20,8 @@ module Narou
             set_cors_headers
             
             begin
-              require_relative '../../../command/setting'
-              require_relative '../../../inventory'
+              require "command/setting"
+              require "core/inventory"
               
               settings = {
                 local: Inventory.load("local_setting", :local),
@@ -61,7 +61,7 @@ module Narou
             set_cors_headers
             
             begin
-              require_relative '../../../command/setting'
+              require "command/setting"
               
               setting_variables = Command::Setting.get_setting_variables
               tab_names = Command::Setting.get_setting_tab_names
@@ -92,9 +92,9 @@ module Narou
             end
             
             begin
-              require_relative '../../../command/setting'
-              require_relative '../../../inventory'
-              require_relative '../../../narou_logger'
+              require "command/setting"
+              require "core/inventory"
+              require "narou_logger"
               
               # 設定コマンドのインスタンスを作成
               setting_cmd = Command::Setting.new
@@ -131,7 +131,7 @@ module Narou
               
               # 自動アップデート設定が変更された場合、スケジューラーを再起動
               if built_arguments.any? { |arg| arg.start_with?("update.auto-schedule") }
-                require_relative "../command/update/scheduler"
+                require "web/api/command/update/scheduler"
                 Command::Update::Scheduler.stop
                 Command::Update::Scheduler.start
               end
@@ -169,9 +169,9 @@ module Narou
             end
             
             begin
-              require_relative '../../../command/setting'
-              require_relative '../../../inventory'
-              require_relative '../../../narou_logger'
+              require "command/setting"
+              require "core/inventory"
+              require "narou_logger"
               
               setting_cmd = Command::Setting.new
               error_list = {}
@@ -201,7 +201,7 @@ module Narou
               Inventory.clear
               
               if built_arguments.any? { |arg| arg.start_with?("update.auto-schedule") }
-                require_relative "../command/update/scheduler"
+                require "web/api/command/update/scheduler"
                 Command::Update::Scheduler.stop
                 Command::Update::Scheduler.start
               end
@@ -231,7 +231,7 @@ module Narou
             set_cors_headers
             
             begin
-              require_relative '../../../narou/parsers/config_manager'
+              require "narou/parsers/config_manager"
               
               # グローバル設定を読み込み
               global_config = Narou::Parsers::ConfigManager.load_global_config
@@ -284,7 +284,7 @@ module Narou
             body = parse_json_body
             
             begin
-              require_relative '../../../narou/parsers/config_manager'
+              require "narou/parsers/config_manager"
               
               updated = []
               

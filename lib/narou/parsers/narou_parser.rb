@@ -4,7 +4,7 @@
 # 小説家になろう専用パーサー
 #
 
-require_relative "base_parser"
+require "narou/parsers/base_parser"
 
 module Narou
   module Parsers

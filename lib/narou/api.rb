@@ -9,7 +9,7 @@ require "zlib"
 require "yaml"
 require "json"
 require "memoist"
-require_relative "../novelinfo"
+require "novel/novelinfo"
 
 module Narou
   #

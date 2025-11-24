@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../spec_helper"
-require_relative "../../lib/command/output_helper"
+require "cli/command/output_helper"
 
 RSpec.describe Command::OutputHelper do
   let(:test_template_dir) { File.join(__dir__, "..", "fixtures", "templates") }

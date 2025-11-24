@@ -7,9 +7,13 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require_relative "lib/extension"
-require_relative "lib/extensions/monkey_patches"
-require_relative "lib/backtracer"
+# プロジェクトのlibディレクトリをロードパスに追加
+script_dir = File.expand_path(File.dirname(__FILE__))
+$LOAD_PATH.unshift(File.join(script_dir, "lib"))
+
+require "loading/extension"
+require "extensions/monkey_patches"
+require "utilities/backtracer"
 
 script_dir = File.expand_path(File.dirname(__FILE__))
 $debug = File.exist?(File.join(script_dir, "debug"))
@@ -24,7 +28,7 @@ if ARGV.delete("--time")
   end
 end
 
-require_relative "lib/inventory"
+require "core/inventory"
 
 $development = Narou.commit_version.!
 # NOTE:
@@ -38,9 +42,9 @@ $disable_color = ARGV.delete("--no-color")
 $disable_color ||= global["no-color"]
 $color_parser ||= global["color-parser"] || "system"
 
-require_relative "lib/narou_logger"
-require_relative "lib/version"
-require_relative "lib/commandline"
+require "output/narou_logger"
+require "core/version"
+require "cli/commandline"
 
 exit Narou::Backtracer.capture {
   CommandLine.run!(ARGV.map(&:dup))

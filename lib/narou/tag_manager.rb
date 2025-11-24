@@ -4,8 +4,8 @@
 # Copyright 2025 ponponusa. All rights reserved.
 #
 
-require_relative "../database"
-require_relative "../inventory"
+require "core/database"
+require "core/inventory"
 
 module Narou
   #
@@ -47,7 +47,7 @@ module Narou
       # @return [String] タグの色（CSSクラス名）
       #
       def get_color(tagname)
-        require_relative "../command/tag"
+        require "command/tag"
         Command::Tag.get_color(tagname)
       end
 
@@ -58,7 +58,7 @@ module Narou
       # @return [void]
       #
       def set_colors(colors)
-        require_relative "../command/tag"
+        require "command/tag"
         tag_colors = Inventory.load("tag_colors")
         colors.each do |tagname, color|
           tag_colors[tagname] = color if Command::Tag::COLORS.include?(color)
@@ -116,8 +116,8 @@ module Narou
       # @return [Hash] { success: Boolean, added_count: Integer }
       #
       def add_tags(tag_names, novel_ids)
-        require_relative "../command/tag"
-        require_relative "../narou_logger"
+        require "command/tag"
+        require "output/narou_logger"
         
         begin
           Command::Tag.execute!("--add", tag_names.join(" "), novel_ids, io: Narou::NullIO.new)
@@ -135,8 +135,8 @@ module Narou
       # @return [Hash] { success: Boolean, deleted_count: Integer }
       #
       def delete_tags(tag_names, novel_ids)
-        require_relative "../command/tag"
-        require_relative "../narou_logger"
+        require "command/tag"
+        require "output/narou_logger"
         
         begin
           Command::Tag.execute!("--delete", tag_names.join(" "), novel_ids, io: Narou::NullIO.new)
@@ -154,8 +154,8 @@ module Narou
       # @return [Hash] { success: Boolean, added: Array, deleted: Array }
       #
       def edit_tags(states, novel_ids)
-        require_relative "../command/tag"
-        require_relative "../narou_logger"
+        require "command/tag"
+        require "output/narou_logger"
         
         # key と value を重複を維持したまま反転
         invert_states = states.inject({}) { |h, (k, v)| (h[v] ||= []) << k; h }

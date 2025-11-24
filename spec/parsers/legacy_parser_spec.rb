@@ -2,7 +2,7 @@
 
 require "spec_helper"
 require_relative "../../lib/narou/parsers/legacy_parser"
-require_relative "../../lib/sitesetting"
+require "novel/sitesetting"
 
 RSpec.describe Narou::Parsers::LegacyParser do
   let(:setting_values) { {} }

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../lib/command/download"
+require "cli/command/download"
 
 RSpec.describe Command::Download do
   let(:command) { described_class.new }

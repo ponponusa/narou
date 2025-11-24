@@ -3,7 +3,7 @@
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 is_windows = Gem.win_platform? rescue (/mswin|mingw|cygwin|bccwin|wince|emx/ =~ RUBY_PLATFORM)
-require "version"
+require "core/version"  # $LOAD_PATHにlibが追加されているので、相対パス不要
 require "fileutils"
 module Narou
   def self.create_git_commit_version

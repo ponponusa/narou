@@ -3,7 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require_relative "../lib/narou_logger"
+require "output/narou_logger"
 
 describe Narou::Logger, :show_output do
   describe "#capture" do

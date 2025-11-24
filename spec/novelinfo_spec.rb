@@ -3,7 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require_relative "../lib/novelinfo"
+require "novel/novelinfo"
 
 xdescribe NovelInfo do
   before do

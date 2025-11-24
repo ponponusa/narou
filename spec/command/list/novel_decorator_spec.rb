@@ -5,7 +5,7 @@
 
 require "time"
 require "timecop"
-require "commandline"
+require "cli/commandline"
 
 describe Command::List::NovelDecorator do
   let(:novel) { Database.instance.get_data("id", id) }

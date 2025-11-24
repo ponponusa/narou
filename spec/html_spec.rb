@@ -3,7 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require_relative "../lib/html"
+require "conversion/html"
 
 html_test_html_path = File.expand_path(File.dirname(__FILE__) + "/data/html_test.html")
 html_test_txt_path = File.expand_path(File.dirname(__FILE__) + "/data/html_test.txt")

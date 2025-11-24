@@ -6,8 +6,8 @@
 
 require "json"
 require "singleton"
-require_relative "web-socket-ruby/lib/web_socket"
-require_relative "../eventable"
+require "web/web-socket-ruby/lib/web_socket"
+require "utilities/eventable"
 
 module Narou
   class PushServer

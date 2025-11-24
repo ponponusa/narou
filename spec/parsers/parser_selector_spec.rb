@@ -2,7 +2,7 @@
 
 require "spec_helper"
 require_relative "../../lib/narou/parsers/parser_selector"
-require_relative "../../lib/sitesetting"
+require "novel/sitesetting"
 
 RSpec.describe Narou::Parsers::ParserSelector do
   let(:site_setting) do

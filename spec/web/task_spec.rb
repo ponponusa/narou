@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require_relative "../../lib/web/task"
+require "web/workers/task"
 
 describe Narou::Task do
   describe "#initialize" do

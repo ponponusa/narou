@@ -8,7 +8,7 @@ require "rack/test"
 require "json"
 
 require_relative "../spec_helper"
-require_relative "../../lib/web/appserver"
+require "web/appserver"
 
 RSpec.describe "Narou::AppServer API v2" do
   include Rack::Test::Methods

@@ -3,7 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require_relative "../lib/ini"
+require "conversion/ini"
 
 data_test_ini_path = File.expand_path(File.dirname(__FILE__) + "/data/test.ini")
 

@@ -4,8 +4,8 @@
 #
 
 require "tmpdir"
-require_relative "../lib/inventory"
-require_relative "../lib/novelsetting"
+require "core/inventory"
+require "novel/novelsetting"
 
 describe NovelSetting do
   context "setting.ini 書き出し関係" do

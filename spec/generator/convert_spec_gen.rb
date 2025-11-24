@@ -48,7 +48,7 @@ __END__
 Encoding.default_external = Encoding::UTF_8
 
 require_relative "../lib/commandline"
-require_relative "../lib/narou_logger"
+require_relative "../lib/output/narou_logger"
 
 AUTHOR = "whiteleaf"
 $debug = File.exist?(File.expand_path(File.join(File.dirname(__FILE__), "../debug")))

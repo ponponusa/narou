@@ -9,8 +9,8 @@
 #
 
 require "time"
-require "narou"
-require "database"
+require "core/narou"
+require "core/database"
 
 class Module
   def const_replace(name, value)

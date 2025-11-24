@@ -7,7 +7,7 @@
 # rubocop:disable Style/ClassAndModuleChildren
 
 require "json"
-require_relative "../novelsetting"
+require "novel/novelsetting"
 
 module Narou::ServerHelpers
   RELOAD_TIMING_DEFAULT = "every"

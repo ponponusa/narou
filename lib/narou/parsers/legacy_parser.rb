@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "base_parser"
+require "narou/parsers/base_parser"
 
 module Narou
   module Parsers

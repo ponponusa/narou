@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../lib/command/remove"
+require "cli/command/remove"
 
 RSpec.describe Command::Remove do
   let(:command) { described_class.new }

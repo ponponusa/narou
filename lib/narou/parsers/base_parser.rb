@@ -6,8 +6,8 @@
 #
 
 require "nokogiri"
-require_relative "parser_error"
-require_relative "config_manager"
+require "narou/parsers/parser_error"
+require "narou/parsers/config_manager"
 
 module Narou
   module Parsers
