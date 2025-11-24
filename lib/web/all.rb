@@ -7,8 +7,8 @@
 require_relative "../narou_logger"
 require_relative "appserver"
 require_relative "pushserver"
-require_relative "streaminglogger"
-require_relative "streaminginput"
-require_relative "progressbar4web"
-require_relative "helper4web"
+require_relative "streaming_logger"
+require_relative "web_input_override"
+require_relative "web_progressbar_override"
+require_relative "web_helper_override"
 

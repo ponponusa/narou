@@ -372,7 +372,7 @@ module Command
       push_server.run
 
       # StreamingLoggerを設定（標準出力をPushServerに送信）
-      require_relative "../web/streaminglogger"
+      require_relative "../web/streaming_logger"
       verbose = @options["verbose"] || false
       $stdout = Narou::StreamingLogger.new(push_server, $stdout, verbose: verbose)
       $stdout2 = if Inventory.load["concurrency"]
