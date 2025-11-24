@@ -23,6 +23,10 @@ SimpleCov.start do
   # フロントエンド（Astro/Svelte）
   add_filter "/frontend/"
   
+  # Legacy Web UI（静的ファイルとビュー）
+  add_filter "/lib/web/public/"
+  add_filter "/lib/web/views/"
+  
   # ドキュメント・設定ファイル
   add_filter "/docs/"
   add_filter "/coverage/"
