@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "cli/command/freeze"
+require "lib/cli/command/freeze"
 
 RSpec.describe Command::Freeze do
   let(:command) { described_class.new }

@@ -102,10 +102,10 @@ module SettingsRoutes
       else
         # Astro UI の settings ページ
         # 開発環境のパス
-        dev_settings_path = File.join(__dir__, "../../frontend/dist/settings/index.html")
+        dev_settings_path = "../frontend/dist/settings/index.html"
         
         # gem環境のパス
-        gem_settings_path = File.expand_path("../../frontend/dist/settings/index.html", File.dirname(__FILE__))
+        gem_settings_path = "../frontend/dist/settings/index.html"
         
         settings_path = if File.exist?(dev_settings_path)
                           dev_settings_path

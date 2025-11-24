@@ -7,11 +7,11 @@
 require "yaml"
 require "tempfile"
 require "open3"
-require "novel/downloader"
-require "core/database"
-require "conversion/template"
-require "core/inventory"
-require "utilities/helper"
+require "lib/novel/downloader"
+require "lib/core/database"
+require "lib/conversion/template"
+require "lib/core/inventory"
+require "lib/utilities/helper"
 
 module Command
   class Diff < CommandBase

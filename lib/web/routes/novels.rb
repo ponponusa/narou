@@ -10,6 +10,9 @@
 # 小説個別設定、ダウンロード、作者コメント表示などのルーティングを集約
 #
 module NovelsRoutes
+  # Downloaderを遅延ロード（autoload）
+  autoload :Downloader, "novel/downloader"
+  
   def self.registered(app)
     #
     # 小説個別ルートフィルター

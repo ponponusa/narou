@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "cli/command/tag"
+require "lib/cli/command/tag"
 
 RSpec.describe Command::Tag do
   let(:command) { described_class.new }

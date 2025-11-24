@@ -27,10 +27,10 @@ module StaticFileRoutes
       else
         # New Astro UI
         # 開発環境のパス
-        dev_index_path = File.join(__dir__, "../../frontend/dist/index.html")
+        dev_index_path = "../frontend/dist/index.html"
         
         # gem環境のパス
-        gem_index_path = File.expand_path("../../frontend/dist/index.html", File.dirname(__FILE__))
+        gem_index_path = "../frontend/dist/index.html"
         
         index_path = if File.exist?(dev_index_path)
                        dev_index_path
@@ -69,10 +69,10 @@ module StaticFileRoutes
         asset_filename = params['splat'].first
         
         # 開発環境のパス
-        dev_asset_path = File.join(__dir__, "../../frontend/dist/_astro", asset_filename)
+        dev_asset_path = File.join("frontend/dist/_astro", asset_filename)
         
         # gem環境のパス
-        gem_asset_path = File.expand_path("../../frontend/dist/_astro/#{asset_filename}", File.dirname(__FILE__))
+        gem_asset_path = File.join("frontend/dist/_astro", asset_filename)
         
         asset_path = if File.exist?(dev_asset_path)
                        dev_asset_path
@@ -98,10 +98,10 @@ module StaticFileRoutes
     app.get "/favicon.svg" do
       unless self.class.legacy_mode?
         # 開発環境のパス
-        dev_favicon_path = File.join(__dir__, "../../frontend/dist/favicon.svg")
+        dev_favicon_path = "frontend/dist/favicon.svg"
         
         # gem環境のパス
-        gem_favicon_path = File.expand_path("../../frontend/dist/favicon.svg", File.dirname(__FILE__))
+        gem_favicon_path = "frontend/dist/favicon.svg"
         
         favicon_path = if File.exist?(dev_favicon_path)
                          dev_favicon_path

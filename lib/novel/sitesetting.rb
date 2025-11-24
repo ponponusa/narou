@@ -5,8 +5,8 @@
 #
 
 require "yaml"
-require "narou/api"
-require "novel/sitesettinghandler"
+require "lib/narou/api"
+require "lib/novel/sitesettinghandler"
 
 class SiteSetting
   NOVEL_SITE_SETTING_DIR = "webnovel/"

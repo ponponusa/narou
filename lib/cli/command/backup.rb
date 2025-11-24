@@ -4,8 +4,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "core/database"
-require "novel/downloader"
+require "lib/core/database"
+require "lib/novel/downloader"
 
 module Command
   class Backup < CommandBase

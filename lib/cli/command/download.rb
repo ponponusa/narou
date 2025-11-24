@@ -4,10 +4,10 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "core/narou"
-require "novel/downloader"
-require "cli/input"
-require "utilities/tty_helper"
+require "lib/core/narou"
+require "lib/novel/downloader"
+require "lib/cli/input"
+require "lib/utilities/tty_helper"
 
 module Command
   class Download < CommandBase

@@ -4,8 +4,8 @@
 # Copyright 2025 ponponusa. All rights reserved.
 #
 
-require "core/database"
-require "core/inventory"
+require "lib/core/database"
+require "lib/core/inventory"
 
 module Narou
   #

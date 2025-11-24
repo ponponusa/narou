@@ -5,7 +5,7 @@
 
 require "tmpdir"
 require "tempfile"
-require "utilities/helper"
+require "lib/utilities/helper"
 
 describe Helper do
   describe ".string_cast_to_type" do

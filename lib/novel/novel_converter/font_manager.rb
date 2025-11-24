@@ -5,7 +5,7 @@
 #
 
 require "fileutils"
-require "utilities/helper"
+require "lib/utilities/helper"
 
 class NovelConverter
   #

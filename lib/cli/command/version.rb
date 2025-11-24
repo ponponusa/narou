@@ -4,7 +4,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "utilities/helper"
+require "lib/utilities/helper"
 
 module Command
   class Version < CommandBase

@@ -4,9 +4,9 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "core/narou"
-require "utilities/helper"
-require "cli/input"
+require "lib/core/narou"
+require "lib/utilities/helper"
+require "lib/cli/input"
 
 module Command
   class Remove < CommandBase

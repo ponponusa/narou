@@ -3,8 +3,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "novel/converterbase"
-require "utilities/helper"
+require "lib/novel/converterbase"
+require "lib/utilities/helper"
 
 BlankConverter = Class.new(ConverterBase) {}
 

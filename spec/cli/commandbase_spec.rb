@@ -3,7 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "cli/commandbase"
+require "lib/cli/commandbase"
 
 describe Command::CommandBase do
   let(:command) { Command::CommandBase.new }

@@ -6,8 +6,8 @@
 
 require "fileutils"
 require "memoist"
-require "core/narou"
-require "utilities/helper"
+require "lib/core/narou"
+require "lib/utilities/helper"
 
 class Device
   #

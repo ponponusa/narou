@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "weakref"
-require "utilities/worker"
+require "lib/utilities/worker"
 
 class SiteSettingHandler
   HANDLER_DIR = "handler"

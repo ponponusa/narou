@@ -6,7 +6,7 @@
 
 require "yaml"
 require "ostruct"
-require "core/narou"
+require "lib/core/narou"
 
 #
 # Narou.rbのシステムが記録するデータ単位

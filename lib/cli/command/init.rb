@@ -4,9 +4,9 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "core/inventory"
-require "cli/commandbase"
-require "utilities/tty_helper"
+require "lib/core/inventory"
+require "lib/cli/commandbase"
+require "lib/utilities/tty_helper"
 
 module Command
   class Init < CommandBase

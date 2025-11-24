@@ -6,7 +6,7 @@
 
 require "open-uri"
 require "openssl"
-require "core/inventory"
+require "lib/core/inventory"
 
 # open-uri で http → https へのリダイレクトを有効にする
 require "open_uri_redirections"

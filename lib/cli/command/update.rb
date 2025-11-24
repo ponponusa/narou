@@ -6,15 +6,15 @@
 
 require "fileutils"
 require "memoist"
-require "core/database"
-require "novel/downloader"
-require "conversion/template"
-require "novel/novelconverter"
-require "utilities/eventable"
-require "cli/command/update/interval"
-require "cli/command/update/general_lastup_updater"
-require "cli/command/update/hotentry_manager"
-require "cli/command/update/scheduler"
+require "lib/core/database"
+require "lib/novel/downloader"
+require "lib/conversion/template"
+require "lib/novel/novelconverter"
+require "lib/utilities/eventable"
+require "lib/cli/command/update/interval"
+require "lib/cli/command/update/general_lastup_updater"
+require "lib/cli/command/update/hotentry_manager"
+require "lib/cli/command/update/scheduler"
 
 module Command
   class Update < CommandBase

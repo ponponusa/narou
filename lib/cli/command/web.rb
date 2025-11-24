@@ -4,8 +4,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "cli/command/web_legacy"
-require "cli/command/output_helper"
+require "lib/cli/command/web_legacy"
+require "lib/cli/command/output_helper"
 
 module Command
   class Web < CommandBase

@@ -1,6 +1,6 @@
 require "time"
 require "thread"
-require "core/inventory"
+require "lib/core/inventory"
 
 module Command
   class Update

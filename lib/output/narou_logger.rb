@@ -8,8 +8,8 @@ require "stringio"
 require "termcolorlight"
 require "io/console/size"
 require "unicode/display_width/string_ext"
-require "utilities/color"
-require "core/inventory"
+require "lib/utilities/color"
+require "lib/core/inventory"
 
 if $disable_color
   class String

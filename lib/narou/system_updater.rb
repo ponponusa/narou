@@ -6,7 +6,7 @@ require "tmpdir"
 require "uri"
 require "net/http"
 
-require "narou/github_release"
+require "lib/narou/github_release"
 
 module Narou
   class SystemUpdater

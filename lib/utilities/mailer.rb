@@ -6,7 +6,7 @@
 
 require "yaml"
 require "singleton"
-require "core/narou"
+require "lib/core/narou"
 
 class Mailer
   include Singleton

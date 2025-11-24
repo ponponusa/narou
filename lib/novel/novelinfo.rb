@@ -6,7 +6,7 @@
 
 require "open-uri"
 require "time"
-require "conversion/html"
+require "lib/conversion/html"
 
 class NovelInfo
   REFRESH_INTERVAL = 10 # キャッシュを捨てて再取得するまでの時間(s)

@@ -4,7 +4,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "utilities/tty_helper"
+require "lib/utilities/tty_helper"
 
 module Command
   class WebLegacy < CommandBase

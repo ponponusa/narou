@@ -5,7 +5,7 @@
 #
 
 require "csv"
-require "core/database"
+require "lib/core/database"
 
 module Command
   # ライブラリのCSVコマンドと混同を避けるために小文字混じり

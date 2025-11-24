@@ -4,7 +4,7 @@
 #
 
 require "tmpdir"
-require "core/database"
+require "lib/core/database"
 
 describe Database do
   describe "#get_object" do

@@ -5,11 +5,11 @@
 #
 
 require "fileutils"
-require "novel/downloader"
-require "novel/novelconverter"
-require "core/inventory"
-require "ebook/kindlestrip"
-require "utilities/worker"
+require "lib/novel/downloader"
+require "lib/novel/novelconverter"
+require "lib/core/inventory"
+require "lib/ebook/kindlestrip"
+require "lib/utilities/worker"
 
 module Command
   class Convert < CommandBase

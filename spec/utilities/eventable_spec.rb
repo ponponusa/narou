@@ -4,7 +4,7 @@
 #
 
 module Narou end
-require "utilities/eventable"
+require "lib/utilities/eventable"
 
 class Dummy
   include Narou::Eventable

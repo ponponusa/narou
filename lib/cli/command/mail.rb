@@ -4,8 +4,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "core/narou"
-require "utilities/mailer"
+require "lib/core/narou"
+require "lib/utilities/mailer"
 
 module Command
   class Mail < CommandBase

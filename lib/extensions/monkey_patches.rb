@@ -4,4 +4,4 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "extensions/monkey_patches/pathname"
+require "lib/extensions/monkey_patches/pathname"

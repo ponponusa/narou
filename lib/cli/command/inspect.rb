@@ -5,10 +5,10 @@
 #
 
 require "fileutils"
-require "novel/downloader"
-require "output/inspector"
-require "novel/novelsetting"
-require "core/inventory"
+require "lib/novel/downloader"
+require "lib/output/inspector"
+require "lib/novel/novelsetting"
+require "lib/core/inventory"
 
 module Command
   class Inspect < CommandBase

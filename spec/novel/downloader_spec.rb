@@ -4,7 +4,7 @@
 #
 
 require "tmpdir"
-require "novel/downloader"
+require "lib/novel/downloader"
 
 describe Downloader do
   describe ".create_subdirecotry_name" do

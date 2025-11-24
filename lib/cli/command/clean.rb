@@ -5,9 +5,9 @@
 #
 
 require "fileutils"
-require "novel/downloader"
-require "core/database"
-require "core/inventory"
+require "lib/novel/downloader"
+require "lib/core/database"
+require "lib/core/inventory"
 
 module Command
   class Clean < CommandBase

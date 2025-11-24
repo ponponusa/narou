@@ -5,8 +5,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "cli/input"
-require "output/narou_logger"
+require "lib/cli/input"
+require "lib/output/narou_logger"
 
 describe Narou::Input, :show_output do
   before :all do

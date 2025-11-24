@@ -5,9 +5,9 @@
 #
 
 require "singleton"
-require "web/server/push_server"
-require "web/workers/task"
-require "mixin/all"
+require "lib/web/server/push_server"
+require "lib/web/workers/task"
+require "lib/mixin/all"
 
 module Narou
   class WebWorker

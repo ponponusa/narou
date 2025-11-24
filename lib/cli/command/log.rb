@@ -4,7 +4,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "cli/command/log/tail"
+require "lib/cli/command/log/tail"
 
 module Command
   class Log < CommandBase

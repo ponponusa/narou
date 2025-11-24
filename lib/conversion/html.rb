@@ -5,7 +5,7 @@
 #
 
 require "uri"
-require "utilities/helper"
+require "lib/utilities/helper"
 
 class HTML
   attr_reader :string

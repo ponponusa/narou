@@ -5,7 +5,7 @@
 #
 
 require "json"
-require "narou/parsers/base_parser"
+require "lib/narou/parsers/base_parser"
 
 module Narou
   module Parsers

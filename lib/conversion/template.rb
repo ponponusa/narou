@@ -5,7 +5,7 @@
 #
 
 require "erb"
-require "core/narou"
+require "lib/core/narou"
 
 class Template
   TEMPLATE_DIR = "template/"

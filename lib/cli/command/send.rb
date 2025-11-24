@@ -4,9 +4,9 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "core/narou"
-require "utilities/helper"
-require "ebook/device"
+require "lib/core/narou"
+require "lib/utilities/helper"
+require "lib/ebook/device"
 
 module Command
   class Send < CommandBase

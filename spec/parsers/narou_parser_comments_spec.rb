@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require "spec/spec_helper"
-require "narou/parsers/narou_parser"
-require "narou/parsers/config_manager"
+require "lib/narou/parsers/narou_parser"
+require "lib/narou/parsers/config_manager"
 
 RSpec.describe Narou::Parsers::NarouParser do
   before do

@@ -5,7 +5,7 @@
 #
 
 require "net/http"
-require "narou/api"
+require "lib/narou/api"
 
 module Command
   class Update < CommandBase

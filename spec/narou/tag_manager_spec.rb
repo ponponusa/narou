@@ -5,7 +5,7 @@
 #
 
 require "spec/spec_helper"
-require "narou/tag_manager"
+require "lib/narou/tag_manager"
 
 RSpec.describe Narou::TagManager do
   let(:database) { Database.instance }

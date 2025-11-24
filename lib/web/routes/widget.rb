@@ -9,16 +9,22 @@
 #
 module Narou
   module WidgetRoutes
+    # SiteSettingを遅延ロード（autoload）
+    autoload :SiteSetting, "novel/sitesetting"
+
     # ブックマークレットモード設定
     BOOKMARKLET_MODE = %w(download insert_button).freeze
 
     # ウィジェット許可ホスト設定（SiteSetting.settingsからドメイン一覧を取得）
-    ALLOW_HOSTS = SiteSetting.settings.values.each_with_object([]) { |setting, memo|
-      domains = setting["domain"] || setting["domains"]
-      if domains
-        memo.concat(Array(domains))
-      end
-    }.freeze
+    # 定数ではなくメソッドにして、実際に使われる時に初めて読み込む
+    def self.allow_hosts
+      @allow_hosts ||= SiteSetting.settings.values.each_with_object([]) { |setting, memo|
+        domains = setting["domain"] || setting["domains"]
+        if domains
+          memo.concat(Array(domains))
+        end
+      }.freeze
+    end
 
     def self.registered(app)
       #
@@ -54,11 +60,11 @@ module Narou
 
       # ウィジェット用 X-Frame-Options 設定（許可ホストからの埋め込みを許可）
       app.before "/widget/*" do
-        # allow_from を使用している場合、ALLOW_HOSTS にドメインが設定されていれば許可
-        response["X-Frame-Options"] = if ALLOW_HOSTS.any?
+        # allow_from を使用している場合、allow_hosts にドメインが設定されていれば許可
+        response["X-Frame-Options"] = if WidgetRoutes.allow_hosts.any?
                                         # X-Frame-Options は複数のホスト指定に対応していないため
                                         # 実際には最初のホストのみ許可する
-                                        "ALLOW-FROM #{ALLOW_HOSTS.first}"
+                                        "ALLOW-FROM #{WidgetRoutes.allow_hosts.first}"
                                       else
                                         "SAMEORIGIN"
                                       end

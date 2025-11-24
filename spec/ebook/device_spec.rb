@@ -3,7 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "ebook/device"
+require "lib/ebook/device"
 
 if Helper.os_windows?
   describe "Windowsの場合" do

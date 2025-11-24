@@ -4,10 +4,10 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "utilities/helper"
-require "ebook/kindlestrip"
-require "novel/novel_converter/font_manager"
-require "novel/novel_converter/output_helper"
+require "lib/utilities/helper"
+require "lib/ebook/kindlestrip"
+require "lib/novel/novel_converter/font_manager"
+require "lib/novel/novel_converter/output_helper"
 
 begin
   require "zip"

@@ -5,7 +5,7 @@
 #
 
 require "tmpdir"
-require "core/narou"
+require "lib/core/narou"
 
 describe Narou do
   before :each do

@@ -5,10 +5,10 @@
 #
 
 require "yaml"
-require "novel/downloader"
-require "novel/sitesetting"
-require "conversion/html"
-require "conversion/template"
+require "lib/novel/downloader"
+require "lib/novel/sitesetting"
+require "lib/conversion/html"
+require "lib/conversion/template"
 
 class NovelConverter
   #

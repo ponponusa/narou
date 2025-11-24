@@ -4,9 +4,9 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "core/database"
-require "novel/downloader"
-require "core/inventory"
+require "lib/core/database"
+require "lib/novel/downloader"
+require "lib/core/inventory"
 
 module Command
   class Tag < CommandBase

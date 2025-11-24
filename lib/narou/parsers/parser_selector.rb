@@ -4,8 +4,8 @@
 # パーサーを選択するためのファクトリクラス
 #
 
-require "narou/parsers/config_manager"
-require "narou/parsers/parser_error"
+require "lib/narou/parsers/config_manager"
+require "lib/narou/parsers/parser_error"
 
 module Narou
   module Parsers

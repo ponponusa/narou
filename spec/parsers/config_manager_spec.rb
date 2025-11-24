@@ -3,7 +3,7 @@
 require "spec_helper"
 require "tmpdir"
 require "fileutils"
-require "narou/parsers/config_manager"
+require "lib/narou/parsers/config_manager"
 
 RSpec.describe Narou::Parsers::ConfigManager do
   let(:test_root) { Dir.mktmpdir }

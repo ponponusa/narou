@@ -4,8 +4,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "core/database"
-require "cli/command/list/novel_decorator"
+require "lib/core/database"
+require "lib/cli/command/list/novel_decorator"
 
 module Command
   class List < CommandBase

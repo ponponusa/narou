@@ -10,10 +10,10 @@
 # これによりネットワークアクセスやDB書き込みを伴わず即終了させています。
 # 
 
-require "cli/commandline"
-require "output/narou_logger"
-require "core/database"
-require "novel/downloader"
+require "lib/cli/commandline"
+require "lib/output/narou_logger"
+require "lib/core/database"
+require "lib/novel/downloader"
 
 describe "exit code", :show_output do
   before(:all) do

@@ -4,10 +4,10 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "core/narou"
-require "cli/command"
-require "utilities/helper"
-require "core/inventory"
+require "lib/core/narou"
+require "lib/cli/command"
+require "lib/utilities/helper"
+require "lib/core/inventory"
 
 module CommandLine
   module_function

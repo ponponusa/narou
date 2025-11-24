@@ -3,7 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "novel/converterbase"
+require "lib/novel/converterbase"
 
 describe ConverterBase, "#convert_kanji_num_with_unit" do
   before do

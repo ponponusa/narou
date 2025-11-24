@@ -7,8 +7,8 @@
 
 Encoding.default_external = Encoding::UTF_8
 
-require "cli/commandline"
-require "output/narou_logger"
+require "lib/cli/commandline"
+require "lib/output/narou_logger"
 
 AUTHOR = "whiteleaf"
 $debug = File.exist?(File.expand_path(File.join(File.dirname(__FILE__), "../debug")))

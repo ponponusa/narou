@@ -8,8 +8,8 @@ require "fileutils"
 require "singleton"
 require "yaml"
 require "forwardable"
-require "core/narou"
-require "core/inventory"
+require "lib/core/narou"
+require "lib/core/inventory"
 
 class Database
   include Singleton

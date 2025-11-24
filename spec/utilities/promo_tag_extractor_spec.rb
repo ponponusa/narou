@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "narou/promo_tag_extractor"
+require "lib/narou/promo_tag_extractor"
 
 describe Narou::PromoTagExtractor do
   describe ".extract" do

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require "narou/parsers/parser_error"
+require "lib/narou/parsers/parser_error"
 
 RSpec.describe Narou::Parsers do
   describe "パーサーエラークラス" do

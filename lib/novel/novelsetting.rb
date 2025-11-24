@@ -5,9 +5,9 @@
 #
 
 require "fileutils"
-require "conversion/ini"
-require "novel/downloader"
-require "novel/converterbase"
+require "lib/conversion/ini"
+require "lib/novel/downloader"
+require "lib/novel/converterbase"
 
 class NovelSetting
   INI_NAME = "setting.ini"

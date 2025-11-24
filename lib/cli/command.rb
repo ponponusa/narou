@@ -4,7 +4,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "cli/commandbase"
+require "lib/cli/commandbase"
 
 module Command
   # コマンド名 -> ファイル相対パス

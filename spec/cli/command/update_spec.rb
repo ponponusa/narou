@@ -4,8 +4,8 @@
 #
 # auto generated at 2015-08-07 22:44:33 +0900
 
-require "cli/commandline"
-require "output/narou_logger"
+require "lib/cli/commandline"
+require "lib/output/narou_logger"
 
 describe Command::Update, :show_output do
   describe "--ignore-all" do

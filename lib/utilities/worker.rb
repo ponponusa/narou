@@ -6,7 +6,7 @@
 
 require "singleton"
 require "forwardable"
-require "mixin/all"
+require "lib/mixin/all"
 
 module Narou
   class Worker

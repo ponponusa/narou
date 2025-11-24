@@ -4,11 +4,11 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "output/narou_logger"
-require "core/inventory"
-require "novel/novelsetting"
-require "utilities/eventable"
-require "cli/command/update"
+require "lib/output/narou_logger"
+require "lib/core/inventory"
+require "lib/novel/novelsetting"
+require "lib/utilities/eventable"
+require "lib/cli/command/update"
 
 module Command
   class Setting < CommandBase
@@ -693,7 +693,7 @@ module Command
       end
     end
 
-    Dir.glob(File.expand_path(File.join(File.dirname(__FILE__), "*.rb"))) do |path|
+    Dir.glob("cli/command/*.rb") do |path|
       cmd_name = File.basename(path, ".rb")
       SETTING_VARIABLES[:local]["default_args." + cmd_name] = {
         type: :string, help: "#{cmd_name} コマンドのデフォルトオプション", invisible: true,

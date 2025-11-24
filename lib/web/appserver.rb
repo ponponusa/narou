@@ -17,38 +17,45 @@ require "rack/protection"
 require "tilt/erubi"
 require "tilt/haml"
 require "tilt/sass"
-require "core/version"
-require "cli/commandline"
-require "core/inventory"
-require "web/workers/web_worker"
-require "web/server/push_server"
-require "web/config/setting_messages"
-require "web/server/helpers"
-require "narou/promo_tag_extractor"
-require "narou/system_updater"
-require "narou/tag_manager"
-require "web/api/v1/system"
-require "web/api/v1/settings"
-require "web/api/v1/tags"
-require "web/api/v1/utilities"
-require "web/api/v1/novels"
-require "web/api/v2/base"
-require "web/api/v2/novels"
-require "web/api/v2/novel_settings"
-require "web/api/v2/system"
-require "web/api/v2/tags"
-require "web/api/v2/settings"
-require "web/api/v2/tasks"
-require "web/processors/novel_list"
-require "web/server/initializer"
-require "web/routes/static_file"
-require "web/routes/system_management"
-require "web/routes/settings"
-require "web/routes/novels"
-require "web/routes/widget"
-require "web/api/documentation"
+require "lib/core/narou"
+require "lib/core/version"
+require "lib/cli/commandline"
+require "lib/core/inventory"
+require "lib/web/workers/web_worker"
+require "lib/web/server/push_server"
+require "lib/web/config/setting_messages"
+require "lib/web/server/helpers"
+require "lib/narou/promo_tag_extractor"
+require "lib/narou/system_updater"
+require "lib/narou/tag_manager"
+require "lib/web/api/v1/system"
+require "lib/web/api/v1/settings"
+require "lib/web/api/v1/tags"
+require "lib/web/api/v1/utilities"
+require "lib/web/api/v1/novels"
+require "lib/web/api/v2/base"
+require "lib/web/api/v2/novels"
+require "lib/web/api/v2/novel_settings"
+require "lib/web/api/v2/system"
+require "lib/web/api/v2/tags"
+require "lib/web/api/v2/settings"
+require "lib/web/api/v2/tasks"
+require "lib/web/processors/novel_list"
+require "lib/web/server/initializer"
+require "lib/web/api/documentation"
+
+# ルートモジュールを遅延ロード（密結合回避）
+module Narou
+  autoload :WidgetRoutes, "web/routes/widget"
+end
 
 class Narou::AppServer < Sinatra::Base
+  # ルートモジュール（Narou::以外）を遅延ロード
+  autoload :StaticFileRoutes, "web/routes/static_file"
+  autoload :SystemManagementRoutes, "web/routes/system_management"
+  autoload :SettingsRoutes, "web/routes/settings"
+  autoload :NovelsRoutes, "web/routes/novels"
+  
   register Sinatra::Reloader if $development
   helpers Narou::ServerHelpers
 
@@ -58,7 +65,7 @@ class Narou::AppServer < Sinatra::Base
   register SystemManagementRoutes
   register SettingsRoutes
   register NovelsRoutes
-  register WidgetRoutes
+  register Narou::WidgetRoutes
   register Narou::ApiV1::Documentation
 
   @@request_reboot = false

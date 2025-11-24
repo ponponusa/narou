@@ -3,9 +3,9 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require "output/inspector"
-require "novel/novelsetting"
-require "novel/converterbase"
+require "lib/output/inspector"
+require "lib/novel/novelsetting"
+require "lib/novel/converterbase"
 
 describe ConverterBase do
   before do

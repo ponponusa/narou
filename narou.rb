@@ -7,16 +7,15 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-# プロジェクトのlibディレクトリをロードパスに追加
+# プロジェクトルートをロードパスに追加
 script_dir = File.expand_path(File.dirname(__FILE__))
-$LOAD_PATH.unshift(File.join(script_dir, "lib"))
+$LOAD_PATH.unshift(script_dir)
 
-require "loading/extension"
-require "extensions/monkey_patches"
-require "utilities/backtracer"
+require "lib/loading/extension"
+require "lib/extensions/monkey_patches"
+require "lib/utilities/backtracer"
 
-script_dir = File.expand_path(File.dirname(__FILE__))
-$debug = File.exist?(File.join(script_dir, "debug"))
+$debug = File.exist?("debug")
 
 Encoding.default_external = Encoding::UTF_8
 Narou::Backtracer.argv = ARGV

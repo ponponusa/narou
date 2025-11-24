@@ -4,7 +4,7 @@
 # Copyright 2025 ponponusa. All rights reserved.
 #
 
-require "web/api/v2/base"
+require "lib/web/api/v2/base"
 
 module Narou
   module ApiV2

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require "sinatra/base"
-require "web/api/v2/base"
-require "web/workers/web_worker"
-require "web/workers/task"
+require "lib/web/api/v2/base"
+require "lib/web/workers/web_worker"
+require "lib/web/workers/task"
 
 module Narou
   module ApiV2

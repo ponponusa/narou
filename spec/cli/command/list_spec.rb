@@ -5,7 +5,7 @@
 
 require "time"
 require "timecop"
-require "cli/commandline"
+require "lib/cli/commandline"
 
 describe Command::List do
   let(:novels) { Database.instance.get_object.values }
