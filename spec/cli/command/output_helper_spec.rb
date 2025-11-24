@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../spec_helper"
+require_relative "../../spec_helper"
 require "cli/command/output_helper"
 
 RSpec.describe Command::OutputHelper do

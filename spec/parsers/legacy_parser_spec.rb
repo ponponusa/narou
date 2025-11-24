@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require_relative "../../lib/narou/parsers/legacy_parser"
+require "narou/parsers/legacy_parser"
 require "novel/sitesetting"
 
 RSpec.describe Narou::Parsers::LegacyParser do

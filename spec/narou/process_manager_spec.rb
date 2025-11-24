@@ -3,7 +3,7 @@
 require "spec_helper"
 require "fileutils"
 require "tmpdir"
-require_relative "../../lib/narou/process_manager"
+require "narou/process_manager"
 
 describe Narou::ProcessManager do
   let(:test_dir) { Dir.mktmpdir }

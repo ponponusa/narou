@@ -15,7 +15,7 @@ $debug = File.exist?(File.expand_path(File.join(File.dirname(__FILE__), "../debu
 
 describe "convert", :show_output do
   before :all do
-    test_text_dir = File.join(File.dirname(__FILE__), "data/convert_test")
+    test_text_dir = File.join(File.dirname(__FILE__), "../data/convert_test")
     @pwd = Dir.pwd
     Dir.chdir(test_text_dir)
 

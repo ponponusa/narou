@@ -3,7 +3,7 @@
 require "rack/test"
 require "json"
 
-require_relative "../spec_helper"
+require_relative "../../spec_helper"
 require "web/appserver"
 
 RSpec.describe "Narou::AppServer REST API" do

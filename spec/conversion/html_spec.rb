@@ -5,8 +5,8 @@
 
 require "conversion/html"
 
-html_test_html_path = File.expand_path(File.dirname(__FILE__) + "/data/html_test.html")
-html_test_txt_path = File.expand_path(File.dirname(__FILE__) + "/data/html_test.txt")
+html_test_html_path = File.expand_path(File.dirname(__FILE__) + "/../data/html_test.html")
+html_test_txt_path = File.expand_path(File.dirname(__FILE__) + "/../data/html_test.txt")
 
 describe HTML do
   before do

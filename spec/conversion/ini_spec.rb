@@ -5,7 +5,7 @@
 
 require "conversion/ini"
 
-data_test_ini_path = File.expand_path(File.dirname(__FILE__) + "/data/test.ini")
+data_test_ini_path = File.expand_path(File.dirname(__FILE__) + "/../data/test.ini")
 
 describe Ini, "#cast" do
   before do

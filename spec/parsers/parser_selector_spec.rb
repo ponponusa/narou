@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require_relative "../../lib/narou/parsers/parser_selector"
+require "narou/parsers/parser_selector"
 require "novel/sitesetting"
 
 RSpec.describe Narou::Parsers::ParserSelector do

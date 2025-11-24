@@ -2,7 +2,7 @@
 
 require "spec_helper"
 require "tempfile"
-require_relative "../../lib/narou/system_updater"
+require "narou/system_updater"
 
 RSpec.describe Narou::SystemUpdater do
   let(:release_client) { instance_double(Narou::GitHubRelease) }
