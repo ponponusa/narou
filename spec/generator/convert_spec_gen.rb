@@ -13,9 +13,7 @@
 
 require "erb"
 
-$LOAD_PATH.unshift File.expand_path("../..", __dir__)
-require "lib/cli/commandline"
-require "lib/output/narou_logger"
+require_relative "../spec_helper"
 
 spec_dir = File.expand_path(File.join(File.dirname(__FILE__), ".."))
 recipe_dir = File.join(spec_dir, "data/convert_test")
@@ -51,9 +49,7 @@ __END__
 
 Encoding.default_external = Encoding::UTF_8
 
-$LOAD_PATH.unshift File.expand_path("../..", __dir__)
-require "lib/cli/commandline"
-require "lib/output/narou_logger"
+require_relative "spec_helper"
 
 AUTHOR = "whiteleaf"
 $debug = File.exist?(File.expand_path(File.join(File.dirname(__FILE__), "../debug")))
