@@ -4,7 +4,7 @@
 # Copyright 2025 ponponusa. All rights reserved.
 #
 
-require_relative 'base'
+require "lib/web/api/v2/base"
 
 module Narou
   module ApiV2
@@ -20,7 +20,7 @@ module Narou
             set_cors_headers
             
             begin
-              require_relative '../../../narou/tag_manager'
+              require "narou/tag_manager"
               tag_list = Narou::TagManager.get_tag_list
               
               tags = tag_list.map do |tagname, count|
@@ -52,7 +52,7 @@ module Narou
             end
             
             begin
-              require_relative '../../../narou/tag_manager'
+              require "narou/tag_manager"
               tag_info = Narou::TagManager.get_tag_info(ids)
               
               json success_response({ tag_info: tag_info })
@@ -82,12 +82,12 @@ module Narou
             end
             
             begin
-              require_relative '../../../narou/tag_manager'
+              require "narou/tag_manager"
               result = Narou::TagManager.edit_tags(states, ids)
               
               if result[:success]
                 # キャッシュをクリア
-                Narou::AppServer.clear_all_cache
+                NovelListProcessor.clear_all_cache
                 
                 # PushServerでイベント送信
                 if defined?(@@push_server) && @@push_server
@@ -133,12 +133,12 @@ module Narou
             end
             
             begin
-              require_relative '../../../narou/tag_manager'
+              require "narou/tag_manager"
               result = Narou::TagManager.add_tags(tags, ids)
               
               if result[:success]
                 # キャッシュをクリア
-                Narou::AppServer.clear_all_cache
+                NovelListProcessor.clear_all_cache
                 
                 # PushServerでイベント送信
                 if defined?(@@push_server) && @@push_server
@@ -180,12 +180,12 @@ module Narou
             end
             
             begin
-              require_relative '../../../narou/tag_manager'
+              require "narou/tag_manager"
               result = Narou::TagManager.delete_tags(tags, ids)
               
               if result[:success]
                 # キャッシュをクリア
-                Narou::AppServer.clear_all_cache
+                NovelListProcessor.clear_all_cache
                 
                 # PushServerでイベント送信
                 if defined?(@@push_server) && @@push_server
@@ -221,7 +221,7 @@ module Narou
             end
             
             begin
-              require_relative '../../../narou/tag_manager'
+              require "narou/tag_manager"
               Narou::TagManager.set_colors(colors)
               
               # PushServerでイベント送信

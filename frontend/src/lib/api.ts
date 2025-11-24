@@ -764,3 +764,38 @@ export async function resumeTask(taskId: string): Promise<{ message: string }> {
     method: 'POST',
   });
 }
+
+/**
+ * パーサー設定を取得
+ */
+export async function getParserSettings(): Promise<{
+  global_config: {
+    default_engine: string;
+    novels: Record<string, { engine: string }>;
+  };
+  domains: string[];
+  user_configs: Record<string, any>;
+}> {
+  return await fetchApiV2('/api/v2/settings/parser');
+}
+
+/**
+ * パーサー設定を更新
+ */
+export async function updateParserSettings(settings: {
+  default_engine?: string;
+  novel_engines?: Record<string, string>;
+  domain_config?: {
+    domain: string;
+    engine: string;
+    config: any;
+  };
+}): Promise<{ updated: string[] }> {
+  return await fetchApiV2('/api/v2/settings/parser', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(settings),
+  });
+}

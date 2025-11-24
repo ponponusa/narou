@@ -143,7 +143,7 @@ module Narou
                 debug_puts "タグ編集完了 (追加: #{result[:added].join(', ')}, 削除: #{result[:deleted].join(', ')})"
                 
                 # キャッシュをクリアしてからイベント送信
-                Narou::AppServer.clear_all_cache 
+                NovelListProcessor.clear_all_cache 
                 debug_puts "全キャッシュクリア後にリロードイベントを送信"
                 
                 # テーブルリロードとタグキャンバス更新を順次実行
@@ -171,7 +171,7 @@ module Narou
             tag_colors.save
             
             # キャッシュを確実にクリアしてからイベント送信
-            Narou::AppServer.clear_all_cache 
+            NovelListProcessor.clear_all_cache 
             puts "タグ色変更完了: 全キャッシュクリア後にリロードイベントを送信"
             
             # テーブルリロードとタグキャンバス更新を順次実行

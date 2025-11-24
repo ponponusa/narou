@@ -2,14 +2,16 @@ require "rspec"
 require "pry"
 require "simplecov"
 
+# プロジェクトルートをロードパスに追加（相対パス地獄回避）
+$LOAD_PATH.unshift File.expand_path("..", __dir__)
+
 # ARGV退避: lib/配下のコードがrequire時にARGVを誤解釈しないように
 original_argv = ARGV.dup
 ARGV.clear
 
 # lib/配下からcommandをrequireしとく
-$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
-require "commandbase"
-Dir[File.expand_path("../lib/command/**/*.rb", __dir__)].sort.each { |f| require f }
+require "lib/cli/commandbase"
+Dir[File.expand_path("../lib/cli/command/**/*.rb", __dir__)].sort.each { |f| require f }
 
 # ARGV復元: RSpecが引数を正しく処理できるように
 ARGV.replace(original_argv)
@@ -31,8 +33,6 @@ end
 
 # 環境に依存しないようにタイムゾーンを固定してテストする
 ENV["TZ"] = "Asia/Tokyo"
-
-$LOAD_PATH.unshift File.expand_path("lib", __dir__)
 
 Dir[File.expand_path("support/**/*.rb", __dir__)].each do |f|
   require f
@@ -73,7 +73,7 @@ unless defined?(Tag)
   end
 end
 
-require "database"  # あなたのプロジェクトの Database クラスを読み込む
+require "lib/core/database"  # あなたのプロジェクトの Database クラスを読み込む
 
 RSpec.configure do |config|
   config.before(:suite) do

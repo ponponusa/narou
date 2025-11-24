@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "../inventory"
-require_relative "../novelsetting"
+require "lib/core/inventory"
+require "lib/novel/novelsetting"
 
 module Narou
   module PromoTagExtractor

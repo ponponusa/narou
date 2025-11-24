@@ -4,8 +4,8 @@
 # Copyright 2024 ponponusa. All rights reserved.
 #
 
-require_relative "../spec_helper"
-require_relative "../../lib/narou/tag_manager"
+require "spec/spec_helper"
+require "lib/narou/tag_manager"
 
 RSpec.describe Narou::TagManager do
   let(:database) { Database.instance }
