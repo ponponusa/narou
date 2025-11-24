@@ -22,6 +22,7 @@ require_relative "eventable"
 require_relative "html"
 require_relative "input"
 require_relative "narou/yaml_loader"
+require_relative "downloader/errors"
 
 # --- Sanitize shim (fragment only) ---
 unless defined?(Sanitize)
@@ -146,10 +147,6 @@ class Downloader
   DEFAULT_INTERVAL_WAIT = 0.7   # download.interval のデフォルト値(秒)
 
   attr_reader :id, :setting
-
-  class InvalidTarget < StandardError; end
-  class SuspendDownload < StandardError; end
-  class IO::TimeoutError; end # for 3.1 or earlier
 
   def initialize(target, options = {})
     id = Downloader.get_id_by_target(target)
@@ -876,14 +873,6 @@ class Downloader
     end
     @title
   end
-
-  class DownloaderNotFoundError < OpenURI::HTTPError
-    def initialize
-      super("404 not found", nil)
-    end
-  end
-
-  class DownloaderForceRedirect < StandardError; end
 
   #
   # HTMLの中から小説が削除されたか非公開なことを示すメッセージを検出する
