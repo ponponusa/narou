@@ -43,6 +43,7 @@ require_relative "api/v2/tasks"
 require_relative "novel_list_processor"
 require_relative "server_initializer"
 require_relative "static_file_routes"
+require_relative "system_management_routes"
 
 class Narou::AppServer < Sinatra::Base
   register Sinatra::Reloader if $development
@@ -51,6 +52,7 @@ class Narou::AppServer < Sinatra::Base
   include NovelListProcessor
   include ServerInitializer
   register StaticFileRoutes
+  register SystemManagementRoutes
 
   @@request_reboot = false
   @@already_update_system = false
@@ -341,67 +343,6 @@ class Narou::AppServer < Sinatra::Base
         halt 404, "Settings page not found"
       end
     end
-  end
-
-  get "/help" do
-    @title = "ヘルプ"
-    haml :help
-  end
-
-  get "/about" do
-    @narourb_version = settings.version
-    @ruby_version = build_ruby_version
-    haml :_about, layout: false
-  end
-
-  post "/shutdown" do
-    self.class.quit!
-    "シャットダウンしました。再起動するまで操作は出来ません"
-  end
-
-  post "/reboot" do
-    self.class.request_reboot
-    self.class.quit!
-    haml :_rebooting, layout: false
-  end
-
-  post "/update_system" do
-    Thread.new do
-      begin
-        result = Narou::SystemUpdater.update_from_github
-        @@gem_update_last_log = result.log
-
-        case result.status
-        when :success
-          @@already_update_system = true
-          @@push_server.send_all("server.update.success" => result.log)
-        when :nothing
-          @@push_server.send_all("server.update.nothing" => result.log)
-        else
-          @@push_server.send_all("server.update.failure" => result.log)
-        end
-      rescue Narou::SystemUpdater::Error => e
-        log = "更新に失敗しました: #{e.message}"
-        @@gem_update_last_log = log
-        @@push_server.send_all("server.update.failure" => log)
-      rescue StandardError => e
-        log = <<~LOG.strip
-          予期しないエラーが発生しました: #{e.class} #{e.message}
-          #{Array(e.backtrace).join("\n")}
-        LOG
-        @@gem_update_last_log = log
-        @@push_server.send_all("server.update.failure" => log)
-      end
-    end
-  end
-
-  post "/gem_update_last_log" do
-    content_type "text/plain"
-    @@gem_update_last_log
-  end
-
-  post "/check_already_update_system" do
-    json({ result: @@already_update_system })
   end
 
   before "/novels/:id/*" do
