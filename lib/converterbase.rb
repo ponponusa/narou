@@ -13,9 +13,11 @@ require_relative "narou"
 require_relative "progressbar"
 require_relative "inspector"
 require_relative "converterbase/utilities"
+require_relative "converterbase/ruby_processor"
 
 class ConverterBase
   include ConverterBase::Utilities
+  include ConverterBase::RubyProcessor
 
   KANJI_NUM = "〇一二三四五六七八九"
   ENGLISH_SENTENCES_CHARACTERS = /[\w.,!?'" &:;-]+/
@@ -934,9 +936,6 @@ class ConverterBase
     # 行頭の全角スペースが２個以上の場合も連結しない
     data.gsub!(/([^、])、\n　([^「『(（【<＜〈《≪・■…‥―　１-９一-九])/, "\\1、\\2")
   end
-
-  CHARACTER_OF_RUBY = "一-龠Ａ-Ｚａ-ｚA-Za-z"
-  AUTO_RUBY_CHARACTERS = "([ぁ-んァ-ヶーゝゞ・ 　]{,20})"
 
   #
   # 小説家になろうのルビ対策
