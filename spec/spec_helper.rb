@@ -17,7 +17,45 @@ Dir[File.expand_path("../lib/cli/command/**/*.rb", __dir__)].sort.each { |f| req
 ARGV.replace(original_argv)
 
 SimpleCov.start do
+  # テスト関連
   add_filter "/spec/"
+  
+  # フロントエンド（Astro/Svelte）
+  add_filter "/frontend/"
+  
+  # ドキュメント・設定ファイル
+  add_filter "/docs/"
+  add_filter "/coverage/"
+  add_filter "/preset/"
+  add_filter "/template/"
+  add_filter "/tmp/"
+  add_filter "/webnovel/"
+  
+  # 小説データディレクトリ
+  add_filter "/小説データ/"
+  add_filter "/小説データ_perf_test/"
+  
+  # 実行スクリプト・バイナリ
+  add_filter "/bin/"
+  add_filter "/vendor/"
+  add_filter "/.bundle/"
+  
+  # 隠しディレクトリ・ファイル
+  add_filter %r{^/\.}  # . で始まるファイル・ディレクトリ
+  
+  # プロジェクトルートの個別ファイル（narou.rb と clean_appserver.rb 以外）
+  add_filter "/narou-mod.gemspec"
+  add_filter "/narou-mod.bat"
+  add_filter "/Rakefile"
+  add_filter "/Gemfile"
+  add_filter "/commitversion"
+  add_filter "/debride_output.txt"
+  add_filter "/performance_report.txt"
+  add_filter "/trace_dump.txt"
+  add_filter "/backend.log"
+  add_filter "/sync-to-windows.sh"
+  add_filter "/rsync.env"
+  add_filter "/narou-mod-2.1.0.dev.gem"
 end
 
 Encoding.default_external = Encoding::UTF_8
