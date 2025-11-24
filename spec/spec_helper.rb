@@ -27,6 +27,9 @@ SimpleCov.start do
   add_filter "/lib/web/public/"
   add_filter "/lib/web/views/"
   
+  # テンプレートファイル（ERB等）
+  add_filter "/lib/cli/command/markdown/"
+  
   # ドキュメント・設定ファイル
   add_filter "/docs/"
   add_filter "/coverage/"
