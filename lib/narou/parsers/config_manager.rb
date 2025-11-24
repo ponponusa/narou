@@ -6,7 +6,7 @@
 
 require "yaml"
 require "fileutils"
-require_relative "parser_error"
+require "lib/narou/parsers/parser_error"
 
 module Narou
   module Parsers

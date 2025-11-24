@@ -4,8 +4,8 @@
 # パーサーを選択するためのファクトリクラス
 #
 
-require_relative "config_manager"
-require_relative "parser_error"
+require "lib/narou/parsers/config_manager"
+require "lib/narou/parsers/parser_error"
 
 module Narou
   module Parsers
@@ -39,7 +39,7 @@ module Narou
         # エンジンとドメインに応じて適切なパーサーを生成
         def create_parser(domain, engine, site_setting, user_config, logger)
           if engine == "legacy"
-            require_relative "legacy_parser"
+            require "narou/parsers/legacy_parser"
             LegacyParser.new(site_setting, user_config, logger: logger)
           else
             # Nokogiri パーサー
@@ -52,17 +52,17 @@ module Narou
         def get_parser_class(domain)
           case domain
           when "ncode.syosetu.com", "novel18.syosetu.com"
-            require_relative "narou_parser"
+            require "narou/parsers/narou_parser"
             NarouParser
           when "kakuyomu.jp"
-            require_relative "kakuyomu_parser"
+            require "narou/parsers/kakuyomu_parser"
             KakuyomuParser
           when "syosetu.org"
-            require_relative "narou_parser"
+            require "narou/parsers/narou_parser"
             NarouParser  # syosetu.org も同じ構造
           else
             # デフォルトは汎用 Nokogiri パーサー
-            require_relative "nokogiri_parser"
+            require "narou/parsers/nokogiri_parser"
             NokogiriParser
           end
         end

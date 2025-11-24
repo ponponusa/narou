@@ -51,5 +51,6 @@ $bootsnap_enable = defined?(Bootsnap)
 if File.exist?("narou.rb")
   require File.join(Dir.pwd, "narou.rb")
 else
-  require_relative "../narou.rb"
+  $LOAD_PATH.unshift File.expand_path("..", __dir__)
+  require "lib/core/narou"
 end

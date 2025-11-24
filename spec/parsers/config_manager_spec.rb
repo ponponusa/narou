@@ -3,7 +3,7 @@
 require "spec_helper"
 require "tmpdir"
 require "fileutils"
-require_relative "../../lib/narou/parsers/config_manager"
+require "lib/narou/parsers/config_manager"
 
 RSpec.describe Narou::Parsers::ConfigManager do
   let(:test_root) { Dir.mktmpdir }
@@ -81,15 +81,15 @@ RSpec.describe Narou::Parsers::ConfigManager do
 
   describe ".load_parser_config" do
     context "Nokogiri エンジンの場合" do
-      it "デフォルト設定をユーザー領域にコピーする" do
+      it "デフォルト設定を読み込む" do
         config = described_class.load_parser_config("test.example.com", "nokogiri")
         
         expect(config["name"]).to eq("Test Site")
         expect(config["body_selectors"]).to be_a(Array)
         
-        # ユーザー設定ファイルが作成されているか確認
+        # ユーザー設定ファイルは自動作成されない
         user_path = File.join(test_root, ".narou/parsers/test.example.com.yaml")
-        expect(File.exist?(user_path)).to be true
+        expect(File.exist?(user_path)).to be false
       end
 
       it "既存のユーザー設定を読み込む" do
@@ -111,15 +111,15 @@ RSpec.describe Narou::Parsers::ConfigManager do
     end
 
     context "Legacy エンジンの場合" do
-      it "webnovel/ からユーザー領域にコピーする" do
+      it "webnovel/ からデフォルト設定を読み込む" do
         config = described_class.load_parser_config("test.example.com", "legacy")
         
         expect(config["name"]).to eq("Test Site")
         expect(config["body_pattern"]).to include("<div>")
         
-        # ユーザー設定ファイルが作成されているか確認
+        # ユーザー設定ファイルは自動作成されない
         user_path = File.join(test_root, ".narou/legacy_parsers/test.example.com.yaml")
-        expect(File.exist?(user_path)).to be true
+        expect(File.exist?(user_path)).to be false
       end
     end
   end
@@ -141,8 +141,9 @@ RSpec.describe Narou::Parsers::ConfigManager do
 
   describe ".update_successful_selector" do
     it "成功したセレクタを記録する" do
-      # まず設定を読み込んでユーザーファイルを作成
-      described_class.load_parser_config("test.example.com", "nokogiri")
+      # まずデフォルト設定を読み込んでユーザー設定として保存
+      config = described_class.load_parser_config("test.example.com", "nokogiri")
+      described_class.save_parser_config("test.example.com", config, "nokogiri")
       
       # セレクタを記録（新しいシグネチャ: domain, selector_key, selector, engine）
       described_class.update_successful_selector(

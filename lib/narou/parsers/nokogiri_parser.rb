@@ -4,7 +4,7 @@
 # 汎用 Nokogiri パーサー（サイト別アダプタが存在しない場合のフォールバック）
 #
 
-require_relative "base_parser"
+require "lib/narou/parsers/base_parser"
 
 module Narou
   module Parsers
