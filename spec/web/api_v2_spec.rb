@@ -36,6 +36,9 @@ RSpec.describe "Narou::AppServer API v2" do
     allow(Narou::WebWorker).to receive(:push) do |&block|
       block.call if block
     end
+    allow(Narou::WebWorker).to receive(:push_task) do |task, &block|
+      block.call if block
+    end
   end
 
   describe "GET /api/v2/system/version" do
@@ -222,8 +225,22 @@ RSpec.describe "Narou::AppServer API v2" do
   end
 
   describe "POST /api/v2/novels/convert" do
+    before do
+      # データベースに2つの小説が存在することをモック
+      allow(Database.instance).to receive(:[]).with(1).and_return({
+        "id" => 1,
+        "title" => "Test Novel 1",
+        "author" => "Test Author 1"
+      })
+      allow(Database.instance).to receive(:[]).with(2).and_return({
+        "id" => 2,
+        "title" => "Test Novel 2",
+        "author" => "Test Author 2"
+      })
+    end
+
     it "queues convert when IDs are provided" do
-      allow(Narou::WebWorker).to receive(:push).and_yield
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(CommandLine).to receive(:run!)
       allow(Narou::AppServer).to receive(:clear_all_cache)
       
@@ -232,7 +249,9 @@ RSpec.describe "Narou::AppServer API v2" do
       
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
-      expect(json_response["data"]["ids"]).to eq(["1", "2"])
+      actual = json_response["data"]["ids"]
+      # JSONは文字列として返される可能性があるため、文字列に変換して比較
+      expect(actual.map(&:to_s)).to match_array(["1", "2"])
     end
 
     it "returns 400 when IDs are missing" do
@@ -703,11 +722,13 @@ RSpec.describe "Narou::AppServer API v2" do
         received_filename = nil
         allow_any_instance_of(Sinatra::Base).to receive(:send_file) do |_instance, path, options|
           received_filename = options[:filename]
+          # Rackレスポンスを返さないとエラーになるので、空のボディを返す
+          ""
         end
 
         get "/api/v2/novels/#{novel_id}/epub"
 
-        expect(last_response).to be_ok
+        expect(last_response).to be_ok, "Expected 200 but got #{last_response.status}"
         # send_file が呼ばれたことを確認
         expect(Narou).to have_received(:get_ebook_file_paths).with(novel_id, ".epub")
         

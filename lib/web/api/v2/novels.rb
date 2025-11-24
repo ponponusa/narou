@@ -358,7 +358,7 @@ module Narou
               # Content-Dispositionヘッダーを明示的に設定
               content_type "application/epub+zip"
               headers "Content-Disposition" => "attachment; filename*=UTF-8''#{encoded_filename}"
-              send_file(paths[0])
+              send_file(paths[0], filename: filename)
             else
               status 404
               json error_response("EPUB_NOT_FOUND", "EPUB file not found. Please convert the novel first.")
