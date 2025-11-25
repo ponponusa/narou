@@ -656,6 +656,9 @@
   }
 
   async function loadNovels() {
+    console.log('[NovelList] loadNovels started');
+    const startTime = performance.now();
+    
     loading = true;
     error = null;
 
@@ -671,12 +674,20 @@
     }
 
     try {
+      console.log('[NovelList] Fetching novels from API...');
+      const fetchStartTime = performance.now();
+      
       // 全データを一度に取得（gzip圧縮済み）
       const response = await getNovels();
+      
+      console.log(`[NovelList] API fetch completed in ${(performance.now() - fetchStartTime).toFixed(2)}ms`);
 
       // 成功したらリトライカウントをリセット
       retryCount = 0;
 
+      console.log('[NovelList] Processing novels data...');
+      const processStartTime = performance.now();
+      
       // 全データをallNovelsに格納
       // $derivedが自動的にフィルタ・ソート・ページングを再計算
       allNovels = response.novels;
@@ -687,6 +698,9 @@
         allNovels.map((n) => n.sitename).filter(Boolean)
       );
       availableSites = Array.from(sites).sort();
+
+      console.log(`[NovelList] Data processing completed in ${(performance.now() - processStartTime).toFixed(2)}ms`);
+      console.log(`[NovelList] loadNovels total: ${(performance.now() - startTime).toFixed(2)}ms`);
 
       loading = false; // 成功時のみloadingをfalseに
     } catch (err) {
@@ -974,24 +988,35 @@
   }
 
   function handleSearch() {
+    console.log('[NovelList] handleSearch started');
+    const startTime = performance.now();
+    
     // フィルタ処理中フラグをON
     isFiltering = true;
     
-    // requestAnimationFrameを使用して即座にUIを更新
-    requestAnimationFrame(() => {
+    // setTimeoutを使ってスピナーを表示
+    setTimeout(() => {
+      console.log('[NovelList] Applying filters...');
+      const filterStartTime = performance.now();
+      
       // draft変数から実際のフィルタ変数に反映
       filterText = draftFilterText;
       selectedTag = [...draftSelectedTag];
       selectedSite = [...draftSelectedSite];
       selectedStatus = [...draftSelectedStatus];
       currentPage = 0;
+      
+      console.log(`[NovelList] Filters applied in ${(performance.now() - filterStartTime).toFixed(2)}ms`);
+      
       saveSettings();
       
-      // 次のフレームでスピナーをOFF
+      console.log(`[NovelList] handleSearch total: ${(performance.now() - startTime).toFixed(2)}ms`);
+      
+      // フィルタ処理完了後、次のフレームでスピナーをOFF
       requestAnimationFrame(() => {
         isFiltering = false;
       });
-    });
+    }, 100); // スピナーが見えるように100msに変更
   }
 
   function handleSort(
