@@ -106,4 +106,14 @@ class Database
     end
     result
   end
+
+  #
+  # データベースファイルの最終更新時刻を取得
+  # キャッシュ戦略で使用
+  #
+  def cache_modified_time
+    db_file_path = Narou.local_setting_dir.join("#{DATABASE_NAME}.yaml")
+    return Time.at(0) unless File.exist?(db_file_path)
+    File.mtime(db_file_path)
+  end
 end
