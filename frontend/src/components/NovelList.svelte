@@ -18,6 +18,7 @@
     removeNovels,
     deleteNovel,
     getTagList,
+    getTagIndex,
   } from "../lib/api";
   import type { Novel, TagInfo } from "../types/api";
   import { getPushServer } from "../lib/pushserver";
@@ -330,55 +331,34 @@
 
   // === Svelte 5 Runes: リアクティブな派生データ ===
   // タグインデックス（タグ名 → Novel IDのSet）
-  // 通常の変数でメモ化（$state不要）
-  let tagIndexCache: {
-    novels: Novel[];
-    index: Map<string, Set<number>>;
-  } | null = null;
+  // バックエンドから取得したインデックスを使用
+  let tagIndexFromBackend = $state<Map<string, Set<number>> | null>(null);
   
   const tagIndex = $derived.by(() => {
-    // キャッシュが有効（allNovelsの参照が同じ）ならそのまま返す
-    if (tagIndexCache && tagIndexCache.novels === allNovels) {
-      console.log('[Tag Index] Using cache');
-      return tagIndexCache.index;
+    // バックエンドから取得したインデックスがあればそれを使用
+    if (tagIndexFromBackend) {
+      return tagIndexFromBackend;
     }
-
-    // 新規構築
-    const index = measurePerformance(
-      "Build Tag Index",
-      () => {
-        const newIndex = new Map<string, Set<number>>();
-
-        // 最適化: for...of の代わりに通常のforループを使用
-        const novelsLength = allNovels.length;
-        for (let i = 0; i < novelsLength; i++) {
-          const novel = allNovels[i];
-          const tags = novel.tags;
-          if (!tags) continue;
-          
-          const tagsLength = tags.length;
-          for (let j = 0; j < tagsLength; j++) {
-            const tag = tags[j];
-            let tagSet = newIndex.get(tag);
-            if (!tagSet) {
-              tagSet = new Set<number>();
-              newIndex.set(tag, tagSet);
-            }
-            tagSet.add(novel.id);
-          }
-        }
-
-        console.log(
-          `[Tag Index] Built index: ${newIndex.size} unique tags, ${allNovels.length} novels`
-        );
-        
-        return newIndex;
-      },
-      1 // 1ms以上でログ出力
-    );
     
-    // キャッシュを更新（通常の代入なのでOK）
-    tagIndexCache = { novels: allNovels, index };
+    // フォールバック: フロントエンドで構築（初回ロード中など）
+    const index = new Map<string, Set<number>>();
+    const novelsLength = allNovels.length;
+    for (let i = 0; i < novelsLength; i++) {
+      const novel = allNovels[i];
+      const tags = novel.tags;
+      if (!tags) continue;
+      
+      const tagsLength = tags.length;
+      for (let j = 0; j < tagsLength; j++) {
+        const tag = tags[j];
+        let tagSet = index.get(tag);
+        if (!tagSet) {
+          tagSet = new Set<number>();
+          index.set(tag, tagSet);
+        }
+        tagSet.add(novel.id);
+      }
+    }
     
     return index;
   });
@@ -601,9 +581,10 @@
       novelDetailModal.setToast(toast);
     }
 
-    // loadNovelsを優先、loadTagsは並行して実行（待たない）
+    // loadNovelsを優先、loadTagsとloadTagIndexは並行して実行（待たない）
     await loadNovels();
     loadTags(); // awaitしない - バックグラウンドで実行
+    loadTagIndex(); // awaitしない - バックグラウンドで実行
 
     // PushServerイベントリスナー設定
     pushServer.on("table.reload", handleTableReload);
@@ -651,11 +632,13 @@
   function handleTableReload() {
     console.log("[NovelList] Table reload triggered");
     loadNovels();
+    loadTagIndex(); // タグインデックスも再読み込み
   }
 
   function handleTagUpdate() {
     console.log("[NovelList] Tag update triggered");
     loadTags();
+    loadTagIndex(); // タグインデックスも再読み込み
   }
 
   async function loadTags() {
@@ -666,6 +649,30 @@
         err instanceof Error ? err.message : "タグリストの取得に失敗しました";
       toast?.show(message, "error");
       console.error("タグリストの取得エラー:", err);
+    }
+  }
+
+  async function loadTagIndex() {
+    try {
+      console.log('[NovelList] Loading tag index from backend...');
+      const startTime = performance.now();
+      
+      const indexData = await getTagIndex();
+      
+      // Record<string, number[]> を Map<string, Set<number>> に変換
+      const indexMap = new Map<string, Set<number>>();
+      Object.entries(indexData).forEach(([tag, ids]) => {
+        indexMap.set(tag, new Set(ids));
+      });
+      
+      tagIndexFromBackend = indexMap;
+      
+      console.log(`[NovelList] Tag index loaded in ${(performance.now() - startTime).toFixed(2)}ms (${indexMap.size} tags)`);
+    } catch (err) {
+      console.error('[NovelList] Failed to load tag index from backend:', err);
+      console.log('[NovelList] Will build tag index on frontend');
+      // エラー時はフロントエンドで構築（フォールバック）
+      tagIndexFromBackend = null;
     }
   }
 

@@ -38,6 +38,41 @@ module Narou
             end
           end
 
+          # GET /api/v2/tags/index
+          # タグインデックス取得（タグ名 → 小説IDリストのマップ）
+          # フロントエンドでの高速フィルタリング用
+          get '/api/v2/tags/index' do
+            set_cors_headers
+            
+            begin
+              database = Database.instance
+              tag_index = {}
+              
+              # 全小説をスキャンしてタグインデックスを構築
+              database.each do |id, novel_data|
+                tags = novel_data["tags"]
+                next unless tags && tags.is_a?(Array)
+                
+                tags.each do |tag|
+                  tag_index[tag] ||= []
+                  tag_index[tag] << id
+                end
+              end
+              
+              # 各タグのID配列をソート（オプション、検索性能にはあまり影響しない）
+              tag_index.each_value(&:sort!)
+              
+              json success_response({ 
+                tag_index: tag_index,
+                total_tags: tag_index.size,
+                generated_at: Time.now.to_i
+              })
+            rescue StandardError => e
+              status 500
+              json error_response('TAG_INDEX_ERROR', e.message)
+            end
+          end
+
           # POST /api/v2/tags/info
           # タグ詳細情報取得（選択された小説のタグ状態）
           post '/api/v2/tags/info' do
