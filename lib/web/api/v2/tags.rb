@@ -38,6 +38,64 @@ module Narou
             end
           end
 
+      # GET /api/v2/tags/index
+          # タグインデックス取得（タグ名 → 小説IDリストのマップ）
+          # フロントエンドでの高速フィルタリング用
+          # キャッシュを使用して高速化
+          get '/api/v2/tags/index' do
+            set_cors_headers
+            
+            begin
+              # クラス変数でキャッシュを保持
+              @@tag_index_cache ||= { data: nil, generated_at: nil }
+              
+              # キャッシュが存在し、データベースの更新時刻より新しい場合はキャッシュを返す
+              database = Database.instance
+              db_mtime = database.cache_modified_time.to_i  # Time を Integer に変換
+              
+              if @@tag_index_cache[:data] && @@tag_index_cache[:generated_at] && 
+                 @@tag_index_cache[:generated_at] >= db_mtime
+                # キャッシュヒット
+                json success_response(@@tag_index_cache[:data])
+              else
+                # キャッシュミス - 新規生成
+                tag_index = {}
+                
+                # 全小説をスキャンしてタグインデックスを構築
+                database.each do |id, novel_data|
+                  tags = novel_data["tags"]
+                  next unless tags && tags.is_a?(Array)
+                  
+                  # IDを明示的に整数に変換
+                  novel_id = id.to_i
+                  
+                  tags.each do |tag|
+                    tag_index[tag] ||= []
+                    tag_index[tag] << novel_id
+                  end
+                end
+                
+                # 各タグのID配列をソート（オプション、検索性能にはあまり影響しない）
+                tag_index.each_value(&:sort!)
+                
+                generated_at = Time.now.to_i
+                response_data = { 
+                  tag_index: tag_index,
+                  total_tags: tag_index.size,
+                  generated_at: generated_at
+                }
+                
+                # キャッシュを更新
+                @@tag_index_cache = { data: response_data, generated_at: generated_at }
+                
+                json success_response(response_data)
+              end
+            rescue StandardError => e
+              status 500
+              json error_response('TAG_INDEX_ERROR', e.message)
+            end
+          end
+
           # POST /api/v2/tags/info
           # タグ詳細情報取得（選択された小説のタグ状態）
           post '/api/v2/tags/info' do
@@ -88,6 +146,7 @@ module Narou
               if result[:success]
                 # キャッシュをクリア
                 NovelListProcessor.clear_all_cache
+                @@tag_index_cache = { data: nil, generated_at: nil }
                 
                 # PushServerでイベント送信
                 if defined?(@@push_server) && @@push_server
@@ -139,6 +198,7 @@ module Narou
               if result[:success]
                 # キャッシュをクリア
                 NovelListProcessor.clear_all_cache
+                @@tag_index_cache = { data: nil, generated_at: nil }
                 
                 # PushServerでイベント送信
                 if defined?(@@push_server) && @@push_server
@@ -186,6 +246,7 @@ module Narou
               if result[:success]
                 # キャッシュをクリア
                 NovelListProcessor.clear_all_cache
+                @@tag_index_cache = { data: nil, generated_at: nil }
                 
                 # PushServerでイベント送信
                 if defined?(@@push_server) && @@push_server

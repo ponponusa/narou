@@ -375,6 +375,21 @@ export async function getTagList(): Promise<TagInfo[]> {
 }
 
 /**
+ * タグインデックスを取得（API v2）
+ * タグ名 → 小説IDリストのマップ
+ * フロントエンドでの高速フィルタリング用
+ */
+export async function getTagIndex(): Promise<Record<string, number[]>> {
+  interface TagIndexData {
+    tag_index: Record<string, number[]>;
+    total_tags: number;
+    generated_at: number;
+  }
+  const data = await fetchApiV2<TagIndexData>('/api/v2/tags/index');
+  return data.tag_index;
+}
+
+/**
  * タグ詳細情報を取得（選択された小説のタグ状態）（API v2）
  * @param ids - 対象の小説ID配列
  * @returns タグごとの状態情報 { tagName: { count, total_count, tag, color } }

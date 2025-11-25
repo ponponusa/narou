@@ -18,11 +18,13 @@
     removeNovels,
     deleteNovel,
     getTagList,
+    getTagIndex,
   } from "../lib/api";
   import type { Novel, TagInfo } from "../types/api";
   import { getPushServer } from "../lib/pushserver";
   import { progressStore } from "../lib/progressStore";
   import { isServerStopped } from "../lib/stores/serverStatus";
+  import { measurePerformance, PerformanceMarker } from "../lib/performance";
   import AddNovelModal from "./AddNovelModal.svelte";
   import TagModal from "./TagModal.svelte";
   import ConversionSettingsModal from "./ConversionSettingsModal.svelte";
@@ -31,6 +33,7 @@
   import ConsolePanel from "./ConsolePanel.svelte";
   import Toast from "./Toast.svelte";
   import LoadingScreen from "./LoadingScreen.svelte";
+  import MultiSelectDropdown from "./MultiSelectDropdown.svelte";
 
   let novels = $state<Novel[]>([]);
   let allNovels = $state<Novel[]>([]); // 全データを保持
@@ -55,10 +58,21 @@
   // フィルター・ソート設定
   let currentPage = $state(0);
   let pageSize = $state(50);
+  
+  // 実際に適用されるフィルタ（検索ボタン押下時に反映）
   let filterText = $state("");
-  let selectedTag = $state<string>("");
-  let selectedSite = $state<string>("");
-  let selectedStatus = $state<string>("");
+  let selectedTag = $state<string[]>([]);
+  let selectedSite = $state<string[]>([]);
+  let selectedStatus = $state<string[]>([]);
+  
+  // フォーム入力中の一時的な値
+  let draftFilterText = $state("");
+  let draftSelectedTag = $state<string[]>([]);
+  let draftSelectedSite = $state<string[]>([]);
+  let draftSelectedStatus = $state<string[]>([]);
+  
+  // フィルタ処理中フラグ
+  let isFiltering = $state(false);
   let sortBy = $state<
     | "id"
     | "title"
@@ -138,9 +152,9 @@
     try {
       const settings = {
         pageSize,
-        selectedTag,
-        selectedSite,
-        selectedStatus,
+        selectedTag: selectedTag,
+        selectedSite: selectedSite,
+        selectedStatus: selectedStatus,
         sortBy,
         sortOrder,
       };
@@ -169,11 +183,17 @@
       if (saved) {
         const settings = JSON.parse(saved);
         pageSize = settings.pageSize ?? 50;
-        selectedTag = settings.selectedTag ?? "";
-        selectedSite = settings.selectedSite ?? "";
-        selectedStatus = settings.selectedStatus ?? "";
+        // 下位互換性：文字列の場合は配列に変換
+        selectedTag = Array.isArray(settings.selectedTag) ? settings.selectedTag : (settings.selectedTag ? [settings.selectedTag] : []);
+        selectedSite = Array.isArray(settings.selectedSite) ? settings.selectedSite : (settings.selectedSite ? [settings.selectedSite] : []);
+        selectedStatus = Array.isArray(settings.selectedStatus) ? settings.selectedStatus : (settings.selectedStatus ? [settings.selectedStatus] : []);
         sortBy = settings.sortBy ?? "updated_at";
         sortOrder = settings.sortOrder ?? "desc";
+        
+        // draft変数も初期化
+        draftSelectedTag = [...selectedTag];
+        draftSelectedSite = [...selectedSite];
+        draftSelectedStatus = [...selectedStatus];
       }
     } catch (err) {
       console.error("設定の読み込みに失敗しました:", err);
@@ -310,45 +330,125 @@
   );
 
   // === Svelte 5 Runes: リアクティブな派生データ ===
+  // タグインデックス（タグ名 → Novel IDのSet）
+  // バックエンドから取得したインデックスを使用
+  let tagIndexFromBackend = $state<Map<string, Set<number>> | null>(null);
+  
+  // 検索用インデックス（小説ID → 小文字化されたタイトル・著者）
+  const searchIndex = $derived.by(() => {
+    const index = new Map<number, { title: string; author: string }>();
+    for (const novel of allNovels) {
+      index.set(novel.id, {
+        title: novel.title?.toLowerCase() || '',
+        author: novel.author?.toLowerCase() || ''
+      });
+    }
+    return index;
+  });
+  
+  const tagIndex = $derived.by(() => {
+    // バックエンドから取得したインデックスがあればそれを使用
+    if (tagIndexFromBackend) {
+      return tagIndexFromBackend;
+    }
+    
+    // フォールバック: フロントエンドで構築（初回ロード中など）
+    const index = new Map<string, Set<number>>();
+    const novelsLength = allNovels.length;
+    for (let i = 0; i < novelsLength; i++) {
+      const novel = allNovels[i];
+      const tags = novel.tags;
+      if (!tags) continue;
+      
+      const tagsLength = tags.length;
+      for (let j = 0; j < tagsLength; j++) {
+        const tag = tags[j];
+        let tagSet = index.get(tag);
+        if (!tagSet) {
+          tagSet = new Set<number>();
+          index.set(tag, tagSet);
+        }
+        tagSet.add(novel.id);
+      }
+    }
+    
+    return index;
+  });
+
   // ステップ1: フィルタリング
   const filteredNovels = $derived.by(() => {
-    let result = allNovels;
+    return measurePerformance(
+      "Filter Novels",
+      () => {
+        let result = allNovels;
+        const marker = new PerformanceMarker();
+        marker.start();
 
-    // テキスト検索
-    if (filterText) {
-      const query = filterText.toLowerCase();
-      result = result.filter(
-        (n) =>
-          n.title?.toLowerCase().includes(query) ||
-          n.author?.toLowerCase().includes(query)
-      );
-    }
+        // 1. タグフィルタ（最も絞り込み効果が高い）を最初に適用
+        if (selectedTag.length > 0) {
+          // 複数タグのOR検索（いずれかのタグを持つ小説）
+          const matchingNovelIds = new Set<number>();
+          for (const tag of selectedTag) {
+            if (tagIndex.has(tag)) {
+              const tagNovelIds = tagIndex.get(tag)!;
+              tagNovelIds.forEach(id => matchingNovelIds.add(id));
+            }
+          }
+          
+          // マッチするIDのSetを使ってフィルタリング（Set.hasはO(1)）
+          if (matchingNovelIds.size > 0) {
+            result = result.filter(n => matchingNovelIds.has(n.id));
+          } else {
+            // マッチする小説がない場合は空配列
+            result = [];
+          }
+          marker.mark("tag");
+        }
 
-    // タグフィルタ
-    if (selectedTag) {
-      result = result.filter((n) => n.tags?.includes(selectedTag));
-    }
+        // 2. サイトフィルタ（選択肢が少ない）
+        if (selectedSite.length > 0) {
+          result = result.filter((n) => selectedSite.includes(n.sitename));
+          marker.mark("site");
+        }
 
-    // サイトフィルタ
-    if (selectedSite) {
-      result = result.filter((n) => n.sitename === selectedSite);
-    }
+        // 3. 状態フィルタ
+        if (selectedStatus.length > 0) {
+          result = result.filter((n) => selectedStatus.includes(n.status));
+          marker.mark("status");
+        }
 
-    // 状態フィルタ
-    if (selectedStatus) {
-      result = result.filter((n) => n.status === selectedStatus);
-    }
+        // 4. テキスト検索（最もコストが高い）を最後に
+        // 検索インデックスを使って高速化（toLowerCase()を毎回呼ばない）
+        if (filterText) {
+          const query = filterText.toLowerCase();
+          result = result.filter((n) => {
+            const searchData = searchIndex.get(n.id);
+            if (!searchData) return false;
+            return searchData.title.includes(query) || searchData.author.includes(query);
+          });
+          marker.mark("text");
+        }
 
-    return result;
+        marker.end(`Filter: ${allNovels.length} → ${result.length}`, 5);
+        return result;
+      },
+      5
+    );
   });
 
   // ステップ2: ソート
   const sortedNovels = $derived.by(() => {
-    const sorted = [...filteredNovels];
+    // フィルタ結果が0件の場合は即座に空配列を返す
+    if (filteredNovels.length === 0) return [];
+    
+    return measurePerformance(
+      "Sort Novels",
+      () => {
+        const sorted = [...filteredNovels];
 
-    if (!sortBy) return sorted;
+        if (!sortBy) return sorted;
 
-    sorted.sort((a, b) => {
+        sorted.sort((a, b) => {
       let aVal: string | number = "";
       let bVal: string | number = "";
 
@@ -412,6 +512,9 @@
     });
 
     return sorted;
+      },
+      3
+    );
   });
 
   // ステップ3: ページング情報
@@ -486,8 +589,7 @@
       isInitialLoad = false;
     }
 
-    // 設定を復元
-    loadSettings();
+    // カラム表示設定のみ先に復元（フィルター設定は後で）
     loadColumnVisibility();
 
     // モーダルにToast参照を渡す
@@ -498,7 +600,14 @@
       novelDetailModal.setToast(toast);
     }
 
-    await Promise.all([loadNovels(), loadTags()]);
+    // loadNovelsを優先、その後にタグインデックスをロード
+    await loadNovels();
+    await loadTagIndex(); // タグインデックスを確実に読み込んでからフィルタリング
+    
+    // タグインデックス読み込み後にフィルター設定を復元
+    loadSettings();
+    
+    loadTags(); // awaitしない - バックグラウンドで実行
 
     // PushServerイベントリスナー設定
     pushServer.on("table.reload", handleTableReload);
@@ -546,11 +655,13 @@
   function handleTableReload() {
     console.log("[NovelList] Table reload triggered");
     loadNovels();
+    loadTagIndex(); // タグインデックスも再読み込み
   }
 
   function handleTagUpdate() {
     console.log("[NovelList] Tag update triggered");
     loadTags();
+    loadTagIndex(); // タグインデックスも再読み込み
   }
 
   async function loadTags() {
@@ -564,7 +675,34 @@
     }
   }
 
+  async function loadTagIndex() {
+    try {
+      console.log('[NovelList] Loading tag index from backend...');
+      const startTime = performance.now();
+      
+      const indexData = await getTagIndex();
+      
+      // Record<string, number[]> を Map<string, Set<number>> に変換
+      const indexMap = new Map<string, Set<number>>();
+      Object.entries(indexData).forEach(([tag, ids]) => {
+        indexMap.set(tag, new Set(ids));
+      });
+      
+      tagIndexFromBackend = indexMap;
+      
+      console.log(`[NovelList] Tag index loaded in ${(performance.now() - startTime).toFixed(2)}ms (${indexMap.size} tags)`);
+    } catch (err) {
+      console.error('[NovelList] Failed to load tag index from backend:', err);
+      console.log('[NovelList] Will build tag index on frontend');
+      // エラー時はフロントエンドで構築（フォールバック）
+      tagIndexFromBackend = null;
+    }
+  }
+
   async function loadNovels() {
+    console.log('[NovelList] loadNovels started');
+    const startTime = performance.now();
+    
     loading = true;
     error = null;
 
@@ -580,12 +718,20 @@
     }
 
     try {
+      console.log('[NovelList] Fetching novels from API...');
+      const fetchStartTime = performance.now();
+      
       // 全データを一度に取得（gzip圧縮済み）
       const response = await getNovels();
+      
+      console.log(`[NovelList] API fetch completed in ${(performance.now() - fetchStartTime).toFixed(2)}ms`);
 
       // 成功したらリトライカウントをリセット
       retryCount = 0;
 
+      console.log('[NovelList] Processing novels data...');
+      const processStartTime = performance.now();
+      
       // 全データをallNovelsに格納
       // $derivedが自動的にフィルタ・ソート・ページングを再計算
       allNovels = response.novels;
@@ -596,6 +742,9 @@
         allNovels.map((n) => n.sitename).filter(Boolean)
       );
       availableSites = Array.from(sites).sort();
+
+      console.log(`[NovelList] Data processing completed in ${(performance.now() - processStartTime).toFixed(2)}ms`);
+      console.log(`[NovelList] loadNovels total: ${(performance.now() - startTime).toFixed(2)}ms`);
 
       loading = false; // 成功時のみloadingをfalseに
     } catch (err) {
@@ -883,14 +1032,35 @@
   }
 
   function handleSearch() {
-    currentPage = 0;
-    // $derivedが自動的に再計算するのでloadNovels不要
-  }
-
-  function handleFilterChange() {
-    currentPage = 0;
-    saveSettings();
-    // $derivedが自動的に再計算するのでloadNovels不要
+    console.log('[NovelList] handleSearch started');
+    const startTime = performance.now();
+    
+    // フィルタ処理中フラグをON
+    isFiltering = true;
+    
+    // setTimeoutを使ってスピナーを表示
+    setTimeout(() => {
+      console.log('[NovelList] Applying filters...');
+      const filterStartTime = performance.now();
+      
+      // draft変数から実際のフィルタ変数に反映
+      filterText = draftFilterText;
+      selectedTag = [...draftSelectedTag];
+      selectedSite = [...draftSelectedSite];
+      selectedStatus = [...draftSelectedStatus];
+      currentPage = 0;
+      
+      console.log(`[NovelList] Filters applied in ${(performance.now() - filterStartTime).toFixed(2)}ms`);
+      
+      saveSettings();
+      
+      console.log(`[NovelList] handleSearch total: ${(performance.now() - startTime).toFixed(2)}ms`);
+      
+      // フィルタ処理完了後、次のフレームでスピナーをOFF
+      requestAnimationFrame(() => {
+        isFiltering = false;
+      });
+    }, 100); // スピナーが見えるように100msに変更
   }
 
   function handleSort(
@@ -920,10 +1090,15 @@
   }
 
   function clearFilters() {
+    // draftと実際のフィルタの両方をクリア
+    draftFilterText = "";
+    draftSelectedTag = [];
+    draftSelectedSite = [];
+    draftSelectedStatus = [];
     filterText = "";
-    selectedTag = "";
-    selectedSite = "";
-    selectedStatus = "";
+    selectedTag = [];
+    selectedSite = [];
+    selectedStatus = [];
     sortBy = "updated_at";
     sortOrder = "desc";
     currentPage = 0;
@@ -1268,7 +1443,7 @@
               <input
                 id="filterText"
                 type="text"
-                bind:value={filterText}
+                bind:value={draftFilterText}
                 onkeydown={(e) => e.key === "Enter" && handleSearch()}
                 placeholder="タイトル、著者..."
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
@@ -1277,75 +1452,63 @@
 
             <!-- タグフィルター -->
             <div>
-              <label
-                for="tagFilter"
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                タグ
-              </label>
-              <select
+              <MultiSelectDropdown
                 id="tagFilter"
-                bind:value={selectedTag}
-                onchange={handleFilterChange}
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">すべて</option>
-                {#each allTags as tag}
-                  <option value={tag.name}>{tag.name} ({tag.count})</option>
-                {/each}
-              </select>
+                label="タグ"
+                bind:value={draftSelectedTag}
+                options={allTags.map(tag => ({
+                  value: tag.name,
+                  label: tag.name,
+                  count: tag.count
+                }))}
+                placeholder="すべて"
+              />
             </div>
 
             <!-- サイトフィルター -->
             <div>
-              <label
-                for="siteFilter"
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                サイト
-              </label>
-              <select
+              <MultiSelectDropdown
                 id="siteFilter"
-                bind:value={selectedSite}
-                onchange={handleFilterChange}
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">すべて</option>
-                {#each availableSites as site}
-                  <option value={site}>{site}</option>
-                {/each}
-              </select>
+                label="サイト"
+                bind:value={draftSelectedSite}
+                options={availableSites.map(site => ({
+                  value: site,
+                  label: site
+                }))}
+                placeholder="すべて"
+              />
             </div>
 
             <!-- 状態フィルター -->
             <div>
-              <label
-                for="statusFilter"
-                class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
-              >
-                状態
-              </label>
-              <select
+              <MultiSelectDropdown
                 id="statusFilter"
-                bind:value={selectedStatus}
-                onchange={handleFilterChange}
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">すべて</option>
-                <option value="凍結">凍結</option>
-                <option value="完結">完結</option>
-                <option value="削除">削除</option>
-                <option value="中断">中断</option>
-              </select>
+                label="状態"
+                bind:value={draftSelectedStatus}
+                options={[
+                  { value: '凍結', label: '凍結' },
+                  { value: '完結', label: '完結' },
+                  { value: '削除', label: '削除' },
+                  { value: '中断', label: '中断' }
+                ]}
+                placeholder="すべて"
+              />
             </div>
 
             <!-- アクション -->
             <div class="flex items-end gap-2">
               <button
                 onclick={handleSearch}
-                class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                disabled={isFiltering}
+                class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                検索
+                {#if isFiltering}
+                  <i class="fas fa-spinner fa-spin"></i>
+                  <span>検索中...</span>
+                {:else}
+                  <i class="fas fa-search"></i>
+                  <span>検索</span>
+                {/if}
               </button>
               <button
                 onclick={clearFilters}
