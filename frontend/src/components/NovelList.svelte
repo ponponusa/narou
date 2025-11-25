@@ -23,6 +23,7 @@
   import { getPushServer } from "../lib/pushserver";
   import { progressStore } from "../lib/progressStore";
   import { isServerStopped } from "../lib/stores/serverStatus";
+  import { measurePerformance, PerformanceMarker } from "../lib/performance";
   import AddNovelModal from "./AddNovelModal.svelte";
   import TagModal from "./TagModal.svelte";
   import ConversionSettingsModal from "./ConversionSettingsModal.svelte";
@@ -312,43 +313,59 @@
   // === Svelte 5 Runes: リアクティブな派生データ ===
   // ステップ1: フィルタリング
   const filteredNovels = $derived.by(() => {
-    let result = allNovels;
+    return measurePerformance(
+      "Filter Novels",
+      () => {
+        let result = allNovels;
+        const marker = new PerformanceMarker();
+        marker.start();
 
-    // テキスト検索
-    if (filterText) {
-      const query = filterText.toLowerCase();
-      result = result.filter(
-        (n) =>
-          n.title?.toLowerCase().includes(query) ||
-          n.author?.toLowerCase().includes(query)
-      );
-    }
+        // テキスト検索
+        if (filterText) {
+          const query = filterText.toLowerCase();
+          result = result.filter(
+            (n) =>
+              n.title?.toLowerCase().includes(query) ||
+              n.author?.toLowerCase().includes(query)
+          );
+          marker.mark("text");
+        }
 
-    // タグフィルタ
-    if (selectedTag) {
-      result = result.filter((n) => n.tags?.includes(selectedTag));
-    }
+        // タグフィルタ
+        if (selectedTag) {
+          result = result.filter((n) => n.tags?.includes(selectedTag));
+          marker.mark("tag");
+        }
 
-    // サイトフィルタ
-    if (selectedSite) {
-      result = result.filter((n) => n.sitename === selectedSite);
-    }
+        // サイトフィルタ
+        if (selectedSite) {
+          result = result.filter((n) => n.sitename === selectedSite);
+          marker.mark("site");
+        }
 
-    // 状態フィルタ
-    if (selectedStatus) {
-      result = result.filter((n) => n.status === selectedStatus);
-    }
+        // 状態フィルタ
+        if (selectedStatus) {
+          result = result.filter((n) => n.status === selectedStatus);
+          marker.mark("status");
+        }
 
-    return result;
+        marker.end(`Filter: ${allNovels.length} → ${result.length}`, 5);
+        return result;
+      },
+      5
+    );
   });
 
   // ステップ2: ソート
   const sortedNovels = $derived.by(() => {
-    const sorted = [...filteredNovels];
+    return measurePerformance(
+      "Sort Novels",
+      () => {
+        const sorted = [...filteredNovels];
 
-    if (!sortBy) return sorted;
+        if (!sortBy) return sorted;
 
-    sorted.sort((a, b) => {
+        sorted.sort((a, b) => {
       let aVal: string | number = "";
       let bVal: string | number = "";
 
@@ -412,6 +429,9 @@
     });
 
     return sorted;
+      },
+      3
+    );
   });
 
   // ステップ3: ページング情報
