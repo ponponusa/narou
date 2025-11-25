@@ -22,8 +22,17 @@
   } from '../lib/api';
 
   // フィルタ・ソート設定
+  // 実際に適用されるフィルタ（検索ボタン押下時に反映）
   let searchText = $state('');
   let statusFilter = $state<TaskStatus | ''>('');
+  
+  // フォーム入力中の一時的な値
+  let draftSearchText = $state('');
+  let draftStatusFilter = $state<TaskStatus | ''>('');
+  
+  // フィルタ処理中フラグ
+  let isFiltering = $state(false);
+  
   let sortBy = $state<'created_at' | 'started_at' | 'status' | 'novel_id' | 'novel_title' | 'novel_author'>('status');
   let sortOrder = $state<'asc' | 'desc'>('desc');
   
@@ -159,11 +168,35 @@
   }
 
   /**
-   * フィルタ変更時
+   * 検索実行（フィルタ適用）
    */
-  function handleFilterChange() {
-    currentPage = 1; // 最初のページに戻る
-    // $derivedが自動的に再計算するのでapplyFiltersAndSort不要
+  function handleSearch() {
+    // フィルタ処理中フラグをON
+    isFiltering = true;
+    
+    // 少し遅延させてスピナーを表示
+    setTimeout(() => {
+      // draft変数から実際のフィルタ変数に反映
+      searchText = draftSearchText;
+      statusFilter = draftStatusFilter;
+      currentPage = 1; // 最初のページに戻る
+      
+      // フィルタ処理完了後、次のフレームでスピナーをOFF
+      requestAnimationFrame(() => {
+        isFiltering = false;
+      });
+    }, 10);
+  }
+  
+  /**
+   * フィルタクリア
+   */
+  function clearFilters() {
+    draftSearchText = '';
+    draftStatusFilter = '';
+    searchText = '';
+    statusFilter = '';
+    currentPage = 1;
   }
 
   /**
@@ -332,8 +365,8 @@
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:w-1/2">
           <button
             onclick={() => {
-              statusFilter = 'running';
-              handleFilterChange();
+              draftStatusFilter = 'running';
+              handleSearch();
             }}
             class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer text-left"
           >
@@ -346,8 +379,8 @@
           </button>
           <button
             onclick={() => {
-              statusFilter = 'queued';
-              handleFilterChange();
+              draftStatusFilter = 'queued';
+              handleSearch();
             }}
             class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer text-left"
           >
@@ -360,8 +393,8 @@
           </button>
           <button
             onclick={() => {
-              statusFilter = 'paused';
-              handleFilterChange();
+              draftStatusFilter = 'paused';
+              handleSearch();
             }}
             class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors cursor-pointer text-left"
           >
@@ -374,8 +407,8 @@
           </button>
           <button
             onclick={() => {
-              statusFilter = 'completed';
-              handleFilterChange();
+              draftStatusFilter = 'completed';
+              handleSearch();
             }}
             class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors cursor-pointer text-left"
           >
@@ -388,8 +421,8 @@
           </button>
           <button
             onclick={() => {
-              statusFilter = 'failed';
-              handleFilterChange();
+              draftStatusFilter = 'failed';
+              handleSearch();
             }}
             class="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer text-left"
           >
@@ -414,8 +447,8 @@
             <input
               id="search-text"
               type="text"
-              bind:value={searchText}
-              oninput={handleFilterChange}
+              bind:value={draftSearchText}
+              onkeydown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="検索..."
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
@@ -428,8 +461,7 @@
             </label>
             <select
               id="status-filter"
-              bind:value={statusFilter}
-              onchange={handleFilterChange}
+              bind:value={draftStatusFilter}
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
               <option value="">すべて</option>
@@ -440,6 +472,30 @@
               <option value="failed">失敗</option>
               <option value="canceled">キャンセル</option>
             </select>
+          </div>
+          
+          <!-- 検索ボタン -->
+          <div class="flex items-end gap-2">
+            <button
+              onclick={handleSearch}
+              disabled={isFiltering}
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {#if isFiltering}
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>検索中...</span>
+              {:else}
+                <i class="fas fa-search"></i>
+                <span>検索</span>
+              {/if}
+            </button>
+            <button
+              onclick={clearFilters}
+              class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+              title="フィルターをクリア"
+            >
+              ✕
+            </button>
           </div>
         </div>
       </div>
