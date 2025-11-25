@@ -102,14 +102,14 @@
     type="button"
     {id}
     onclick={toggleDropdown}
-    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left flex items-center justify-between hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+    class="w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left flex items-center justify-between hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
     class:ring-2={isOpen}
     class:ring-blue-500={isOpen}
   >
-    <span class="truncate" class:text-gray-500={value.length === 0}>
+    <span class="truncate flex-1 min-w-0" class:text-gray-500={value.length === 0}>
       {displayText}
     </span>
-    <div class="flex items-center gap-1">
+    <div class="flex items-center gap-1 shrink-0">
       {#if value.length > 0}
         <span
           role="button"
