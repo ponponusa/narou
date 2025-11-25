@@ -68,6 +68,9 @@
   let draftSelectedTag = $state<string>("");
   let draftSelectedSite = $state<string>("");
   let draftSelectedStatus = $state<string>("");
+  
+  // フィルタ処理中フラグ
+  let isFiltering = $state(false);
   let sortBy = $state<
     | "id"
     | "title"
@@ -948,13 +951,24 @@
   }
 
   function handleSearch() {
-    // draft変数から実際のフィルタ変数に反映
-    filterText = draftFilterText;
-    selectedTag = draftSelectedTag;
-    selectedSite = draftSelectedSite;
-    selectedStatus = draftSelectedStatus;
-    currentPage = 0;
-    saveSettings();
+    // フィルタ処理中フラグをON
+    isFiltering = true;
+    
+    // 少し遅延させてスピナーを表示
+    setTimeout(() => {
+      // draft変数から実際のフィルタ変数に反映
+      filterText = draftFilterText;
+      selectedTag = draftSelectedTag;
+      selectedSite = draftSelectedSite;
+      selectedStatus = draftSelectedStatus;
+      currentPage = 0;
+      saveSettings();
+      
+      // フィルタ処理完了後、次のフレームでスピナーをOFF
+      requestAnimationFrame(() => {
+        isFiltering = false;
+      });
+    }, 10);
   }
 
   function handleSort(
@@ -1409,9 +1423,16 @@
             <div class="flex items-end gap-2">
               <button
                 onclick={handleSearch}
-                class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                disabled={isFiltering}
+                class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                検索
+                {#if isFiltering}
+                  <i class="fas fa-spinner fa-spin"></i>
+                  <span>検索中...</span>
+                {:else}
+                  <i class="fas fa-search"></i>
+                  <span>検索</span>
+                {/if}
               </button>
               <button
                 onclick={clearFilters}
