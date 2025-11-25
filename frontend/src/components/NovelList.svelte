@@ -382,7 +382,20 @@
               tagNovelIds.forEach(id => matchingNovelIds.add(id));
             }
           }
-          result = result.filter((n) => matchingNovelIds.has(n.id));
+          
+          // タグインデックスから直接小説を抽出（O(n)のfilterではなくO(m)のmap/filterCompact）
+          // matchingNovelIdsに含まれるIDの小説のみを抽出
+          if (matchingNovelIds.size > 0) {
+            // IDをキーとした小説マップを作成（1回のループ）
+            const novelMap = new Map(result.map(n => [n.id, n]));
+            // マッチするIDの小説のみを抽出
+            result = Array.from(matchingNovelIds)
+              .map(id => novelMap.get(id))
+              .filter((n): n is typeof result[0] => n !== undefined);
+          } else {
+            // マッチする小説がない場合は空配列
+            result = [];
+          }
           marker.mark("tag");
         }
 
@@ -581,10 +594,10 @@
       novelDetailModal.setToast(toast);
     }
 
-    // loadNovelsを優先、loadTagsとloadTagIndexは並行して実行（待たない）
+    // loadNovelsを優先、その後にタグインデックスをロード
     await loadNovels();
+    await loadTagIndex(); // タグインデックスを確実に読み込んでからフィルタリング
     loadTags(); // awaitしない - バックグラウンドで実行
-    loadTagIndex(); // awaitしない - バックグラウンドで実行
 
     // PushServerイベントリスナー設定
     pushServer.on("table.reload", handleTableReload);

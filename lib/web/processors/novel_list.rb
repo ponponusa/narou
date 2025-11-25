@@ -524,12 +524,12 @@ module NovelListProcessor
       if total_count <= 1000
         # 1000件以下なら全て表示
         [data, nil]
-      elsif total_count <= 5000
-        # 5000件以下なら全て表示（警告なし）
+      elsif total_count <= 100000
+        # 100000件以下なら全て表示（警告なし）
         [data, nil]
       else
-        # 5000件を超える場合は最大件数を制限
-        max_show_all = 5000
+        # 100000件を超える場合は最大件数を制限
+        max_show_all = 100000
         [data.first(max_show_all), "表示件数が多いため、最初の#{max_show_all}件のみ表示しています。"]
       end
     end

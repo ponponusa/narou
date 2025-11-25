@@ -6,6 +6,7 @@
 
 require "lib/core/database"
 require "lib/core/inventory"
+require "lib/cli/command/tag"
 
 module Narou
   #
