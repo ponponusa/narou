@@ -131,7 +131,7 @@ class DummyDataGenerator
   #
   def load_database
     if File.exist?(@database_path)
-      YAML.load_file(@database_path) || {}
+      YAML.load_file(@database_path, permitted_classes: [Time, Date, Symbol], aliases: true) || {}
     else
       {}
     end
