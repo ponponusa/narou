@@ -5,6 +5,7 @@
 #
 
 require "yaml"
+require "parallel"
 require "lib/novel/downloader"
 require "lib/novel/sitesetting"
 require "lib/conversion/html"
@@ -144,6 +145,130 @@ class NovelConverter
     # subtitle info から変換処理をする
     #
     def subtitles_to_sections(subtitles, html)
+      # 並列処理が有効な場合（環境変数で制御）
+      if ENV['NAROU_PARALLEL_CONVERT'] == 'true' && subtitles.size > 100
+        # プロセスベースの並列化を使用（GILの影響を回避）
+        use_processes = ENV['NAROU_PARALLEL_USE_PROCESSES'] == 'true'
+        stream_io.puts "Using #{use_processes ? 'process' : 'thread'}-based parallel processing (#{subtitles.size} episodes)" if ENV['NAROU_DEBUG']
+        return subtitles_to_sections_parallel(subtitles, html, use_processes: use_processes)
+      end
+
+      stream_io.puts "Using sequential processing (#{subtitles.size} episodes)" if ENV['NAROU_DEBUG']
+      # 従来のシーケンシャル処理
+      subtitles_to_sections_sequential(subtitles, html)
+    end
+
+    #
+    # subtitle info から変換処理をする（並列版）
+    #
+    def subtitles_to_sections_parallel(subtitles, html, use_processes: false)
+      section_save_dir = Downloader.get_novel_section_save_dir(@setting.archive_path)
+      site_setting = SiteSetting.find(@setting.toc_url) if @setting.respond_to?(:toc_url)
+      
+      trigger(:"convert_main.init", subtitles)
+
+      # 並列処理用のConverterプールを作成
+      # スレッド数は環境変数で制御可能（デフォルト: CPUコア数）
+      parallel_count = (ENV['NAROU_PARALLEL_THREADS'] || Parallel.processor_count).to_i
+      stream_io.puts "Parallel #{use_processes ? 'processes' : 'threads'}: #{parallel_count}" if ENV['NAROU_DEBUG']
+      
+      # 各スレッド/プロセス用のConverterをThread-localストレージで管理
+      converter_class = load_converter(@setting.archive_path)
+      thread_converters = {}
+      converter_mutex = Mutex.new unless use_processes
+      
+      parallel_options = use_processes ? { in_processes: parallel_count } : { in_threads: parallel_count }
+      
+      sections = Parallel.map_with_index(subtitles, parallel_options) do |subinfo, i|
+        # スレッド/プロセス固有のConverterを取得または作成
+        if use_processes
+          # プロセスベースの場合は毎回新規作成（プロセス間で共有不可）
+          thread_converter = converter_class.new(@setting, @inspector, @illustration)
+        else
+          # スレッドベースの場合はThread-localで管理
+          thread_id = Thread.current.object_id
+          thread_converter = thread_converters[thread_id]
+          unless thread_converter
+            thread_converter = converter_mutex.synchronize do
+              unless thread_converters[thread_id]
+                stream_io.puts "Creating converter for thread #{thread_id}" if ENV['NAROU_DEBUG']
+                thread_converters[thread_id] = converter_class.new(@setting, @inspector, @illustration)
+              end
+              thread_converters[thread_id]
+            end
+          end
+        end
+        
+        # 進捗表示（10件ごと）
+        trigger(:"convert_main.loop", i) if (i % 10).zero?
+        
+        # 各スレッドで独立したHTMLオブジェクトを使用
+        thread_html = HTML.new
+        thread_html.strip_decoration_tag = @setting.enable_strip_decoration_tag
+        if site_setting
+          thread_html.set_illust_setting(
+            current_url: site_setting["illust_current_url"],
+            grep_pattern: site_setting["illust_grep_pattern"]
+          )
+        end
+
+        # セクションをロード
+        original_section = load_novel_section(subinfo, section_save_dir)
+        
+        # 独立したコピーを作成
+        section = original_section.dup
+        section["element"] = original_section["element"].dup
+
+        # data_type 判定
+        element = section["element"]
+        data_type = element.delete("data_type") || "text"
+
+        # HTML→青空変換
+        preprocessed_element_texts = {}
+        element.each do |text_type, elm_text|
+          if data_type != "text"
+            thread_html.string = elm_text
+            elm_text = thread_html.to_aozora(pre_html: data_type == "pre_html")
+          end
+          preprocessed_element_texts[text_type] = elm_text
+        end
+
+        # バッチ入力を作成
+        batch_inputs = {}
+        if section["chapter"] && !section["chapter"].empty?
+          batch_inputs[:chapter] = [section["chapter"], "chapter"]
+        end
+        batch_inputs[:subtitle] = [section["subtitle"], "subtitle"]
+        preprocessed_element_texts.each do |text_type, body_text|
+          batch_inputs[[:element, text_type]] = [body_text, text_type]
+        end
+
+        # スレッド固有のConverterで変換
+        thread_converter.current_index = i
+        thread_converter.data_type = data_type
+        converted = thread_converter.convert_multi(batch_inputs)
+        
+        if batch_inputs[:chapter]
+          section["chapter"] = converted[:chapter]
+        end
+        section["subtitle"] = converted[:subtitle]
+        element.each_key do |text_type|
+          section["element"][text_type] = converted[[:element, text_type]]
+        end
+
+        section
+      end
+
+      @use_dakuten_font = @converter.use_dakuten_font
+      sections
+    ensure
+      trigger(:"convert_main.finish")
+    end
+
+    #
+    # subtitle info から変換処理をする（従来のシーケンシャル版）
+    #
+    def subtitles_to_sections_sequential(subtitles, html)
       # 章データをキャッシュ
       @__section_cache ||= {}
 

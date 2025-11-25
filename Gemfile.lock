@@ -266,6 +266,7 @@ PLATFORMS
 DEPENDENCIES
   awesome_print (~> 1.9)
   narou-mod!
+  parallel
   pry (~> 0.15)
   pry-byebug (~> 3.11)
   rack-test (~> 2.1)
