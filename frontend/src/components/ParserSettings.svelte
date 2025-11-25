@@ -302,11 +302,11 @@
   }
 
   .alert-error {
-    background-color: #fee;
+    background-color: #fee2e2;
     color: #b91c1c;
   }
 
-  .dark .alert-error {
+  :global(.dark) .alert-error {
     background-color: #7f1d1d;
     color: #fecaca;
   }
@@ -316,7 +316,7 @@
     color: #065f46;
   }
 
-  .dark .alert-success {
+  :global(.dark) .alert-success {
     background-color: #064e3b;
     color: #a7f3d0;
   }
@@ -324,13 +324,14 @@
   .setting-section {
     margin-bottom: 2rem;
     padding: 1.5rem;
-    background-color: white;
+    background-color: #ffffff;
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
-  .dark .setting-section {
+  :global(.dark) .setting-section {
     background-color: #1f2937;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 
   .section-title {
@@ -340,7 +341,7 @@
     color: #111827;
   }
 
-  .dark .section-title {
+  :global(.dark) .section-title {
     color: #f9fafb;
   }
 
@@ -350,7 +351,7 @@
     margin-bottom: 1rem;
   }
 
-  .dark .section-description {
+  :global(.dark) .section-description {
     color: #9ca3af;
   }
 
@@ -376,11 +377,11 @@
     background-color: #eff6ff;
   }
 
-  .dark .radio-label {
+  :global(.dark) .radio-label {
     border-color: #374151;
   }
 
-  .dark .radio-label:hover {
+  :global(.dark) .radio-label:hover {
     border-color: #3b82f6;
     background-color: #1e3a8a;
   }
@@ -403,7 +404,7 @@
     color: #111827;
   }
 
-  .dark .radio-title {
+  :global(.dark) .radio-title {
     color: #f9fafb;
   }
 
@@ -412,7 +413,7 @@
     color: #6b7280;
   }
 
-  .dark .radio-description {
+  :global(.dark) .radio-description {
     color: #9ca3af;
   }
 
@@ -426,11 +427,11 @@
     padding: 0.5rem;
     border: 1px solid #d1d5db;
     border-radius: 0.375rem;
-    background-color: white;
+    background-color: #ffffff;
     font-size: 0.875rem;
   }
 
-  .dark .domain-select {
+  :global(.dark) .domain-select {
     background-color: #374151;
     border-color: #4b5563;
     color: #f9fafb;
@@ -442,7 +443,7 @@
     border-radius: 0.375rem;
   }
 
-  .dark .config-info {
+  :global(.dark) .config-info {
     background-color: #111827;
   }
 
@@ -452,7 +453,7 @@
     color: #111827;
   }
 
-  .dark .config-title {
+  :global(.dark) .config-title {
     color: #f9fafb;
   }
 
@@ -467,7 +468,7 @@
     border-radius: 0.375rem;
   }
 
-  .dark .hint-section {
+  :global(.dark) .hint-section {
     background-color: #1e3a8a;
     border-left-color: #60a5fa;
   }
@@ -478,7 +479,7 @@
     color: #1e40af;
   }
 
-  .dark .hint-title {
+  :global(.dark) .hint-title {
     color: #93c5fd;
   }
 
@@ -488,7 +489,7 @@
     font-size: 0.875rem;
   }
 
-  .dark .hint-list {
+  :global(.dark) .hint-list {
     color: #bfdbfe;
   }
 
@@ -504,7 +505,7 @@
     font-size: 0.8125rem;
   }
 
-  .dark .hint-list code {
+  :global(.dark) .hint-list code {
     background-color: #1e40af;
   }
 </style>
