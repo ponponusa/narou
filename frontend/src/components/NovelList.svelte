@@ -311,6 +311,32 @@
   );
 
   // === Svelte 5 Runes: リアクティブな派生データ ===
+  // タグインデックス（タグ名 → Novel IDのSet）
+  const tagIndex = $derived.by(() => {
+    return measurePerformance(
+      "Build Tag Index",
+      () => {
+        const index = new Map<string, Set<number>>();
+
+        for (const novel of allNovels) {
+          if (!novel.tags) continue;
+          for (const tag of novel.tags) {
+            if (!index.has(tag)) {
+              index.set(tag, new Set());
+            }
+            index.get(tag)!.add(novel.id);
+          }
+        }
+
+        console.log(
+          `[Tag Index] Built index: ${index.size} unique tags, ${allNovels.length} novels`
+        );
+        return index;
+      },
+      1 // 1ms以上でログ出力
+    );
+  });
+
   // ステップ1: フィルタリング
   const filteredNovels = $derived.by(() => {
     return measurePerformance(
@@ -320,7 +346,31 @@
         const marker = new PerformanceMarker();
         marker.start();
 
-        // テキスト検索
+        // 1. タグフィルタ（最も絞り込み効果が高い）を最初に適用
+        if (selectedTag) {
+          if (tagIndex.has(selectedTag)) {
+            const tagNovelIds = tagIndex.get(selectedTag)!;
+            result = result.filter((n) => tagNovelIds.has(n.id));
+          } else {
+            // タグが存在しない場合は空配列
+            result = [];
+          }
+          marker.mark("tag");
+        }
+
+        // 2. サイトフィルタ（選択肢が少ない）
+        if (selectedSite) {
+          result = result.filter((n) => n.sitename === selectedSite);
+          marker.mark("site");
+        }
+
+        // 3. 状態フィルタ
+        if (selectedStatus) {
+          result = result.filter((n) => n.status === selectedStatus);
+          marker.mark("status");
+        }
+
+        // 4. テキスト検索（最もコストが高い）を最後に
         if (filterText) {
           const query = filterText.toLowerCase();
           result = result.filter(
@@ -329,24 +379,6 @@
               n.author?.toLowerCase().includes(query)
           );
           marker.mark("text");
-        }
-
-        // タグフィルタ
-        if (selectedTag) {
-          result = result.filter((n) => n.tags?.includes(selectedTag));
-          marker.mark("tag");
-        }
-
-        // サイトフィルタ
-        if (selectedSite) {
-          result = result.filter((n) => n.sitename === selectedSite);
-          marker.mark("site");
-        }
-
-        // 状態フィルタ
-        if (selectedStatus) {
-          result = result.filter((n) => n.status === selectedStatus);
-          marker.mark("status");
         }
 
         marker.end(`Filter: ${allNovels.length} → ${result.length}`, 5);
