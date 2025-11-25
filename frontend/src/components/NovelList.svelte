@@ -330,11 +330,11 @@
 
   // === Svelte 5 Runes: リアクティブな派生データ ===
   // タグインデックス（タグ名 → Novel IDのSet）
-  // $state.snapshotを使って安定した参照を作成
-  let tagIndexCache = $state<{
+  // 通常の変数でメモ化（$state不要）
+  let tagIndexCache: {
     novels: Novel[];
     index: Map<string, Set<number>>;
-  } | null>(null);
+  } | null = null;
   
   const tagIndex = $derived.by(() => {
     // キャッシュが有効（allNovelsの参照が同じ）ならそのまま返す
@@ -349,13 +349,22 @@
       () => {
         const newIndex = new Map<string, Set<number>>();
 
-        for (const novel of allNovels) {
-          if (!novel.tags) continue;
-          for (const tag of novel.tags) {
-            if (!newIndex.has(tag)) {
-              newIndex.set(tag, new Set());
+        // 最適化: for...of の代わりに通常のforループを使用
+        const novelsLength = allNovels.length;
+        for (let i = 0; i < novelsLength; i++) {
+          const novel = allNovels[i];
+          const tags = novel.tags;
+          if (!tags) continue;
+          
+          const tagsLength = tags.length;
+          for (let j = 0; j < tagsLength; j++) {
+            const tag = tags[j];
+            let tagSet = newIndex.get(tag);
+            if (!tagSet) {
+              tagSet = new Set<number>();
+              newIndex.set(tag, tagSet);
             }
-            newIndex.get(tag)!.add(novel.id);
+            tagSet.add(novel.id);
           }
         }
 
@@ -368,7 +377,7 @@
       1 // 1ms以上でログ出力
     );
     
-    // キャッシュを更新
+    // キャッシュを更新（通常の代入なのでOK）
     tagIndexCache = { novels: allNovels, index };
     
     return index;
