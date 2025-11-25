@@ -51,7 +51,7 @@ module Narou
               
               # キャッシュが存在し、データベースの更新時刻より新しい場合はキャッシュを返す
               database = Database.instance
-              db_mtime = database.cache_modified_time
+              db_mtime = database.cache_modified_time.to_i  # Time を Integer に変換
               
               if @@tag_index_cache[:data] && @@tag_index_cache[:generated_at] && 
                  @@tag_index_cache[:generated_at] >= db_mtime
@@ -66,9 +66,12 @@ module Narou
                   tags = novel_data["tags"]
                   next unless tags && tags.is_a?(Array)
                   
+                  # IDを明示的に整数に変換
+                  novel_id = id.to_i
+                  
                   tags.each do |tag|
                     tag_index[tag] ||= []
-                    tag_index[tag] << id
+                    tag_index[tag] << novel_id
                   end
                 end
                 
