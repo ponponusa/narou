@@ -383,15 +383,9 @@
             }
           }
           
-          // タグインデックスから直接小説を抽出（O(n)のfilterではなくO(m)のmap/filterCompact）
-          // matchingNovelIdsに含まれるIDの小説のみを抽出
+          // マッチするIDのSetを使ってフィルタリング（Set.hasはO(1)）
           if (matchingNovelIds.size > 0) {
-            // IDをキーとした小説マップを作成（1回のループ）
-            const novelMap = new Map(result.map(n => [n.id, n]));
-            // マッチするIDの小説のみを抽出
-            result = Array.from(matchingNovelIds)
-              .map(id => novelMap.get(id))
-              .filter((n): n is typeof result[0] => n !== undefined);
+            result = result.filter(n => matchingNovelIds.has(n.id));
           } else {
             // マッチする小説がない場合は空配列
             result = [];
@@ -582,8 +576,7 @@
       isInitialLoad = false;
     }
 
-    // 設定を復元
-    loadSettings();
+    // カラム表示設定のみ先に復元（フィルター設定は後で）
     loadColumnVisibility();
 
     // モーダルにToast参照を渡す
@@ -597,6 +590,10 @@
     // loadNovelsを優先、その後にタグインデックスをロード
     await loadNovels();
     await loadTagIndex(); // タグインデックスを確実に読み込んでからフィルタリング
+    
+    // タグインデックス読み込み後にフィルター設定を復元
+    loadSettings();
+    
     loadTags(); // awaitしない - バックグラウンドで実行
 
     // PushServerイベントリスナー設定
