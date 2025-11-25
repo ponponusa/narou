@@ -334,6 +334,18 @@
   // バックエンドから取得したインデックスを使用
   let tagIndexFromBackend = $state<Map<string, Set<number>> | null>(null);
   
+  // 検索用インデックス（小説ID → 小文字化されたタイトル・著者）
+  const searchIndex = $derived.by(() => {
+    const index = new Map<number, { title: string; author: string }>();
+    for (const novel of allNovels) {
+      index.set(novel.id, {
+        title: novel.title?.toLowerCase() || '',
+        author: novel.author?.toLowerCase() || ''
+      });
+    }
+    return index;
+  });
+  
   const tagIndex = $derived.by(() => {
     // バックエンドから取得したインデックスがあればそれを使用
     if (tagIndexFromBackend) {
@@ -406,13 +418,14 @@
         }
 
         // 4. テキスト検索（最もコストが高い）を最後に
+        // 検索インデックスを使って高速化（toLowerCase()を毎回呼ばない）
         if (filterText) {
           const query = filterText.toLowerCase();
-          result = result.filter(
-            (n) =>
-              n.title?.toLowerCase().includes(query) ||
-              n.author?.toLowerCase().includes(query)
-          );
+          result = result.filter((n) => {
+            const searchData = searchIndex.get(n.id);
+            if (!searchData) return false;
+            return searchData.title.includes(query) || searchData.author.includes(query);
+          });
           marker.mark("text");
         }
 
