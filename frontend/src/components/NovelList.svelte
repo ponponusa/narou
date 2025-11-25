@@ -59,15 +59,15 @@
   
   // 実際に適用されるフィルタ（検索ボタン押下時に反映）
   let filterText = $state("");
-  let selectedTag = $state<string>("");
-  let selectedSite = $state<string>("");
-  let selectedStatus = $state<string>("");
+  let selectedTag = $state<string[]>([]);
+  let selectedSite = $state<string[]>([]);
+  let selectedStatus = $state<string[]>([]);
   
   // フォーム入力中の一時的な値
   let draftFilterText = $state("");
-  let draftSelectedTag = $state<string>("");
-  let draftSelectedSite = $state<string>("");
-  let draftSelectedStatus = $state<string>("");
+  let draftSelectedTag = $state<string[]>([]);
+  let draftSelectedSite = $state<string[]>([]);
+  let draftSelectedStatus = $state<string[]>([]);
   
   // フィルタ処理中フラグ
   let isFiltering = $state(false);
@@ -150,9 +150,9 @@
     try {
       const settings = {
         pageSize,
-        selectedTag,
-        selectedSite,
-        selectedStatus,
+        selectedTag: selectedTag,
+        selectedSite: selectedSite,
+        selectedStatus: selectedStatus,
         sortBy,
         sortOrder,
       };
@@ -181,16 +181,17 @@
       if (saved) {
         const settings = JSON.parse(saved);
         pageSize = settings.pageSize ?? 50;
-        selectedTag = settings.selectedTag ?? "";
-        selectedSite = settings.selectedSite ?? "";
-        selectedStatus = settings.selectedStatus ?? "";
+        // 下位互換性：文字列の場合は配列に変換
+        selectedTag = Array.isArray(settings.selectedTag) ? settings.selectedTag : (settings.selectedTag ? [settings.selectedTag] : []);
+        selectedSite = Array.isArray(settings.selectedSite) ? settings.selectedSite : (settings.selectedSite ? [settings.selectedSite] : []);
+        selectedStatus = Array.isArray(settings.selectedStatus) ? settings.selectedStatus : (settings.selectedStatus ? [settings.selectedStatus] : []);
         sortBy = settings.sortBy ?? "updated_at";
         sortOrder = settings.sortOrder ?? "desc";
         
         // draft変数も初期化
-        draftSelectedTag = selectedTag;
-        draftSelectedSite = selectedSite;
-        draftSelectedStatus = selectedStatus;
+        draftSelectedTag = [...selectedTag];
+        draftSelectedSite = [...selectedSite];
+        draftSelectedStatus = [...selectedStatus];
       }
     } catch (err) {
       console.error("設定の読み込みに失敗しました:", err);
@@ -363,26 +364,28 @@
         marker.start();
 
         // 1. タグフィルタ（最も絞り込み効果が高い）を最初に適用
-        if (selectedTag) {
-          if (tagIndex.has(selectedTag)) {
-            const tagNovelIds = tagIndex.get(selectedTag)!;
-            result = result.filter((n) => tagNovelIds.has(n.id));
-          } else {
-            // タグが存在しない場合は空配列
-            result = [];
+        if (selectedTag.length > 0) {
+          // 複数タグのOR検索（いずれかのタグを持つ小説）
+          const matchingNovelIds = new Set<number>();
+          for (const tag of selectedTag) {
+            if (tagIndex.has(tag)) {
+              const tagNovelIds = tagIndex.get(tag)!;
+              tagNovelIds.forEach(id => matchingNovelIds.add(id));
+            }
           }
+          result = result.filter((n) => matchingNovelIds.has(n.id));
           marker.mark("tag");
         }
 
         // 2. サイトフィルタ（選択肢が少ない）
-        if (selectedSite) {
-          result = result.filter((n) => n.sitename === selectedSite);
+        if (selectedSite.length > 0) {
+          result = result.filter((n) => selectedSite.includes(n.sitename));
           marker.mark("site");
         }
 
         // 3. 状態フィルタ
-        if (selectedStatus) {
-          result = result.filter((n) => n.status === selectedStatus);
+        if (selectedStatus.length > 0) {
+          result = result.filter((n) => selectedStatus.includes(n.status));
           marker.mark("status");
         }
 
@@ -958,9 +961,9 @@
     setTimeout(() => {
       // draft変数から実際のフィルタ変数に反映
       filterText = draftFilterText;
-      selectedTag = draftSelectedTag;
-      selectedSite = draftSelectedSite;
-      selectedStatus = draftSelectedStatus;
+      selectedTag = [...draftSelectedTag];
+      selectedSite = [...draftSelectedSite];
+      selectedStatus = [...draftSelectedStatus];
       currentPage = 0;
       saveSettings();
       
@@ -1000,13 +1003,13 @@
   function clearFilters() {
     // draftと実際のフィルタの両方をクリア
     draftFilterText = "";
-    draftSelectedTag = "";
-    draftSelectedSite = "";
-    draftSelectedStatus = "";
+    draftSelectedTag = [];
+    draftSelectedSite = [];
+    draftSelectedStatus = [];
     filterText = "";
-    selectedTag = "";
-    selectedSite = "";
-    selectedStatus = "";
+    selectedTag = [];
+    selectedSite = [];
+    selectedStatus = [];
     sortBy = "updated_at";
     sortOrder = "desc";
     currentPage = 0;
@@ -1364,14 +1367,15 @@
                 for="tagFilter"
                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
-                タグ
+                タグ <span class="text-xs text-gray-500">(複数選択可)</span>
               </label>
               <select
                 id="tagFilter"
                 bind:value={draftSelectedTag}
+                multiple
+                size="4"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
               >
-                <option value="">すべて</option>
                 {#each allTags as tag}
                   <option value={tag.name}>{tag.name} ({tag.count})</option>
                 {/each}
@@ -1384,14 +1388,15 @@
                 for="siteFilter"
                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
-                サイト
+                サイト <span class="text-xs text-gray-500">(複数選択可)</span>
               </label>
               <select
                 id="siteFilter"
                 bind:value={draftSelectedSite}
+                multiple
+                size="4"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
               >
-                <option value="">すべて</option>
                 {#each availableSites as site}
                   <option value={site}>{site}</option>
                 {/each}
@@ -1404,14 +1409,15 @@
                 for="statusFilter"
                 class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
               >
-                状態
+                状態 <span class="text-xs text-gray-500">(複数選択可)</span>
               </label>
               <select
                 id="statusFilter"
                 bind:value={draftSelectedStatus}
+                multiple
+                size="4"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
               >
-                <option value="">すべて</option>
                 <option value="凍結">凍結</option>
                 <option value="完結">完結</option>
                 <option value="削除">削除</option>
