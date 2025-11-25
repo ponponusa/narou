@@ -33,6 +33,7 @@
   import LoadingScreen from "./LoadingScreen.svelte";
 
   let novels = $state<Novel[]>([]);
+  let allNovels = $state<Novel[]>([]); // 全データを保持
   let toast: Toast;
   let loading = $state(true);
   let error = $state<string | null>(null);
@@ -308,6 +309,128 @@
     Object.values(columnVisibility).filter((v) => v).length
   );
 
+  // === Svelte 5 Runes: リアクティブな派生データ ===
+  // ステップ1: フィルタリング
+  const filteredNovels = $derived.by(() => {
+    let result = allNovels;
+
+    // テキスト検索
+    if (filterText) {
+      const query = filterText.toLowerCase();
+      result = result.filter(
+        (n) =>
+          n.title?.toLowerCase().includes(query) ||
+          n.author?.toLowerCase().includes(query)
+      );
+    }
+
+    // タグフィルタ
+    if (selectedTag) {
+      result = result.filter((n) => n.tags?.includes(selectedTag));
+    }
+
+    // サイトフィルタ
+    if (selectedSite) {
+      result = result.filter((n) => n.sitename === selectedSite);
+    }
+
+    // 状態フィルタ
+    if (selectedStatus) {
+      result = result.filter((n) => n.status === selectedStatus);
+    }
+
+    return result;
+  });
+
+  // ステップ2: ソート
+  const sortedNovels = $derived.by(() => {
+    const sorted = [...filteredNovels];
+
+    if (!sortBy) return sorted;
+
+    sorted.sort((a, b) => {
+      let aVal: string | number = "";
+      let bVal: string | number = "";
+
+      switch (sortBy) {
+        case "id":
+          aVal = a.id || 0;
+          bVal = b.id || 0;
+          break;
+        case "title":
+          aVal = a.title || "";
+          bVal = b.title || "";
+          break;
+        case "author":
+          aVal = a.author || "";
+          bVal = b.author || "";
+          break;
+        case "sitename":
+          aVal = a.sitename || "";
+          bVal = b.sitename || "";
+          break;
+        case "updated_at":
+          aVal = a.last_update || 0;
+          bVal = b.last_update || 0;
+          break;
+        case "status":
+          aVal = a.status || "";
+          bVal = b.status || "";
+          break;
+        case "tags":
+          // タグでソート（最初のタグで比較）
+          aVal = a.tags && a.tags.length > 0 ? a.tags[0] : "";
+          bVal = b.tags && b.tags.length > 0 ? b.tags[0] : "";
+          break;
+        case "episode_count":
+          aVal = a.general_all_no || 0;
+          bVal = b.general_all_no || 0;
+          break;
+        case "total_chars":
+          aVal = a.length || 0;
+          bVal = b.length || 0;
+          break;
+        case "avg_chars_per_episode":
+          aVal =
+            a.length && a.general_all_no ? a.length / a.general_all_no : 0;
+          bVal =
+            b.length && b.general_all_no ? b.length / b.general_all_no : 0;
+          break;
+        case "newest_article_date":
+          aVal = a.general_lastup || 0;
+          bVal = b.general_lastup || 0;
+          break;
+        case "last_update":
+          aVal = a.last_update || 0;
+          bVal = b.last_update || 0;
+          break;
+      }
+
+      if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  });
+
+  // ステップ3: ページング情報
+  const totalPages = $derived(Math.ceil(sortedNovels.length / pageSize));
+  const totalFiltered = $derived(sortedNovels.length);
+
+  // ステップ4: 表示データ（スライス）
+  const displayNovels = $derived.by(() => {
+    const start = currentPage * pageSize;
+    const end = start + pageSize;
+    return sortedNovels.slice(start, end);
+  });
+
+  // novelsを表示用データに同期（既存のテンプレートとの互換性のため）
+  $effect(() => {
+    novels = displayNovels;
+  });
+  // === リアクティブな派生データここまで ===
+
   // スクロールイベントハンドラー
   function handleScroll() {
     // ページを300px以上スクロールしたらボタンを表示
@@ -457,110 +580,23 @@
     }
 
     try {
-      const response = await getNovels({
-        page: currentPage + 1, // API v2 は 1-indexed
-        per_page: pageSize,
-        filter: filterText,
-      });
+      // 全データを一度に取得（gzip圧縮済み）
+      const response = await getNovels();
 
       // 成功したらリトライカウントをリセット
       retryCount = 0;
 
-      // クライアント側でのフィルタリング（タグ、サイト、状態）
-      let filteredNovels = response.novels;
-
-      if (selectedTag) {
-        filteredNovels = filteredNovels.filter(
-          (novel) => novel.tags && novel.tags.includes(selectedTag)
-        );
-      }
-
-      if (selectedSite) {
-        filteredNovels = filteredNovels.filter(
-          (novel) => novel.sitename === selectedSite
-        );
-      }
-
-      if (selectedStatus) {
-        filteredNovels = filteredNovels.filter(
-          (novel) => novel.status === selectedStatus
-        );
-      }
+      // 全データをallNovelsに格納
+      // $derivedが自動的にフィルタ・ソート・ページングを再計算
+      allNovels = response.novels;
+      totalCount = response.total;
 
       // サイト一覧を抽出（フィルター用）
       const sites = new Set(
-        response.novels.map((n) => n.sitename).filter(Boolean)
+        allNovels.map((n) => n.sitename).filter(Boolean)
       );
       availableSites = Array.from(sites).sort();
 
-      // クライアント側でのソート
-      if (sortBy) {
-        filteredNovels.sort((a, b) => {
-          let aVal: string | number = "";
-          let bVal: string | number = "";
-
-          switch (sortBy) {
-            case "id":
-              aVal = a.id || 0;
-              bVal = b.id || 0;
-              break;
-            case "title":
-              aVal = a.title || "";
-              bVal = b.title || "";
-              break;
-            case "author":
-              aVal = a.author || "";
-              bVal = b.author || "";
-              break;
-            case "sitename":
-              aVal = a.sitename || "";
-              bVal = b.sitename || "";
-              break;
-            case "updated_at":
-              aVal = a.last_update || 0;
-              bVal = b.last_update || 0;
-              break;
-            case "status":
-              aVal = a.status || "";
-              bVal = b.status || "";
-              break;
-            case "tags":
-              // タグでソート（最初のタグで比較）
-              aVal = a.tags && a.tags.length > 0 ? a.tags[0] : "";
-              bVal = b.tags && b.tags.length > 0 ? b.tags[0] : "";
-              break;
-            case "episode_count":
-              aVal = a.general_all_no || 0;
-              bVal = b.general_all_no || 0;
-              break;
-            case "total_chars":
-              aVal = a.length || 0;
-              bVal = b.length || 0;
-              break;
-            case "avg_chars_per_episode":
-              aVal =
-                a.length && a.general_all_no ? a.length / a.general_all_no : 0;
-              bVal =
-                b.length && b.general_all_no ? b.length / b.general_all_no : 0;
-              break;
-            case "newest_article_date":
-              aVal = a.general_lastup || 0;
-              bVal = b.general_lastup || 0;
-              break;
-            case "last_update":
-              aVal = a.last_update || 0;
-              bVal = b.last_update || 0;
-              break;
-          }
-
-          if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-          if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-          return 0;
-        });
-      }
-
-      novels = filteredNovels;
-      totalCount = response.total;
       loading = false; // 成功時のみloadingをfalseに
     } catch (err) {
       console.error("小説リストの取得エラー:", err);
@@ -848,13 +884,13 @@
 
   function handleSearch() {
     currentPage = 0;
-    loadNovels();
+    // $derivedが自動的に再計算するのでloadNovels不要
   }
 
   function handleFilterChange() {
     currentPage = 0;
     saveSettings();
-    loadNovels();
+    // $derivedが自動的に再計算するのでloadNovels不要
   }
 
   function handleSort(
@@ -878,8 +914,9 @@
       sortBy = column;
       sortOrder = "asc";
     }
+    currentPage = 0; // ソート変更時は先頭ページへ
     saveSettings();
-    loadNovels();
+    // $derivedが自動的に再計算するのでloadNovels不要
   }
 
   function clearFilters() {
@@ -898,7 +935,7 @@
     pageSize = newSize;
     currentPage = 0;
     saveSettings();
-    loadNovels();
+    // $derivedが自動的に再計算するのでloadNovels不要
   }
 
   /**
@@ -1137,18 +1174,26 @@
   }
 
   function nextPage() {
-    if ((currentPage + 1) * pageSize < totalCount) {
+    if (currentPage < totalPages - 1) {
       currentPage++;
-      loadNovels();
+      // $derivedが自動的に再計算するのでloadNovels不要
     }
   }
 
   function prevPage() {
     if (currentPage > 0) {
       currentPage--;
-      loadNovels();
+      // $derivedが自動的に再計算するのでloadNovels不要
     }
   }
+
+  function goToPage(page: number) {
+    if (page >= 0 && page < totalPages) {
+      currentPage = page;
+      // $derivedが自動的に再計算するのでloadNovels不要
+    }
+  }
+
 </script>
 
 <div class="relative">
@@ -2305,11 +2350,16 @@
               <!-- 表示情報と件数選択 -->
               <div class="flex items-center gap-4">
                 <div class="text-sm text-gray-700 dark:text-gray-300">
-                  {#if totalCount > 0}
-                    全 {totalCount} 件中 {currentPage * pageSize + 1} - {Math.min(
+                  {#if totalFiltered > 0}
+                    全 {totalFiltered} 件中 {currentPage * pageSize + 1} - {Math.min(
                       (currentPage + 1) * pageSize,
-                      totalCount
+                      totalFiltered
                     )} 件を表示
+                    {#if totalFiltered < totalCount}
+                      <span class="text-xs text-gray-500 dark:text-gray-400"
+                        >（{totalCount}件から絞り込み）</span
+                      >
+                    {/if}
                   {:else}
                     0 件
                   {/if}
@@ -2356,8 +2406,7 @@
                 </button>
 
                 <!-- ページ番号表示 -->
-                {#if totalCount > 0}
-                  {@const totalPages = Math.ceil(totalCount / pageSize)}
+                {#if totalFiltered > 0}
                   {@const maxVisible = 5}
                   {@const half = Math.floor(maxVisible / 2)}
 
@@ -2376,10 +2425,7 @@
 
                   {#if startPage > 0}
                     <button
-                      onclick={() => {
-                        currentPage = 0;
-                        loadNovels();
-                      }}
+                      onclick={() => goToPage(0)}
                       class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
                     >
                       1
@@ -2393,10 +2439,7 @@
 
                   {#each Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i) as page}
                     <button
-                      onclick={() => {
-                        currentPage = page;
-                        loadNovels();
-                      }}
+                      onclick={() => goToPage(page)}
                       class="min-w-10 px-3 py-1.5 {page === currentPage
                         ? 'bg-blue-600 text-white font-semibold'
                         : 'bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200'} border border-gray-300 dark:border-gray-500 rounded hover:bg-blue-500 hover:text-white transition-colors"
@@ -2412,10 +2455,7 @@
                       >
                     {/if}
                     <button
-                      onclick={() => {
-                        currentPage = totalPages - 1;
-                        loadNovels();
-                      }}
+                      onclick={() => goToPage(totalPages - 1)}
                       class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
                     >
                       {totalPages}
@@ -2425,17 +2465,14 @@
 
                 <button
                   onclick={nextPage}
-                  disabled={(currentPage + 1) * pageSize >= totalCount}
+                  disabled={currentPage >= totalPages - 1}
                   class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   次へ ›
                 </button>
                 <button
-                  onclick={() => {
-                    currentPage = Math.ceil(totalCount / pageSize) - 1;
-                    loadNovels();
-                  }}
-                  disabled={(currentPage + 1) * pageSize >= totalCount}
+                  onclick={() => goToPage(totalPages - 1)}
+                  disabled={currentPage >= totalPages - 1}
                   class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                   title="最後のページ"
                 >

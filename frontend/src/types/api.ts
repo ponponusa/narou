@@ -87,12 +87,11 @@ export interface Novel {
 
 /**
  * 小説リスト取得のレスポンス型（API v2）
+ * 全データを一度に取得する設計
  */
 export interface NovelsListData {
   novels: Novel[];
   total: number;
-  page: number;
-  per_page: number;
 }
 
 /**

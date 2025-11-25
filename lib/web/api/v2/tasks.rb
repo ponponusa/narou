@@ -12,18 +12,15 @@ module Narou
       def self.register(app)
         app.class_eval do
           # GET /api/v2/tasks
-          # タスク一覧取得
+          # タスク一覧取得（全データ、gzip圧縮で送信）
+          # クライアント側で全データを保持してSvelte 5 Runesで処理する設計
           get "/api/v2/tasks" do
             set_cors_headers
 
-            status_filter = params["status"]
-            limit = params["limit"]&.to_i
-
             begin
-              tasks = Narou::WebWorker.get_tasks(
-                status: status_filter,
-                limit: limit
-              )
+              # 全タスクを取得（制限なし）
+              # Rack::Deflaterが自動的にgzip圧縮してくれる
+              tasks = Narou::WebWorker.get_tasks
 
               json success_response(
                 { tasks: tasks, count: tasks.length }

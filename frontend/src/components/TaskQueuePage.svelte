@@ -33,8 +33,6 @@
   
   // タスクデータ
   let allTasks = $state<Task[]>([]);
-  let filteredTasks = $state<Task[]>([]);
-  let paginatedTasks = $state<Task[]>([]);
   let taskSummary = $state<TaskSummary | null>(null);
   
   // ローディング状態
@@ -47,35 +45,9 @@
   // PushServer接続
   let pushServerUnsubscribe: (() => void) | null = null;
 
-  /**
-   * タスクを取得
-   */
-  async function fetchTasks() {
-    try {
-      isLoading = true;
-      error = null;
-      
-      // 全タスクを取得（制限なし）
-      const tasks = await getTasks();
-      allTasks = tasks;
-      
-      // サマリーも取得
-      taskSummary = await getTaskSummary();
-      
-      applyFiltersAndSort();
-    } catch (err) {
-      console.error('[TaskQueuePage] Failed to fetch tasks:', err);
-      error = 'タスクの取得に失敗しました';
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  /**
-   * フィルタとソートを適用
-   */
-  function applyFiltersAndSort() {
-    // フィルタ適用
+  // === Svelte 5 Runes: リアクティブな派生データ ===
+  // ステップ1: フィルタリング
+  const filteredTasks = $derived.by(() => {
     let tasks = allTasks;
     
     // テキスト検索フィルタ
@@ -93,8 +65,14 @@
       tasks = tasks.filter(t => t.status === statusFilter);
     }
     
-    // ソート適用
-    tasks = [...tasks].sort((a, b) => {
+    return tasks;
+  });
+
+  // ステップ2: ソート
+  const sortedTasks = $derived.by(() => {
+    const tasks = [...filteredTasks];
+    
+    tasks.sort((a, b) => {
       let aVal: any;
       let bVal: any;
       
@@ -125,25 +103,44 @@
       }
     });
     
-    filteredTasks = tasks;
-    
-    // ページングを適用
-    applyPagination();
-  }
+    return tasks;
+  });
 
-  /**
-   * ページングを適用
-   */
-  function applyPagination() {
+  // ステップ3: ページング情報
+  const totalPages = $derived(Math.ceil(sortedTasks.length / itemsPerPage));
+  const totalFiltered = $derived(sortedTasks.length);
+
+  // ステップ4: 表示データ（スライス）
+  const paginatedTasks = $derived.by(() => {
     const start = (currentPage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
-    paginatedTasks = filteredTasks.slice(start, end);
-  }
+    return sortedTasks.slice(start, end);
+  });
+  // === リアクティブな派生データここまで ===
 
   /**
-   * ページ数を計算
+   * タスクを取得
    */
-  let totalPages = $derived(Math.ceil(filteredTasks.length / itemsPerPage));
+  async function fetchTasks() {
+    try {
+      isLoading = true;
+      error = null;
+      
+      // 全タスクを取得（gzip圧縮済み）
+      const tasks = await getTasks();
+      allTasks = tasks;
+      
+      // サマリーも取得
+      taskSummary = await getTaskSummary();
+      
+      // $derivedが自動的にフィルタ・ソート・ページングを再計算
+    } catch (err) {
+      console.error('[TaskQueuePage] Failed to fetch tasks:', err);
+      error = 'タスクの取得に失敗しました';
+    } finally {
+      isLoading = false;
+    }
+  }
 
   /**
    * カラムヘッダークリックでソート
@@ -157,7 +154,8 @@
       sortBy = column;
       sortOrder = 'desc';
     }
-    applyFiltersAndSort();
+    currentPage = 1; // ソート変更時は先頭ページへ
+    // $derivedが自動的に再計算するのでapplyFiltersAndSort不要
   }
 
   /**
@@ -165,14 +163,7 @@
    */
   function handleFilterChange() {
     currentPage = 1; // 最初のページに戻る
-    applyFiltersAndSort();
-  }
-
-  /**
-   * ソート変更時
-   */
-  function handleSortChange() {
-    applyFiltersAndSort();
+    // $derivedが自動的に再計算するのでapplyFiltersAndSort不要
   }
 
   /**
@@ -181,7 +172,7 @@
   function goToPage(page: number) {
     if (page < 1 || page > totalPages) return;
     currentPage = page;
-    applyPagination();
+    // $derivedが自動的に再計算するのでapplyPagination不要
   }
 
   /**
@@ -654,7 +645,16 @@
         <div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
           <div class="flex items-center justify-between">
             <div class="text-sm text-gray-700 dark:text-gray-300">
-              {filteredTasks.length}件中 {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredTasks.length)}件を表示
+              {#if totalFiltered > 0}
+                {totalFiltered}件中 {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalFiltered)}件を表示
+                {#if totalFiltered < allTasks.length}
+                  <span class="text-xs text-gray-500 dark:text-gray-400">
+                    （{allTasks.length}件から絞り込み）
+                  </span>
+                {/if}
+              {:else}
+                0件
+              {/if}
             </div>
             <div class="flex gap-2">
               <button

@@ -177,23 +177,11 @@ async function fetchApiForm<T>(
 
 /**
  * 小説リストを取得（API v2）
+ * 全データを一度に取得（gzip圧縮済み）
+ * クライアント側でフィルタ・ソート・ページングを行う設計
  */
-export async function getNovels(params?: {
-  page?: number;
-  per_page?: number;
-  filter?: string;
-}): Promise<NovelsListData> {
-  const searchParams = new URLSearchParams();
-  if (params) {
-    if (params.page !== undefined) searchParams.append('page', String(params.page));
-    if (params.per_page !== undefined) searchParams.append('per_page', String(params.per_page));
-    if (params.filter) searchParams.append('filter', params.filter);
-  }
-
-  const query = searchParams.toString();
-  const endpoint = query ? `/api/v2/novels?${query}` : '/api/v2/novels';
-  
-  return fetchApiV2<NovelsListData>(endpoint);
+export async function getNovels(): Promise<NovelsListData> {
+  return fetchApiV2<NovelsListData>('/api/v2/novels');
 }
 
 /**

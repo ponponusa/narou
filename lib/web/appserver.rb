@@ -80,6 +80,9 @@ class Narou::AppServer < Sinatra::Base
     enable :sessions
     enable :static
 
+    # gzip圧縮を有効化（API v2レスポンスの最適化）
+    use Rack::Deflater
+
     # 静的ファイルの配信設定は動的に決定できないため、
     # デフォルトでlib/web/publicを設定（Legacyモード用）
     # 新しいUIのフロントエンドファイルはルーティングで個別に処理
