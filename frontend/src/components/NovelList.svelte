@@ -330,7 +330,16 @@
 
   // === Svelte 5 Runes: リアクティブな派生データ ===
   // タグインデックス（タグ名 → Novel IDのSet）
+  // メモ化: allNovelsの参照が変わった時だけ再構築
+  let cachedAllNovels: Novel[] = [];
+  let cachedTagIndex = new Map<string, Set<number>>();
+  
   const tagIndex = $derived.by(() => {
+    // allNovelsの参照が変わっていない場合はキャッシュを返す
+    if (cachedAllNovels === allNovels && cachedTagIndex.size > 0) {
+      return cachedTagIndex;
+    }
+
     return measurePerformance(
       "Build Tag Index",
       () => {
@@ -349,6 +358,11 @@
         console.log(
           `[Tag Index] Built index: ${index.size} unique tags, ${allNovels.length} novels`
         );
+        
+        // キャッシュを更新
+        cachedAllNovels = allNovels;
+        cachedTagIndex = index;
+        
         return index;
       },
       1 // 1ms以上でログ出力
@@ -410,6 +424,9 @@
 
   // ステップ2: ソート
   const sortedNovels = $derived.by(() => {
+    // フィルタ結果が0件の場合は即座に空配列を返す
+    if (filteredNovels.length === 0) return [];
+    
     return measurePerformance(
       "Sort Novels",
       () => {
@@ -570,7 +587,9 @@
       novelDetailModal.setToast(toast);
     }
 
-    await Promise.all([loadNovels(), loadTags()]);
+    // loadNovelsを優先、loadTagsは並行して実行（待たない）
+    await loadNovels();
+    loadTags(); // awaitしない - バックグラウンドで実行
 
     // PushServerイベントリスナー設定
     pushServer.on("table.reload", handleTableReload);
@@ -958,8 +977,8 @@
     // フィルタ処理中フラグをON
     isFiltering = true;
     
-    // 少し遅延させてスピナーを表示
-    setTimeout(() => {
+    // requestAnimationFrameを使用して即座にUIを更新
+    requestAnimationFrame(() => {
       // draft変数から実際のフィルタ変数に反映
       filterText = draftFilterText;
       selectedTag = [...draftSelectedTag];
@@ -968,11 +987,11 @@
       currentPage = 0;
       saveSettings();
       
-      // フィルタ処理完了後、次のフレームでスピナーをOFF
+      // 次のフレームでスピナーをOFF
       requestAnimationFrame(() => {
         isFiltering = false;
       });
-    }, 10);
+    });
   }
 
   function handleSort(
