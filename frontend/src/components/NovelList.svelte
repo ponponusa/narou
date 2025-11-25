@@ -56,10 +56,18 @@
   // フィルター・ソート設定
   let currentPage = $state(0);
   let pageSize = $state(50);
+  
+  // 実際に適用されるフィルタ（検索ボタン押下時に反映）
   let filterText = $state("");
   let selectedTag = $state<string>("");
   let selectedSite = $state<string>("");
   let selectedStatus = $state<string>("");
+  
+  // フォーム入力中の一時的な値
+  let draftFilterText = $state("");
+  let draftSelectedTag = $state<string>("");
+  let draftSelectedSite = $state<string>("");
+  let draftSelectedStatus = $state<string>("");
   let sortBy = $state<
     | "id"
     | "title"
@@ -175,6 +183,11 @@
         selectedStatus = settings.selectedStatus ?? "";
         sortBy = settings.sortBy ?? "updated_at";
         sortOrder = settings.sortOrder ?? "desc";
+        
+        // draft変数も初期化
+        draftSelectedTag = selectedTag;
+        draftSelectedSite = selectedSite;
+        draftSelectedStatus = selectedStatus;
       }
     } catch (err) {
       console.error("設定の読み込みに失敗しました:", err);
@@ -935,14 +948,13 @@
   }
 
   function handleSearch() {
-    currentPage = 0;
-    // $derivedが自動的に再計算するのでloadNovels不要
-  }
-
-  function handleFilterChange() {
+    // draft変数から実際のフィルタ変数に反映
+    filterText = draftFilterText;
+    selectedTag = draftSelectedTag;
+    selectedSite = draftSelectedSite;
+    selectedStatus = draftSelectedStatus;
     currentPage = 0;
     saveSettings();
-    // $derivedが自動的に再計算するのでloadNovels不要
   }
 
   function handleSort(
@@ -972,6 +984,11 @@
   }
 
   function clearFilters() {
+    // draftと実際のフィルタの両方をクリア
+    draftFilterText = "";
+    draftSelectedTag = "";
+    draftSelectedSite = "";
+    draftSelectedStatus = "";
     filterText = "";
     selectedTag = "";
     selectedSite = "";
@@ -1320,7 +1337,7 @@
               <input
                 id="filterText"
                 type="text"
-                bind:value={filterText}
+                bind:value={draftFilterText}
                 onkeydown={(e) => e.key === "Enter" && handleSearch()}
                 placeholder="タイトル、著者..."
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
@@ -1337,8 +1354,7 @@
               </label>
               <select
                 id="tagFilter"
-                bind:value={selectedTag}
-                onchange={handleFilterChange}
+                bind:value={draftSelectedTag}
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
               >
                 <option value="">すべて</option>
@@ -1358,8 +1374,7 @@
               </label>
               <select
                 id="siteFilter"
-                bind:value={selectedSite}
-                onchange={handleFilterChange}
+                bind:value={draftSelectedSite}
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
               >
                 <option value="">すべて</option>
@@ -1379,8 +1394,7 @@
               </label>
               <select
                 id="statusFilter"
-                bind:value={selectedStatus}
-                onchange={handleFilterChange}
+                bind:value={draftSelectedStatus}
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
               >
                 <option value="">すべて</option>
