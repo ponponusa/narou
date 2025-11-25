@@ -170,7 +170,19 @@ class NovelConverter
       # 並列処理用のConverterプールを作成
       # スレッド数は環境変数で制御可能（デフォルト: CPUコア数）
       parallel_count = (ENV['NAROU_PARALLEL_THREADS'] || Parallel.processor_count).to_i
-      stream_io.puts "Parallel #{use_processes ? 'processes' : 'threads'}: #{parallel_count}" if ENV['NAROU_DEBUG']
+      
+      # チャンクベース処理が有効か判定（デフォルト: 有効）
+      use_chunked = ENV['NAROU_PARALLEL_CHUNKED'] != 'false'
+      
+      if use_chunked && use_processes
+        # チャンクベース処理（プロセス起動オーバーヘッドを削減）
+        return subtitles_to_sections_parallel_chunked(
+          subtitles, html, section_save_dir, site_setting, parallel_count
+        )
+      end
+      
+      # 従来のエピソード単位並列処理
+      stream_io.puts "Parallel #{use_processes ? 'processes' : 'threads'}: #{parallel_count} (episode-based)" if ENV['NAROU_DEBUG']
       
       # 各スレッド/プロセス用のConverterをThread-localストレージで管理
       converter_class = load_converter(@setting.archive_path)
@@ -259,6 +271,107 @@ class NovelConverter
         section
       end
 
+      @use_dakuten_font = @converter.use_dakuten_font
+      sections
+    ensure
+      trigger(:"convert_main.finish")
+    end
+
+    #
+    # subtitle info から変換処理をする（チャンクベース並列版）
+    #
+    def subtitles_to_sections_parallel_chunked(subtitles, html, section_save_dir, site_setting, parallel_count)
+      # チャンクサイズの計算（環境変数で上書き可能）
+      chunk_size = if ENV['NAROU_CHUNK_SIZE']
+        ENV['NAROU_CHUNK_SIZE'].to_i
+      else
+        # デフォルト: 1000エピソード/チャンク（ベンチマークで最適値を確認）
+        # プロセス起動オーバーヘッドと並列効率のバランスが最も良い
+        1000
+      end
+      
+      stream_io.puts "Parallel processes: #{parallel_count} (chunk-based, chunk_size=#{chunk_size})" if ENV['NAROU_DEBUG']
+      
+      # サブタイトルをチャンクに分割
+      subtitle_chunks = subtitles.each_slice(chunk_size).to_a
+      stream_io.puts "Split into #{subtitle_chunks.size} chunks" if ENV['NAROU_DEBUG']
+      
+      # 各チャンクを並列処理
+      converter_class = load_converter(@setting.archive_path)
+      
+      chunk_results = Parallel.map_with_index(subtitle_chunks, in_processes: parallel_count) do |chunk, chunk_idx|
+        # プロセスごとにConverterを作成
+        chunk_converter = converter_class.new(@setting, @inspector, @illustration)
+        chunk_html = HTML.new
+        chunk_html.strip_decoration_tag = @setting.enable_strip_decoration_tag
+        if site_setting
+          chunk_html.set_illust_setting(
+            current_url: site_setting["illust_current_url"],
+            grep_pattern: site_setting["illust_grep_pattern"]
+          )
+        end
+        
+        # チャンク内のエピソードを処理
+        chunk_sections = []
+        chunk.each_with_index do |subinfo, idx_in_chunk|
+          global_index = chunk_idx * chunk_size + idx_in_chunk
+          
+          # 進捗表示（10件ごと）
+          trigger(:"convert_main.loop", global_index) if (global_index % 10).zero?
+          
+          # セクションをロード
+          original_section = load_novel_section(subinfo, section_save_dir)
+          
+          # 独立したコピーを作成
+          section = original_section.dup
+          section["element"] = original_section["element"].dup
+
+          # data_type 判定
+          element = section["element"]
+          data_type = element.delete("data_type") || "text"
+
+          # HTML→青空変換
+          preprocessed_element_texts = {}
+          element.each do |text_type, elm_text|
+            if data_type != "text"
+              chunk_html.string = elm_text
+              elm_text = chunk_html.to_aozora(pre_html: data_type == "pre_html")
+            end
+            preprocessed_element_texts[text_type] = elm_text
+          end
+
+          # バッチ入力を作成
+          batch_inputs = {}
+          if section["chapter"] && !section["chapter"].empty?
+            batch_inputs[:chapter] = [section["chapter"], "chapter"]
+          end
+          batch_inputs[:subtitle] = [section["subtitle"], "subtitle"]
+          preprocessed_element_texts.each do |text_type, body_text|
+            batch_inputs[[:element, text_type]] = [body_text, text_type]
+          end
+
+          # チャンク固有のConverterで変換
+          chunk_converter.current_index = global_index
+          chunk_converter.data_type = data_type
+          converted = chunk_converter.convert_multi(batch_inputs)
+          
+          if batch_inputs[:chapter]
+            section["chapter"] = converted[:chapter]
+          end
+          section["subtitle"] = converted[:subtitle]
+          element.each_key do |text_type|
+            section["element"][text_type] = converted[[:element, text_type]]
+          end
+
+          chunk_sections << section
+        end
+        
+        chunk_sections
+      end
+      
+      # チャンクの結果を統合
+      sections = chunk_results.flatten
+      
       @use_dakuten_font = @converter.use_dakuten_font
       sections
     ensure

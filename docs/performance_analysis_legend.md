@@ -754,30 +754,50 @@ CPU使用率:    99% (1コアのみ)
 - **Converter (regex): 154秒 (95%)** ← ボトルネック
 - EPUB生成: 9.8秒 (6%)
 
-#### プロセスベース並列処理（2コア）
+#### プロセスベース並列処理（2コア、エピソード単位）
 ```bash
 $ NAROU_PARALLEL_CONVERT=true \
   NAROU_PARALLEL_USE_PROCESSES=true \
   NAROU_PARALLEL_THREADS=2 \
+  NAROU_PARALLEL_CHUNKED=false \
   time bundle exec ruby narou.rb convert 10000 --no-open --no-epub
 
 実行時間: 1:30.62 (90.6秒) ← 81.3秒短縮！
 User time:   170.6秒
 System time:   0.9秒
 CPU使用率:    189% (2コア効率的に使用)
+プロセス起動: 3,895回 (エピソードごと)
+```
+
+#### チャンクベース並列処理（2コア、最適化版） ✨
+```bash
+$ NAROU_PARALLEL_CONVERT=true \
+  NAROU_PARALLEL_USE_PROCESSES=true \
+  NAROU_PARALLEL_THREADS=2 \
+  time bundle exec ruby narou.rb convert 10000 --no-open --no-epub
+
+実行時間: 1:30.46 (90.5秒) ← 81.4秒短縮！
+User time:   168.4秒 ← オーバーヘッド削減
+System time:   1.0秒
+CPU使用率:    187% (2コア効率的に使用)
+チャンクサイズ: 1,000エピソード (デフォルト)
+プロセス起動: 4回のみ (大幅削減)
 ```
 
 ### パフォーマンス改善
 
-| 項目 | ベースライン | 並列化（2コア） | 改善率 |
-|------|-------------|----------------|--------|
-| 実行時間 | 171.9秒 | **90.6秒** | **47.3%短縮** |
-| CPU使用率 | 99% | 189% | +90pt |
-| User time | 169.5秒 | 170.6秒 | +1.1秒 |
-| System time | 2.3秒 | 0.9秒 | -1.4秒 |
+| 項目 | ベースライン | エピソード単位 | チャンク最適化 | 改善率 |
+|------|-------------|---------------|--------------|--------|
+| 実行時間 | 171.9秒 | 90.6秒 | **90.5秒** | **47.3%短縮** |
+| CPU使用率 | 99% | 189% | 187% | +88pt |
+| User time | 169.5秒 | 170.6秒 | **168.4秒** | **-1.1秒** |
+| System time | 2.3秒 | 0.9秒 | 1.0秒 | -1.3秒 |
+| プロセス起動 | 1回 | 3,895回 | **4回** | - |
 
 **コメント**:
-- 実時間（Real time）は**47%短縮**（81.3秒）
+- 実時間（Real time）は**47%短縮**（81.4秒）
+- チャンクベース処理でUser timeが**1.1秒改善**（オーバーヘッド削減）
+- プロセス起動回数を3,895回 → 4回に大幅削減
 - User timeは微増（プロセス起動オーバーヘッド）
 - しかし、実用上は**実時間の短縮が重要**
 
@@ -810,17 +830,15 @@ CPU使用率:    189% (2コア効率的に使用)
 
 #### 今後の改善案
 
-1. **チャンクベース処理**
+1. **チャンクベース処理** ✅ **実装済み**
    ```ruby
-   # 現在: エピソード単位で並列化
-   Parallel.map(episodes, in_processes: 2) { |episode| convert(episode) }
-   
-   # 改善: チャンク単位で並列化
+   # 実装済み: チャンク単位で並列化
    chunks = episodes.each_slice(1000).to_a  # 1000エピソードずつ
    Parallel.map(chunks, in_processes: 2) { |chunk| convert_batch(chunk) }
    ```
-   - プロセス起動を2回のみに削減
-   - オーバーヘッド削減で更なる高速化
+   - プロセス起動を4回のみに削減
+   - User timeが1.1秒改善（オーバーヘッド削減）
+   - **デフォルトで有効化済み**
 
 2. **Ractor の活用（Ruby 3.0+）**
    ```ruby
