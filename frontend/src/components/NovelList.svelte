@@ -32,6 +32,7 @@
   import ConsolePanel from "./ConsolePanel.svelte";
   import Toast from "./Toast.svelte";
   import LoadingScreen from "./LoadingScreen.svelte";
+  import MultiSelectDropdown from "./MultiSelectDropdown.svelte";
 
   let novels = $state<Novel[]>([]);
   let allNovels = $state<Novel[]>([]); // 全データを保持
@@ -1363,66 +1364,47 @@
 
             <!-- タグフィルター -->
             <div>
-              <label
-                for="tagFilter"
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                タグ <span class="text-xs text-gray-500">(複数選択可)</span>
-              </label>
-              <select
+              <MultiSelectDropdown
                 id="tagFilter"
+                label="タグ"
                 bind:value={draftSelectedTag}
-                multiple
-                size="4"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-              >
-                {#each allTags as tag}
-                  <option value={tag.name}>{tag.name} ({tag.count})</option>
-                {/each}
-              </select>
+                options={allTags.map(tag => ({
+                  value: tag.name,
+                  label: tag.name,
+                  count: tag.count
+                }))}
+                placeholder="すべて"
+              />
             </div>
 
             <!-- サイトフィルター -->
             <div>
-              <label
-                for="siteFilter"
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                サイト <span class="text-xs text-gray-500">(複数選択可)</span>
-              </label>
-              <select
+              <MultiSelectDropdown
                 id="siteFilter"
+                label="サイト"
                 bind:value={draftSelectedSite}
-                multiple
-                size="4"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-              >
-                {#each availableSites as site}
-                  <option value={site}>{site}</option>
-                {/each}
-              </select>
+                options={availableSites.map(site => ({
+                  value: site,
+                  label: site
+                }))}
+                placeholder="すべて"
+              />
             </div>
 
             <!-- 状態フィルター -->
             <div>
-              <label
-                for="statusFilter"
-                class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
-              >
-                状態 <span class="text-xs text-gray-500">(複数選択可)</span>
-              </label>
-              <select
+              <MultiSelectDropdown
                 id="statusFilter"
+                label="状態"
                 bind:value={draftSelectedStatus}
-                multiple
-                size="4"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-              >
-                <option value="凍結">凍結</option>
-                <option value="完結">完結</option>
-                <option value="削除">削除</option>
-                <option value="中断">中断</option>
-              </select>
+                options={[
+                  { value: '凍結', label: '凍結' },
+                  { value: '完結', label: '完結' },
+                  { value: '削除', label: '削除' },
+                  { value: '中断', label: '中断' }
+                ]}
+                placeholder="すべて"
+              />
             </div>
 
             <!-- アクション -->
