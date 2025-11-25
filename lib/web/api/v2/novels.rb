@@ -15,7 +15,9 @@ module Narou
           include Narou::ApiV2::Base
 
           # GET /api/v2/novels
-          # 小説一覧取得
+          # 小説一覧取得（全データ、gzip圧縮で送信）
+          # YAMLベースのため、サーバー側で部分的なページネーションは非効率
+          # クライアント側で全データを保持してSvelte 5 Runesで処理する設計
           get "/api/v2/novels" do
             set_cors_headers
 
@@ -27,12 +29,9 @@ module Narou
                 return json error_response("SERVICE_UNAVAILABLE", "データベースを準備中です。しばらくお待ちください。")
               end
 
-              # パラメータ取得
-              page = (params["page"] || 1).to_i
-              per_page = (params["per_page"] || 50).to_i
-
-              # データ取得（既存のprocess_novel_list_requestを利用）
-              result = process_novel_list_request(params)
+              # パラメータなしで全データを取得
+              # Rack::Deflaterが自動的にgzip圧縮してくれる
+              result = process_novel_list_request({})
 
               # レスポンス変換: raw_tags を tags にマッピング
               novels = result[:data].map do |novel|
@@ -44,12 +43,7 @@ module Narou
 
               json success_response({
                 novels: novels,
-                pagination: {
-                  total: result[:recordsTotal],
-                  filtered: result[:recordsFiltered],
-                  page: page,
-                  per_page: per_page
-                }
+                total: result[:recordsTotal]
               })
             rescue StandardError => e
               status 500
