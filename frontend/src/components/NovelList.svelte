@@ -330,43 +330,48 @@
 
   // === Svelte 5 Runes: リアクティブな派生データ ===
   // タグインデックス（タグ名 → Novel IDのSet）
-  // メモ化: allNovelsの参照が変わった時だけ再構築
-  let cachedAllNovels: Novel[] = [];
-  let cachedTagIndex = new Map<string, Set<number>>();
+  // $state.snapshotを使って安定した参照を作成
+  let tagIndexCache = $state<{
+    novels: Novel[];
+    index: Map<string, Set<number>>;
+  } | null>(null);
   
   const tagIndex = $derived.by(() => {
-    // allNovelsの参照が変わっていない場合はキャッシュを返す
-    if (cachedAllNovels === allNovels && cachedTagIndex.size > 0) {
-      return cachedTagIndex;
+    // キャッシュが有効（allNovelsの参照が同じ）ならそのまま返す
+    if (tagIndexCache && tagIndexCache.novels === allNovels) {
+      console.log('[Tag Index] Using cache');
+      return tagIndexCache.index;
     }
 
-    return measurePerformance(
+    // 新規構築
+    const index = measurePerformance(
       "Build Tag Index",
       () => {
-        const index = new Map<string, Set<number>>();
+        const newIndex = new Map<string, Set<number>>();
 
         for (const novel of allNovels) {
           if (!novel.tags) continue;
           for (const tag of novel.tags) {
-            if (!index.has(tag)) {
-              index.set(tag, new Set());
+            if (!newIndex.has(tag)) {
+              newIndex.set(tag, new Set());
             }
-            index.get(tag)!.add(novel.id);
+            newIndex.get(tag)!.add(novel.id);
           }
         }
 
         console.log(
-          `[Tag Index] Built index: ${index.size} unique tags, ${allNovels.length} novels`
+          `[Tag Index] Built index: ${newIndex.size} unique tags, ${allNovels.length} novels`
         );
         
-        // キャッシュを更新
-        cachedAllNovels = allNovels;
-        cachedTagIndex = index;
-        
-        return index;
+        return newIndex;
       },
       1 // 1ms以上でログ出力
     );
+    
+    // キャッシュを更新
+    tagIndexCache = { novels: allNovels, index };
+    
+    return index;
   });
 
   // ステップ1: フィルタリング
