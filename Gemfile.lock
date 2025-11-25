@@ -69,9 +69,6 @@ GEM
     erubi (1.13.1)
     ffi (1.17.2)
     ffi (1.17.2-x64-mingw-ucrt)
-    google-protobuf (4.33.0)
-      bigdecimal
-      rake (>= 13)
     google-protobuf (4.33.0-x64-mingw-ucrt)
       bigdecimal
       rake (>= 13)
@@ -189,12 +186,13 @@ GEM
     rubocop-ast (1.47.1)
       parser (>= 3.3.7.2)
       prism (~> 1.4)
+    ruby-prof (1.7.2)
+      base64
+    ruby-prof (1.7.2-x64-mingw-ucrt)
+      base64
     ruby-progressbar (1.13.0)
     ruby2_keywords (0.0.5)
     rubyzip (3.2.0)
-    sass-embedded (1.93.2)
-      google-protobuf (~> 4.31)
-      rake (>= 13)
     sass-embedded (1.93.2-x64-mingw-ucrt)
       google-protobuf (~> 4.31)
     sass-embedded (1.93.2-x86_64-linux-gnu)
@@ -275,6 +273,7 @@ DEPENDENCIES
   rspec-retry (~> 0.6)
   rspec_junit_formatter (~> 0.6)
   rubocop (~> 1.81, >= 1.81.6)
+  ruby-prof (~> 1.7)
   simplecov (~> 0.22)
   timecop (~> 0.9)
 

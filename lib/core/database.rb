@@ -82,7 +82,7 @@ class Database
   end
 
   def create_new_id
-    max_id = @database.keys.max
+    max_id = @database.keys.map(&:to_i).max
     id = max_id ? max_id + 1 : 0
     id
   end
