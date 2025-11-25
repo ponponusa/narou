@@ -46,9 +46,7 @@ module Narou
           que = nil
           thread = nil
           begin
-            $stderr.puts "[PushServer] New connection attempt from #{ws.socket.peeraddr[2]}"
             ws.handshake
-            $stderr.puts "[PushServer] Handshake successful"
             que = Queue.new
             @connections.push(que)
 
@@ -85,13 +83,13 @@ module Narou
             end
           rescue WebSocket::Error => e
             # WebSocketハンドシェイクエラー（通常はクライアントの切断）
-            $stderr.puts "[PushServer] WebSocket error: #{e.message}"
+            $stderr.puts "[PushServer] WebSocket error: #{e.message}" if $DEBUG
             $stderr.puts e.backtrace.first(5).join("\n") if $DEBUG
           rescue Errno::ECONNRESET => e
-            # 接続リセットエラー
+            # 接続リセットエラー（デバッグ時のみ出力）
             $stderr.puts "[PushServer] Connection reset: #{e.message}" if $DEBUG
           rescue StandardError => e
-            # その他の予期しないエラー
+            # その他の予期しないエラー（常に出力）
             $stderr.puts "[PushServer] Unexpected error: #{e.class}: #{e.message}"
             $stderr.puts e.backtrace.first(5).join("\n")
           ensure
