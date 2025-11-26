@@ -6,8 +6,8 @@
 
 class ConverterBase
   module TextProcessor
-    ROME_NUM_ALPHABET = %w(II III IV VI VII VIII IX ii iii iv vi vii viii ix)
-    ROME_NUM = %w(Ⅱ Ⅲ Ⅳ Ⅵ Ⅶ Ⅷ Ⅸ ⅱ ⅲ ⅳ ⅵ ⅶ ⅷ ⅸ)
+    # ローマ数字関連の定数はCompiledPatternsに移動
+    # CompiledPatterns::ROME_NUM_ALPHABET 等を参照
 
     #
     # ローマ数字っぽいアルファベットをローマ数字に変換
@@ -15,8 +15,9 @@ class ConverterBase
     # ※alphabet_to_zenkaku の前に実行する必要あり
     #
     def convert_rome_numeric(data)
-      ROME_NUM_ALPHABET.each_with_index do |rome, i|
-        data.gsub!(/([^a-zA-Z])#{rome}([^a-zA-Z])/, "\\1#{ROME_NUM[i]}\\2")
+      CompiledPatterns::ROME_NUM_ALPHABET.each_with_index do |rome, i|
+        CompiledPatterns.rome_patterns[i] ||= /([^a-zA-Z])#{Regexp.escape(rome)}([^a-zA-Z])/
+        data.gsub!(CompiledPatterns.rome_patterns[i], "\\1#{CompiledPatterns::ROME_NUM[i]}\\2")
       end
     end
 
@@ -27,7 +28,7 @@ class ConverterBase
     #
     def convert_dakuten_char_to_font(data)
       return unless @setting.enable_dakuten_font
-      data.gsub!(/([ぁ-んァ-ヶι])[゛ﾞ]/) do
+      data.gsub!(@patterns[:dakuten_char]) do
         @use_dakuten_font = true
         "［＃濁点］#{$1}［＃濁点終わり］"
       end
@@ -35,7 +36,7 @@ class ConverterBase
 
     def convert_prolonged_sound_mark_to_dash(data)
       return unless @setting.enable_prolonged_sound_mark_to_dash
-      data.gsub!(/(ー{2,})/) do |match|
+      data.gsub!(@patterns[:prolonged_sound]) do |match|
         "―" * match.length
       end
     end
@@ -45,23 +46,24 @@ class ConverterBase
     #
     def convert_novel_rule(data)
       # 括弧の閉じの直前の句点を消す
-      data.gsub!(/。([」』）])/, "\\1")
+      data.gsub!(@patterns[:punctuation_before_close_bracket], "\\1")
       # 原則偶数個を１セットで使うべき文字を偶数個に補正
       # MEMO:（―も偶数個セットにするべきだが、記号的な意味で使われる場合もあるので無視）
       %w(… ‥).each do |target|
-        data.gsub!(/#{target}+/) do |match|
+        pattern = target == "…" ? @patterns[:ellipsis] : @patterns[:double_dot]
+        data.gsub!(pattern) do |match|
           len = match.length
           len += 1 if len.odd?
           target * len
         end
       end
       # たまに見かける誤字対策
-      data.gsub!(/。　/, "。")
+      data.gsub!(@patterns[:punctuation_space], "。")
     end
 
     def should_word_be_hankaku?(word)
       (word.length >= ENGLISH_SENTENCES_MIN_LENGTH || @setting.disable_alphabet_word_to_zenkaku) &&
-        word.match(/[a-z]/i)
+        word.match(@patterns[:lowercase_letter])
     end
 
     def sentence?(match)
@@ -78,11 +80,11 @@ class ConverterBase
     #
     def alphabet_to_zenkaku(data, force = false)
       if force
-        data.gsub!(/[a-zA-Z]+/) do |match|
+        data.gsub!(@patterns[:alphabet_only]) do |match|
           match.tr("a-zA-Z", "ａ-ｚＡ-Ｚ")
         end
       else
-        data.gsub!(ENGLISH_SENTENCES_CHARACTERS) do |match|
+        data.gsub!(@patterns[:english_sentences]) do |match|
           if sentence?(match) || should_word_be_hankaku?(match)
             @english_sentences << match
             "［＃英文＝#{@english_sentences.size - 1}］"
@@ -108,7 +110,7 @@ class ConverterBase
     # コメントブロックの定義は - のみが50回以上連続された行に囲まれている間
     #
     def comments_block?(line)
-      if line =~ /^-{50,}$/
+      if line =~ @patterns[:comment_block_separator]
         @in_comment_block ^= 1
         return true
       end
@@ -120,7 +122,7 @@ class ConverterBase
     #
     def erase_comments_block(data)
       if @text_type == "textfile"
-        data.gsub!(/^-{50,}\n.*?^-{50,}\n/m, "")
+        data.gsub!(@patterns[:comment_block_full], "")
       end
       data
     end
@@ -139,7 +141,7 @@ class ConverterBase
     # 2桁：縦中横化
     #
     def hankaku_num_to_zenkaku_num(data)
-      data.gsub!(/\d+/) do |num|
+      data.gsub!(@patterns[:digits]) do |num|
         if num.length == 2
           tcy(num)
         elsif num.length == 3 && @text_type == "subtitle" && $`.empty?
