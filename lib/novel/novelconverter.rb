@@ -135,13 +135,6 @@ class NovelConverter
     OutputHelper.get_cover_filename(archive_path)
   end
 
-  # グローバルload_converterメソッドへのアクセス
-  def load_converter_for_archive(archive_path)
-    result = Kernel.send(:load_converter, archive_path)
-    puts "[DEBUG] load_converter_for_archive: archive_path=#{archive_path}, result=#{result.inspect}, name=#{result&.name}" if ENV['NAROU_DEBUG']
-    result
-  end
-
   def initialize(setting, output_filename = nil, display_inspector = false, output_text_dir = nil, stream_io: $stdout2)
     @setting = setting
     @novel_id = setting.id

@@ -12,7 +12,6 @@ require "pathname"
 require "lib/core/narou"
 require "lib/output/progressbar"
 require "lib/output/inspector"
-require "lib/novel/converterbase/compiled_patterns"
 require "lib/novel/converterbase/utilities"
 require "lib/novel/converterbase/ruby_processor"
 require "lib/novel/converterbase/content_processor"
@@ -24,7 +23,6 @@ require "lib/novel/converterbase/number_processor"
 require "lib/novel/converterbase/text_processor"
 
 class ConverterBase
-  include ConverterBase::CompiledPatterns
   include ConverterBase::Utilities
   include ConverterBase::RubyProcessor
   include ConverterBase::ContentProcessor
@@ -47,8 +45,8 @@ class ConverterBase
     data = io.string
     convert_page_break(data) if @text_type == "body" || @text_type == "textfile"
     if @text_type != "story" && @setting.enable_pack_blank_line
-      # 1回のスキャンで改行圧縮（高速化）
-      data.gsub!(CompiledPatterns::BLANK_LINE_COMPRESS_PATTERN, CompiledPatterns::BLANK_LINE_COMPRESS_MAP)
+      data.gsub!("\n\n", "\n")
+      data.gsub!(/(^\n){3}/m, "\n\n")   # 改行のみの行３つを２つに削減
     end
     io
   end
@@ -67,10 +65,6 @@ class ConverterBase
     @data_type = "text"
     @current_index = 0
     @device = Narou.get_device
-    
-    # 正規表現パターンをインスタンス変数にキャッシュ（高速化）
-    @patterns = CompiledPatterns::PATTERNS
-    
     reset_member_values
   end
 
@@ -109,10 +103,10 @@ class ConverterBase
   # 特定の記号の直後は全角アキを挿入する
   #
   def insert_separate_space(data)
-    data.gsub!(@patterns[:exclamation_question]) do
+    data.gsub!(/([!?！？]+)([^!?！？])/) do
       m1, m2 = $1, $2
       m2 = "　" if m2 =~ /[ 、。]/
-      if m2 =~ @patterns[:close_bracket_chars]
+      if m2 =~ /[^」］｝\]\}』】〉》〕＞>≫)）"”’〟　☆★♪［―]/
         "#{m1}　#{m2}"
       else
         "#{m1}#{m2}"
@@ -124,8 +118,9 @@ class ConverterBase
   # 小説家になろう専用タグを置換
   #
   def replace_narou_tag(data)
-    # 1回のスキャンで全置換（高速化）
-    data.gsub!(CompiledPatterns::NAROU_TAG_PATTERN, CompiledPatterns::NAROU_TAG_REPLACE_MAP)
+    data.gsub!("【改ページ】", "")
+    data.gsub!(/<KBR>/i, "\n")
+    data.gsub!(/<PBR>/i, "\n")
   end
 
   def border_symbol?(line)
@@ -134,7 +129,7 @@ class ConverterBase
   end
 
   def blank_line?(line)
-    line =~ @patterns[:blank_line]
+    line =~ /\A[ 　\t]*$/
   end
 
   #
@@ -156,7 +151,7 @@ class ConverterBase
   # 改ページある？
   #
   def page_break?(line)
-    line =~ @patterns[:page_break]
+    line =~ /［＃改ページ］/
   end
 
   #
@@ -257,51 +252,42 @@ class ConverterBase
   # ==================================================
 
   #
-  # 小説家になろうのルビ対策（高速化版）
+  # 小説家になろうのルビ対策
   #
   def narou_ruby(data)
     if @text_type != "subtitle" && @text_type != "chapter"
       # 《》なルビの対処
-      # (.+?)だと行頭から全て巻き込むので、50文字制限で高速化
-      data.gsub!(/([^\n≪]{1,50}?)≪([^≪]+?)≫/) do |match|
+      data.gsub!(/(.+?)≪([^≪]+?)≫/) do |match|
         to_ruby(match, $1, $2, ["≪", "≫"])
       end
       if @data_type == "text"
-        # （）なルビの対処（同様に50文字制限）
-        data.gsub!(/([^\n（]{1,50}?)（#{AUTO_RUBY_CHARACTERS}）/) do |match|
+        # （）なルビの対処
+        data.gsub!(/(.+?)（#{AUTO_RUBY_CHARACTERS}）/) do |match|
           to_ruby(match, $1, $2, ["（", "）"])
         end
       end
     end
-    # replace_tatesenは新しい文字列を返すのでreplaceが必要
     data.replace(replace_tatesen(data))
     data.gsub!("［＃ルビ用縦線］", "｜")
   end
 
-  # 正規表現キャッシュ（クラス変数で共有）
-  @@page_break_regex_cache = {}
-
   #
-  # 一定以上の連続する空行を改ページに変換（高速化版）
+  # 一定以上の連続する空行を改ページに変換
   #
   def convert_page_break(data)
-    return unless @setting.enable_convert_page_break
-    
-    threshold = @setting.to_page_break_threshold
-    # 正規表現をキャッシュ（毎回コンパイルしない）
-    # 空行N個 = 改行がN+1個連続
-    regex = @@page_break_regex_cache[threshold] ||= /\n{#{threshold + 1},}/
-    
-    # `改ページ' を使うと見出し付与等で混乱するので自動生成したものは区別する
-    data.gsub!(regex, "［＃改頁］\n")
+    if @setting.enable_convert_page_break
+      threshold = @setting.to_page_break_threshold
+      # `改ページ' を使うと見出し付与等で混乱するので自動生成したものは区別する
+      data.gsub!(/(^\n){#{threshold},}/, "［＃改頁］\n")
+    end
   end
 
   #
   # 表示上化けてしまうゴミ削除
   #
   def delete_dust_char(data)
-    # 1回のスキャンで全置換（高速化）
-    data.gsub!(CompiledPatterns::DUST_CHAR_PATTERN, CompiledPatterns::DUST_CHAR_REPLACE_MAP)
+    data.gsub!("︎", "")
+    data.gsub!("︎", "")
   end
 
   #
@@ -466,45 +452,53 @@ class ConverterBase
   end
 
   #
-  # 文字単位でzwsを挿入する（高速版：scan主体）
+  # 文字単位でzwsを挿入する
   #
   def insert_char_separator(str)
-    # バッファのメモリ事前確保
-    buffer = String.new(capacity: str.bytesize * 2)
+    buffer = +""
     ss = StringScanner.new(str)
     before_symbol = false
-
-    until ss.eos?
-      # 1. 分解しない塊（ルビ, 注記, HTML, 開き括弧）
-      if chunk = ss.scan(@patterns[:ruby_pattern]) || 
-                 ss.scan(@patterns[:note_pattern]) || 
-                 ss.scan(@patterns[:html_pattern]) || 
-                 ss.scan(@patterns[:open_bracket])
-        buffer << chunk
-        before_symbol = false
-
-      # 2. それ以外の文字（1文字ずつ処理）
-      else
-        char = ss.getch
-        # 特定のシンボルかどうか判定
-        is_symbol = char.match?(@patterns[:char_symbol_pattern])
-
-        # シンボル → 文字 の境界なら区切りを入れる
-        if before_symbol && !is_symbol
-          buffer << WORD_SEPARATOR
-        end
-
+    while char = ss.getch
+      symbol = false
+      case char
+      when "｜"
         buffer << char
-
-        # 文字（非シンボル）なら後ろに区切りを入れる
-        unless is_symbol
-          buffer << WORD_SEPARATOR
+        if ss.scan(/.+?》/)
+          buffer << "#{ss.matched}"
+        else
+          before_symbol = false
         end
-
-        before_symbol = is_symbol
+        next
+      when "［"
+        buffer << char
+        if ss.scan(/^＃.+?］/)
+          buffer << "#{ss.matched}"
+        else
+          before_symbol = false
+        end
+        next
+      when "<"
+        if ss.scan(/.+?>/)
+          buffer << "<#{ss.matched}"
+          next
+        end
+        symbol = true
+      when /[〔「『\(（【〈《≪〝]/
+        buffer << char
+        before_symbol = false
+        next
+      when /[―…!?！？※]/
+        symbol = true
       end
+      if before_symbol && !symbol
+        buffer << WORD_SEPARATOR
+      end
+      buffer << char
+      unless symbol
+        buffer << WORD_SEPARATOR
+      end
+      before_symbol = symbol
     end
-
     buffer
   end
 

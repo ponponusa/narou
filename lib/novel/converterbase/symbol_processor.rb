@@ -6,9 +6,9 @@
 
 class ConverterBase
   module SymbolProcessor
-    # パターンはCompiledPatternsから取得
-    # SINGLE_MINUTE_FAMILY と DOUBLE_MINUTE_FAMILY は
-    # CompiledPatterns::SINGLE_MINUTE_FAMILY 等を参照
+    # ミニュート（ノノカギ）化する記号定義
+    SINGLE_MINUTE_FAMILY = %!‘’'!
+    DOUBLE_MINUTE_FAMILY = %!“”〝〟"!
 
     #
     # 特定の表現・記号を変換していく
@@ -35,8 +35,8 @@ class ConverterBase
     #
     def symbols_to_zenkaku(data)
       # MEMO: シングルミニュートを表示出来るフォントはほとんど無いためダブルにする
-      data.gsub!(@patterns[:single_minute_pattern], "〝\\1〟")
-      data.gsub!(@patterns[:double_minute_pattern], "〝\\1〟")
+      data.gsub!(/[#{SINGLE_MINUTE_FAMILY}]([^"\n]+?)[#{SINGLE_MINUTE_FAMILY}]/, "〝\\1〟")
+      data.gsub!(/[#{DOUBLE_MINUTE_FAMILY}]([^"\n]+?)[#{DOUBLE_MINUTE_FAMILY}]/, "〝\\1〟")
       data.tr!("-=+/*《》'\"%$#&!?<>＜＞()|‐,._;:\[\]{}",
                "－＝＋／＊≪≫'〝％＄＃＆！？〈〉〈〉（）｜－，．＿；：［］｛｝")
       data.gsub!("\\", "￥")
@@ -58,7 +58,7 @@ class ConverterBase
       # AozoraEPUB3の縦中横設定を使えば明示的に注記を使う必要はないが、
       # 見出しの中では自動で縦中横にはならないため、明示的指定をしておく
       # 事前に !? は全角にしておく
-      data.gsub!(@patterns[:exclamation_only]) do |match|
+      data.gsub!(/！+/) do |match|
         if "#{$`[-1]}#{$'[0]}".include?("？")
           next match
         end
@@ -73,7 +73,7 @@ class ConverterBase
           match
         end
       end
-      data.gsub!(@patterns[:exclamation_or_question]) do |match|
+      data.gsub!(/[！？]+/) do |match|
         case match.length
         when 2
           tcy(match.tr("！？", "!?"))
