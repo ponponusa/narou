@@ -1,3 +1,11 @@
 {
-  "astro.language-server.ls-path": "./frontend/"
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/CVS": true,
+    "**/frontend/**": true
+  }
 }

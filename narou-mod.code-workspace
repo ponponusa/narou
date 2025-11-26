@@ -1,0 +1,27 @@
+{
+  "folders": [
+    {
+      "name": "Backend (Ruby)",
+      "path": ".", // リポジトリルート
+    },
+    {
+      "name": "Frontend (Astro)",
+      "path": "frontend" // フロントエンドディレクトリ
+    }
+  ],
+  "settings": {
+    // 全体共通の設定（Gitなど）
+    "files.exclude": {
+      "**/.git": true,
+      "**/.DS_Store": true
+    }
+  },
+  // ▼ ここが重要：フォルダごとの設定オーバーライドが可能
+  "extensions": {
+    "recommendations": [
+      "astro-build.astro-vscode",
+      "svelte.svelte-vscode",
+      "shopify.ruby-lsp"
+    ]
+  }
+}
