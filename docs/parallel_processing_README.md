@@ -5,12 +5,15 @@
 ## Quick Start
 
 ```bash
-# 並列処理を有効化（100話以上の小説で自動的に高速化）
-export NAROU_PARALLEL_CONVERT=true
-export NAROU_PARALLEL_USE_PROCESSES=true
+# 並列処理はデフォルトで有効（100話以上の小説で自動的に高速化）
+bundle exec ruby narou.rb convert <小説 ID>
 
-bundle exec ruby narou.rb convert <小説ID>
+# 無効化する場合
+export NAROU_PARALLEL_CONVERT=false
+bundle exec ruby narou.rb convert <小説 ID>
 ```
+
+**注意**: Windows環境では自動的にスレッドベース並列化に切り替わります。
 
 ## Performance
 
@@ -37,11 +40,12 @@ bundle exec ruby narou.rb convert <小説ID>
 ## Configuration
 
 ```bash
-# 必須: 並列処理を有効化
-export NAROU_PARALLEL_CONVERT=true
+# 並列処理の制御（デフォルト: 有効）
+export NAROU_PARALLEL_CONVERT=false  # 無効化する場合のみ設定
 
-# 推奨: プロセスベース並列化（CPU効率向上）
-export NAROU_PARALLEL_USE_PROCESSES=true
+# プロセスベースの制御（デフォルト: Windows以外で有効）
+export NAROU_PARALLEL_USE_PROCESSES=false  # 明示的にスレッドベースにする
+export NAROU_PARALLEL_USE_PROCESSES=true   # Windowsでも強制的にプロセスベースにする（非推奨）
 
 # オプション: 並列度（デフォルト: CPUコア数）
 export NAROU_PARALLEL_THREADS=4
@@ -49,9 +53,20 @@ export NAROU_PARALLEL_THREADS=4
 # オプション: チャンクサイズ（デフォルト: 1000）
 export NAROU_CHUNK_SIZE=1000
 
+# オプション: 並列処理の閾値（デフォルト: 10エピソード）
+export NAROU_PARALLEL_THRESHOLD=10
+
 # オプション: デバッグ出力
 export NAROU_DEBUG=1
 ```
+
+### プラットフォーム別の振る舞い
+
+| 環境 | デフォルト動作 | 備考 |
+|------|------------|------|
+| Linux/macOS | プロセスベース並列 | GIL回避で高速 |
+| Windows | スレッドベース並列 | Parallel gemの制約 |
+| WSL | プロセスベース並列 | Linuxと同様 |
 
 ## Requirements
 

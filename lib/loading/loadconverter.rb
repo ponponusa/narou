@@ -65,7 +65,7 @@ def load_converter(archive_path)
     # rubocop:disable Security/Eval
     # ユーザーがローカルに作成したconverter.rbを読み込む。
     # このファイルはユーザー自身が管理するため、信頼できるソースとして扱う。
-    eval(File.read(converter_path, mode: "r:BOM|UTF-8"), binding, converter_path)
+    eval(File.read(converter_path, mode: "r:BOM|UTF-8"), TOPLEVEL_BINDING, converter_path)
     # rubocop:enable Security/Eval
   else
     return BlankConverter

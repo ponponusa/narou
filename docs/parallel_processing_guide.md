@@ -10,11 +10,17 @@ narou-modに、大量エピソード変換の並列処理機能を追加しま�
 ### 基本使用（推奨）
 
 ```bash
-# 並列処理を有効化（自動でCPUコア数を検出）
-export NAROU_PARALLEL_CONVERT=true
-export NAROU_PARALLEL_USE_PROCESSES=true
+# 並列処理はデフォルトで有効（100話以上の小説で自動的に高速化）
+bundle exec ruby narou.rb convert <ID>
+
+# 無効化する場合
+export NAROU_PARALLEL_CONVERT=false
 bundle exec ruby narou.rb convert <ID>
 ```
+
+**注意**:
+- Linux/macOS: 自動的にプロセスベース並列化（高速）
+- Windows: 自動的にスレッドベース並列化（Parallel gemの制約）
 
 ### カスタム設定
 
@@ -30,11 +36,12 @@ bundle exec ruby narou.rb convert <ID>
 
 | 変数名 | 説明 | デフォルト値 | 推奨値 |
 |--------|------|-------------|--------|
-| `NAROU_PARALLEL_CONVERT` | 並列処理を有効化 | `false` | `true` (100話以上の小説で推奨) |
-| `NAROU_PARALLEL_USE_PROCESSES` | プロセスベース並列化 | `false` | `true` (CPU効率向上) |
-| `NAROU_PARALLEL_THREADS` | 並列度 | `CPUコア数` | `2`〜`CPUコア数` |
+| `NAROU_PARALLEL_CONVERT` | 並列処理を制御 | `true` (有効) | `true` (100話以上で推奨) |
+| `NAROU_PARALLEL_USE_PROCESSES` | プロセスベース制御 | Windows以外で`true` | 環境に任せる |
+| `NAROU_PARALLEL_THREADS` | 並列度 | `CPUコア数` | `2`～`CPUコア数` |
 | `NAROU_PARALLEL_CHUNKED` | チャンクベース処理 | `true` | `true` (デフォルト有効) |
-| `NAROU_CHUNK_SIZE` | チャンクサイズ | `1000` | `500`〜`2000` (ベンチマーク済み) |
+| `NAROU_CHUNK_SIZE` | チャンクサイズ | `1000` | `500`～`2000` (ベンチマーク済み) |
+| `NAROU_PARALLEL_THRESHOLD` | 並列化閾値 | `10` | `10` (エピソード数) |
 | `NAROU_DEBUG` | デバッグ出力を有効化 | `false` | `1` (動作確認時) |
 
 ## Technical Details
