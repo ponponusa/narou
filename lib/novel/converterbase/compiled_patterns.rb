@@ -95,7 +95,7 @@ class ConverterBase
 
     # 単語版用: スクリプトごとの塊（一気にスキャン）
     WORD_CHUNK_SCANNER = Regexp.union([
-      PATTERNS[:ruby_pattern],
+      /｜.+?》/,               # ルビ
       /[\d０-９]+/,            # 数字
       /[ぁ-んゝゞー]+/,        # ひらがな
       /[ァ-ヶー・]+/,          # カタカナ
@@ -111,9 +111,9 @@ class ConverterBase
     }.freeze
     NAROU_TAG_PATTERN = Regexp.union(NAROU_TAG_REPLACE_MAP.keys)
 
+    # Variation Selector削除用（元コードでは重複していたが、実際には1つで十分）
     DUST_CHAR_REPLACE_MAP = {
-      "︎" => "",
-      "︎" => ""
+      "︎" => ""  # U+FE0E (Variation Selector-15)
     }.freeze
     DUST_CHAR_PATTERN = Regexp.union(DUST_CHAR_REPLACE_MAP.keys)
 
@@ -127,16 +127,6 @@ class ConverterBase
     # ローマ数字変換用（動的パターン生成が必要なため個別定義）
     ROME_NUM_ALPHABET = %w(II III IV VI VII VIII IX ii iii iv vi vii viii ix).freeze
     ROME_NUM = %w(Ⅱ Ⅲ Ⅳ Ⅵ Ⅶ Ⅷ Ⅸ ⅱ ⅲ ⅳ ⅵ ⅶ ⅷ ⅸ).freeze
-    
-    # 単語版用: スクリプトごとの塊（一気にスキャン）
-    WORD_CHUNK_SCANNER = Regexp.union([
-      /｜.+?》/,               # ルビ
-      /[\d０-９]+/,            # 数字
-      /[ぁ-んゝゞー]+/,        # ひらがな
-      /[ァ-ヶー・]+/,          # カタカナ
-      /[Ａ-Ｚａ-ｚA-Za-z ]+/,  # アルファベット
-      /[一-龥朗-鶴]+/          # 漢字
-    ])
     
     # ローマ数字パターンをキャッシュ（初回アクセス時に生成）
     @rome_patterns = nil
