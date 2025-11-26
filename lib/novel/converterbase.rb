@@ -287,7 +287,6 @@ class ConverterBase
   #
   def delete_dust_char(data)
     data.gsub!("︎", "")
-    data.gsub!("︎", "")
   end
 
   #
