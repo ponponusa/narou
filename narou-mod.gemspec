@@ -15,9 +15,6 @@ Encoding.default_external = Encoding::UTF_8
 Gem::Specification.new do |gem|
   gem.name          = "narou-mod"
   gem.version       = ::Narou::VERSION
-  if is_windows
-      gem.platform  = Gem::Platform::CURRENT
-  end
   gem.license       = "MIT"
   gem.authors       = ["whiteleaf7 (original)", "Rumia-Channel (fork from)", "ponponusa (mod maintainer)"]
   gem.email         = ["init0531.usa@gmail.com"]
@@ -43,11 +40,11 @@ Gem::Specification.new do |gem|
 
   tracked_files = `git ls-files`.split("\n").select { |fn| File.exist?(fn) }
   gem.files = tracked_files.reject { |fn| fn =~ %r!^spec/|^"spec! } << Narou.create_git_commit_version
-  
+
   # フロントエンドのビルド成果物を追加（git管理外でも含める）
   frontend_dist = Dir.glob("frontend/dist/**/*").select { |f| File.file?(f) }
   gem.files += frontend_dist if Dir.exist?("frontend/dist")
-  
+
   gem.executables = gem.files.grep(%r!^bin/!).map { |f| File.basename(f) }
 
   gem.add_runtime_dependency 'termcolorlight', '~> 1.0', '>= 1.1.1'
@@ -72,7 +69,7 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'activesupport', '~> 8.0', '>= 8.1.0'
   gem.add_runtime_dependency 'unicode-display_width', '>= 1.5', '< 3.0'
   gem.add_runtime_dependency 'nokogiri', '~> 1.18'
-  
+
   # TUI libraries for enhanced CLI user experience
   gem.add_runtime_dependency 'tty-markdown', '~> 0.7'
   gem.add_runtime_dependency 'tty-spinner', '~> 0.9'
