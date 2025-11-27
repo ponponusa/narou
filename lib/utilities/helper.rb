@@ -15,58 +15,71 @@ require "systemu"
 module Helper
   module_function
 
-  HOST_OS = RbConfig::CONFIG["host_os"]
+  HOST_OS = RbConfig::CONFIG["host_os"].freeze
   FILENAME_LENGTH_LIMIT = 50
   FOLDER_LENGTH_LIMIT = 50
 
-  def in_docker?
-    return false unless File.exist?('/proc/1/cgroup')
-    File.readlines('/proc/1/cgroup').any? { |line| line.include?('/docker/') || line.include?('/lxc/') }
+  # OS判定結果をメモ化（一度だけ計算）
+  def current_os
+    @current_os ||= detect_os
   end
 
+  def detect_os
+    return :docker  if in_docker?
+    return :windows if Gem.win_platform?
+    return :cygwin  if HOST_OS =~ /cygwin/i
+    return :mac     if HOST_OS =~ /darwin/i
+    return :wsl     if wsl_environment?
+    :linux
+  end
+  private_class_method :detect_os
+
+  def in_docker?
+    return false unless File.exist?("/proc/1/cgroup")
+    File.read("/proc/1/cgroup").include?("/docker/") ||
+      File.read("/proc/1/cgroup").include?("/lxc/")
+  rescue Errno::ENOENT, Errno::EACCES
+    false
+  end
+
+  def wsl_environment?
+    return true if ENV.key?("WSL_DISTRO_NAME")
+    File.read("/proc/version").include?("Microsoft")
+  rescue Errno::ENOENT, Errno::EACCES
+    false
+  end
+  private_class_method :wsl_environment?
+
+  # 便利メソッド（後方互換性）
   def os_windows?
-    @@os_is_windows ||= HOST_OS =~ /mswin(?!ce)|mingw|bccwin/i
+    current_os == :windows
   end
 
   def os_mac?
-    @@os_is_mac ||= HOST_OS =~ /darwin/i
+    current_os == :mac
   end
 
   def os_cygwin?
-    @@os_is_cygwin ||= HOST_OS =~ /cygwin/i
+    current_os == :cygwin
   end
 
   def os_wsl?
-    return @@os_is_wsl if defined?(@@os_is_wsl)
-    @@os_is_wsl = begin
-      return true if ENV.key?("WSL_DISTRO_NAME")
-      File.read("/proc/version").include?("Microsoft")
-    rescue Errno::ENOENT, Errno::EACCES
-      false
-    end
+    current_os == :wsl
   end
 
+  def os_linux?
+    current_os == :linux
+  end
+
+  # 後方互換性のためのエイリアス
   def determine_os
-    case
-    when in_docker?
-      :docker
-    when os_windows?
-      :windows
-    when os_mac?
-      :mac
-    when os_cygwin?
-      :cygwin
-    when os_wsl?
-      :wsl
-    else
-      :other
-    end
+    current_os
   end
 
   def engine_jruby?
     @@engine_is_jruby ||= RUBY_ENGINE == "jruby"
   end
-  
+
   if engine_jruby? && os_windows?
     require "extensions/windows"
     def $stdin.getch
@@ -86,8 +99,8 @@ module Helper
   end
 
   def open_directory(path, confirm_message = nil)
-    if confirm_message
-      return unless Narou::Input.confirm(confirm_message, false, false)
+    if confirm_message && !Narou::Input.confirm(confirm_message, false, false)
+      return
     end
     case determine_os
     when :windows
@@ -296,21 +309,19 @@ module Helper
     when :integer
       begin
         result = Integer(value)
-      rescue
+      rescue StandardError
         raise InvalidVariableType, type
       end
     when :float
       begin
         result = Float(value)
-      rescue
+      rescue StandardError
         raise InvalidVariableType, type
       end
     when :directory, :file
-      if File.method("#{type}?").call(value)
-        result = File.expand_path(value)
-      else
-        raise InvalidVariableType, type
-      end
+      raise InvalidVariableType, type unless File.method("#{type}?").call(value)
+      result = File.expand_path(value)
+
     when :string, :select, :multiple
       result = value
     else
@@ -319,7 +330,7 @@ module Helper
     result
   end
 
-  INTEGER_CLASS = RUBY_VERSION >= "2.4.0" ? Integer : Fixnum
+  INTEGER_CLASS = RUBY_VERSION >= "2.4.0" ? Integer : Integer
   TYPE_OF_VALUE = {
     TrueClass => :boolean, FalseClass => :boolean, INTEGER_CLASS => :integer,
     Float => :float, String => :string
@@ -371,7 +382,7 @@ module Helper
     when Time
       date
     when String
-      Time.parse(date.sub(/[\(（].+?[\)）]/, "").tr("年月日時分秒@;", "///::: :")).getlocal
+      Time.parse(date.sub(/[(（].+?[)）]/, "").tr("年月日時分秒@;", "///::: :")).getlocal
     end
   rescue ArgumentError
     nil
@@ -489,7 +500,7 @@ module Helper
       end
       stdout.force_encoding(Encoding::UTF_8)
       stderr.force_encoding(Encoding::UTF_8)
-      return [stdout, stderr, status]
+      [stdout, stderr, status]
     rescue RuntimeError => e
       raise unless e.message.include?("interrupted")
       process_kill(_pid)
@@ -505,7 +516,7 @@ module Helper
       return unless pid
       Process.kill("KILL", pid)
       Process.detach(pid) # 死亡確認しないとゾンビ化する
-    rescue
+    rescue StandardError
     end
   end
 
@@ -520,10 +531,10 @@ module Helper
     @@result_caches = {}
     @@cache_access_order = []
     @@result_cache_access_order = []
-    
+
     # キャッシュサイズ制限（メモリ使用量制限）
-    MAX_CACHE_SIZE = 100  # ファイル数制限
-    MAX_RESULT_CACHE_SIZE = 50  # 結果キャッシュ数制限
+    MAX_CACHE_SIZE = 100 # ファイル数制限
+    MAX_RESULT_CACHE_SIZE = 50 # 結果キャッシュ数制限
 
     DEFAULT_OPTIONS = { mode: "r:BOM|UTF-8" }
 
@@ -543,13 +554,13 @@ module Helper
           @@caches[fullpath] = body
           @@cache_access_order.delete(fullpath)
           @@cache_access_order.push(fullpath)
-          
+
           # キャッシュサイズ制限
           if @@caches.size > MAX_CACHE_SIZE
             oldest = @@cache_access_order.shift
             @@caches.delete(oldest)
           end
-          
+
           return body
         else
           # アクセス順を更新
@@ -575,25 +586,25 @@ module Helper
     #
     def memo(path, options = DEFAULT_OPTIONS, &block)
       @@mutex.synchronize do
-        fail ArgumentError, "need a block" unless block
+        raise ArgumentError, "need a block" unless block
         fullpath = File.expand_path(path)
         key = generate_key(fullpath, block)
         cache = @@result_caches[key]
         if Helper.file_latest?(fullpath) || !cache
           data = File.read(fullpath, **options)
           result = block.call(data)
-          
+
           # 結果キャッシュのLRU実装
           @@result_caches[key] = result
           @@result_cache_access_order.delete(key)
           @@result_cache_access_order.push(key)
-          
+
           # 結果キャッシュサイズ制限
           if @@result_caches.size > MAX_RESULT_CACHE_SIZE
             oldest = @@result_cache_access_order.shift
             @@result_caches.delete(oldest)
           end
-          
+
           return result
         else
           # アクセス順を更新
@@ -637,6 +648,7 @@ module Helper
         end
       end
     end
+
     #
     # キャッシュサイズ情報を取得する（デバッグ用）
     #
@@ -662,7 +674,7 @@ module Helper
           oldest = @@cache_access_order.shift
           @@caches.delete(oldest)
         end
-        
+
         # 結果キャッシュを半分に削減
         target_result_size = (@@result_caches.size * target_size_ratio).to_i
         while @@result_caches.size > target_result_size && !@@result_cache_access_order.empty?

@@ -4,6 +4,9 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+# Windows専用モジュール - 他のプラットフォームでは読み込まない
+return unless Gem.win_platform?
+
 # rubocop:disable Naming/VariableName
 
 require "win32ole"
@@ -39,3 +42,5 @@ class Device
     end
   end
 end
+
+# rubocop:enable Naming/VariableName

@@ -128,9 +128,13 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'csv', '~> 3.3'
   gem.add_runtime_dependency 'rexml', '~> 3.4'
   gem.add_runtime_dependency 'ostruct', '~> 0.6.3'
-  # Ruby 3.5+ で default gem から外れるため明示的に追加
-  gem.add_runtime_dependency 'win32ole', '~> 1.9'    # Windows 専用（他OSでは無視される）
-  gem.add_runtime_dependency 'bootsnap', '~> 1.18', '>= 1.18.6'  # Unix系で高速化（Windowsでは無視される）
+
+  # プラットフォーム固有の依存関係
+  # NOTE: win32ole と bootsnap はネイティブ拡張を含むため、
+  #       gemspec では依存として追加せず、実行時に動的にロードする。
+  #       - win32ole: Windows専用（他OSではビルドエラー）
+  #       - bootsnap: Unix系で高速化（Windowsではオプショナル）
+  #       これらは Gemfile で platform 指定により管理する。
 
   gem.add_development_dependency 'rspec', '~> 3.13'
   gem.add_development_dependency 'rspec-retry', '~> 0.6'

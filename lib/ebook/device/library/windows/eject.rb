@@ -3,6 +3,10 @@
 #
 # Copyright 2013 whiteleaf. All rights reserved.
 #
+
+# Windows専用モジュール - 他のプラットフォームでは読み込まない
+return unless Gem.win_platform?
+
 # rubocop:disable Naming/MethodName
 # rubocop:disable Naming/VariableName
 
@@ -53,7 +57,7 @@ class Device
 
         szVolumeName = szVolumeFormat % cDriveLetter
 
-        hVolume = WinAPI.CreateFile(
+        WinAPI.CreateFile(
           szVolumeName,
           dwAccessFlags,
           FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -62,7 +66,6 @@ class Device
           0,
           NULL
         )
-        hVolume
       end
 
       def lockVolume(hVolume)
@@ -165,3 +168,6 @@ class Device
     end
   end
 end
+
+# rubocop:enable Naming/MethodName
+# rubocop:enable Naming/VariableName

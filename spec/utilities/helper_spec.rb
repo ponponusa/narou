@@ -110,7 +110,7 @@ describe Helper do
     describe ".determine_os" do
       it "returns a symbol representing the OS type" do
         result = Helper.determine_os
-        expect([:docker, :windows, :mac, :cygwin, :wsl, :other]).to include(result)
+        expect([:docker, :windows, :mac, :cygwin, :wsl, :linux]).to include(result)
       end
     end
 
