@@ -2,6 +2,7 @@
 # https://gist.github.com/linyows/ace586b118f87291ed3e
 
 AllCops:
+  NewCops: enable
   Exclude:
     - "小説データ/**/*"
     - "trash/**/*"
@@ -96,13 +97,13 @@ Style/Lambda:
 
 Style/RescueModifier:
   Enabled: false
-    
+
 # 1_000_000 と区切り文字が 2 個以上必要になる場合のみ _ 区切りを必須にする
 Style/NumericLiterals:
   MinDigits: 7
 
 # has_ から始まるメソッドは許可する
-Naming/PredicateName:
+Naming/PredicatePrefix:
   ForbiddenPrefixes:
     - "is_"
     - "have_"

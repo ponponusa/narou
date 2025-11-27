@@ -12,11 +12,13 @@ describe Narou::Input, :show_output do
   before :all do
     $stdout.silent = true
     @original_stdin = $stdin
+    @original_noninteractive = ENV["NAROU_NONINTERACTIVE"]
   end
 
   after :all do
     $stdout.silent = false
     $stdin = @original_stdin
+    ENV["NAROU_NONINTERACTIVE"] = @original_noninteractive
   end
 
   after :each do
@@ -25,6 +27,15 @@ describe Narou::Input, :show_output do
   end
 
   describe ".confirm" do
+    before :each do
+      # 対話型テストのため一時的に非対話モードを解除
+      ENV.delete("NAROU_NONINTERACTIVE")
+    end
+
+    after :each do
+      ENV["NAROU_NONINTERACTIVE"] = @original_noninteractive
+    end
+
     it "y の時 true を返すべき" do
       $stdin = double("$stdin yes", getch: "y", tty?: true)
       expect(Narou::Input.confirm("")).to eq true
@@ -63,8 +74,14 @@ describe Narou::Input, :show_output do
   end
 
   describe ".choose" do
-    before do
+    before :each do
       @choices = { "japanese" => "日本語", "english" => "English", default: "japanese" }
+      # 対話型テストのため一時的に非対話モードを解除
+      ENV.delete("NAROU_NONINTERACTIVE")
+    end
+
+    after :each do
+      ENV["NAROU_NONINTERACTIVE"] = @original_noninteractive
     end
 
     it "japanese を入力された時 japanese を返すべき" do

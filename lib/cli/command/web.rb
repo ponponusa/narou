@@ -6,6 +6,7 @@
 
 require "lib/cli/command/web_legacy"
 require "lib/cli/command/output_helper"
+require "lib/utilities/helper"
 
 module Command
   class Web < CommandBase
@@ -306,37 +307,55 @@ module Command
 
       Command::OutputHelper.info("フロントエンドサーバーを起動しています...")
 
-      # フロントエンドサーバーをバックグラウンドで起動
-      pid = fork do
-        # 新しいプロセスグループを作成（stop時に子プロセスも停止できるようにする）
-        ::Process.setpgid(0, 0)
+      # ログディレクトリを作成
+      log_dir = File.dirname(frontend_log)
+      FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
 
-        Dir.chdir(frontend_dir)
+      if Helper.os_windows?
+        # Windows: spawn を使用してバックグラウンドでプロセスを起動
+        pid = spawn(
+          "npm", "run", "dev",
+          chdir: frontend_dir,
+          in: "NUL",
+          out: [frontend_log, "a"],
+          err: %i(child out),
+          new_pgroup: true
+        )
 
-        # 標準入力・出力・エラーをリダイレクト
-        log_dir = File.dirname(frontend_log)
-        FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
+        # ProcessManagerにプロセス情報を登録
+        @frontend_manager.register_process(pid: pid, port: 4321, metadata: {
+          command: "npm run dev",
+          log_file: frontend_log
+        })
+      else
+        # Unix系: fork を使用してバックグラウンドでプロセスを起動
+        pid = fork do
+          # 新しいプロセスグループを作成（stop時に子プロセスも停止できるようにする）
+          ::Process.setpgid(0, 0)
 
-        # 注意: この時点で親プロセスの$stdoutはNarou::Loggerに置き換わっているため、
-        # オリジナルのSTDOUT, STDERR, STDIN定数を使用する必要がある
-        # rubocop:disable Style/GlobalStdStream
-        STDIN.reopen("/dev/null")
-        STDOUT.reopen(frontend_log, "a")
-        STDERR.reopen(STDOUT)
-        STDOUT.sync = true
-        STDERR.sync = true
-        # rubocop:enable Style/GlobalStdStream
+          Dir.chdir(frontend_dir)
 
-        # npm run dev を実行
-        exec("npm", "run", "dev")
+          # 注意: この時点で親プロセスの$stdoutはNarou::Loggerに置き換わっているため、
+          # オリジナルのSTDOUT, STDERR, STDIN定数を使用する必要がある
+          # rubocop:disable Style/GlobalStdStream
+          STDIN.reopen("/dev/null")
+          STDOUT.reopen(frontend_log, "a")
+          STDERR.reopen(STDOUT)
+          STDOUT.sync = true
+          STDERR.sync = true
+          # rubocop:enable Style/GlobalStdStream
+
+          # npm run dev を実行
+          exec("npm", "run", "dev")
+        end
+
+        # ProcessManagerにプロセス情報を登録（プロセスグループIDを記録）
+        @frontend_manager.register_process(pid: pid, port: 4321, metadata: {
+          pgid: -pid, # プロセスグループIDは負の値で記録
+          command: "npm run dev",
+          log_file: frontend_log
+        })
       end
-
-      # ProcessManagerにプロセス情報を登録（プロセスグループIDを記録）
-      @frontend_manager.register_process(pid: pid, port: 4321, metadata: {
-        pgid: -pid, # プロセスグループIDは負の値で記録
-        command: "npm run dev",
-        log_file: frontend_log
-      })
 
       # プロセスをデタッチ（親プロセスが終了してもフロントエンドは継続）
       Process.detach(pid)

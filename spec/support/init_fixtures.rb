@@ -39,8 +39,8 @@ def install_fixtures
     FileUtils.rm_r(local_dir, force: true)
     FileUtils.rm_r(novel_data_dir, force: true)
   end
-  FileUtils.cp_r(fixture_narou, root_dir)
-  FileUtils.cp_r(fixture_novel_data, root_dir)
+  FileUtils.cp_r(fixture_narou, local_dir)
+  FileUtils.cp_r(fixture_novel_data, novel_data_dir)
   puts "== Copied fixtures version #{fixture_version}"
 end
 

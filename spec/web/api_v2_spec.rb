@@ -44,12 +44,12 @@ RSpec.describe "Narou::AppServer API v2" do
   describe "GET /api/v2/system/version" do
     it "returns version information with unified format" do
       get "/api/v2/system/version"
-      
+
       expect(last_response).to be_ok
       expect(json_response).to have_key("success")
       expect(json_response).to have_key("data")
       expect(json_response).to have_key("timestamp")
-      
+
       expect(json_response["success"]).to be true
       expect(json_response["data"]).to have_key("narou")
       expect(json_response["data"]).to have_key("ruby")
@@ -57,7 +57,7 @@ RSpec.describe "Narou::AppServer API v2" do
 
     it "includes valid version strings" do
       get "/api/v2/system/version"
-      
+
       expect(last_response).to be_ok
       expect(json_response["data"]["narou"]).to match(/\d+\.\d+\.\d+/)
       expect(json_response["data"]["ruby"]).to match(/\d+\.\d+\.\d+/)
@@ -68,9 +68,9 @@ RSpec.describe "Narou::AppServer API v2" do
     it "returns queue status" do
       allow(Narou::WebWorker.instance).to receive(:size).and_return(2)
       allow(Narou::Worker).to receive(:size).and_return(1)
-      
+
       get "/api/v2/system/queue"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["total"]).to eq(3)
@@ -86,9 +86,9 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(push_server).to receive(:running?).and_return(true)
       allow(push_server).to receive(:port).and_return(33333)
       allow(push_server).to receive(:connections).and_return([])
-      
+
       get "/api/v2/system/status"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]).to have_key("queue")
@@ -97,31 +97,31 @@ RSpec.describe "Narou::AppServer API v2" do
   end
 
   describe "GET /api/v2/novels" do
-    it "returns novel list with pagination" do
+    it "returns novel list with total count" do
       get "/api/v2/novels"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]).to have_key("novels")
-      expect(json_response["data"]).to have_key("pagination")
-      expect(json_response["data"]["pagination"]).to have_key("total")
-      expect(json_response["data"]["pagination"]).to have_key("page")
+      expect(json_response["data"]).to have_key("total")
     end
 
     it "accepts filter parameter" do
       get "/api/v2/novels?filter=test"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
 
-    it "accepts pagination parameters" do
-      get "/api/v2/novels?page=1&per_page=10"
-      
+    it "returns all novels (no server-side pagination)" do
+      # YAMLベースのため、サーバー側ではページネーションせず全データを返す
+      # クライアント側でSvelte 5 Runesを使って処理する設計
+      get "/api/v2/novels"
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
-      expect(json_response["data"]["pagination"]["page"]).to eq(1)
-      expect(json_response["data"]["pagination"]["per_page"]).to eq(10)
+      expect(json_response["data"]["novels"]).to be_an(Array)
+      expect(json_response["data"]["total"]).to be_an(Integer)
     end
   end
 
@@ -134,9 +134,9 @@ RSpec.describe "Narou::AppServer API v2" do
         "title" => "Test Novel",
         "author" => "Test Author"
       })
-      
+
       get "/api/v2/novels/1"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["id"]).to eq(1)
@@ -147,9 +147,9 @@ RSpec.describe "Narou::AppServer API v2" do
       database = instance_double(Database)
       allow(Database).to receive(:instance).and_return(database)
       allow(database).to receive(:[]).with(9999).and_return(nil)
-      
+
       get "/api/v2/novels/9999"
-      
+
       expect(last_response.status).to eq(404)
       expect(json_response["success"]).to be false
     end
@@ -162,9 +162,9 @@ RSpec.describe "Narou::AppServer API v2" do
         "story" => "This is a test story\nWith multiple lines"
       }
       allow(Downloader).to receive(:get_toc_by_target).with("1").and_return(test_toc)
-      
+
       get "/api/v2/novels/1/story"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["title"]).to eq("Test Novel")
@@ -173,9 +173,9 @@ RSpec.describe "Narou::AppServer API v2" do
 
     it "returns 404 when novel does not exist" do
       allow(Downloader).to receive(:get_toc_by_target).with("9999").and_return(nil)
-      
+
       get "/api/v2/novels/9999/story"
-      
+
       expect(last_response.status).to eq(404)
       expect(json_response["success"]).to be false
     end
@@ -186,10 +186,10 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { targets: ["n9669bk"] }.to_json
       post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["targets"]).to eq(["n9669bk"])
@@ -199,16 +199,16 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
       expect(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { targets: ["n9669bk"] }.to_json
       post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
     end
 
     it "returns 400 when targets are missing" do
       post "/api/v2/novels/download", {}.to_json, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
       expect(json_response["error"]).to have_key("code")
@@ -216,7 +216,7 @@ RSpec.describe "Narou::AppServer API v2" do
 
     it "returns 400 for empty targets array" do
       post "/api/v2/novels/download", { targets: [] }.to_json, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -225,10 +225,10 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { targets: ["n9669bk", "n0000xx"] }.to_json
       post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["targets"].length).to eq(2)
@@ -254,10 +254,10 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(CommandLine).to receive(:run!)
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/novels/convert", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       actual = json_response["data"]["ids"]
@@ -269,16 +269,16 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(CommandLine).to receive(:run!)
       expect(NovelListProcessor).to receive(:clear_all_cache).at_least(:once)
-      
+
       payload = { ids: [1] }.to_json
       post "/api/v2/novels/convert", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
     end
 
     it "returns 400 when IDs are missing" do
       post "/api/v2/novels/convert", {}.to_json, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -289,10 +289,10 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/novels/remove", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["ids"]).to eq(["1", "2"])
@@ -302,16 +302,16 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
       expect(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { ids: [1] }.to_json
       post "/api/v2/novels/remove", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
     end
 
     it "returns 400 when IDs are missing" do
       post "/api/v2/novels/remove", {}.to_json, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -322,10 +322,10 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/novels/freeze", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["ids"]).to eq(["1", "2"])
@@ -335,16 +335,16 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(Narou::WebWorker).to receive(:push).and_yield
       allow(CommandLine).to receive(:run!)
       expect(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { ids: [1] }.to_json
       post "/api/v2/novels/freeze", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
     end
 
     it "returns 400 when IDs are missing" do
       post "/api/v2/novels/freeze", {}.to_json, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -354,9 +354,9 @@ RSpec.describe "Narou::AppServer API v2" do
     it "returns tag list" do
       allow(Narou::TagManager).to receive(:get_tag_list).and_return([["tag1", 5], ["tag2", 3]])
       allow(Narou::TagManager).to receive(:get_color).and_return("white")
-      
+
       get "/api/v2/tags"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["tags"]).to be_an(Array)
@@ -366,10 +366,10 @@ RSpec.describe "Narou::AppServer API v2" do
   describe "POST /api/v2/tags/info" do
     it "returns tag info for specified novels" do
       allow(Narou::TagManager).to receive(:get_tag_info).and_return({ "tag1" => 2, "tag2" => 1 })
-      
+
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/tags/info", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]).to have_key("tag_info")
@@ -377,17 +377,17 @@ RSpec.describe "Narou::AppServer API v2" do
 
     it "returns 400 when ids are missing" do
       post "/api/v2/tags/info", {}.to_json, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
 
     it "handles empty ids array" do
       allow(Narou::TagManager).to receive(:get_tag_info).and_return({})
-      
+
       payload = { ids: [] }.to_json
       post "/api/v2/tags/info", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -402,10 +402,10 @@ RSpec.describe "Narou::AppServer API v2" do
         novel_count: 3
       })
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { ids: [1, 2], states: { "tag1" => 2, "tag2" => 0 } }.to_json
       post "/api/v2/tags/edit", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
@@ -413,23 +413,23 @@ RSpec.describe "Narou::AppServer API v2" do
     it "returns 400 when ids are missing" do
       payload = { states: { "tag1" => 2 } }.to_json
       post "/api/v2/tags/edit", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
     end
 
     it "returns 400 when states are missing" do
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/tags/edit", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
     end
 
     it "handles invalid state values" do
       allow(Narou::TagManager).to receive(:edit_tags).and_raise(ArgumentError, "invalid state value")
-      
+
       payload = { ids: [1, 2], states: { "tag1" => 99 } }.to_json
       post "/api/v2/tags/edit", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(500)
       expect(json_response["success"]).to be false
     end
@@ -443,10 +443,10 @@ RSpec.describe "Narou::AppServer API v2" do
         novel_count: 3
       })
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { ids: [1, 2], tags: ["tag1", "tag2"] }.to_json
       post "/api/v2/tags/add", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
@@ -454,7 +454,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "returns 400 when ids are missing" do
       payload = { tags: ["tag1"] }.to_json
       post "/api/v2/tags/add", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -462,7 +462,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "returns 400 when tags are missing" do
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/tags/add", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -476,10 +476,10 @@ RSpec.describe "Narou::AppServer API v2" do
         novel_count: 3
       })
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { ids: [1, 2], tags: ["tag1", "tag2"] }.to_json
       post "/api/v2/tags/delete", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
@@ -487,7 +487,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "returns 400 when ids are missing" do
       payload = { tags: ["tag1"] }.to_json
       post "/api/v2/tags/delete", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -495,7 +495,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "returns 400 when tags are missing" do
       payload = { ids: [1, 2] }.to_json
       post "/api/v2/tags/delete", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -505,10 +505,10 @@ RSpec.describe "Narou::AppServer API v2" do
     it "sets colors for tags" do
       allow(Narou::TagManager).to receive(:set_colors).and_return(true)
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { colors: { "tag1" => "red", "tag2" => "blue" } }.to_json
       post "/api/v2/tags/color", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
@@ -516,7 +516,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "returns 400 when colors are missing" do
       payload = {}.to_json
       post "/api/v2/tags/color", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -529,9 +529,9 @@ RSpec.describe "Narou::AppServer API v2" do
         local: {},
         global: {}
       })
-      
+
       get "/api/v2/settings"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]).to have_key("local")
@@ -543,12 +543,12 @@ RSpec.describe "Narou::AppServer API v2" do
         local: { "key1" => "value1" },
         global: { "key2" => "value2" }
       }
-      
+
       allow(Inventory).to receive(:load).and_return({})
       allow(Command::Setting).to receive(:get_setting_variables).and_return(test_settings)
-      
+
       get "/api/v2/settings"
-      
+
       expect(last_response).to be_ok
       data = json_response["data"]
       expect(data).to have_key("local")
@@ -564,9 +564,9 @@ RSpec.describe "Narou::AppServer API v2" do
       })
       allow(Command::Setting).to receive(:get_setting_tab_names).and_return(["tab1"])
       allow(Command::Setting).to receive(:get_setting_tab_info).and_return({})
-      
+
       get "/api/v2/settings/variables"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]).to have_key("variables")
@@ -583,17 +583,17 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(setting_cmd).to receive(:execute!)
       allow(Inventory).to receive(:clear)
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { settings: { "key1" => "value1" } }.to_json
       put "/api/v2/settings", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
 
     it "returns 400 when settings are missing" do
       put "/api/v2/settings", {}.to_json, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(400)
       expect(json_response["success"]).to be false
     end
@@ -604,7 +604,7 @@ RSpec.describe "Narou::AppServer API v2" do
       database = instance_double(Database)
       allow(Database).to receive(:instance).and_return(database)
       allow(database).to receive(:[]).with(1).and_return({ "id" => 1, "title" => "Test" })
-      
+
       novel_setting = instance_double(NovelSetting)
       allow(NovelSetting).to receive(:new).and_return(novel_setting)
       allow(novel_setting).to receive(:settings=)
@@ -616,9 +616,9 @@ RSpec.describe "Narou::AppServer API v2" do
       ])
       allow(NovelSetting).to receive(:load_force_settings).and_return({})
       allow(NovelSetting).to receive(:load_default_settings).and_return({})
-      
+
       get "/api/v2/novels/1/settings"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]).to have_key("settings")
@@ -628,9 +628,9 @@ RSpec.describe "Narou::AppServer API v2" do
       database = instance_double(Database)
       allow(Database).to receive(:instance).and_return(database)
       allow(database).to receive(:[]).with(9999).and_return(nil)
-      
+
       get "/api/v2/novels/9999/settings"
-      
+
       expect(last_response.status).to eq(404)
       expect(json_response["success"]).to be false
     end
@@ -641,7 +641,7 @@ RSpec.describe "Narou::AppServer API v2" do
       database = instance_double(Database)
       allow(Database).to receive(:instance).and_return(database)
       allow(database).to receive(:[]).with(1).and_return({ "id" => 1 })
-      
+
       novel_setting = instance_double(NovelSetting)
       allow(NovelSetting).to receive(:new).and_return(novel_setting)
       allow(novel_setting).to receive(:settings=)
@@ -649,10 +649,10 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(novel_setting).to receive(:[]=)
       allow(novel_setting).to receive(:save_settings)
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      
+
       payload = { settings: { "author" => "New Author" } }.to_json
       put "/api/v2/novels/1/settings", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
@@ -661,10 +661,10 @@ RSpec.describe "Narou::AppServer API v2" do
       database = instance_double(Database)
       allow(Database).to receive(:instance).and_return(database)
       allow(database).to receive(:[]).with(9999).and_return(nil)
-      
+
       payload = { settings: { "author" => "New Author" } }.to_json
       put "/api/v2/novels/9999/settings", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.status).to eq(404)
       expect(json_response["success"]).to be false
     end
@@ -674,9 +674,9 @@ RSpec.describe "Narou::AppServer API v2" do
     it "cancels current task" do
       allow(Narou::WebWorker).to receive(:cancel)
       allow(Narou::Worker).to receive(:cancel)
-      
+
       post "/api/v2/cancel"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
@@ -686,9 +686,9 @@ RSpec.describe "Narou::AppServer API v2" do
     it "cancels specific task" do
       allow(Narou::WebWorker).to receive(:cancel)
       allow(Narou::Worker).to receive(:cancel)
-      
+
       post "/api/v2/cancel/1"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
     end
@@ -697,9 +697,9 @@ RSpec.describe "Narou::AppServer API v2" do
   describe "POST /api/v2/console/clear" do
     it "clears console history when PushServer is available" do
       allow(push_server).to receive(:clear_history)
-      
+
       post "/api/v2/console/clear"
-      
+
       expect(last_response).to be_ok
       expect(json_response["success"]).to be true
       expect(json_response["data"]["cleared"]).to be true
@@ -709,9 +709,9 @@ RSpec.describe "Narou::AppServer API v2" do
 
     it "returns 503 when PushServer is not available" do
       Narou::AppServer.push_server = nil
-      
+
       post "/api/v2/console/clear"
-      
+
       expect(last_response.status).to eq(503)
       expect(json_response["success"]).to be false
       expect(json_response["error"]["code"]).to eq("PUSH_SERVER_NOT_AVAILABLE")
@@ -721,7 +721,7 @@ RSpec.describe "Narou::AppServer API v2" do
   describe "CORS Headers" do
     it "sets CORS headers for API v2 endpoints" do
       get "/api/v2/system/version"
-      
+
       expect(last_response.headers["access-control-allow-origin"]).to eq("*")
     end
 
@@ -732,7 +732,7 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(NovelListProcessor).to receive(:clear_all_cache)
 
       post "/api/v2/novels/download", payload, { "CONTENT_TYPE" => "application/json" }
-      
+
       expect(last_response.headers["access-control-allow-origin"]).to eq("*")
     end
   end
@@ -775,7 +775,7 @@ RSpec.describe "Narou::AppServer API v2" do
         expect(last_response).to be_ok, "Expected 200 but got #{last_response.status}"
         # send_file が呼ばれたことを確認
         expect(Narou).to have_received(:get_ebook_file_paths).with(novel_id, ".epub")
-        
+
         # ファイル名が "[著者名] タイトル.拡張子" の形式になっていることを確認
         expect(received_filename).to eq("[Test Author] Test Novel.epub")
       end
@@ -830,7 +830,7 @@ RSpec.describe "Narou::AppServer API v2" do
         expect(last_response).to be_ok
         # Kobo用の拡張子でファイルパスが取得されたことを確認
         expect(Narou).to have_received(:get_ebook_file_paths).with(novel_id, ".kepub.epub")
-        
+
         # ファイル名が "[著者名] タイトル.kepub.epub" の形式になっていることを確認
         expect(received_filename).to eq("[Test Author] Test Novel.kepub.epub")
       end

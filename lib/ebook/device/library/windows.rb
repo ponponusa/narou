@@ -7,7 +7,7 @@
 # rubocop:disable Naming/VariableName
 
 require "win32ole"
-require "lib/ebook/extensions/windows"
+require "lib/extensions/windows"
 require "lib/ebook/device/library/windows/eject"
 
 class Device

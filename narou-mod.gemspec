@@ -69,6 +69,7 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'activesupport', '~> 8.0', '>= 8.1.0'
   gem.add_runtime_dependency 'unicode-display_width', '>= 1.5', '< 3.0'
   gem.add_runtime_dependency 'nokogiri', '~> 1.18'
+  gem.add_runtime_dependency 'fiddle', '~> 1.0'
 
   # TUI libraries for enhanced CLI user experience
   gem.add_runtime_dependency 'tty-markdown', '~> 0.7'

@@ -9,7 +9,7 @@ RSpec.describe Command::Web do
     # PIDファイルのクリーンアップ
     pid_dir = File.join(Narou.root_dir, "tmp", "pids")
     FileUtils.rm_f(Dir.glob(File.join(pid_dir, "*.pid"))) if File.exist?(pid_dir)
-    
+
     # OutputHelperのモック（標準出力への出力を抑制）
     allow(Command::OutputHelper).to receive(:setup_logger)
     allow(Command::OutputHelper).to receive(:render)
@@ -27,7 +27,7 @@ RSpec.describe Command::Web do
         # この機能は統合テストレベルで検証する。
         skip "外部ループの完全な動作は統合テストで検証する（$?のモックが不可能なため）"
       end
-      
+
       it "handles restart request (EXIT_REQUEST_REBOOT)" do
         # 同様の理由でskip
         skip "外部ループの再起動ロジックは統合テストレベルで検証する（$?のモックが不可能なため）"
@@ -39,7 +39,7 @@ RSpec.describe Command::Web do
         web_legacy_instance = instance_double(Command::WebLegacy)
         allow(Command::WebLegacy).to receive(:new).and_return(web_legacy_instance)
         expect(web_legacy_instance).to receive(:execute).with(["--legacy"])
-        
+
         command.execute(["--legacy"])
       end
     end
@@ -48,10 +48,10 @@ RSpec.describe Command::Web do
       before do
         # Inventory のモック
         allow(Inventory).to receive(:load).and_return({"server-port" => 5678})
-        
+
         # Helper のモック
         allow(Helper).to receive(:open_browser)
-        
+
         # サーバー起動部分をスキップ
         allow(command).to receive(:start_server)
         allow(command).to receive(:start_frontend)
@@ -61,13 +61,13 @@ RSpec.describe Command::Web do
 
       it "sets up logger with --log-file option" do
         expect(Command::OutputHelper).to receive(:setup_logger).with("app.log")
-        
+
         command.execute(["--internal-boot", "--log-file", "app.log", "--no-browser"])
       end
 
       it "renders startup message" do
         expect(Command::OutputHelper).to receive(:render).with("web_starting", hash_including(:host, :port, :frontend_enabled))
-        
+
         command.execute(["--internal-boot", "--no-browser"])
       end
 
@@ -75,15 +75,15 @@ RSpec.describe Command::Web do
         allow(command).to receive(:start_server) do
           Helper.open_browser("http://localhost:5678/") if command.instance_variable_get(:@options)["open-browser"]
         end
-        
+
         expect(Helper).to receive(:open_browser).with("http://localhost:5678/")
-        
+
         command.execute(["--internal-boot", "--open-browser"])
       end
 
       it "does not open browser by default" do
         expect(Helper).not_to receive(:open_browser)
-        
+
         command.execute(["--internal-boot", "--no-browser"])
       end
     end
@@ -94,10 +94,10 @@ RSpec.describe Command::Web do
       # execute を呼ぶだけでロジックを実行しないようにモック
       allow(command).to receive(:puts)
       allow(Inventory).to receive(:load).and_return({})
-      
+
       # bootメソッドをモックして実際の起動処理を抑制
       allow(command).to receive(:boot)
-      
+
       # systemメソッドをモックして外部ループを抑制
       allow(command).to receive(:system)
     end
@@ -131,11 +131,11 @@ RSpec.describe Command::Web do
       web_legacy = instance_double(Command::WebLegacy)
       allow(Command::WebLegacy).to receive(:new).and_return(web_legacy)
       allow(web_legacy).to receive(:execute)
-      
+
       # --legacy オプションは即座に WebLegacy に委譲されるため、
       # @options には保存されない。委譲が呼ばれたかどうかで確認
       expect(Command::WebLegacy).to receive(:new).and_return(web_legacy)
-      
+
       command.execute(["--legacy"])
     end
   end
@@ -149,51 +149,72 @@ RSpec.describe Command::Web do
       allow(File).to receive(:directory?).with(frontend_dir).and_return(true)
       allow(File).to receive(:exist?).with(File.join(frontend_dir, "package.json")).and_return(true)
       allow(File).to receive(:exist?).with(anything).and_call_original
-      
+
       # ProcessManager のモック
       frontend_manager = instance_double(Narou::ProcessManager)
       allow(frontend_manager).to receive(:register_process)
       command.instance_variable_set(:@frontend_manager, frontend_manager)
-      
+
       # OutputHelper のモック
       allow(Command::OutputHelper).to receive(:info)
       allow(Command::OutputHelper).to receive(:success)
+
+      # FileUtils のモック
+      allow(FileUtils).to receive(:mkdir_p)
     end
 
-    it "uses STDOUT/STDERR/STDIN constants in fork block (not $stdout/$stderr/$stdin)" do
-      # fork をモックして、ブロック内のコードが STDOUT/STDERR/STDIN を使用することを確認
-      # 実際に fork を実行すると子プロセスが作成されてしまうため、モックする
-      
-      # fork が呼ばれたときにブロックを即座に実行する（子プロセスを作らない）
-      block_executed = false
-      allow(command).to receive(:fork) do |&block|
-        # ブロック内で STDOUT が使用されることを検証するため、
-        # STDOUT.reopen が呼ばれることを確認
-        expect(STDOUT).to receive(:reopen).with(frontend_log, "a")
-        expect(STDERR).to receive(:reopen).with(STDOUT)
-        expect(STDIN).to receive(:reopen).with("/dev/null")
-        expect(STDOUT).to receive(:sync=).with(true)
-        expect(STDERR).to receive(:sync=).with(true)
-        
-        # exec は実際には呼ばない（プロセスが置き換わってしまうため）
-        allow(command).to receive(:exec)
-        
-        # ブロックを実行（ただし、実際のプロセス操作はモックされている）
-        begin
-          block.call
-        rescue SystemExit
-          # exec の代わりに exit が呼ばれる可能性があるため、キャッチ
-        end
-        
-        block_executed = true
-        123 # 仮の PID を返す
+    if Helper.os_windows?
+      it "uses spawn on Windows to start frontend server" do
+        # Windows: spawn を使用してバックグラウンドでプロセスを起動
+        expect(command).to receive(:spawn).with(
+          "npm", "run", "dev",
+          hash_including(
+            chdir: frontend_dir,
+            in: "NUL",
+            new_pgroup: true
+          )
+        ).and_return(123)
+
+        allow(Process).to receive(:detach)
+
+        command.send(:start_frontend)
       end
-      
-      allow(Process).to receive(:detach)
-      
-      command.send(:start_frontend)
-      
-      expect(block_executed).to be true
+    else
+      it "uses STDOUT/STDERR/STDIN constants in fork block (not $stdout/$stderr/$stdin)" do
+        # fork をモックして、ブロック内のコードが STDOUT/STDERR/STDIN を使用することを確認
+        # 実際に fork を実行すると子プロセスが作成されてしまうため、モックする
+
+        # fork が呼ばれたときにブロックを即座に実行する（子プロセスを作らない）
+        block_executed = false
+        allow(command).to receive(:fork) do |&block|
+          # ブロック内で STDOUT が使用されることを検証するため、
+          # STDOUT.reopen が呼ばれることを確認
+          expect(STDOUT).to receive(:reopen).with(frontend_log, "a")
+          expect(STDERR).to receive(:reopen).with(STDOUT)
+          expect(STDIN).to receive(:reopen).with("/dev/null")
+          expect(STDOUT).to receive(:sync=).with(true)
+          expect(STDERR).to receive(:sync=).with(true)
+
+          # exec は実際には呼ばない（プロセスが置き換わってしまうため）
+          allow(command).to receive(:exec)
+
+          # ブロックを実行（ただし、実際のプロセス操作はモックされている）
+          begin
+            block.call
+          rescue SystemExit
+            # exec の代わりに exit が呼ばれる可能性があるため、キャッチ
+          end
+
+          block_executed = true
+          123 # 仮の PID を返す
+        end
+
+        allow(Process).to receive(:detach)
+
+        command.send(:start_frontend)
+
+        expect(block_executed).to be true
+      end
     end
   end
 end

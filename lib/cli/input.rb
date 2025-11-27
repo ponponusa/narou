@@ -44,12 +44,14 @@ module Narou
       if defined?(Narou) && Narou.respond_to?(:web?) && Narou.web?
         return nontty_default
       end
+      # 非対話フラグが設定されている場合は即座に nontty_default を返す
+      if _env_non_interactive?
+        return nontty_default
+      end
       # 非TTY（pipe等）は旧挙動どおり nontty_default を返す
       unless _tty?
         return nontty_default
       end
-      # 非対話フラグが立っていても TTY なら対話（RSpecが TTY:true を渡すため）
-      # → 何もしない
 
       prompt = "#{message} (y/n)?: "
       _print(prompt)
@@ -111,6 +113,10 @@ module Narou
     def choose(title, message, choices)
       default_key = choices[:default] || choices.keys.find { |k| k != :default }
 
+      # 非対話フラグが設定されている場合は default を返す
+      if _env_non_interactive?
+        return default_key
+      end
       # 非TTY（pipe/EOF）なら default を返す
       unless _tty?
         return default_key
@@ -140,6 +146,7 @@ module Narou
     # Enter 待ち（TTY のときだけ）
     #
     def pause(message = "続行するには Enter を押してください…")
+      return if _env_non_interactive?
       return unless _tty?
       _puts(message)
       _gets

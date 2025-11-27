@@ -3,18 +3,18 @@ info:
   title: Narou.rb MOD API
   description: |
     Narou.rb MOD の REST API 仕様書です。
-    
+
     ## 概要
-    
+
     このAPIは、小説管理ツール Narou.rb MOD の各種機能をプログラムから操作するためのインターフェースです。
-    
+
     ## バージョニング
-    
+
     - **API v2** (`/api/v2/*`): 最新の RESTful API（推奨）
     - **Legacy API v1** (`/api/*`): 旧 API（非推奨、後方互換性のため提供）
-    
+
     新規開発では必ず API v2 を使用してください。
-    
+
   version: 2.0.0
   contact:
     name: Narou.rb MOD Project
@@ -47,7 +47,7 @@ paths:
   # ========================================
   # System API
   # ========================================
-  
+
   /api/v2/system/version:
     get:
       tags:
@@ -69,7 +69,7 @@ paths:
                   ruby_version: "3.4.7"
                 meta:
                   timestamp: "2025-11-11T00:00:00Z"
-  
+
   /api/v2/system/queue:
     get:
       tags:
@@ -98,7 +98,7 @@ paths:
                       status: queued
                 meta:
                   timestamp: "2025-11-11T00:00:00Z"
-  
+
   /api/v2/system/status:
     get:
       tags:
@@ -122,11 +122,11 @@ paths:
                   uptime_seconds: 3600
                 meta:
                   timestamp: "2025-11-11T00:00:00Z"
-  
+
   # ========================================
   # Tasks API
   # ========================================
-  
+
   /api/v2/tasks:
     get:
       tags:
@@ -177,7 +177,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  
+
   /api/v2/tasks/summary:
     get:
       tags:
@@ -205,7 +205,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  
+
   /api/v2/tasks/{id}:
     get:
       tags:
@@ -246,7 +246,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  
+
   /api/v2/tasks/{id}/cancel:
     post:
       tags:
@@ -291,7 +291,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  
+
   /api/v2/tasks/{id}/pause:
     post:
       tags:
@@ -336,7 +336,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  
+
   /api/v2/tasks/{id}/resume:
     post:
       tags:
@@ -381,11 +381,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  
+
   # ========================================
   # Novels API
   # ========================================
-  
+
   /api/v2/novels:
     get:
       tags:
@@ -393,52 +393,10 @@ paths:
       summary: 小説一覧取得
       description: |
         登録されている小説の一覧を取得します。
-        フィルタリング、ソート、ページネーションをサポートします。
+        YAMLベースのデータストアのため、サーバー側ではページネーションせず全データを返します。
+        クライアント側でSvelte 5 Runesを使って処理する設計です。
+        レスポンスはgzip圧縮されます。
       operationId: getNovels
-      parameters:
-        - name: page
-          in: query
-          description: ページ番号（1から開始）
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - name: per_page
-          in: query
-          description: 1ページあたりの件数
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
-        - name: tag
-          in: query
-          description: タグでフィルタリング（複数指定可）
-          schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
-        - name: frozen
-          in: query
-          description: 凍結状態でフィルタリング
-          schema:
-            type: boolean
-        - name: sort
-          in: query
-          description: ソートキー
-          schema:
-            type: string
-            enum: [id, title, author, updated_at, created_at]
-            default: updated_at
-        - name: order
-          in: query
-          description: ソート順
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: desc
       responses:
         '200':
           description: 成功
@@ -446,9 +404,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NovelsListResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-  
+        '503':
+          description: データベース準備中
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v2/novels/{id}:
     get:
       tags:
@@ -517,7 +479,7 @@ paths:
                       code: EPUB_NOT_FOUND
                       message: "EPUB file not found. Please convert the novel first."
                     timestamp: "2025-11-18T00:00:00Z"
-  
+
   /api/v2/novels/download:
     post:
       tags:
@@ -526,7 +488,7 @@ paths:
       description: |
         指定された小説をダウンロードします。
         WebWorker を通じて非同期で実行されます。
-        
+
         `convert_after_download` オプションを `true` に設定すると、
         ダウンロード完了後に自動的に EPUB 変換が実行されます。
       operationId: downloadNovels
@@ -566,7 +528,7 @@ paths:
                 $ref: '#/components/schemas/AsyncTaskResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
   /api/v2/novels/convert:
     post:
       tags:
@@ -600,7 +562,7 @@ paths:
           $ref: '#/components/responses/AsyncTaskAccepted'
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
   /api/v2/novels/freeze:
     post:
       tags:
@@ -609,7 +571,7 @@ paths:
       description: |
         指定された小説の凍結状態を変更します。
         凍結された小説は自動更新の対象外になります。
-        
+
         - `freeze: true` - 凍結する
         - `freeze: false` - 凍結を解除する
         - パラメータ省略 - 現在の状態をトグル（反転）する
@@ -652,7 +614,7 @@ paths:
                 timestamp: 1699999999
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
   /api/v2/novels/remove:
     post:
       tags:
@@ -690,11 +652,11 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
   # ========================================
   # Tags API
   # ========================================
-  
+
   /api/v2/tags:
     get:
       tags:
@@ -709,7 +671,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TagsListResponse'
-  
+
   /api/v2/tags/info:
     post:
       tags:
@@ -738,7 +700,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TagInfoResponse'
-  
+
   /api/v2/tags/edit:
     post:
       tags:
@@ -761,7 +723,7 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
   /api/v2/tags/color:
     post:
       tags:
@@ -793,11 +755,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
-  
+
   # ========================================
   # Settings API
   # ========================================
-  
+
   /api/v2/settings:
     get:
       tags:
@@ -812,7 +774,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SettingsResponse'
-    
+
     put:
       tags:
         - settings
@@ -834,7 +796,7 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '422':
           $ref: '#/components/responses/ValidationError'
-    
+
     patch:
       tags:
         - settings
@@ -856,7 +818,7 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '422':
           $ref: '#/components/responses/ValidationError'
-  
+
   /api/v2/settings/variables:
     get:
       tags:
@@ -871,11 +833,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SettingsVariablesResponse'
-  
+
   # ========================================
   # Novel Settings API
   # ========================================
-  
+
   /api/v2/novels/{id}/settings:
     get:
       tags:
@@ -894,7 +856,7 @@ paths:
                 $ref: '#/components/schemas/NovelSettingsResponse'
         '404':
           $ref: '#/components/responses/NotFound'
-    
+
     put:
       tags:
         - novel-settings
@@ -935,7 +897,7 @@ components:
       schema:
         type: string
       example: "1"
-  
+
   schemas:
     # Base Response Schemas
     BaseResponse:
@@ -961,7 +923,7 @@ components:
               type: string
               format: uuid
               description: リクエストID（デバッグ用）
-    
+
     SuccessResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -975,7 +937,7 @@ components:
                 message:
                   type: string
                   description: 成功メッセージ
-    
+
     ErrorResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -998,7 +960,7 @@ components:
                 details:
                   type: object
                   description: エラー詳細
-    
+
     # System Schemas
     VersionResponse:
       allOf:
@@ -1014,7 +976,7 @@ components:
                 ruby_version:
                   type: string
                   description: Ruby バージョン
-    
+
     QueueResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -1033,7 +995,7 @@ components:
                   type: array
                   items:
                     $ref: '#/components/schemas/Task'
-    
+
     StatusResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -1050,7 +1012,7 @@ components:
                   type: boolean
                 uptime_seconds:
                   type: integer
-    
+
     Task:
       type: object
       properties:
@@ -1062,7 +1024,7 @@ components:
         status:
           type: string
           enum: [queued, running, completed, failed]
-    
+
     # Task Schemas
     Task:
       type: object
@@ -1157,7 +1119,7 @@ components:
         progress: 45.5
         total_steps: 100
         current_step: 45
-    
+
     TaskSummary:
       type: object
       properties:
@@ -1179,7 +1141,7 @@ components:
           items:
             $ref: '#/components/schemas/Task'
           description: 最近失敗したタスク一覧（最大10件）
-    
+
     # Novel Schemas
     Novel:
       type: object
@@ -1227,32 +1189,26 @@ components:
           type: string
           format: date-time
           description: 作成日時
-    
+
     NovelsListResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
         - type: object
           properties:
             data:
-              type: array
-              items:
-                $ref: '#/components/schemas/Novel'
-            meta:
               type: object
+              description: |
+                YAMLベースのデータストアのため、サーバー側ではページネーションせず全データを返します。
+                クライアント側でSvelte 5 Runesを使って処理する設計です。
               properties:
+                novels:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Novel'
                 total:
                   type: integer
                   description: 全件数
-                count:
-                  type: integer
-                  description: 取得件数
-                page:
-                  type: integer
-                  description: 現在のページ
-                per_page:
-                  type: integer
-                  description: 1ページあたりの件数
-    
+
     NovelResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -1260,7 +1216,7 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/Novel'
-    
+
     AsyncTaskResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -1277,7 +1233,7 @@ components:
                   enum: [queued, running]
                 message:
                   type: string
-    
+
     # Tag Schemas
     Tag:
       type: object
@@ -1291,7 +1247,7 @@ components:
         color:
           type: string
           description: 表示色クラス
-    
+
     TagsListResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -1301,7 +1257,7 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Tag'
-    
+
     TagInfoResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -1321,7 +1277,7 @@ components:
                   state:
                     type: integer
                     description: 0=なし, 1=全て, 2=一部
-    
+
     TagEditRequest:
       type: object
       required:
@@ -1339,7 +1295,7 @@ components:
             type: integer
             enum: [0, 1]
           description: タグ名とその状態（0=削除、1=追加）
-    
+
     # Settings Schemas
     SettingsResponse:
       allOf:
@@ -1350,17 +1306,17 @@ components:
               type: object
               additionalProperties: true
               description: 設定値（キー・バリュー）
-    
+
     SettingsUpdateRequest:
       type: object
       additionalProperties: true
       description: 更新する設定値
-    
+
     SettingsPatchRequest:
       type: object
       additionalProperties: true
       description: 部分更新する設定値
-    
+
     SettingsVariablesResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -1385,7 +1341,7 @@ components:
                     items:
                       type: string
                     description: select型の場合の選択肢
-    
+
     # Novel Settings Schemas
     NovelSettingsResponse:
       allOf:
@@ -1396,12 +1352,12 @@ components:
               type: object
               additionalProperties: true
               description: 小説個別設定
-    
+
     NovelSettingsUpdateRequest:
       type: object
       additionalProperties: true
       description: 更新する設定値
-  
+
   responses:
     BadRequest:
       description: リクエストパラメータ不正
@@ -1416,7 +1372,7 @@ components:
               message: リクエストパラメータが不正です
             meta:
               timestamp: "2025-11-11T00:00:00Z"
-    
+
     NotFound:
       description: リソースが存在しない
       content:
@@ -1430,7 +1386,7 @@ components:
               message: 指定されたリソースが見つかりません
             meta:
               timestamp: "2025-11-11T00:00:00Z"
-    
+
     ValidationError:
       description: バリデーションエラー
       content:
@@ -1447,7 +1403,7 @@ components:
                 reason: 必須項目です
             meta:
               timestamp: "2025-11-11T00:00:00Z"
-    
+
     AsyncTaskAccepted:
       description: 受付成功（非同期処理開始）
       content:
