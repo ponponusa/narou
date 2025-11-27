@@ -10,6 +10,13 @@
 # ルートページ、CSS、Astroアセット、faviconなどの配信ロジックを集約
 #
 module StaticFileRoutes
+  # フロントエンドのdistディレクトリのパスを返す
+  # gem環境と開発環境の両方に対応
+  # Narou.script_dir は gem のインストールディレクトリを指す
+  def self.frontend_dist_dir
+    @frontend_dist_dir ||= File.join(Narou.script_dir, "frontend", "dist")
+  end
+
   def self.registered(app)
     #
     # ルートページ配信
@@ -26,19 +33,9 @@ module StaticFileRoutes
         haml :index, layout: true
       else
         # New Astro UI
-        # 開発環境のパス
-        dev_index_path = "../frontend/dist/index.html"
+        index_path = File.join(StaticFileRoutes.frontend_dist_dir, "index.html")
 
-        # gem環境のパス
-        gem_index_path = "../frontend/dist/index.html"
-
-        index_path = if File.exist?(dev_index_path)
-                       dev_index_path
-                     elsif File.exist?(gem_index_path)
-                       gem_index_path
-                     end
-
-        if index_path && File.exist?(index_path)
+        if File.exist?(index_path)
           send_file index_path
         else
           halt 500, "Frontend not built. Run 'cd frontend && npm run build' first."
@@ -63,22 +60,10 @@ module StaticFileRoutes
     #
     app.get "/_astro/*" do
       unless self.class.legacy_mode?
-        # 開発環境とgem環境の両方に対応
         asset_filename = params["splat"].first
+        asset_path = File.join(StaticFileRoutes.frontend_dist_dir, "_astro", asset_filename)
 
-        # 開発環境のパス
-        dev_asset_path = File.join("frontend/dist/_astro", asset_filename)
-
-        # gem環境のパス
-        gem_asset_path = File.join("frontend/dist/_astro", asset_filename)
-
-        asset_path = if File.exist?(dev_asset_path)
-                       dev_asset_path
-                     elsif File.exist?(gem_asset_path)
-                       gem_asset_path
-                     end
-
-        if asset_path && File.exist?(asset_path)
+        if File.exist?(asset_path)
           send_file asset_path
         else
           halt 404
@@ -93,25 +78,51 @@ module StaticFileRoutes
     #
     app.get "/favicon.svg" do
       unless self.class.legacy_mode?
-        # 開発環境のパス
-        dev_favicon_path = "frontend/dist/favicon.svg"
+        favicon_path = File.join(StaticFileRoutes.frontend_dist_dir, "favicon.svg")
 
-        # gem環境のパス
-        gem_favicon_path = "frontend/dist/favicon.svg"
-
-        favicon_path = if File.exist?(dev_favicon_path)
-                         dev_favicon_path
-                       elsif File.exist?(gem_favicon_path)
-                         gem_favicon_path
-                       end
-
-        if favicon_path && File.exist?(favicon_path)
+        if File.exist?(favicon_path)
           send_file favicon_path
         else
           halt 404
         end
       else
         halt 404
+      end
+    end
+
+    #
+    # ロゴアイコン配信
+    #
+    app.get "/logo_icon.svg" do
+      unless self.class.legacy_mode?
+        logo_path = File.join(StaticFileRoutes.frontend_dist_dir, "logo_icon.svg")
+
+        if File.exist?(logo_path)
+          send_file logo_path
+        else
+          halt 404
+        end
+      else
+        halt 404
+      end
+    end
+
+    #
+    # Astro サブページ配信（help, settings, tasks など）
+    #
+    %w[help settings settings-debug tasks].each do |page|
+      app.get "/#{page}" do
+        unless self.class.legacy_mode?
+          page_path = File.join(StaticFileRoutes.frontend_dist_dir, page, "index.html")
+
+          if File.exist?(page_path)
+            send_file page_path
+          else
+            halt 404
+          end
+        else
+          halt 404
+        end
       end
     end
   end

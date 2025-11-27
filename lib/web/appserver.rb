@@ -46,15 +46,15 @@ require "lib/web/api/documentation"
 
 # ルートモジュールを遅延ロード（密結合回避）
 module Narou
-  autoload :WidgetRoutes, "web/routes/widget"
+  autoload :WidgetRoutes, "lib/web/routes/widget"
 end
 
 class Narou::AppServer < Sinatra::Base
   # ルートモジュール（Narou::以外）を遅延ロード
-  autoload :StaticFileRoutes, "web/routes/static_file"
-  autoload :SystemManagementRoutes, "web/routes/system_management"
-  autoload :SettingsRoutes, "web/routes/settings"
-  autoload :NovelsRoutes, "web/routes/novels"
+  autoload :StaticFileRoutes, "lib/web/routes/static_file"
+  autoload :SystemManagementRoutes, "lib/web/routes/system_management"
+  autoload :SettingsRoutes, "lib/web/routes/settings"
+  autoload :NovelsRoutes, "lib/web/routes/novels"
 
   register Sinatra::Reloader if $development
   helpers Narou::ServerHelpers
