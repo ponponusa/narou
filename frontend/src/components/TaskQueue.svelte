@@ -1,6 +1,6 @@
 <!--
   タスクキュー専用ページコンポーネント
-  
+
   サーバータスクの詳細一覧と管理UI
   - フィルタリング機能
   - ソート機能
@@ -8,49 +8,56 @@
   - タスク操作（キャンセル、一時停止、再開）
 -->
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { getPushServer, type EchoMessage } from '../lib/pushserver';
-  import { 
-    getTasks, 
+  import { onMount, onDestroy } from "svelte";
+  import { getPushServer, type EchoMessage } from "../lib/pushserver";
+  import {
+    getTasks,
     getTaskSummary,
-    cancelTaskById, 
-    pauseTask, 
+    cancelTaskById,
+    pauseTask,
     resumeTask,
-    type Task, 
+    type Task,
     type TaskSummary,
-    type TaskStatus 
-  } from '../lib/api';
+    type TaskStatus,
+  } from "../lib/api";
 
   // フィルタ・ソート設定
   // 実際に適用されるフィルタ（検索ボタン押下時に反映）
-  let searchText = $state('');
-  let statusFilter = $state<TaskStatus | ''>('');
-  
+  let searchText = $state("");
+  let statusFilter = $state<TaskStatus | "">("");
+
   // フォーム入力中の一時的な値
-  let draftSearchText = $state('');
-  let draftStatusFilter = $state<TaskStatus | ''>('');
-  
+  let draftSearchText = $state("");
+  let draftStatusFilter = $state<TaskStatus | "">("");
+
   // フィルタ処理中フラグ
   let isFiltering = $state(false);
-  
-  let sortBy = $state<'created_at' | 'started_at' | 'status' | 'novel_id' | 'novel_title' | 'novel_author'>('status');
-  let sortOrder = $state<'asc' | 'desc'>('desc');
-  
+
+  let sortBy = $state<
+    | "created_at"
+    | "started_at"
+    | "status"
+    | "novel_id"
+    | "novel_title"
+    | "novel_author"
+  >("status");
+  let sortOrder = $state<"asc" | "desc">("desc");
+
   // ページング設定
   let currentPage = $state(1);
   let itemsPerPage = $state(20);
-  
+
   // タスクデータ
   let allTasks = $state<Task[]>([]);
   let taskSummary = $state<TaskSummary | null>(null);
-  
+
   // ローディング状態
   let isLoading = $state(true);
   let error = $state<string | null>(null);
-  
+
   // 定期更新タイマー
   let updateTimer: ReturnType<typeof setInterval> | null = null;
-  
+
   // PushServer接続
   let pushServerUnsubscribe: (() => void) | null = null;
 
@@ -58,60 +65,61 @@
   // ステップ1: フィルタリング
   const filteredTasks = $derived.by(() => {
     let tasks = allTasks;
-    
+
     // テキスト検索フィルタ
     if (searchText.trim()) {
       const search = searchText.toLowerCase();
-      tasks = tasks.filter(t => 
-        t.novel_id?.toString().includes(search) ||
-        t.novel_title?.toLowerCase().includes(search) ||
-        t.novel_author?.toLowerCase().includes(search)
+      tasks = tasks.filter(
+        (t) =>
+          t.novel_id?.toString().includes(search) ||
+          t.novel_title?.toLowerCase().includes(search) ||
+          t.novel_author?.toLowerCase().includes(search)
       );
     }
-    
+
     // ステータスフィルタ
     if (statusFilter) {
-      tasks = tasks.filter(t => t.status === statusFilter);
+      tasks = tasks.filter((t) => t.status === statusFilter);
     }
-    
+
     return tasks;
   });
 
   // ステップ2: ソート
   const sortedTasks = $derived.by(() => {
     const tasks = [...filteredTasks];
-    
+
     tasks.sort((a, b) => {
       let aVal: any;
       let bVal: any;
-      
-      if (sortBy === 'created_at') {
+
+      if (sortBy === "created_at") {
         aVal = new Date(a.created_at).getTime();
         bVal = new Date(b.created_at).getTime();
-      } else if (sortBy === 'started_at') {
+      } else if (sortBy === "started_at") {
         aVal = a.started_at ? new Date(a.started_at).getTime() : 0;
         bVal = b.started_at ? new Date(b.started_at).getTime() : 0;
-      } else if (sortBy === 'status') {
+      } else if (sortBy === "status") {
         aVal = a.status;
         bVal = b.status;
-      } else if (sortBy === 'novel_id') {
+      } else if (sortBy === "novel_id") {
         aVal = a.novel_id || 0;
         bVal = b.novel_id || 0;
-      } else if (sortBy === 'novel_title') {
-        aVal = a.novel_title || '';
-        bVal = b.novel_title || '';
-      } else if (sortBy === 'novel_author') {
-        aVal = a.novel_author || '';
-        bVal = b.novel_author || '';
+      } else if (sortBy === "novel_title") {
+        aVal = a.novel_title || "";
+        bVal = b.novel_title || "";
+      } else if (sortBy === "novel_author") {
+        aVal = a.novel_author || "";
+        bVal = b.novel_author || "";
       }
-      
-      if (sortOrder === 'asc') {
+
+      if (sortOrder === "asc") {
         return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       } else {
         return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
       }
     });
-    
+
     return tasks;
   });
 
@@ -134,18 +142,18 @@
     try {
       isLoading = true;
       error = null;
-      
+
       // 全タスクを取得（gzip圧縮済み）
       const tasks = await getTasks();
       allTasks = tasks;
-      
+
       // サマリーも取得
       taskSummary = await getTaskSummary();
-      
+
       // $derivedが自動的にフィルタ・ソート・ページングを再計算
     } catch (err) {
-      console.error('[TaskQueuePage] Failed to fetch tasks:', err);
-      error = 'タスクの取得に失敗しました';
+      console.error("[TaskQueuePage] Failed to fetch tasks:", err);
+      error = "タスクの取得に失敗しました";
     } finally {
       isLoading = false;
     }
@@ -157,11 +165,11 @@
   function handleColumnSort(column: typeof sortBy) {
     if (sortBy === column) {
       // 同じカラムをクリックした場合は順序を反転
-      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      sortOrder = sortOrder === "asc" ? "desc" : "asc";
     } else {
       // 異なるカラムをクリックした場合は降順から開始
       sortBy = column;
-      sortOrder = 'desc';
+      sortOrder = "desc";
     }
     currentPage = 1; // ソート変更時は先頭ページへ
     // $derivedが自動的に再計算するのでapplyFiltersAndSort不要
@@ -173,29 +181,29 @@
   function handleSearch() {
     // フィルタ処理中フラグをON
     isFiltering = true;
-    
+
     // 少し遅延させてスピナーを表示
     setTimeout(() => {
       // draft変数から実際のフィルタ変数に反映
       searchText = draftSearchText;
       statusFilter = draftStatusFilter;
       currentPage = 1; // 最初のページに戻る
-      
+
       // フィルタ処理完了後、次のフレームでスピナーをOFF
       requestAnimationFrame(() => {
         isFiltering = false;
       });
     }, 10);
   }
-  
+
   /**
    * フィルタクリア
    */
   function clearFilters() {
-    draftSearchText = '';
-    draftStatusFilter = '';
-    searchText = '';
-    statusFilter = '';
+    draftSearchText = "";
+    draftStatusFilter = "";
+    searchText = "";
+    statusFilter = "";
     currentPage = 1;
   }
 
@@ -213,12 +221,12 @@
    */
   function getStatusLabel(status: TaskStatus): string {
     const labels: Record<TaskStatus, string> = {
-      queued: '待機中',
-      running: '実行中',
-      paused: '一時停止',
-      completed: '完了',
-      failed: '失敗',
-      canceled: 'キャンセル',
+      queued: "待機中",
+      running: "実行中",
+      paused: "一時停止",
+      completed: "完了",
+      failed: "失敗",
+      canceled: "キャンセル",
     };
     return labels[status] || status;
   }
@@ -228,28 +236,28 @@
    */
   function getStatusClass(status: TaskStatus): string {
     const classes: Record<TaskStatus, string> = {
-      queued: 'bg-gray-500',
-      running: 'bg-blue-500 animate-pulse',
-      paused: 'bg-yellow-500',
-      completed: 'bg-green-500',
-      failed: 'bg-red-500',
-      canceled: 'bg-gray-400',
+      queued: "bg-gray-500",
+      running: "bg-blue-500 animate-pulse",
+      paused: "bg-yellow-500",
+      completed: "bg-green-500",
+      failed: "bg-red-500",
+      canceled: "bg-gray-400",
     };
-    return classes[status] || 'bg-gray-500';
+    return classes[status] || "bg-gray-500";
   }
 
   /**
    * タスクをキャンセル
    */
   async function handleCancelTask(taskId: string) {
-    if (!confirm('このタスクをキャンセルしますか？')) return;
-    
+    if (!confirm("このタスクをキャンセルしますか？")) return;
+
     try {
       await cancelTaskById(taskId);
       await fetchTasks();
     } catch (err) {
-      console.error('タスクのキャンセルに失敗:', err);
-      alert('タスクのキャンセルに失敗しました');
+      console.error("タスクのキャンセルに失敗:", err);
+      alert("タスクのキャンセルに失敗しました");
     }
   }
 
@@ -261,8 +269,8 @@
       await pauseTask(taskId);
       await fetchTasks();
     } catch (err) {
-      console.error('タスクの一時停止に失敗:', err);
-      alert('タスクの一時停止に失敗しました');
+      console.error("タスクの一時停止に失敗:", err);
+      alert("タスクの一時停止に失敗しました");
     }
   }
 
@@ -274,8 +282,8 @@
       await resumeTask(taskId);
       await fetchTasks();
     } catch (err) {
-      console.error('タスクの再開に失敗:', err);
-      alert('タスクの再開に失敗しました');
+      console.error("タスクの再開に失敗:", err);
+      alert("タスクの再開に失敗しました");
     }
   }
 
@@ -283,15 +291,15 @@
    * 日時フォーマット
    */
   function formatDateTime(dateString: string | undefined): string {
-    if (!dateString) return '-';
+    if (!dateString) return "-";
     const date = new Date(dateString);
-    return date.toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
+    return date.toLocaleString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
     });
   }
 
@@ -301,10 +309,10 @@
   onMount(async () => {
     // 初回データ取得
     await fetchTasks();
-    
+
     // 定期更新（5秒ごと）
     updateTimer = setInterval(fetchTasks, 5000);
-    
+
     // PushServer通知を購読
     const pushServer = getPushServer();
     if (pushServer) {
@@ -312,8 +320,9 @@
         // notification.task.updated イベントをリッスン
         fetchTasks();
       };
-      pushServer.on('notification.task.updated', listener);
-      pushServerUnsubscribe = () => pushServer.off('notification.task.updated', listener);
+      pushServer.on("notification.task.updated", listener);
+      pushServerUnsubscribe = () =>
+        pushServer.off("notification.task.updated", listener);
     }
   });
 
@@ -325,7 +334,7 @@
       clearInterval(updateTimer);
       updateTimer = null;
     }
-    
+
     if (pushServerUnsubscribe) {
       pushServerUnsubscribe();
       pushServerUnsubscribe = null;
@@ -335,10 +344,12 @@
 
 <div class="container mx-auto px-4 py-6 max-w-7xl">
   <!-- ページヘッダー -->
-  <div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+  <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:gap-4">
+    <h1
+      class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"
+    >
       <svg
-        class="w-8 h-8 inline-block align-text-top"
+        class="w-8 h-8 flex-shrink-0"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -352,7 +363,7 @@
       </svg>
       タスクキュー管理
     </h1>
-    <p class="text-gray-600 dark:text-gray-400">
+    <p class="text-gray-600 dark:text-gray-400 mt-1 sm:mt-0">
       サーバータスクの詳細一覧と管理
     </p>
   </div>
@@ -365,13 +376,15 @@
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:w-1/2">
           <button
             onclick={() => {
-              draftStatusFilter = 'running';
+              draftStatusFilter = "running";
               handleSearch();
             }}
             class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer text-left"
           >
             <div class="flex flex-col items-center justify-center h-full">
-              <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">実行中</div>
+              <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">
+                実行中
+              </div>
               <div class="text-xl font-bold text-blue-700 dark:text-blue-300">
                 {taskSummary.current ? 1 : 0}
               </div>
@@ -379,13 +392,15 @@
           </button>
           <button
             onclick={() => {
-              draftStatusFilter = 'queued';
+              draftStatusFilter = "queued";
               handleSearch();
             }}
             class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer text-left"
           >
             <div class="flex flex-col items-center justify-center h-full">
-              <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">待機中</div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                待機中
+              </div>
               <div class="text-xl font-bold text-gray-700 dark:text-gray-300">
                 {taskSummary.queued.length}
               </div>
@@ -393,27 +408,33 @@
           </button>
           <button
             onclick={() => {
-              draftStatusFilter = 'paused';
+              draftStatusFilter = "paused";
               handleSearch();
             }}
             class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors cursor-pointer text-left"
           >
             <div class="flex flex-col items-center justify-center h-full">
-              <div class="text-xs text-yellow-600 dark:text-yellow-400 mb-1">一時停止</div>
-              <div class="text-xl font-bold text-yellow-700 dark:text-yellow-300">
-                {allTasks.filter(t => t.status === 'paused').length}
+              <div class="text-xs text-yellow-600 dark:text-yellow-400 mb-1">
+                一時停止
+              </div>
+              <div
+                class="text-xl font-bold text-yellow-700 dark:text-yellow-300"
+              >
+                {allTasks.filter((t) => t.status === "paused").length}
               </div>
             </div>
           </button>
           <button
             onclick={() => {
-              draftStatusFilter = 'completed';
+              draftStatusFilter = "completed";
               handleSearch();
             }}
             class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors cursor-pointer text-left"
           >
             <div class="flex flex-col items-center justify-center h-full">
-              <div class="text-xs text-green-600 dark:text-green-400 mb-1">完了</div>
+              <div class="text-xs text-green-600 dark:text-green-400 mb-1">
+                完了
+              </div>
               <div class="text-xl font-bold text-green-700 dark:text-green-300">
                 {taskSummary.recent_completed.length}
               </div>
@@ -421,13 +442,15 @@
           </button>
           <button
             onclick={() => {
-              draftStatusFilter = 'failed';
+              draftStatusFilter = "failed";
               handleSearch();
             }}
             class="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer text-left"
           >
             <div class="flex flex-col items-center justify-center h-full">
-              <div class="text-xs text-red-600 dark:text-red-400 mb-1">失敗</div>
+              <div class="text-xs text-red-600 dark:text-red-400 mb-1">
+                失敗
+              </div>
               <div class="text-xl font-bold text-red-700 dark:text-red-300">
                 {taskSummary.recent_failed.length}
               </div>
@@ -441,14 +464,17 @@
         <div class="flex flex-col sm:flex-row gap-4">
           <!-- テキスト検索 -->
           <div class="flex-1">
-            <label for="search-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              for="search-text"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               検索（ID, タイトル, 著者名）
             </label>
             <input
               id="search-text"
               type="text"
               bind:value={draftSearchText}
-              onkeydown={(e) => e.key === 'Enter' && handleSearch()}
+              onkeydown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="検索..."
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
@@ -456,7 +482,10 @@
 
           <!-- ステータスフィルタ -->
           <div class="sm:w-40">
-            <label for="status-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              for="status-filter"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               ステータス
             </label>
             <select
@@ -473,7 +502,7 @@
               <option value="canceled">キャンセル</option>
             </select>
           </div>
-          
+
           <!-- 検索ボタン -->
           <div class="flex items-end gap-2">
             <button
@@ -506,7 +535,9 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
     {#if isLoading}
       <div class="p-8 text-center">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <div
+          class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"
+        ></div>
         <p class="mt-2 text-gray-600 dark:text-gray-400">読み込み中...</p>
       </div>
     {:else if error}
@@ -519,86 +550,117 @@
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700 whitespace-nowrap">
             <tr>
-              <th 
+              <th
                 class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-                onclick={() => handleColumnSort('status')}
+                onclick={() => handleColumnSort("status")}
               >
                 <span class="flex items-center gap-1">
                   ステータス
-                  {#if sortBy === 'status'}
-                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {#if sortBy === "status"}
+                    <i
+                      class="fas fa-sort-{sortOrder === 'asc'
+                        ? 'up'
+                        : 'down'} text-blue-500"
+                    ></i>
                   {:else}
                     <i class="fas fa-sort text-gray-400"></i>
                   {/if}
                 </span>
               </th>
-              <th 
+              <th
                 class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-                onclick={() => handleColumnSort('novel_id')}
+                onclick={() => handleColumnSort("novel_id")}
               >
                 <span class="flex items-center gap-1">
                   小説ID
-                  {#if sortBy === 'novel_id'}
-                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {#if sortBy === "novel_id"}
+                    <i
+                      class="fas fa-sort-{sortOrder === 'asc'
+                        ? 'up'
+                        : 'down'} text-blue-500"
+                    ></i>
                   {:else}
                     <i class="fas fa-sort text-gray-400"></i>
                   {/if}
                 </span>
               </th>
-              <th 
+              <th
                 class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-                onclick={() => handleColumnSort('novel_title')}
+                onclick={() => handleColumnSort("novel_title")}
               >
                 <span class="flex items-center gap-1">
                   タイトル
-                  {#if sortBy === 'novel_title'}
-                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {#if sortBy === "novel_title"}
+                    <i
+                      class="fas fa-sort-{sortOrder === 'asc'
+                        ? 'up'
+                        : 'down'} text-blue-500"
+                    ></i>
                   {:else}
                     <i class="fas fa-sort text-gray-400"></i>
                   {/if}
                 </span>
               </th>
-              <th 
+              <th
                 class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-                onclick={() => handleColumnSort('novel_author')}
+                onclick={() => handleColumnSort("novel_author")}
               >
                 <span class="flex items-center gap-1">
                   著者名
-                  {#if sortBy === 'novel_author'}
-                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {#if sortBy === "novel_author"}
+                    <i
+                      class="fas fa-sort-{sortOrder === 'asc'
+                        ? 'up'
+                        : 'down'} text-blue-500"
+                    ></i>
                   {:else}
                     <i class="fas fa-sort text-gray-400"></i>
                   {/if}
                 </span>
               </th>
-              <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+              <th
+                class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase"
+              >
                 進捗
               </th>
-              <th 
+              <th
                 class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-                onclick={() => handleColumnSort('created_at')}
+                onclick={() => handleColumnSort("created_at")}
               >
                 <span class="flex items-center gap-1">
                   作成日時
-                  {#if sortBy === 'created_at'}
-                    <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                  {#if sortBy === "created_at"}
+                    <i
+                      class="fas fa-sort-{sortOrder === 'asc'
+                        ? 'up'
+                        : 'down'} text-blue-500"
+                    ></i>
                   {:else}
                     <i class="fas fa-sort text-gray-400"></i>
                   {/if}
                 </span>
               </th>
-              <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+              <th
+                class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase"
+              >
                 経過時間
               </th>
-              <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+              <th
+                class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase"
+              >
                 アクション
               </th>
             </tr>
           </thead>
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody
+            class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+          >
             {#if paginatedTasks.length === 0}
               <tr>
-                <td colspan="8" class="px-4 py-8 text-center text-gray-600 dark:text-gray-400">
+                <td
+                  colspan="8"
+                  class="px-4 py-8 text-center text-gray-600 dark:text-gray-400"
+                >
                   <i class="fas fa-inbox text-4xl mb-2 block"></i>
                   現在、処理中のタスクはありません。
                 </td>
@@ -607,31 +669,49 @@
               {#each paginatedTasks as task}
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td class="px-3 py-2 whitespace-nowrap">
-                    <span class="px-2 py-1 text-xs rounded text-white {getStatusClass(task.status)}">
+                    <span
+                      class="px-2 py-1 text-xs rounded text-white {getStatusClass(
+                        task.status
+                      )}"
+                    >
                       {getStatusLabel(task.status)}
                     </span>
                   </td>
-                  <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100">
-                    {task.novel_id || '-'}
+                  <td
+                    class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
+                  >
+                    {task.novel_id || "-"}
                   </td>
-                  <td class="px-4 py-3 text-xs text-gray-900 dark:text-gray-100">
+                  <td
+                    class="px-4 py-3 text-xs text-gray-900 dark:text-gray-100"
+                  >
                     <div class="max-w-xs">
-                      <div class="font-medium truncate">{task.novel_title || '-'}</div>
+                      <div class="font-medium truncate">
+                        {task.novel_title || "-"}
+                      </div>
                       {#if task.message}
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{task.message}</div>
+                        <div
+                          class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate"
+                        >
+                          {task.message}
+                        </div>
                       {/if}
                     </div>
                   </td>
-                  <td class="px-4 py-3 text-xs text-gray-900 dark:text-gray-100">
+                  <td
+                    class="px-4 py-3 text-xs text-gray-900 dark:text-gray-100"
+                  >
                     <div class="max-w-xs truncate">
-                      {task.novel_author || '-'}
+                      {task.novel_author || "-"}
                     </div>
                   </td>
                   <td class="px-3 py-2 whitespace-nowrap text-xs">
                     {#if task.progress > 0}
                       <div class="w-24">
-                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div 
+                        <div
+                          class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"
+                        >
+                          <div
                             class="bg-blue-500 h-2 rounded-full transition-all duration-300"
                             style="width: {task.progress}%"
                           ></div>
@@ -644,23 +724,39 @@
                       <span class="text-gray-400 dark:text-gray-500">-</span>
                     {/if}
                   </td>
-                  <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                  <td
+                    class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400"
+                  >
                     <div class="whitespace-nowrap">
                       {#if task.created_at}
                         {@const date = new Date(task.created_at)}
-                        <div>{date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
-                        <div>{date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+                        <div>
+                          {date.toLocaleDateString("ja-JP", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                          })}
+                        </div>
+                        <div>
+                          {date.toLocaleTimeString("ja-JP", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </div>
                       {:else}
                         -
                       {/if}
                     </div>
                   </td>
-                  <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100">
+                  <td
+                    class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
+                  >
                     {task.elapsed_time.toFixed(1)}秒
                   </td>
                   <td class="px-3 py-2 whitespace-nowrap text-sm">
                     <div class="flex gap-1">
-                      {#if task.status === 'running'}
+                      {#if task.status === "running"}
                         <button
                           onclick={() => handlePauseTask(task.id)}
                           class="p-1.5 text-gray-600 hover:text-yellow-600 dark:text-gray-400 dark:hover:text-yellow-400 transition-colors cursor-pointer"
@@ -669,7 +765,7 @@
                           <i class="fas fa-pause"></i>
                         </button>
                       {/if}
-                      {#if task.status === 'paused'}
+                      {#if task.status === "paused"}
                         <button
                           onclick={() => handleResumeTask(task.id)}
                           class="p-1.5 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors cursor-pointer"
@@ -678,7 +774,7 @@
                           <i class="fas fa-play"></i>
                         </button>
                       {/if}
-                      {#if task.status === 'queued' || task.status === 'running' || task.status === 'paused'}
+                      {#if task.status === "queued" || task.status === "running" || task.status === "paused"}
                         <button
                           onclick={() => handleCancelTask(task.id)}
                           class="p-1.5 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"
@@ -698,11 +794,16 @@
 
       <!-- ページネーション -->
       {#if totalPages > 1}
-        <div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+        <div
+          class="px-3 py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600"
+        >
           <div class="flex items-center justify-between">
             <div class="text-sm text-gray-700 dark:text-gray-300">
               {#if totalFiltered > 0}
-                {totalFiltered}件中 {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalFiltered)}件を表示
+                {totalFiltered}件中 {(currentPage - 1) * itemsPerPage + 1} - {Math.min(
+                  currentPage * itemsPerPage,
+                  totalFiltered
+                )}件を表示
                 {#if totalFiltered < allTasks.length}
                   <span class="text-xs text-gray-500 dark:text-gray-400">
                     （{allTasks.length}件から絞り込み）
@@ -720,7 +821,7 @@
               >
                 前へ
               </button>
-              
+
               <!-- ページ番号 -->
               {#each Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 const maxPages = 5;
@@ -733,13 +834,16 @@
                 {#if page <= totalPages}
                   <button
                     onclick={() => goToPage(page)}
-                    class="px-3 py-1 text-sm rounded border {currentPage === page ? 'bg-blue-500 text-white border-blue-500' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                    class="px-3 py-1 text-sm rounded border {currentPage ===
+                    page
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
                   >
                     {page}
                   </button>
                 {/if}
               {/each}
-              
+
               <button
                 onclick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}

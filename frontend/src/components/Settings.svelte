@@ -18,6 +18,7 @@
   // 状態管理
   let loading = $state(true);
   let saving = $state(false);
+  let resetting = $state(false);
   let error = $state<string | null>(null);
   let successMessage = $state<string | null>(null);
 
@@ -39,6 +40,9 @@
 
   // フィルタ機能
   let filterKeyword = $state("");
+
+  // デフォルトリセット確認モーダル
+  let showResetConfirmModal = $state(false);
 
   // 利用可能なタブ一覧（リアクティブ）
   let availableTabs = $derived.by(() => {
@@ -130,7 +134,7 @@
       `Settings for tab "${currentTab}":`,
       result.length,
       "items",
-      `(local: ${result.filter((r) => r[2] === "local").length}, global: ${result.filter((r) => r[2] === "global").length})`,
+      `(local: ${result.filter((r) => r[2] === "local").length}, global: ${result.filter((r) => r[2] === "global").length})`
     );
 
     return result;
@@ -156,15 +160,15 @@
       console.log("Local settings count:", Object.keys(settings.local).length);
       console.log(
         "Global settings count:",
-        Object.keys(settings.global).length,
+        Object.keys(settings.global).length
       );
       console.log(
         "Local variables count:",
-        Object.keys(variables.variables.local).length,
+        Object.keys(variables.variables.local).length
       );
       console.log(
         "Global variables count:",
-        Object.keys(variables.variables.global).length,
+        Object.keys(variables.variables.global).length
       );
       console.log("Tab names:", variables.tab_names);
 
@@ -203,7 +207,7 @@
           local: Object.keys(editedValues.local).length,
           global: Object.keys(editedValues.global).length,
         },
-        "items",
+        "items"
       );
 
       // availableTabsを確認するために少し待つ
@@ -249,7 +253,7 @@
   function handleValueChange(
     key: string,
     value: string | boolean | number | null,
-    scope: "local" | "global",
+    scope: "local" | "global"
   ) {
     editedValues[scope][key] = value;
     checkChanges();
@@ -275,7 +279,7 @@
           return (
             editedValues[scope as "local" | "global"][key] !== originalValue
           );
-        },
+        }
       );
     });
   }
@@ -305,7 +309,7 @@
             if (value !== originalValue) {
               changedSettings[key] = value;
             }
-          },
+          }
         );
       });
 
@@ -340,6 +344,57 @@
    */
   function discardChanges() {
     initEditedValues();
+  }
+
+  /**
+   * 設定をデフォルトにリセット
+   * AozoraEpub3のパスはリセット対象外
+   */
+  async function resetToDefaults() {
+    if (!settingsData || !variablesData) return;
+
+    resetting = true;
+    error = null;
+    successMessage = null;
+    showResetConfirmModal = false;
+
+    try {
+      // AozoraEpub3パス以外のすべての設定をnullに設定
+      const resetSettings: Record<string, null> = {};
+
+      ["local", "global"].forEach((scope) => {
+        const scopeSettings = settingsData?.[scope as "local" | "global"];
+        if (!scopeSettings) return;
+
+        Object.keys(scopeSettings).forEach((key) => {
+          // AozoraEpub3関連の設定はスキップ
+          if (
+            key.toLowerCase().includes("aozoraepub3") ||
+            key.toLowerCase().includes("aozora_epub3")
+          ) {
+            return;
+          }
+          resetSettings[key] = null;
+        });
+      });
+
+      const result = await updateSettings(resetSettings);
+
+      successMessage = `${result.updated_count}件の設定をデフォルトに戻しました`;
+
+      // データを再読み込み
+      await loadSettings();
+
+      // 3秒後にメッセージを消す
+      setTimeout(() => {
+        successMessage = null;
+      }, 3000);
+    } catch (e) {
+      error = e instanceof Error ? e.message : "設定のリセットに失敗しました";
+      console.error("Failed to reset settings:", e);
+    } finally {
+      resetting = false;
+    }
   }
 
   /**
@@ -381,7 +436,7 @@
    */
   function getMinValue(
     key: string,
-    variable: SettingVariable,
+    variable: SettingVariable
   ): number | undefined {
     if (key === "update.interval") {
       return 2.5; // Update::Interval::MIN
@@ -460,11 +515,9 @@
     </div>
   {:else if settingsData && variablesData}
     <!-- ヘッダー -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-        設定
-      </h1>
-      <p class="text-gray-600 dark:text-gray-400">
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:gap-4">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">設定</h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-1 sm:mt-0">
         Narouの動作設定を変更できます
       </p>
     </div>
@@ -527,6 +580,45 @@
         <p class="text-green-800 dark:text-green-200">{successMessage}</p>
       </div>
     {/if}
+
+    <!-- アクションボタン（上部） -->
+    {#snippet actionButtons()}
+      <div class="flex gap-3 justify-end flex-wrap">
+        <button
+          onclick={() => (showResetConfirmModal = true)}
+          disabled={saving || resetting}
+          class="px-4 py-2 border border-orange-300 dark:border-orange-600 rounded-lg text-sm font-medium text-orange-700 dark:text-orange-300 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <i class="fas fa-undo mr-1"></i>
+          デフォルトに戻す
+        </button>
+        <button
+          onclick={discardChanges}
+          disabled={!hasChanges || saving || resetting}
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          変更を破棄
+        </button>
+        <button
+          onclick={saveSettings}
+          disabled={!hasChanges || saving || resetting}
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+        >
+          {#if saving}
+            <div
+              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+            ></div>
+            保存中...
+          {:else}
+            変更を保存
+          {/if}
+        </button>
+      </div>
+    {/snippet}
+
+    <div class="mb-6">
+      {@render actionButtons()}
+    </div>
 
     {#if currentTab === "parser"}
       <!-- HTML パーサー設定 -->
@@ -641,12 +733,12 @@
                         : []}
                       onchange={(e) => {
                         const selected = Array.from(
-                          e.currentTarget.selectedOptions,
+                          e.currentTarget.selectedOptions
                         ).map((o) => o.value);
                         handleValueChange(
                           key,
                           selected.length > 0 ? selected.join(",") : null,
-                          scope,
+                          scope
                         );
                       }}
                       class="select-field-multiple"
@@ -709,7 +801,7 @@
                         handleValueChange(
                           key,
                           e.currentTarget.value || null,
-                          scope,
+                          scope
                         )}
                       class="input-field"
                     />
@@ -731,35 +823,62 @@
         </div>
       </div>
 
-      <!-- 保存ボタン -->
-      {#if hasChanges}
-        <div class="mt-6 flex gap-4 justify-end">
-          <button
-            onclick={discardChanges}
-            disabled={saving}
-            class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            変更を破棄
-          </button>
-          <button
-            onclick={saveSettings}
-            disabled={saving}
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {#if saving}
-              <div
-                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
-              ></div>
-              保存中...
-            {:else}
-              変更を保存
-            {/if}
-          </button>
-        </div>
-      {/if}
+      <!-- アクションボタン（下部） -->
+      <div class="mt-6">
+        {@render actionButtons()}
+      </div>
     {/if}
   {/if}
 </div>
+
+<!-- デフォルトリセット確認モーダル -->
+{#if showResetConfirmModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    onclick={() => (showResetConfirmModal = false)}
+  >
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+        <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i>
+        設定をデフォルトに戻す
+      </h3>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">
+        すべての設定をデフォルト値に戻します。この操作は元に戻せません。
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-500 mb-6">
+        ※ AozoraEpub3のパス設定はリセット対象外です
+      </p>
+      <div class="flex gap-3 justify-end">
+        <button
+          onclick={() => (showResetConfirmModal = false)}
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          キャンセル
+        </button>
+        <button
+          onclick={resetToDefaults}
+          disabled={resetting}
+          class="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+        >
+          {#if resetting}
+            <div
+              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+            ></div>
+            リセット中...
+          {:else}
+            <i class="fas fa-undo"></i>
+            リセットする
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <!-- トップに戻るボタン -->
 {#if showScrollTopButton}

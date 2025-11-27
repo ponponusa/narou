@@ -1,6 +1,6 @@
 <!--
   小説リストコンポーネント
-  
+
   小説データをテーブル形式で表示し、各種操作を提供
 -->
 <script lang="ts">
@@ -58,19 +58,19 @@
   // フィルター・ソート設定
   let currentPage = $state(0);
   let pageSize = $state(50);
-  
+
   // 実際に適用されるフィルタ（検索ボタン押下時に反映）
   let filterText = $state("");
   let selectedTag = $state<string[]>([]);
   let selectedSite = $state<string[]>([]);
   let selectedStatus = $state<string[]>([]);
-  
+
   // フォーム入力中の一時的な値
   let draftFilterText = $state("");
   let draftSelectedTag = $state<string[]>([]);
   let draftSelectedSite = $state<string[]>([]);
   let draftSelectedStatus = $state<string[]>([]);
-  
+
   // フィルタ処理中フラグ
   let isFiltering = $state(false);
   let sortBy = $state<
@@ -184,12 +184,24 @@
         const settings = JSON.parse(saved);
         pageSize = settings.pageSize ?? 50;
         // 下位互換性：文字列の場合は配列に変換
-        selectedTag = Array.isArray(settings.selectedTag) ? settings.selectedTag : (settings.selectedTag ? [settings.selectedTag] : []);
-        selectedSite = Array.isArray(settings.selectedSite) ? settings.selectedSite : (settings.selectedSite ? [settings.selectedSite] : []);
-        selectedStatus = Array.isArray(settings.selectedStatus) ? settings.selectedStatus : (settings.selectedStatus ? [settings.selectedStatus] : []);
+        selectedTag = Array.isArray(settings.selectedTag)
+          ? settings.selectedTag
+          : settings.selectedTag
+            ? [settings.selectedTag]
+            : [];
+        selectedSite = Array.isArray(settings.selectedSite)
+          ? settings.selectedSite
+          : settings.selectedSite
+            ? [settings.selectedSite]
+            : [];
+        selectedStatus = Array.isArray(settings.selectedStatus)
+          ? settings.selectedStatus
+          : settings.selectedStatus
+            ? [settings.selectedStatus]
+            : [];
         sortBy = settings.sortBy ?? "updated_at";
         sortOrder = settings.sortOrder ?? "desc";
-        
+
         // draft変数も初期化
         draftSelectedTag = [...selectedTag];
         draftSelectedSite = [...selectedSite];
@@ -333,25 +345,25 @@
   // タグインデックス（タグ名 → Novel IDのSet）
   // バックエンドから取得したインデックスを使用
   let tagIndexFromBackend = $state<Map<string, Set<number>> | null>(null);
-  
+
   // 検索用インデックス（小説ID → 小文字化されたタイトル・著者）
   const searchIndex = $derived.by(() => {
     const index = new Map<number, { title: string; author: string }>();
     for (const novel of allNovels) {
       index.set(novel.id, {
-        title: novel.title?.toLowerCase() || '',
-        author: novel.author?.toLowerCase() || ''
+        title: novel.title?.toLowerCase() || "",
+        author: novel.author?.toLowerCase() || "",
       });
     }
     return index;
   });
-  
+
   const tagIndex = $derived.by(() => {
     // バックエンドから取得したインデックスがあればそれを使用
     if (tagIndexFromBackend) {
       return tagIndexFromBackend;
     }
-    
+
     // フォールバック: フロントエンドで構築（初回ロード中など）
     const index = new Map<string, Set<number>>();
     const novelsLength = allNovels.length;
@@ -359,7 +371,7 @@
       const novel = allNovels[i];
       const tags = novel.tags;
       if (!tags) continue;
-      
+
       const tagsLength = tags.length;
       for (let j = 0; j < tagsLength; j++) {
         const tag = tags[j];
@@ -371,7 +383,7 @@
         tagSet.add(novel.id);
       }
     }
-    
+
     return index;
   });
 
@@ -391,13 +403,13 @@
           for (const tag of selectedTag) {
             if (tagIndex.has(tag)) {
               const tagNovelIds = tagIndex.get(tag)!;
-              tagNovelIds.forEach(id => matchingNovelIds.add(id));
+              tagNovelIds.forEach((id) => matchingNovelIds.add(id));
             }
           }
-          
+
           // マッチするIDのSetを使ってフィルタリング（Set.hasはO(1)）
           if (matchingNovelIds.size > 0) {
-            result = result.filter(n => matchingNovelIds.has(n.id));
+            result = result.filter((n) => matchingNovelIds.has(n.id));
           } else {
             // マッチする小説がない場合は空配列
             result = [];
@@ -424,7 +436,10 @@
           result = result.filter((n) => {
             const searchData = searchIndex.get(n.id);
             if (!searchData) return false;
-            return searchData.title.includes(query) || searchData.author.includes(query);
+            return (
+              searchData.title.includes(query) ||
+              searchData.author.includes(query)
+            );
           });
           marker.mark("text");
         }
@@ -440,7 +455,7 @@
   const sortedNovels = $derived.by(() => {
     // フィルタ結果が0件の場合は即座に空配列を返す
     if (filteredNovels.length === 0) return [];
-    
+
     return measurePerformance(
       "Sort Novels",
       () => {
@@ -449,69 +464,69 @@
         if (!sortBy) return sorted;
 
         sorted.sort((a, b) => {
-      let aVal: string | number = "";
-      let bVal: string | number = "";
+          let aVal: string | number = "";
+          let bVal: string | number = "";
 
-      switch (sortBy) {
-        case "id":
-          aVal = a.id || 0;
-          bVal = b.id || 0;
-          break;
-        case "title":
-          aVal = a.title || "";
-          bVal = b.title || "";
-          break;
-        case "author":
-          aVal = a.author || "";
-          bVal = b.author || "";
-          break;
-        case "sitename":
-          aVal = a.sitename || "";
-          bVal = b.sitename || "";
-          break;
-        case "updated_at":
-          aVal = a.last_update || 0;
-          bVal = b.last_update || 0;
-          break;
-        case "status":
-          aVal = a.status || "";
-          bVal = b.status || "";
-          break;
-        case "tags":
-          // タグでソート（最初のタグで比較）
-          aVal = a.tags && a.tags.length > 0 ? a.tags[0] : "";
-          bVal = b.tags && b.tags.length > 0 ? b.tags[0] : "";
-          break;
-        case "episode_count":
-          aVal = a.general_all_no || 0;
-          bVal = b.general_all_no || 0;
-          break;
-        case "total_chars":
-          aVal = a.length || 0;
-          bVal = b.length || 0;
-          break;
-        case "avg_chars_per_episode":
-          aVal =
-            a.length && a.general_all_no ? a.length / a.general_all_no : 0;
-          bVal =
-            b.length && b.general_all_no ? b.length / b.general_all_no : 0;
-          break;
-        case "newest_article_date":
-          aVal = a.general_lastup || 0;
-          bVal = b.general_lastup || 0;
-          break;
-        case "last_update":
-          aVal = a.last_update || 0;
-          bVal = b.last_update || 0;
-          break;
-      }
+          switch (sortBy) {
+            case "id":
+              aVal = a.id || 0;
+              bVal = b.id || 0;
+              break;
+            case "title":
+              aVal = a.title || "";
+              bVal = b.title || "";
+              break;
+            case "author":
+              aVal = a.author || "";
+              bVal = b.author || "";
+              break;
+            case "sitename":
+              aVal = a.sitename || "";
+              bVal = b.sitename || "";
+              break;
+            case "updated_at":
+              aVal = a.last_update || 0;
+              bVal = b.last_update || 0;
+              break;
+            case "status":
+              aVal = a.status || "";
+              bVal = b.status || "";
+              break;
+            case "tags":
+              // タグでソート（最初のタグで比較）
+              aVal = a.tags && a.tags.length > 0 ? a.tags[0] : "";
+              bVal = b.tags && b.tags.length > 0 ? b.tags[0] : "";
+              break;
+            case "episode_count":
+              aVal = a.general_all_no || 0;
+              bVal = b.general_all_no || 0;
+              break;
+            case "total_chars":
+              aVal = a.length || 0;
+              bVal = b.length || 0;
+              break;
+            case "avg_chars_per_episode":
+              aVal =
+                a.length && a.general_all_no ? a.length / a.general_all_no : 0;
+              bVal =
+                b.length && b.general_all_no ? b.length / b.general_all_no : 0;
+              break;
+            case "newest_article_date":
+              aVal = a.general_lastup || 0;
+              bVal = b.general_lastup || 0;
+              break;
+            case "last_update":
+              aVal = a.last_update || 0;
+              bVal = b.last_update || 0;
+              break;
+          }
 
-      if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-      return 0;
-    });
+          if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
+          if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
+          return 0;
+        });
 
-    return sorted;
+        return sorted;
       },
       3
     );
@@ -603,10 +618,10 @@
     // loadNovelsを優先、その後にタグインデックスをロード
     await loadNovels();
     await loadTagIndex(); // タグインデックスを確実に読み込んでからフィルタリング
-    
+
     // タグインデックス読み込み後にフィルター設定を復元
     loadSettings();
-    
+
     loadTags(); // awaitしない - バックグラウンドで実行
 
     // PushServerイベントリスナー設定
@@ -677,32 +692,34 @@
 
   async function loadTagIndex() {
     try {
-      console.log('[NovelList] Loading tag index from backend...');
+      console.log("[NovelList] Loading tag index from backend...");
       const startTime = performance.now();
-      
+
       const indexData = await getTagIndex();
-      
+
       // Record<string, number[]> を Map<string, Set<number>> に変換
       const indexMap = new Map<string, Set<number>>();
       Object.entries(indexData).forEach(([tag, ids]) => {
         indexMap.set(tag, new Set(ids));
       });
-      
+
       tagIndexFromBackend = indexMap;
-      
-      console.log(`[NovelList] Tag index loaded in ${(performance.now() - startTime).toFixed(2)}ms (${indexMap.size} tags)`);
+
+      console.log(
+        `[NovelList] Tag index loaded in ${(performance.now() - startTime).toFixed(2)}ms (${indexMap.size} tags)`
+      );
     } catch (err) {
-      console.error('[NovelList] Failed to load tag index from backend:', err);
-      console.log('[NovelList] Will build tag index on frontend');
+      console.error("[NovelList] Failed to load tag index from backend:", err);
+      console.log("[NovelList] Will build tag index on frontend");
       // エラー時はフロントエンドで構築（フォールバック）
       tagIndexFromBackend = null;
     }
   }
 
   async function loadNovels() {
-    console.log('[NovelList] loadNovels started');
+    console.log("[NovelList] loadNovels started");
     const startTime = performance.now();
-    
+
     loading = true;
     error = null;
 
@@ -718,33 +735,37 @@
     }
 
     try {
-      console.log('[NovelList] Fetching novels from API...');
+      console.log("[NovelList] Fetching novels from API...");
       const fetchStartTime = performance.now();
-      
+
       // 全データを一度に取得（gzip圧縮済み）
       const response = await getNovels();
-      
-      console.log(`[NovelList] API fetch completed in ${(performance.now() - fetchStartTime).toFixed(2)}ms`);
+
+      console.log(
+        `[NovelList] API fetch completed in ${(performance.now() - fetchStartTime).toFixed(2)}ms`
+      );
 
       // 成功したらリトライカウントをリセット
       retryCount = 0;
 
-      console.log('[NovelList] Processing novels data...');
+      console.log("[NovelList] Processing novels data...");
       const processStartTime = performance.now();
-      
+
       // 全データをallNovelsに格納
       // $derivedが自動的にフィルタ・ソート・ページングを再計算
       allNovels = response.novels;
       totalCount = response.total;
 
       // サイト一覧を抽出（フィルター用）
-      const sites = new Set(
-        allNovels.map((n) => n.sitename).filter(Boolean)
-      );
+      const sites = new Set(allNovels.map((n) => n.sitename).filter(Boolean));
       availableSites = Array.from(sites).sort();
 
-      console.log(`[NovelList] Data processing completed in ${(performance.now() - processStartTime).toFixed(2)}ms`);
-      console.log(`[NovelList] loadNovels total: ${(performance.now() - startTime).toFixed(2)}ms`);
+      console.log(
+        `[NovelList] Data processing completed in ${(performance.now() - processStartTime).toFixed(2)}ms`
+      );
+      console.log(
+        `[NovelList] loadNovels total: ${(performance.now() - startTime).toFixed(2)}ms`
+      );
 
       loading = false; // 成功時のみloadingをfalseに
     } catch (err) {
@@ -837,7 +858,7 @@
    */
   async function handleUpdateConfirm(
     mode: "update" | "force-download",
-    options: { 
+    options: {
       convertAfterUpdate?: boolean;
       createBackup?: boolean;
       includeFrozen?: boolean;
@@ -846,37 +867,44 @@
   ) {
     let targetIds = Array.from(selectedIds);
     const isForceDownload = mode === "force-download";
-    
+
     // タグフィルターや凍結フィルターが適用されている場合、対象小説を絞り込む
     if (options.filterByTags || options.includeFrozen !== undefined) {
-      const filteredNovels = novels.filter(novel => {
+      const filteredNovels = novels.filter((novel) => {
         if (!selectedIds.has(novel.id)) return false;
-        
+
         // タグフィルター
         if (options.filterByTags && options.filterByTags.length > 0) {
           const novelTags = novel.tags || [];
-          const hasMatchingTag = options.filterByTags.some(tag => novelTags.includes(tag));
+          const hasMatchingTag = options.filterByTags.some((tag) =>
+            novelTags.includes(tag)
+          );
           if (!hasMatchingTag) return false;
         }
-        
+
         // 凍結フィルター（includeFrozenがfalseの場合、凍結中を除外）
         if (options.includeFrozen === false && novel.frozen) {
           return false;
         }
-        
+
         return true;
       });
-      
-      targetIds = filteredNovels.map(n => n.id);
-      
+
+      targetIds = filteredNovels.map((n) => n.id);
+
       if (targetIds.length === 0) {
         toast?.show("指定した条件に一致する小説がありません", "warning");
         return;
       }
     }
-    
+
     try {
-      console.log(`[NovelList] Starting ${mode} for ${targetIds.length} novels:`, targetIds, "options:", options);
+      console.log(
+        `[NovelList] Starting ${mode} for ${targetIds.length} novels:`,
+        targetIds,
+        "options:",
+        options
+      );
 
       // バックアップオプションの警告表示（実装は今後）
       if (options.createBackup) {
@@ -891,11 +919,20 @@
 
       // API呼び出し（バックグラウンド処理開始）
       // convertAfterUpdateオプションをAPIに渡す
-      await downloadNovels(targetIds, isForceDownload, options.convertAfterUpdate || false);
+      await downloadNovels(
+        targetIds,
+        isForceDownload,
+        options.convertAfterUpdate || false
+      );
 
       const action = isForceDownload ? "再取得" : "更新";
-      const convertMessage = options.convertAfterUpdate ? "（更新後に自動変換を実行します）" : "";
-      toast?.show(`${targetIds.length}件の${action}を開始しました${convertMessage}`, "success");
+      const convertMessage = options.convertAfterUpdate
+        ? "（更新後に自動変換を実行します）"
+        : "";
+      toast?.show(
+        `${targetIds.length}件の${action}を開始しました${convertMessage}`,
+        "success"
+      );
       selectedIds = new Set();
 
       // 注意: 実際の進捗はPushServerイベントから更新されます
@@ -1008,7 +1045,7 @@
 
     let action = "";
     let confirmMessage = "";
-    
+
     if (frozenCount > unfrozenCount) {
       action = "解除";
       confirmMessage = `選択した ${selectedIds.size} 件の小説の凍結を解除しますか？`;
@@ -1032,30 +1069,34 @@
   }
 
   function handleSearch() {
-    console.log('[NovelList] handleSearch started');
+    console.log("[NovelList] handleSearch started");
     const startTime = performance.now();
-    
+
     // フィルタ処理中フラグをON
     isFiltering = true;
-    
+
     // setTimeoutを使ってスピナーを表示
     setTimeout(() => {
-      console.log('[NovelList] Applying filters...');
+      console.log("[NovelList] Applying filters...");
       const filterStartTime = performance.now();
-      
+
       // draft変数から実際のフィルタ変数に反映
       filterText = draftFilterText;
       selectedTag = [...draftSelectedTag];
       selectedSite = [...draftSelectedSite];
       selectedStatus = [...draftSelectedStatus];
       currentPage = 0;
-      
-      console.log(`[NovelList] Filters applied in ${(performance.now() - filterStartTime).toFixed(2)}ms`);
-      
+
+      console.log(
+        `[NovelList] Filters applied in ${(performance.now() - filterStartTime).toFixed(2)}ms`
+      );
+
       saveSettings();
-      
-      console.log(`[NovelList] handleSearch total: ${(performance.now() - startTime).toFixed(2)}ms`);
-      
+
+      console.log(
+        `[NovelList] handleSearch total: ${(performance.now() - startTime).toFixed(2)}ms`
+      );
+
       // フィルタ処理完了後、次のフレームでスピナーをOFF
       requestAnimationFrame(() => {
         isFiltering = false;
@@ -1368,7 +1409,6 @@
       // $derivedが自動的に再計算するのでloadNovels不要
     }
   }
-
 </script>
 
 <div class="relative">
@@ -1456,10 +1496,10 @@
                 id="tagFilter"
                 label="タグ"
                 bind:value={draftSelectedTag}
-                options={allTags.map(tag => ({
+                options={allTags.map((tag) => ({
                   value: tag.name,
                   label: tag.name,
-                  count: tag.count
+                  count: tag.count,
                 }))}
                 placeholder="すべて"
               />
@@ -1471,9 +1511,9 @@
                 id="siteFilter"
                 label="サイト"
                 bind:value={draftSelectedSite}
-                options={availableSites.map(site => ({
+                options={availableSites.map((site) => ({
                   value: site,
-                  label: site
+                  label: site,
                 }))}
                 placeholder="すべて"
               />
@@ -1486,10 +1526,10 @@
                 label="状態"
                 bind:value={draftSelectedStatus}
                 options={[
-                  { value: '凍結', label: '凍結' },
-                  { value: '完結', label: '完結' },
-                  { value: '削除', label: '削除' },
-                  { value: '中断', label: '中断' }
+                  { value: "凍結", label: "凍結" },
+                  { value: "完結", label: "完結" },
+                  { value: "削除", label: "削除" },
+                  { value: "中断", label: "中断" },
                 ]}
                 placeholder="すべて"
               />
@@ -1615,7 +1655,9 @@
           </div>
 
           <!-- 編集・管理グループ -->
-          <div class="flex gap-0 border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+          <div
+            class="flex gap-0 border border-gray-300 dark:border-gray-600 rounded overflow-hidden"
+          >
             <button
               onclick={handleTagEdit}
               disabled={selectedIds.size === 0}
@@ -1645,8 +1687,11 @@
 
         <!-- 選択数表示（右端のみ） -->
         {#if selectedIds.size > 0}
-          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded">
-            <i class="fas fa-check-square text-blue-600 dark:text-blue-400"></i> {selectedIds.size}件選択中
+          <div
+            class="text-sm font-medium text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded"
+          >
+            <i class="fas fa-check-square text-blue-600 dark:text-blue-400"></i>
+            {selectedIds.size}件選択中
           </div>
         {/if}
       </div>
@@ -1943,7 +1988,156 @@
           <p>小説が登録されていません</p>
         </div>
       {:else}
+        <!-- ページネーションスニペット -->
+        {#snippet paginationControls(position: "top" | "bottom")}
+          <div
+            class="bg-gray-50 dark:bg-gray-700 px-3 py-2 {position === 'top'
+              ? 'border-b rounded-t-lg'
+              : 'border-t'} border-gray-200 dark:border-gray-600"
+          >
+            <div
+              class="flex flex-col sm:flex-row items-center justify-between gap-3"
+            >
+              <!-- 表示情報と件数選択 -->
+              <div class="flex items-center gap-4">
+                <div class="text-sm text-gray-700 dark:text-gray-300">
+                  {#if totalFiltered > 0}
+                    全 {totalFiltered} 件中 {currentPage * pageSize + 1} - {Math.min(
+                      (currentPage + 1) * pageSize,
+                      totalFiltered
+                    )} 件を表示
+                    {#if totalFiltered < totalCount}
+                      <span class="text-xs text-gray-500 dark:text-gray-400"
+                        >（{totalCount}件から絞り込み）</span
+                      >
+                    {/if}
+                  {:else}
+                    0 件
+                  {/if}
+                </div>
+                <div class="flex items-center gap-2">
+                  <label
+                    for="pageSize-{position}"
+                    class="text-sm text-gray-700 dark:text-gray-300"
+                    >表示件数:</label
+                  >
+                  <select
+                    id="pageSize-{position}"
+                    bind:value={pageSize}
+                    onchange={() => changePageSize(pageSize)}
+                    class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-600 dark:text-white text-sm"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- ページネーションコントロール -->
+              <div class="flex gap-1">
+                <button
+                  onclick={() => {
+                    currentPage = 0;
+                    loadNovels();
+                  }}
+                  disabled={currentPage === 0}
+                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  title="最初のページ"
+                >
+                  ⟪
+                </button>
+                <button
+                  onclick={prevPage}
+                  disabled={currentPage === 0}
+                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  ‹ 前へ
+                </button>
+
+                <!-- ページ番号表示 -->
+                {#if totalFiltered > 0}
+                  {@const maxVisible = 5}
+                  {@const half = Math.floor(maxVisible / 2)}
+
+                  {@const startPage = (() => {
+                    if (totalPages <= maxVisible) return 0;
+                    if (currentPage <= half) return 0;
+                    if (currentPage >= totalPages - half - 1)
+                      return totalPages - maxVisible;
+                    return currentPage - half;
+                  })()}
+
+                  {@const endPage = Math.min(
+                    totalPages - 1,
+                    startPage + maxVisible - 1
+                  )}
+
+                  {#if startPage > 0}
+                    <button
+                      onclick={() => goToPage(0)}
+                      class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
+                    >
+                      1
+                    </button>
+                    {#if startPage > 1}
+                      <span class="px-2 py-1.5 text-gray-500 dark:text-gray-400"
+                        >…</span
+                      >
+                    {/if}
+                  {/if}
+
+                  {#each Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i) as page}
+                    <button
+                      onclick={() => goToPage(page)}
+                      class="min-w-10 px-3 py-1.5 {page === currentPage
+                        ? 'bg-blue-600 text-white font-semibold'
+                        : 'bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200'} border border-gray-300 dark:border-gray-500 rounded hover:bg-blue-500 hover:text-white transition-colors"
+                    >
+                      {page + 1}
+                    </button>
+                  {/each}
+
+                  {#if endPage < totalPages - 1}
+                    {#if endPage < totalPages - 2}
+                      <span class="px-2 py-1.5 text-gray-500 dark:text-gray-400"
+                        >…</span
+                      >
+                    {/if}
+                    <button
+                      onclick={() => goToPage(totalPages - 1)}
+                      class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
+                    >
+                      {totalPages}
+                    </button>
+                  {/if}
+                {/if}
+
+                <button
+                  onclick={nextPage}
+                  disabled={currentPage >= totalPages - 1}
+                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  次へ ›
+                </button>
+                <button
+                  onclick={() => goToPage(totalPages - 1)}
+                  disabled={currentPage >= totalPages - 1}
+                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  title="最後のページ"
+                >
+                  ⟫
+                </button>
+              </div>
+            </div>
+          </div>
+        {/snippet}
+
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+          <!-- 上部ページネーション -->
+          {@render paginationControls("top")}
+
           <table
             class="min-w-full divide-y divide-gray-200 dark:divide-gray-700"
           >
@@ -1957,7 +2151,11 @@
                     <span class="flex items-center gap-1">
                       ID
                       {#if sortBy === "id"}
-                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
                       {:else}
                         <i class="fas fa-sort text-gray-400"></i>
                       {/if}
@@ -1972,7 +2170,11 @@
                     <span class="flex items-center gap-1">
                       更新日
                       {#if sortBy === "updated_at"}
-                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
                       {:else}
                         <i class="fas fa-sort text-gray-400"></i>
                       {/if}
@@ -1990,7 +2192,11 @@
                         <span>掲載日</span>
                       </div>
                       {#if sortBy === "newest_article_date"}
-                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
                       {:else}
                         <i class="fas fa-sort text-gray-400"></i>
                       {/if}
@@ -2005,7 +2211,11 @@
                     <span class="flex items-center gap-1">
                       更新チェック日
                       {#if sortBy === "last_update"}
-                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
                       {:else}
                         <i class="fas fa-sort text-gray-400"></i>
                       {/if}
@@ -2019,7 +2229,11 @@
                   <span class="flex items-center gap-1">
                     タイトル
                     {#if sortBy === "title"}
-                      <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      <i
+                        class="fas fa-sort-{sortOrder === 'asc'
+                          ? 'up'
+                          : 'down'} text-blue-500"
+                      ></i>
                     {:else}
                       <i class="fas fa-sort text-gray-400"></i>
                     {/if}
@@ -2032,7 +2246,11 @@
                   <span class="flex items-center gap-1">
                     著者
                     {#if sortBy === "author"}
-                      <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      <i
+                        class="fas fa-sort-{sortOrder === 'asc'
+                          ? 'up'
+                          : 'down'} text-blue-500"
+                      ></i>
                     {:else}
                       <i class="fas fa-sort text-gray-400"></i>
                     {/if}
@@ -2045,7 +2263,11 @@
                   <span class="flex items-center gap-1">
                     掲載サイト
                     {#if sortBy === "sitename"}
-                      <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                      <i
+                        class="fas fa-sort-{sortOrder === 'asc'
+                          ? 'up'
+                          : 'down'} text-blue-500"
+                      ></i>
                     {:else}
                       <i class="fas fa-sort text-gray-400"></i>
                     {/if}
@@ -2059,7 +2281,11 @@
                     <span class="flex items-center gap-1">
                       状態
                       {#if sortBy === "status"}
-                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
                       {:else}
                         <i class="fas fa-sort text-gray-400"></i>
                       {/if}
@@ -2074,7 +2300,11 @@
                     <span class="flex items-center gap-1">
                       タグ
                       {#if sortBy === "tags"}
-                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
                       {:else}
                         <i class="fas fa-sort text-gray-400"></i>
                       {/if}
@@ -2089,7 +2319,11 @@
                     <span class="flex items-center gap-1">
                       話数
                       {#if sortBy === "episode_count"}
-                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
                       {:else}
                         <i class="fas fa-sort text-gray-400"></i>
                       {/if}
@@ -2104,7 +2338,11 @@
                     <span class="flex items-center gap-1">
                       文字数
                       {#if sortBy === "total_chars"}
-                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
                       {:else}
                         <i class="fas fa-sort text-gray-400"></i>
                       {/if}
@@ -2119,7 +2357,11 @@
                     <span class="flex items-center gap-1">
                       平均文字数
                       {#if sortBy === "avg_chars_per_episode"}
-                        <i class="fas fa-sort-{sortOrder === 'asc' ? 'up' : 'down'} text-blue-500"></i>
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
                       {:else}
                         <i class="fas fa-sort text-gray-400"></i>
                       {/if}
@@ -2503,147 +2745,8 @@
             </tbody>
           </table>
 
-          <!-- ページネーション -->
-          <div
-            class="bg-gray-50 dark:bg-gray-700 px-3 py-2 border-t border-gray-200 dark:border-gray-600"
-          >
-            <div
-              class="flex flex-col sm:flex-row items-center justify-between gap-3"
-            >
-              <!-- 表示情報と件数選択 -->
-              <div class="flex items-center gap-4">
-                <div class="text-sm text-gray-700 dark:text-gray-300">
-                  {#if totalFiltered > 0}
-                    全 {totalFiltered} 件中 {currentPage * pageSize + 1} - {Math.min(
-                      (currentPage + 1) * pageSize,
-                      totalFiltered
-                    )} 件を表示
-                    {#if totalFiltered < totalCount}
-                      <span class="text-xs text-gray-500 dark:text-gray-400"
-                        >（{totalCount}件から絞り込み）</span
-                      >
-                    {/if}
-                  {:else}
-                    0 件
-                  {/if}
-                </div>
-                <div class="flex items-center gap-2">
-                  <label
-                    for="pageSize"
-                    class="text-sm text-gray-700 dark:text-gray-300"
-                    >表示件数:</label
-                  >
-                  <select
-                    id="pageSize"
-                    bind:value={pageSize}
-                    onchange={() => changePageSize(pageSize)}
-                    class="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-600 dark:text-white text-sm"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- ページネーションコントロール -->
-              <div class="flex gap-1">
-                <button
-                  onclick={() => {
-                    currentPage = 0;
-                    loadNovels();
-                  }}
-                  disabled={currentPage === 0}
-                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                  title="最初のページ"
-                >
-                  ⟪
-                </button>
-                <button
-                  onclick={prevPage}
-                  disabled={currentPage === 0}
-                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  ‹ 前へ
-                </button>
-
-                <!-- ページ番号表示 -->
-                {#if totalFiltered > 0}
-                  {@const maxVisible = 5}
-                  {@const half = Math.floor(maxVisible / 2)}
-
-                  {@const startPage = (() => {
-                    if (totalPages <= maxVisible) return 0;
-                    if (currentPage <= half) return 0;
-                    if (currentPage >= totalPages - half - 1)
-                      return totalPages - maxVisible;
-                    return currentPage - half;
-                  })()}
-
-                  {@const endPage = Math.min(
-                    totalPages - 1,
-                    startPage + maxVisible - 1
-                  )}
-
-                  {#if startPage > 0}
-                    <button
-                      onclick={() => goToPage(0)}
-                      class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
-                    >
-                      1
-                    </button>
-                    {#if startPage > 1}
-                      <span class="px-2 py-1.5 text-gray-500 dark:text-gray-400"
-                        >…</span
-                      >
-                    {/if}
-                  {/if}
-
-                  {#each Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i) as page}
-                    <button
-                      onclick={() => goToPage(page)}
-                      class="min-w-10 px-3 py-1.5 {page === currentPage
-                        ? 'bg-blue-600 text-white font-semibold'
-                        : 'bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200'} border border-gray-300 dark:border-gray-500 rounded hover:bg-blue-500 hover:text-white transition-colors"
-                    >
-                      {page + 1}
-                    </button>
-                  {/each}
-
-                  {#if endPage < totalPages - 1}
-                    {#if endPage < totalPages - 2}
-                      <span class="px-2 py-1.5 text-gray-500 dark:text-gray-400"
-                        >…</span
-                      >
-                    {/if}
-                    <button
-                      onclick={() => goToPage(totalPages - 1)}
-                      class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
-                    >
-                      {totalPages}
-                    </button>
-                  {/if}
-                {/if}
-
-                <button
-                  onclick={nextPage}
-                  disabled={currentPage >= totalPages - 1}
-                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  次へ ›
-                </button>
-                <button
-                  onclick={() => goToPage(totalPages - 1)}
-                  disabled={currentPage >= totalPages - 1}
-                  class="px-3 py-1.5 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-50 dark:hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                  title="最後のページ"
-                >
-                  ⟫
-                </button>
-              </div>
-            </div>
-          </div>
+          <!-- 下部ページネーション -->
+          {@render paginationControls("bottom")}
         </div>
       {/if}
     </div>
@@ -2657,10 +2760,10 @@
 <TagModal bind:this={tagModal} />
 
 <!-- 小説更新オプションモーダル -->
-<NovelUpdateModal 
-  bind:this={novelUpdateModal} 
+<NovelUpdateModal
+  bind:this={novelUpdateModal}
   selectedCount={selectedIds.size}
-  selectedIds={selectedIds}
+  {selectedIds}
   allNovels={novels}
   onConfirm={handleUpdateConfirm}
 />
