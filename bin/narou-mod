@@ -7,6 +7,12 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+# 開発環境（narou.rb が存在する場所から実行）では、インストール済みの gem と
+# 競合しないよう、gem のパスを $LOAD_PATH から除外する
+if File.exist?(File.join(Dir.pwd, "narou.rb"))
+  $LOAD_PATH.reject! { |path| path.include?("narou-mod") && path.include?("gems") }
+end
+
 # YJIT bootstrap (enable only when supported; never warn on unsupported)
 begin
   require "rbconfig"

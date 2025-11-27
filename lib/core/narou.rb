@@ -277,7 +277,7 @@ module Narou
       root_dir.join(MISC_DIR)
     end
 
-    require "ebook/device"
+    require "lib/ebook/device"
 
     def get_device(device_name = nil)
       device_name ||= Inventory.load("local_setting")["device"]

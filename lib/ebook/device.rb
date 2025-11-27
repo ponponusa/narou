@@ -25,19 +25,19 @@ class Device
 
   case Helper.determine_os
   when :docker
-    require "ebook/device/library/docker"
+    require "lib/ebook/device/library/docker"
     extend Device::Library::Docker
   when :windows
-    require "ebook/device/library/windows"
+    require "lib/ebook/device/library/windows"
     extend Device::Library::Windows
   when :cygwin
-    require "ebook/device/library/cygwin"
+    require "lib/ebook/device/library/cygwin"
     extend Device::Library::Cygwin
   when :mac
-    require "ebook/device/library/mac"
+    require "lib/ebook/device/library/mac"
     extend Device::Library::Mac
   else
-    require "ebook/device/library/linux"
+    require "lib/ebook/device/library/linux"
     extend Device::Library::Linux
   end
 

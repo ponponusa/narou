@@ -7,15 +7,28 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-# プロジェクトルートをロードパスに追加
-script_dir = File.expand_path(File.dirname(__FILE__))
-$LOAD_PATH.unshift(script_dir)
+# プロジェクトルートをロードパスの先頭に追加
+script_dir = File.expand_path(__dir__)
+
+# 開発環境（narou.rb が存在する場所から実行）では、インストール済みの gem と
+# 競合しないよう対策を行う
+# 1. gem のパスを $LOAD_PATH から除外
+# 2. 既にロード済みの gem ファイルを $LOADED_FEATURES から除外
+# 3. RubyGems の gem 自動解決をリセット
+$LOAD_PATH.reject! { |path| path.include?("narou-mod") && path.include?("gems") }
+$LOADED_FEATURES.reject! { |path| path.include?("narou-mod") && path.include?("gems") }
+$LOAD_PATH.unshift(script_dir) unless $LOAD_PATH.include?(script_dir)
+
+# RubyGems が narou-mod gem を自動解決しないようにする
+if defined?(Gem)
+  Gem.loaded_specs.delete("narou-mod")
+end
 
 require "lib/loading/extension"
 require "lib/extensions/monkey_patches"
 require "lib/utilities/backtracer"
 
-$debug = File.exist?("debug")
+$debug = File.exist?(File.join(script_dir, "debug"))
 
 Encoding.default_external = Encoding::UTF_8
 Narou::Backtracer.argv = ARGV
@@ -27,7 +40,7 @@ if ARGV.delete("--time")
   end
 end
 
-require "core/inventory"
+require "lib/core/inventory"
 
 $development = Narou.commit_version.!
 # NOTE:
@@ -41,9 +54,9 @@ $disable_color = ARGV.delete("--no-color")
 $disable_color ||= global["no-color"]
 $color_parser ||= global["color-parser"] || "system"
 
-require "output/narou_logger"
-require "core/version"
-require "cli/commandline"
+require "lib/output/narou_logger"
+require "lib/core/version"
+require "lib/cli/commandline"
 
 exit Narou::Backtracer.capture {
   CommandLine.run!(ARGV.map(&:dup))
