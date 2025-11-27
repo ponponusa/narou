@@ -762,10 +762,8 @@ RSpec.describe "Narou::AppServer API v2" do
       end
 
       it "returns EPUB file with formatted filename" do
-        # send_file の呼び出しを検証するために、モックを設定
-        received_filename = nil
-        allow_any_instance_of(Sinatra::Base).to receive(:send_file) do |_instance, path, options|
-          received_filename = options[:filename]
+        # send_file の呼び出しをモック
+        allow_any_instance_of(Sinatra::Base).to receive(:send_file) do |_instance, path|
           # Rackレスポンスを返さないとエラーになるので、空のボディを返す
           ""
         end
@@ -776,8 +774,12 @@ RSpec.describe "Narou::AppServer API v2" do
         # send_file が呼ばれたことを確認
         expect(Narou).to have_received(:get_ebook_file_paths).with(novel_id, ".epub")
 
-        # ファイル名が "[著者名] タイトル.拡張子" の形式になっていることを確認
-        expect(received_filename).to eq("[Test Author] Test Novel.epub")
+        # Content-Dispositionヘッダーが RFC 5987 形式で設定されていることを確認
+        content_disposition = last_response.headers["Content-Disposition"]
+        expect(content_disposition).to include("attachment")
+        expect(content_disposition).to include("filename*=UTF-8''")
+        # URLエンコードされたファイル名を確認
+        expect(content_disposition).to include("%5BTest%20Author%5D%20Test%20Novel.epub")
       end
     end
 
@@ -819,10 +821,8 @@ RSpec.describe "Narou::AppServer API v2" do
       end
 
       it "returns Kobo EPUB file with formatted filename" do
-        # send_file の呼び出しを検証するために、モックを設定
-        received_filename = nil
-        allow_any_instance_of(Sinatra::Base).to receive(:send_file) do |_instance, path, options|
-          received_filename = options[:filename]
+        # send_file の呼び出しをモック
+        allow_any_instance_of(Sinatra::Base).to receive(:send_file) do |_instance, path|
         end
 
         get "/api/v2/novels/#{novel_id}/epub"
@@ -831,8 +831,12 @@ RSpec.describe "Narou::AppServer API v2" do
         # Kobo用の拡張子でファイルパスが取得されたことを確認
         expect(Narou).to have_received(:get_ebook_file_paths).with(novel_id, ".kepub.epub")
 
-        # ファイル名が "[著者名] タイトル.kepub.epub" の形式になっていることを確認
-        expect(received_filename).to eq("[Test Author] Test Novel.kepub.epub")
+        # Content-Dispositionヘッダーが RFC 5987 形式で設定されていることを確認
+        content_disposition = last_response.headers["Content-Disposition"]
+        expect(content_disposition).to include("attachment")
+        expect(content_disposition).to include("filename*=UTF-8''")
+        # URLエンコードされたファイル名を確認（.kepub.epub拡張子）
+        expect(content_disposition).to include("%5BTest%20Author%5D%20Test%20Novel.kepub.epub")
       end
     end
   end

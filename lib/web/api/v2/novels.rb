@@ -4,6 +4,7 @@
 # Copyright 2025 ponponusa. All rights reserved.
 #
 
+require "cgi"
 require "lib/web/api/v2/base"
 
 module Narou
@@ -349,10 +350,12 @@ module Narou
               # UTF-8ファイル名をRFC 5987形式でエンコード
               encoded_filename = CGI.escape(filename).gsub("+", "%20")
 
-              # Content-Dispositionヘッダーを明示的に設定
+              # Content-Dispositionヘッダーを設定（RFC 5987形式）
+              # send_file の filename オプションは使わず、手動でヘッダーを設定
               content_type "application/epub+zip"
-              headers "Content-Disposition" => "attachment; filename*=UTF-8''#{encoded_filename}"
-              send_file(paths[0], filename: filename)
+              headers["Content-Disposition"] = "attachment; filename*=UTF-8''#{encoded_filename}"
+
+              send_file(paths[0])
             else
               status 404
               json error_response("EPUB_NOT_FOUND", "EPUB file not found. Please convert the novel first.")

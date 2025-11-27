@@ -4,6 +4,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require "cgi"
+
 #
 # 小説管理ルーティングを担当するモジュール
 #
@@ -108,7 +110,18 @@ module NovelsRoutes
       ext = device ? device.ebook_file_ext : ".epub"
       paths = Narou.get_ebook_file_paths(@id, ext)
       if !paths.empty? && File.exist?(paths[0])
-        send_file(paths[0], filename: File.basename(paths[0]), type: "application/octet-stream")
+        # ファイル名を "[著者名] タイトル.拡張子" の形式にする
+        author = @data["author"] || "Unknown"
+        title = @data["title"] || "Untitled"
+        filename = "[#{author}] #{title}#{ext}"
+
+        # UTF-8ファイル名をRFC 5987形式でエンコード
+        encoded_filename = CGI.escape(filename).gsub("+", "%20")
+
+        content_type "application/octet-stream"
+        headers["Content-Disposition"] = "attachment; filename*=UTF-8''#{encoded_filename}"
+
+        send_file(paths[0])
       else
         not_found
       end
