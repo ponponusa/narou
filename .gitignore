@@ -22,6 +22,7 @@ debug
 *.orig
 *.patch
 trash/
+.ruby-version
 .sass-cache/
 log/**/*
 misc/
