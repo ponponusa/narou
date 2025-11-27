@@ -840,4 +840,347 @@ RSpec.describe "Narou::AppServer API v2" do
       end
     end
   end
+
+  describe "GET /api/v2/settings/export" do
+    let(:local_dir) { Pathname.new("/tmp/test_narou/.narou") }
+    let(:global_dir) { Pathname.new("/tmp/test_narou/.narousetting") }
+
+    before do
+      allow(Narou).to receive(:local_setting_dir).and_return(local_dir)
+      allow(Narou).to receive(:global_setting_dir).and_return(global_dir)
+    end
+
+    context "when narou is not initialized" do
+      before do
+        allow(local_dir).to receive(:exist?).and_return(false)
+      end
+
+      it "returns 400 error" do
+        get "/api/v2/settings/export"
+
+        expect(last_response.status).to eq(400)
+        expect(json_response["success"]).to be false
+        expect(json_response["error"]["code"]).to eq("NOT_INITIALIZED")
+      end
+    end
+
+    context "when narou is initialized" do
+      let(:test_local_dir) { Dir.mktmpdir("narou_test_local") }
+      let(:test_global_dir) { Dir.mktmpdir("narou_test_global") }
+
+      before do
+        # 実際のテンポラリディレクトリを使用
+        local_pathname = Pathname.new(test_local_dir)
+        global_pathname = Pathname.new(test_global_dir)
+
+        allow(Narou).to receive(:local_setting_dir).and_return(local_pathname)
+        allow(Narou).to receive(:global_setting_dir).and_return(global_pathname)
+
+        # テスト用ファイルを作成
+        File.write(File.join(test_local_dir, "local_setting.yaml"), "key: value")
+        File.write(File.join(test_global_dir, "global_setting.yaml"), "global_key: global_value")
+      end
+
+      after do
+        FileUtils.remove_entry(test_local_dir) if File.exist?(test_local_dir)
+        FileUtils.remove_entry(test_global_dir) if File.exist?(test_global_dir)
+      end
+
+      it "returns a ZIP file" do
+        get "/api/v2/settings/export"
+
+        expect(last_response).to be_ok
+        expect(last_response.content_type).to eq("application/zip")
+      end
+
+      it "sets correct Content-Disposition header" do
+        get "/api/v2/settings/export"
+
+        expect(last_response).to be_ok
+        content_disposition = last_response.headers["Content-Disposition"]
+        expect(content_disposition).to include("attachment")
+        expect(content_disposition).to include("narou-settings-")
+        expect(content_disposition).to include(".zip")
+      end
+
+      it "includes settings files in the ZIP" do
+        get "/api/v2/settings/export"
+
+        expect(last_response).to be_ok
+
+        # ZIPファイルの内容を検証
+        require "zip"
+        zip_content = StringIO.new(last_response.body)
+        entry_names = []
+
+        Zip::InputStream.open(zip_content) do |zis|
+          while (entry = zis.get_next_entry)
+            entry_names << entry.name
+          end
+        end
+
+        expect(entry_names).to include(".narou/local_setting.yaml")
+        expect(entry_names).to include(".narousetting/global_setting.yaml")
+      end
+    end
+  end
+
+  describe "POST /api/v2/settings/import" do
+    context "when no file is uploaded" do
+      let(:local_dir) { Pathname.new("/tmp/test_narou/.narou") }
+      let(:global_dir) { Pathname.new("/tmp/test_narou/.narousetting") }
+
+      before do
+        allow(Narou).to receive(:local_setting_dir).and_return(local_dir)
+        allow(Narou).to receive(:global_setting_dir).and_return(global_dir)
+      end
+
+      it "returns 400 error" do
+        post "/api/v2/settings/import"
+
+        expect(last_response.status).to eq(400)
+        expect(json_response["success"]).to be false
+        expect(json_response["error"]["code"]).to eq("NO_FILE")
+      end
+    end
+
+    context "when narou is not initialized" do
+      let(:local_dir) { Pathname.new("/tmp/nonexistent_dir") }
+      let(:global_dir) { Pathname.new("/tmp/nonexistent_dir2") }
+
+      before do
+        allow(Narou).to receive(:local_setting_dir).and_return(local_dir)
+        allow(Narou).to receive(:global_setting_dir).and_return(global_dir)
+      end
+
+      it "returns 400 error" do
+        # 空のZIPファイルを作成
+        require "zip"
+        zip_buffer = StringIO.new
+        Zip::OutputStream.write_buffer(zip_buffer) { |_| }
+        zip_buffer.rewind
+
+        # Tempfileを作成
+        tempfile = Tempfile.new(["test", ".zip"])
+        tempfile.write(zip_buffer.read)
+        tempfile.rewind
+
+        uploaded_file = Rack::Test::UploadedFile.new(tempfile.path, "application/zip")
+
+        post "/api/v2/settings/import", file: uploaded_file
+
+        expect(last_response.status).to eq(400)
+        expect(json_response["success"]).to be false
+        expect(json_response["error"]["code"]).to eq("NOT_INITIALIZED")
+
+        tempfile.close
+        tempfile.unlink
+      end
+    end
+
+    context "when valid ZIP file is uploaded" do
+      let(:test_local_dir) { Dir.mktmpdir("narou_test_local") }
+      let(:test_global_dir) { Dir.mktmpdir("narou_test_global") }
+
+      before do
+        local_pathname = Pathname.new(test_local_dir)
+        global_pathname = Pathname.new(test_global_dir)
+
+        allow(Narou).to receive(:local_setting_dir).and_return(local_pathname)
+        allow(Narou).to receive(:global_setting_dir).and_return(global_pathname)
+        allow(Inventory).to receive(:clear_cache)
+      end
+
+      after do
+        FileUtils.remove_entry(test_local_dir) if File.exist?(test_local_dir)
+        FileUtils.remove_entry(test_global_dir) if File.exist?(test_global_dir)
+      end
+
+      it "imports settings from ZIP file" do
+        # テスト用ZIPファイルを作成
+        require "zip"
+        zip_buffer = StringIO.new
+        Zip::OutputStream.write_buffer(zip_buffer) do |zos|
+          zos.put_next_entry(".narou/local_setting.yaml")
+          zos.write("key: value")
+          zos.put_next_entry(".narousetting/global_setting.yaml")
+          zos.write("global_key: global_value")
+        end
+        zip_buffer.rewind
+
+        # Tempfileを作成
+        tempfile = Tempfile.new(["test", ".zip"])
+        tempfile.binmode
+        tempfile.write(zip_buffer.read)
+        tempfile.rewind
+
+        # Rack::Test::UploadedFileを使用
+        uploaded_file = Rack::Test::UploadedFile.new(tempfile.path, "application/zip")
+
+        post "/api/v2/settings/import", file: uploaded_file
+
+        expect(last_response).to be_ok
+        expect(json_response["success"]).to be true
+        expect(json_response["data"]["imported_count"]).to eq(2)
+        expect(json_response["data"]["imported_files"]).to include(".narou/local_setting.yaml")
+        expect(json_response["data"]["imported_files"]).to include(".narousetting/global_setting.yaml")
+
+        # 実際にファイルが作成されたことを確認
+        expect(File.exist?(File.join(test_local_dir, "local_setting.yaml"))).to be true
+        expect(File.exist?(File.join(test_global_dir, "global_setting.yaml"))).to be true
+
+        tempfile.close
+        tempfile.unlink
+      end
+
+      it "skips files with disallowed extensions" do
+        require "zip"
+        zip_buffer = StringIO.new
+        Zip::OutputStream.write_buffer(zip_buffer) do |zos|
+          zos.put_next_entry(".narou/local_setting.yaml")
+          zos.write("key: value")
+          zos.put_next_entry(".narou/malicious.rb")
+          zos.write("# malicious code")
+        end
+        zip_buffer.rewind
+
+        tempfile = Tempfile.new(["test", ".zip"])
+        tempfile.binmode
+        tempfile.write(zip_buffer.read)
+        tempfile.rewind
+
+        uploaded_file = Rack::Test::UploadedFile.new(tempfile.path, "application/zip")
+
+        post "/api/v2/settings/import", file: uploaded_file
+
+        expect(last_response).to be_ok
+        expect(json_response["success"]).to be true
+        expect(json_response["data"]["imported_count"]).to eq(1)
+        expect(json_response["data"]["skipped_count"]).to eq(1)
+        expect(json_response["data"]["skipped_files"]).to include(".narou/malicious.rb")
+
+        # 悪意のあるファイルが作成されていないことを確認
+        expect(File.exist?(File.join(test_local_dir, "malicious.rb"))).to be false
+
+        tempfile.close
+        tempfile.unlink
+      end
+
+      it "prevents path traversal attacks" do
+        require "zip"
+        zip_buffer = StringIO.new
+        Zip::OutputStream.write_buffer(zip_buffer) do |zos|
+          zos.put_next_entry("../../../etc/passwd")
+          zos.write("malicious content")
+          zos.put_next_entry(".narou/local_setting.yaml")
+          zos.write("key: value")
+        end
+        zip_buffer.rewind
+
+        tempfile = Tempfile.new(["test", ".zip"])
+        tempfile.binmode
+        tempfile.write(zip_buffer.read)
+        tempfile.rewind
+
+        uploaded_file = Rack::Test::UploadedFile.new(tempfile.path, "application/zip")
+
+        post "/api/v2/settings/import", file: uploaded_file
+
+        expect(last_response).to be_ok
+        expect(json_response["success"]).to be true
+        # パストラバーサルを含むエントリは無視される
+        expect(json_response["data"]["imported_count"]).to eq(1)
+
+        tempfile.close
+        tempfile.unlink
+      end
+
+      it "imports replace.txt files" do
+        require "zip"
+        zip_buffer = StringIO.new
+        Zip::OutputStream.write_buffer(zip_buffer) do |zos|
+          zos.put_next_entry(".narou/replace.txt")
+          zos.write("pattern=replacement")
+        end
+        zip_buffer.rewind
+
+        tempfile = Tempfile.new(["test", ".zip"])
+        tempfile.binmode
+        tempfile.write(zip_buffer.read)
+        tempfile.rewind
+
+        uploaded_file = Rack::Test::UploadedFile.new(tempfile.path, "application/zip")
+
+        post "/api/v2/settings/import", file: uploaded_file
+
+        expect(last_response).to be_ok
+        expect(json_response["success"]).to be true
+        expect(json_response["data"]["imported_files"]).to include(".narou/replace.txt")
+
+        # ファイルが作成されたことを確認
+        expect(File.exist?(File.join(test_local_dir, "replace.txt"))).to be true
+
+        tempfile.close
+        tempfile.unlink
+      end
+
+      it "imports parser config files" do
+        require "zip"
+        zip_buffer = StringIO.new
+        Zip::OutputStream.write_buffer(zip_buffer) do |zos|
+          zos.put_next_entry(".narou/parsers/ncode.syosetu.com.yaml")
+          zos.write("engine: nokogiri")
+        end
+        zip_buffer.rewind
+
+        tempfile = Tempfile.new(["test", ".zip"])
+        tempfile.binmode
+        tempfile.write(zip_buffer.read)
+        tempfile.rewind
+
+        uploaded_file = Rack::Test::UploadedFile.new(tempfile.path, "application/zip")
+
+        post "/api/v2/settings/import", file: uploaded_file
+
+        expect(last_response).to be_ok
+        expect(json_response["success"]).to be true
+        expect(json_response["data"]["imported_files"]).to include(".narou/parsers/ncode.syosetu.com.yaml")
+
+        # サブディレクトリが作成されたことを確認
+        expect(File.exist?(File.join(test_local_dir, "parsers", "ncode.syosetu.com.yaml"))).to be true
+
+        tempfile.close
+        tempfile.unlink
+      end
+    end
+
+    context "when invalid ZIP file is uploaded" do
+      let(:test_local_dir) { Dir.mktmpdir("narou_test_local") }
+
+      before do
+        allow(Narou).to receive(:local_setting_dir).and_return(Pathname.new(test_local_dir))
+      end
+
+      after do
+        FileUtils.remove_entry(test_local_dir) if File.exist?(test_local_dir)
+      end
+
+      it "returns 400 error for invalid ZIP" do
+        tempfile = Tempfile.new(["test", ".zip"])
+        tempfile.write("not a zip file")
+        tempfile.rewind
+
+        uploaded_file = Rack::Test::UploadedFile.new(tempfile.path, "application/zip")
+
+        post "/api/v2/settings/import", file: uploaded_file
+
+        expect(last_response.status).to eq(400)
+        expect(json_response["success"]).to be false
+        expect(json_response["error"]["code"]).to eq("INVALID_ZIP")
+
+        tempfile.close
+        tempfile.unlink
+      end
+    end
+  end
 end

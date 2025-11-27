@@ -834,6 +834,124 @@ paths:
               schema:
                 $ref: '#/components/schemas/SettingsVariablesResponse'
 
+  /api/v2/settings/export:
+    get:
+      tags:
+        - settings
+      summary: 設定エクスポート
+      description: |
+        アプリケーションの設定ファイルをZIP形式でエクスポートします。
+
+        エクスポートされるファイル:
+        - `.narou/` ディレクトリ内の設定ファイル（local_setting.yaml, replace.txt, parsers/ など）
+        - `.narousetting/` ディレクトリ内のグローバル設定ファイル
+
+        対象ファイル拡張子: .yaml, .yml, .json, .txt
+      operationId: exportSettings
+      responses:
+        '200':
+          description: 成功（ZIPファイル）
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: "attachment; filename=\"narou-settings-YYYYMMDD-HHMMSS.zip\""
+        '400':
+          description: Narou未初期化エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: NOT_INITIALIZED
+                  message: Narou is not initialized
+
+  /api/v2/settings/import:
+    post:
+      tags:
+        - settings
+      summary: 設定インポート
+      description: |
+        ZIPファイルから設定をインポート（復元）します。
+
+        インポート可能なファイル:
+        - `.narou/` プレフィックスを持つファイル → ローカル設定ディレクトリに展開
+        - `.narousetting/` プレフィックスを持つファイル → グローバル設定ディレクトリに展開
+
+        セキュリティ制限:
+        - 許可された拡張子のみ（.yaml, .yml, .json, .txt）
+        - パストラバーサル攻撃は自動的にブロックされます
+        - 許可されていないファイルはスキップされます
+      operationId: importSettings
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: インポートするZIPファイル
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsImportResponse'
+              example:
+                success: true
+                data:
+                  imported_count: 5
+                  skipped_count: 1
+                  imported_files:
+                    - ".narou/local_setting.yaml"
+                    - ".narou/replace.txt"
+                    - ".narousetting/global_setting.yaml"
+                  skipped_files:
+                    - ".narou/script.rb"
+                meta:
+                  timestamp: "2025-11-27T12:00:00Z"
+        '400':
+          description: エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                no_file:
+                  summary: ファイル未指定
+                  value:
+                    success: false
+                    error:
+                      code: NO_FILE
+                      message: No file uploaded
+                not_initialized:
+                  summary: Narou未初期化
+                  value:
+                    success: false
+                    error:
+                      code: NOT_INITIALIZED
+                      message: Narou is not initialized
+                invalid_zip:
+                  summary: 無効なZIPファイル
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_ZIP
+                      message: Invalid ZIP file
+
   # ========================================
   # Novel Settings API
   # ========================================
@@ -1341,6 +1459,31 @@ components:
                     items:
                       type: string
                     description: select型の場合の選択肢
+
+    SettingsImportResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                imported_count:
+                  type: integer
+                  description: インポートされたファイル数
+                skipped_count:
+                  type: integer
+                  description: スキップされたファイル数
+                imported_files:
+                  type: array
+                  items:
+                    type: string
+                  description: インポートされたファイルのパス一覧
+                skipped_files:
+                  type: array
+                  items:
+                    type: string
+                  description: スキップされたファイルのパス一覧（許可されていない拡張子など）
 
     # Novel Settings Schemas
     NovelSettingsResponse:
