@@ -10,8 +10,8 @@ require "benchmark"
 # ダミーデータ生成スクリプト
 #
 # Usage:
-#   ruby bin/generate_dummy_data.rb [count]
-#   ruby bin/generate_dummy_data.rb cleanup
+#   ruby scripts/generate_dummy_data.rb [count]
+#   ruby scripts/generate_dummy_data.rb cleanup
 #
 class DummyDataGenerator
   NAROU_DIR = ".narou"
@@ -383,8 +383,8 @@ if __FILE__ == $PROGRAM_NAME
     generator.generate(10000)
   else
     puts "Usage:"
-    puts "  ruby bin/generate_dummy_data.rb [count]     # ダミーデータ生成（デフォルト: 10000件）"
-    puts "  ruby bin/generate_dummy_data.rb cleanup     # ダミーデータ削除"
+    puts "  ruby scripts/generate_dummy_data.rb [count]     # ダミーデータ生成（デフォルト: 10000件）"
+    puts "  ruby scripts/generate_dummy_data.rb cleanup     # ダミーデータ削除"
     exit 1
   end
 end

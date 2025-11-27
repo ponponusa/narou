@@ -286,7 +286,11 @@ npm install
 cd /path/to/narou-mod
 
 # バックエンド + フロントエンドを同時起動
-./bin/restart_servers.sh
+# Unix/Linux/WSL
+./scripts/process_control.sh --restart
+
+# Windows (PowerShell)
+.\scripts\process_control.ps1 -Restart
 
 # または個別に起動
 # バックエンド

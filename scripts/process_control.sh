@@ -5,7 +5,7 @@
 # Copyright 2025 ponponusa
 #
 # narou-mod プロセス管理スクリプト
-# Usage: ./bin/process_control.sh [--list|--restart|--kill] [--force]
+# Usage: ./scripts/process_control.sh [--list|--restart|--kill] [--force]
 #
 
 set -e

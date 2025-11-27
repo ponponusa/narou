@@ -2,7 +2,7 @@
 # Copyright 2025 ponponusa
 #
 # narou-mod プロセス管理スクリプト (Windows版)
-# Usage: .\bin\process_control.ps1 [-List] [-Restart] [-Kill] [-Force]
+# Usage: .\scripts\process_control.ps1 [-List] [-Restart] [-Kill] [-Force]
 #
 
 param(
@@ -373,7 +373,7 @@ function Show-Help {
     Write-ColorOutput "narou-mod プロセス管理スクリプト (Windows版)" -ForegroundColor Cyan
     Write-Host ""
     Write-ColorOutput "使い方:" -ForegroundColor Green
-    Write-Host "  .\bin\process_control.ps1 [オプション]"
+    Write-Host "  .\scripts\process_control.ps1 [オプション]"
     Write-Host ""
     Write-ColorOutput "オプション:" -ForegroundColor Green
     Write-Host "  -List      実行中のプロセス一覧と詳細を表示"
@@ -383,11 +383,11 @@ function Show-Help {
     Write-Host "  -Help      このヘルプを表示"
     Write-Host ""
     Write-ColorOutput "使用例:" -ForegroundColor Green
-    Write-Host "  .\bin\process_control.ps1 -List               # プロセス一覧を表示"
-    Write-Host "  .\bin\process_control.ps1 -Restart            # 確認後に再起動"
-    Write-Host "  .\bin\process_control.ps1 -Restart -Force     # 確認なしで即座に再起動"
-    Write-Host "  .\bin\process_control.ps1 -Kill               # 確認後に全プロセス終了"
-    Write-Host "  .\bin\process_control.ps1 -Kill -Force        # 確認なしで即座に全プロセス終了"
+    Write-Host "  .\scripts\process_control.ps1 -List               # プロセス一覧を表示"
+    Write-Host "  .\scripts\process_control.ps1 -Restart            # 確認後に再起動"
+    Write-Host "  .\scripts\process_control.ps1 -Restart -Force     # 確認なしで即座に再起動"
+    Write-Host "  .\scripts\process_control.ps1 -Kill               # 確認後に全プロセス終了"
+    Write-Host "  .\scripts\process_control.ps1 -Kill -Force        # 確認なしで即座に全プロセス終了"
     Write-Host ""
     Write-ColorOutput "プロセスの役割:" -ForegroundColor Green
     Write-Host "  Backend Server   - Ruby (Sinatra) API サーバー (ポート: 5678)"

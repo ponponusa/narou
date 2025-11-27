@@ -11,16 +11,16 @@
 
 ```bash
 # デフォルト（10000件）生成
-ruby bin/generate_dummy_data.rb
+ruby scripts/generate_dummy_data.rb
 
 # 任意の件数を指定
-ruby bin/generate_dummy_data.rb 5000
+ruby scripts/generate_dummy_data.rb 5000
 ```
 
 ### ダミーデータ削除
 
 ```bash
-ruby bin/generate_dummy_data.rb cleanup
+ruby scripts/generate_dummy_data.rb cleanup
 ```
 
 ## 生成されるデータ
