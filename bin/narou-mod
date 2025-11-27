@@ -55,8 +55,13 @@ end
 $bootsnap_enable = defined?(Bootsnap)
 
 if File.exist?("narou.rb")
+  # 開発環境: narou.rb を直接実行
   require File.join(Dir.pwd, "narou.rb")
 else
-  $LOAD_PATH.unshift File.expand_path("..", __dir__)
-  require "lib/core/narou"
+  # gem からインストールされた場合: 共通起動ロジックを実行
+  script_dir = File.expand_path("..", __dir__)
+  $LOAD_PATH.unshift(script_dir) unless $LOAD_PATH.include?(script_dir)
+
+  require "lib/loading/bootstrap"
+  Narou::Bootstrap.run(script_dir, ARGV)
 end

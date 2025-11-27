@@ -24,40 +24,7 @@ if defined?(Gem)
   Gem.loaded_specs.delete("narou-mod")
 end
 
-require "lib/loading/extension"
-require "lib/extensions/monkey_patches"
-require "lib/utilities/backtracer"
+# 共通起動ロジックを実行
+require "lib/loading/bootstrap"
+Narou::Bootstrap.run(script_dir, ARGV)
 
-$debug = File.exist?(File.join(script_dir, "debug"))
-
-Encoding.default_external = Encoding::UTF_8
-Narou::Backtracer.argv = ARGV
-
-if ARGV.delete("--time")
-  now = Time.now
-  at_exit do
-    puts "実行時間 #{Time.now - now}秒"
-  end
-end
-
-require "lib/core/inventory"
-
-$development = Narou.commit_version.!
-# NOTE:
-# 開発用の pry / awesome_print は console コマンド内でのみ遅延ロードします。
-# ここ（narou.rb）で require しないことで通常起動を軽くします。
-
-global = Inventory.load("global_setting", :global)
-$display_backtrace = ARGV.delete("--backtrace")
-$display_backtrace ||= $debug
-$disable_color = ARGV.delete("--no-color")
-$disable_color ||= global["no-color"]
-$color_parser ||= global["color-parser"] || "system"
-
-require "lib/output/narou_logger"
-require "lib/core/version"
-require "lib/cli/commandline"
-
-exit Narou::Backtracer.capture {
-  CommandLine.run!(ARGV.map(&:dup))
-}
