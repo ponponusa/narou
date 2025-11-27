@@ -9,6 +9,7 @@
 require "fileutils"
 require "json"
 require "socket"
+require "lib/utilities/helper"
 
 module Narou
   class ProcessManager
@@ -177,7 +178,7 @@ module Narou
       return false unless info
 
       pid = info[:pid]
-      pgid = info.dig(:metadata, :pgid) # プロセスグループID
+      pgid = info.dig(:metadata, :pgid) # プロセスグループID（Unix系のみ）
 
       # プロセスが既に終了している場合はクリーンアップのみ
       unless process_running?(pid)
@@ -186,7 +187,16 @@ module Narou
       end
 
       begin
-        # プロセスグループIDがある場合はグループごと停止
+        if Helper.os_windows?
+          # Windows: taskkill で子プロセスも含めて終了
+          # /T: 子プロセスも終了, /F: 強制終了
+          system("taskkill /PID #{pid} /T /F >NUL 2>&1")
+          sleep 0.5
+          cleanup_files
+          return true
+        end
+
+        # Unix系: プロセスグループIDがある場合はグループごと停止
         target_pid = pgid || pid
 
         # シグナルを送信
