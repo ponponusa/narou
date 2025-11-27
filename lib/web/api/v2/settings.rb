@@ -325,6 +325,168 @@ module Narou
               json error_response("PARSER_CONFIG_UPDATE_ERROR", e.message)
             end
           end
+
+          # GET /api/v2/settings/export
+          # 設定ファイルをZIPでエクスポート
+          get "/api/v2/settings/export" do
+            set_cors_headers
+
+            begin
+              require "zip"
+              require "stringio"
+
+              local_dir = Narou.local_setting_dir
+              global_dir = Narou.global_setting_dir
+
+              unless local_dir&.exist?
+                status 400
+                return json error_response("NOT_INITIALIZED", "Narou is not initialized")
+              end
+
+              # ZIPファイルをメモリ上で作成
+              zip_buffer = StringIO.new
+              Zip::OutputStream.write_buffer(zip_buffer) do |zos|
+                # .narou/ 配下の設定ファイルを追加
+                if local_dir&.exist?
+                  Dir.glob(local_dir.join("*.yaml")).each do |file|
+                    filename = File.basename(file)
+                    zos.put_next_entry(".narou/#{filename}")
+                    zos.write(File.read(file))
+                  end
+
+                  # パーサー設定ディレクトリ
+                  parser_dir = local_dir.join("parsers")
+                  if parser_dir.exist?
+                    Dir.glob(parser_dir.join("*.yaml")).each do |file|
+                      filename = File.basename(file)
+                      zos.put_next_entry(".narou/parsers/#{filename}")
+                      zos.write(File.read(file))
+                    end
+                  end
+
+                  # replace.txt
+                  replace_file = local_dir.join("replace.txt")
+                  if replace_file.exist?
+                    zos.put_next_entry(".narou/replace.txt")
+                    zos.write(File.read(replace_file))
+                  end
+                end
+
+                # .narousetting/ 配下の設定ファイルを追加
+                if global_dir&.exist?
+                  Dir.glob(global_dir.join("*.yaml")).each do |file|
+                    filename = File.basename(file)
+                    zos.put_next_entry(".narousetting/#{filename}")
+                    zos.write(File.read(file))
+                  end
+
+                  # グローバル置換ファイル
+                  global_replace = global_dir.join("replace.txt")
+                  if global_replace.exist?
+                    zos.put_next_entry(".narousetting/replace.txt")
+                    zos.write(File.read(global_replace))
+                  end
+                end
+              end
+
+              zip_buffer.rewind
+
+              content_type "application/zip"
+              attachment "narou-settings-#{Time.now.strftime('%Y%m%d-%H%M%S')}.zip"
+              zip_buffer.read
+            rescue StandardError => e
+              status 500
+              json error_response("EXPORT_ERROR", e.message)
+            end
+          end
+
+          # POST /api/v2/settings/import
+          # ZIPファイルから設定をインポート
+          post "/api/v2/settings/import" do
+            set_cors_headers
+
+            begin
+              require "zip"
+
+              unless params[:file] && params[:file][:tempfile]
+                status 400
+                return json error_response("NO_FILE", "No file uploaded")
+              end
+
+              local_dir = Narou.local_setting_dir
+              global_dir = Narou.global_setting_dir
+
+              unless local_dir&.exist?
+                status 400
+                return json error_response("NOT_INITIALIZED", "Narou is not initialized")
+              end
+
+              imported_files = []
+              skipped_files = []
+
+              Zip::File.open(params[:file][:tempfile].path) do |zip_file|
+                zip_file.each do |entry|
+                  next if entry.directory?
+
+                  # セキュリティチェック: パストラバーサル防止
+                  entry_name = entry.name
+                  next if entry_name.include?("..") || entry_name.start_with?("/")
+
+                  # 許可するファイルパターンのみ処理
+                  if entry_name.start_with?(".narou/")
+                    relative_path = entry_name.sub(".narou/", "")
+                    target_path = local_dir.join(relative_path)
+
+                    # サブディレクトリが必要な場合は作成
+                    FileUtils.mkdir_p(File.dirname(target_path))
+
+                    # yamlまたはtxtファイルのみインポート
+                    if relative_path.end_with?(".yaml", ".txt")
+                      File.write(target_path, entry.get_input_stream.read)
+                      imported_files << entry_name
+                    else
+                      skipped_files << entry_name
+                    end
+                  elsif entry_name.start_with?(".narousetting/")
+                    relative_path = entry_name.sub(".narousetting/", "")
+                    target_path = global_dir.join(relative_path)
+
+                    # サブディレクトリが必要な場合は作成
+                    FileUtils.mkdir_p(File.dirname(target_path))
+
+                    # yamlまたはtxtファイルのみインポート
+                    if relative_path.end_with?(".yaml", ".txt")
+                      File.write(target_path, entry.get_input_stream.read)
+                      imported_files << entry_name
+                    else
+                      skipped_files << entry_name
+                    end
+                  else
+                    skipped_files << entry_name
+                  end
+                end
+              end
+
+              # Inventoryのキャッシュをクリア
+              Inventory.clear_cache if Inventory.respond_to?(:clear_cache)
+
+              json success_response(
+                {
+                  imported_count: imported_files.size,
+                  imported_files: imported_files,
+                  skipped_count: skipped_files.size,
+                  skipped_files: skipped_files
+                },
+                message: "Settings imported successfully"
+              )
+            rescue Zip::Error => e
+              status 400
+              json error_response("INVALID_ZIP", "Invalid ZIP file: #{e.message}")
+            rescue StandardError => e
+              status 500
+              json error_response("IMPORT_ERROR", e.message)
+            end
+          end
         end
       end
     end

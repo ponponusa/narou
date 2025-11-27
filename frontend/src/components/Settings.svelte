@@ -9,6 +9,7 @@
     getSettings,
     getSettingVariables,
     updateSettings,
+    API_BASE_URL,
     type SettingsData,
     type SettingVariablesData,
     type SettingVariable,
@@ -43,6 +44,13 @@
 
   // デフォルトリセット確認モーダル
   let showResetConfirmModal = $state(false);
+
+  // エクスポート・インポート機能（ZIPファイル形式）
+  let exporting = $state(false);
+  let importing = $state(false);
+  let showImportConfirmModal = $state(false);
+  let pendingImportFile = $state<File | null>(null);
+  let fileInputRef = $state<HTMLInputElement | null>(null);
 
   // 利用可能なタブ一覧（リアクティブ）
   let availableTabs = $derived.by(() => {
@@ -398,6 +406,146 @@
   }
 
   /**
+   * 設定ファイルをZIPとしてエクスポート
+   */
+  async function exportSettings() {
+    exporting = true;
+    error = null;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v2/settings/export`);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message || "エクスポートに失敗しました"
+        );
+      }
+
+      // ZIPファイルをダウンロード
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `narou-settings-${new Date().toISOString().split("T")[0]}.zip`;
+
+      // Content-Dispositionからファイル名を取得
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match) {
+          filename = match[1];
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      successMessage = "設定ファイルをエクスポートしました";
+      setTimeout(() => {
+        successMessage = null;
+      }, 3000);
+    } catch (e) {
+      error = e instanceof Error ? e.message : "エクスポートに失敗しました";
+      console.error("Failed to export settings:", e);
+    } finally {
+      exporting = false;
+    }
+  }
+
+  /**
+   * ファイル選択ダイアログを開く
+   */
+  function openImportDialog() {
+    fileInputRef?.click();
+  }
+
+  /**
+   * インポートファイルを処理
+   */
+  function handleImportFile(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // ZIPファイルかどうかを確認
+    if (!file.name.endsWith(".zip")) {
+      error = "ZIPファイルを選択してください";
+      input.value = "";
+      return;
+    }
+
+    // ファイルを一時保存して確認モーダルを表示
+    pendingImportFile = file;
+    showImportConfirmModal = true;
+
+    // 同じファイルを再選択できるようにリセット
+    input.value = "";
+  }
+
+  /**
+   * インポートを実行
+   */
+  async function executeImport() {
+    if (!pendingImportFile) return;
+
+    importing = true;
+    error = null;
+    successMessage = null;
+    showImportConfirmModal = false;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", pendingImportFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/v2/settings/import`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error?.message || "設定のインポートに失敗しました"
+        );
+      }
+
+      const data = result.data;
+      successMessage = `${data.imported_count}件の設定ファイルをインポートしました`;
+
+      if (data.skipped_count > 0) {
+        successMessage += `（${data.skipped_count}件スキップ）`;
+      }
+
+      // データを再読み込み
+      await loadSettings();
+
+      // 3秒後にメッセージを消す
+      setTimeout(() => {
+        successMessage = null;
+      }, 3000);
+    } catch (e) {
+      error = e instanceof Error ? e.message : "設定のインポートに失敗しました";
+      console.error("Failed to import settings:", e);
+    } finally {
+      importing = false;
+      pendingImportFile = null;
+    }
+  }
+
+  /**
+   * インポートをキャンセル
+   */
+  function cancelImport() {
+    showImportConfirmModal = false;
+    pendingImportFile = null;
+  }
+
+  /**
    * タブ名を取得
    */
   function getTabLabel(tab: string): string {
@@ -583,36 +731,73 @@
 
     <!-- アクションボタン（上部） -->
     {#snippet actionButtons()}
-      <div class="flex gap-3 justify-end flex-wrap">
-        <button
-          onclick={() => (showResetConfirmModal = true)}
-          disabled={saving || resetting}
-          class="px-4 py-2 border border-orange-300 dark:border-orange-600 rounded-lg text-sm font-medium text-orange-700 dark:text-orange-300 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <i class="fas fa-undo mr-1"></i>
-          デフォルトに戻す
-        </button>
-        <button
-          onclick={discardChanges}
-          disabled={!hasChanges || saving || resetting}
-          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          変更を破棄
-        </button>
-        <button
-          onclick={saveSettings}
-          disabled={!hasChanges || saving || resetting}
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-        >
-          {#if saving}
-            <div
-              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
-            ></div>
-            保存中...
-          {:else}
-            変更を保存
-          {/if}
-        </button>
+      <div class="flex gap-3 justify-between flex-wrap">
+        <!-- 左側: エクスポート・インポート -->
+        <div class="flex gap-2">
+          <button
+            onclick={exportSettings}
+            disabled={saving || resetting || importing || exporting}
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {#if exporting}
+              <div
+                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 dark:border-gray-300 mr-1"
+              ></div>
+              エクスポート中...
+            {:else}
+              <i class="fas fa-download mr-1"></i>
+              バックアップ
+            {/if}
+          </button>
+          <button
+            onclick={openImportDialog}
+            disabled={saving || resetting || importing || exporting}
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {#if importing}
+              <div
+                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 dark:border-gray-300 mr-1"
+              ></div>
+              復元中...
+            {:else}
+              <i class="fas fa-upload mr-1"></i>
+              復元
+            {/if}
+          </button>
+        </div>
+
+        <!-- 右側: 既存のボタン -->
+        <div class="flex gap-2">
+          <button
+            onclick={() => (showResetConfirmModal = true)}
+            disabled={saving || resetting || importing}
+            class="px-4 py-2 border border-orange-300 dark:border-orange-600 rounded-lg text-sm font-medium text-orange-700 dark:text-orange-300 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <i class="fas fa-undo mr-1"></i>
+            デフォルトに戻す
+          </button>
+          <button
+            onclick={discardChanges}
+            disabled={!hasChanges || saving || resetting || importing}
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            変更を破棄
+          </button>
+          <button
+            onclick={saveSettings}
+            disabled={!hasChanges || saving || resetting || importing}
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+          >
+            {#if saving}
+              <div
+                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+              ></div>
+              保存中...
+            {:else}
+              変更を保存
+            {/if}
+          </button>
+        </div>
       </div>
     {/snippet}
 
@@ -879,6 +1064,81 @@
     </div>
   </div>
 {/if}
+
+<!-- インポート確認モーダル -->
+{#if showImportConfirmModal}
+  <div
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    onclick={cancelImport}
+    onkeydown={(e) => e.key === "Escape" && cancelImport()}
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+  >
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl"
+      onclick={(e) => e.stopPropagation()}
+      onkeydown={() => {}}
+      role="document"
+    >
+      <h3
+        class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center"
+      >
+        <i class="fas fa-upload text-blue-500 mr-2"></i>
+        設定をインポート
+      </h3>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">
+        バックアップファイルから設定を復元します。現在の設定は上書きされます。
+      </p>
+      {#if pendingImportFile}
+        <div
+          class="text-sm text-gray-500 dark:text-gray-500 mb-6 bg-gray-50 dark:bg-gray-700 p-3 rounded"
+        >
+          <p>
+            <i class="fas fa-file-archive mr-1"></i>
+            <strong>ファイル:</strong>
+            {pendingImportFile.name}
+          </p>
+          <p class="text-xs mt-1">
+            サイズ: {(pendingImportFile.size / 1024).toFixed(1)} KB
+          </p>
+        </div>
+      {/if}
+      <div class="flex gap-3 justify-end">
+        <button
+          onclick={cancelImport}
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          キャンセル
+        </button>
+        <button
+          onclick={executeImport}
+          disabled={importing}
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+        >
+          {#if importing}
+            <div
+              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+            ></div>
+            インポート中...
+          {:else}
+            <i class="fas fa-upload"></i>
+            復元する
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Hidden file input for import -->
+<input
+  type="file"
+  accept=".zip"
+  class="hidden"
+  bind:this={fileInputRef}
+  onchange={handleImportFile}
+/>
 
 <!-- トップに戻るボタン -->
 {#if showScrollTopButton}
