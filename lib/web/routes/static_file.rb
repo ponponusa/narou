@@ -108,6 +108,26 @@ module StaticFileRoutes
     end
 
     #
+    # バックエンド設定JSON配信（PushServerポート番号など）
+    #
+    app.get "/backend-port.json" do
+      unless self.class.legacy_mode?
+        json_path = File.join(StaticFileRoutes.frontend_dist_dir, "backend-port.json")
+
+        if File.exist?(json_path)
+          content_type :json
+          send_file json_path
+        else
+          # ファイルがない場合はデフォルト値を返す
+          content_type :json
+          { push_server_port: 5679 }.to_json
+        end
+      else
+        halt 404
+      end
+    end
+
+    #
     # Astro サブページ配信（help, settings, tasks など）
     #
     %w[help settings settings-debug tasks].each do |page|
