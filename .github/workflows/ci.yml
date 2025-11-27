@@ -105,13 +105,13 @@ jobs:
           path: frontend/dist
 
   #
-  # 2) Linux/macOS 向けの汎用 gem をビルド
+  # 2) 汎用 gem をビルド（全プラットフォーム共通）
   #    - release / test-release ブランチへの push で実行
   #    - Astro UI をビルドして含める
   #
-  build-gem-linux:
+  build-gem:
     if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
-    name: Build gem (generic)
+    name: Build gem
     runs-on: ubuntu-latest
 
     env:
@@ -159,88 +159,28 @@ jobs:
           VERSION=$(ruby -r ./lib/version.rb -e 'print Narou::VERSION + (Narou::COMMIT ? "-#{Narou::COMMIT}" : "")')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Build gem (generic)
+      - name: Build gem
         id: build
         run: |
           gem build narou-mod.gemspec
-          # 「mingw-ucrt」を含まないほうを汎用ビルド扱いにする
-          GEMFILE=$(ls narou-mod-*.gem | grep -v mingw || true)
+          GEMFILE=$(ls narou-mod-*.gem)
           echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
 
-      - name: Upload generic gem artifact
+      - name: Upload gem artifact
         uses: actions/upload-artifact@v4
         with:
-          name: narou-gem-generic
+          name: narou-gem
           path: ${{ steps.build.outputs.gemfile }}
 
   #
-  # 3) Windows (mingw-ucrt) 向け gem をビルド
-  #    - release / test-release ブランチへの push で実行
-  #    - Astro UI をビルドして含める
-  #
-  build-gem-windows:
-    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
-    name: Build gem (Windows mingw-ucrt)
-    runs-on: windows-latest
-
-    outputs:
-      gemfile: ${{ steps.build.outputs.gemfile }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby (3.4 on Windows)
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.4"
-          bundler-cache: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        shell: bash
-        run: npm ci
-
-      - name: Build Astro UI
-        working-directory: frontend
-        shell: bash
-        run: npm run build
-
-      # Windows側では bundler/bundle install は実行しない
-      # 依存を揃える必要はなく、gem build だけでよい
-
-      - name: Build gem (mingw)
-        id: build
-        shell: bash
-        run: |
-          gem build narou-mod.gemspec
-          # Windows向け: Gem::Platform::CURRENT が mingw-ucrt の .gem をpick
-          GEMFILE=$(ls narou-mod-*-mingw-ucrt.gem)
-          echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
-
-      - name: Upload mingw gem artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: narou-gem-windows
-          path: ${{ steps.build.outputs.gemfile }}
-
-  #
-  # 4) GitHub Release の作成/更新
-  #    - 本番 release ブランチへの push のときだけ実行する
-  #    - narou-mod-{version}.gem と narou-mod-{version}-x64-mingw-ucrt.gem を添付
+  # 3) GitHub Release の作成/更新 (draft)
+  #    - test-release ブランチへの push で実行
   #
   release-draft:
     if: github.event_name == 'push' && github.ref_name == 'test-release'
     name: Create/Update Draft Release (staging)
     runs-on: ubuntu-latest
-    needs: [ build-gem-linux, build-gem-windows ]
+    needs: [ build-gem ]
 
     permissions:
       contents: write
@@ -251,16 +191,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download generic gem artifact
+      - name: Download gem artifact
         uses: actions/download-artifact@v4
         with:
-          name: narou-gem-generic
-          path: dist
-
-      - name: Download mingw gem artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: narou-gem-windows
+          name: narou-gem
           path: dist
 
       - name: List dist contents
@@ -271,7 +205,7 @@ jobs:
       - name: Generate release body with license info
         id: gen_body
         run: |
-          CURRENT_TAG="${{ needs.build-gem-linux.outputs.version }}"
+          CURRENT_TAG="${{ needs.build-gem.outputs.version }}"
           ALL_TAGS=$(git tag --sort=-creatordate)
           PREV_TAG=$(echo "$ALL_TAGS" | grep -v "^${CURRENT_TAG}$" | head -n1)
 
@@ -281,15 +215,10 @@ jobs:
           {
             echo "## 📦 インストール案内"
             echo ""
-            echo "- **Windows (mingw / MSYS2 など)** の場合:"
-            echo "  → `narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem` を使用してください。"
+            echo "すべてのプラットフォーム (Windows / macOS / Linux) 共通："
             echo ""
-            echo "- **macOS / Linux** の場合:"
-            echo "  → `narou-mod-${CURRENT_TAG}.gem` を使用してください。"
-            echo ""
-            echo "インストール方法:"
             echo "\`\`\`bash"
-            echo "gem install ./ダウンロードしたファイル名.gem"
+            echo "gem install ./narou-mod-${CURRENT_TAG}.gem"
             echo "\`\`\`"
             echo ""
             echo "---"
@@ -331,20 +260,24 @@ jobs:
       - name: Create or Update Draft GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.build-gem-linux.outputs.version }}
-          name: "${{ needs.build-gem-linux.outputs.version }} (draft)"
-          draft: true         # 👈 ドラフトにする！
+          tag_name: ${{ needs.build-gem.outputs.version }}
+          name: "${{ needs.build-gem.outputs.version }} (draft)"
+          draft: true
           prerelease: false
           files: dist/*.gem
           body_path: ${{ steps.gen_body.outputs.body_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  #
+  # 4) GitHub Release の作成/更新 (public)
+  #    - release ブランチへの push で実行
+  #
   release-final:
     if: github.event_name == 'push' && github.ref_name == 'release'
     name: Create/Update Public Release
     runs-on: ubuntu-latest
-    needs: [ build-gem-linux, build-gem-windows ]
+    needs: [ build-gem ]
 
     permissions:
       contents: write
@@ -355,16 +288,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download generic gem artifact
+      - name: Download gem artifact
         uses: actions/download-artifact@v4
         with:
-          name: narou-gem-generic
-          path: dist
-
-      - name: Download mingw gem artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: narou-gem-windows
+          name: narou-gem
           path: dist
 
       - name: List dist contents
@@ -375,22 +302,17 @@ jobs:
       - name: Generate release body with license info
         id: gen_body
         run: |
-          CURRENT_TAG="${{ needs.build-gem-linux.outputs.version }}"
+          CURRENT_TAG="${{ needs.build-gem.outputs.version }}"
           ALL_TAGS=$(git tag --sort=-creatordate)
           PREV_TAG=$(echo "$ALL_TAGS" | grep -v "^${CURRENT_TAG}$" | head -n1)
 
           {
             echo "## 📦 インストール案内"
             echo ""
-            echo "- **Windows (mingw / MSYS2 など)** の場合:"
-            echo "  → `narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem` を使用してください。"
+            echo "すべてのプラットフォーム (Windows / macOS / Linux) 共通："
             echo ""
-            echo "- **macOS / Linux** の場合:"
-            echo "  → `narou-mod-${CURRENT_TAG}.gem` を使用してください。"
-            echo ""
-            echo "インストール方法:"
             echo "\`\`\`bash"
-            echo "gem install ./ダウンロードしたファイル名.gem"
+            echo "gem install ./narou-mod-${CURRENT_TAG}.gem"
             echo "\`\`\`"
             echo ""
             echo "---"
@@ -428,9 +350,9 @@ jobs:
       - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.build-gem-linux.outputs.version }}
-          name: ${{ needs.build-gem-linux.outputs.version }}
-          draft: false        # 👈 本番なので公開
+          tag_name: ${{ needs.build-gem.outputs.version }}
+          name: ${{ needs.build-gem.outputs.version }}
+          draft: false
           prerelease: false
           files: dist/*.gem
           body_path: ${{ steps.gen_body.outputs.body_path }}

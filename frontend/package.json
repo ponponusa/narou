@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node -e \"require('fs').writeFileSync('dist/.build-commit', require('child_process').execSync('git describe --always').toString().trim())\"",
     "preview": "astro preview",
     "astro": "astro",
     "check": "astro check"

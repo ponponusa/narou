@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 root = File.expand_path("..", __FILE__)
 $LOAD_PATH.unshift(root) unless $LOAD_PATH.include?(root)
-is_windows = Gem.win_platform? rescue (/mswin|mingw|cygwin|bccwin|wince|emx/ =~ RUBY_PLATFORM)
 require "lib/core/version"  # $LOAD_PATHにプロジェクトルートが追加されているので、lib/からの相対パス
 require "fileutils"
 module Narou
@@ -10,8 +9,56 @@ module Narou
     File.write("commitversion", `git describe --always`.strip)
     "commitversion"
   end
+
+  # フロントエンドのビルド（コミットIDが異なる場合のみ実行）
+  def self.build_frontend_if_needed
+    frontend_dir = File.join(File.dirname(__FILE__), "frontend")
+    dist_dir = File.join(frontend_dir, "dist")
+    commit_file = File.join(dist_dir, ".build-commit")
+
+    # 現在のコミットIDを取得
+    current_commit = `git describe --always`.strip
+
+    # 既存のビルドコミットIDと比較
+    if File.exist?(commit_file)
+      built_commit = File.read(commit_file).strip
+      if built_commit == current_commit
+        # コミットIDが一致すればビルド不要
+        return
+      end
+    end
+
+    # npm が利用可能かチェック
+    npm_available = system("npm --version > #{Gem.win_platform? ? 'NUL' : '/dev/null'} 2>&1")
+    unless npm_available
+      warn "WARNING: npm is not available. Skipping frontend build."
+      warn "         Run 'npm run build' in frontend/ directory manually."
+      return
+    end
+
+    warn "Building frontend (commit: #{current_commit})..."
+    Dir.chdir(frontend_dir) do
+      unless system("npm ci --silent")
+        warn "WARNING: npm ci failed"
+        return
+      end
+      unless system("npm run build --silent")
+        warn "WARNING: npm run build failed"
+        return
+      end
+    end
+
+    # ビルド成功時にコミットIDを記録
+    FileUtils.mkdir_p(dist_dir)
+    File.write(commit_file, current_commit)
+    warn "Frontend build completed."
+  end
 end
 Encoding.default_external = Encoding::UTF_8
+
+# gem build 時にフロントエンドをビルド
+Narou.build_frontend_if_needed
+
 Gem::Specification.new do |gem|
   gem.name          = "narou-mod"
   gem.version       = ::Narou::VERSION
@@ -81,9 +128,9 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'csv', '~> 3.3'
   gem.add_runtime_dependency 'rexml', '~> 3.4'
   gem.add_runtime_dependency 'ostruct', '~> 0.6.3'
-  unless is_windows
-    gem.add_runtime_dependency 'bootsnap', '~> 1.18', '>= 1.18.6'
-  end
+  # Ruby 3.5+ で default gem から外れるため明示的に追加
+  gem.add_runtime_dependency 'win32ole', '~> 1.9'    # Windows 専用（他OSでは無視される）
+  gem.add_runtime_dependency 'bootsnap', '~> 1.18', '>= 1.18.6'  # Unix系で高速化（Windowsでは無視される）
 
   gem.add_development_dependency 'rspec', '~> 3.13'
   gem.add_development_dependency 'rspec-retry', '~> 0.6'

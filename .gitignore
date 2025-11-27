@@ -77,3 +77,4 @@ document
 tmp/pids/
 tmp/logs/
 rsync.env
+frontend/dist/.build-commit
