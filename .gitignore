@@ -37,6 +37,7 @@ archive
 mail_setting.yaml
 .byebug_history
 *.log
+*.log.err
 .agent/
 
 # Performance test data
