@@ -1,4 +1,4 @@
-#
+﻿#
 # Copyright 2025 ponponusa
 #
 # narou-mod プロセス管理スクリプト (Windows版)

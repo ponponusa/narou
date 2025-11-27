@@ -1,4 +1,7 @@
 {
+  "[powershell]": {
+    "files.encoding": "utf8bom"
+  },
   "files.exclude": {
     "**/.git": true,
     "**/.svn": true,
