@@ -105,13 +105,14 @@ jobs:
           path: frontend/dist
 
   #
-  # 2) 汎用 gem をビルド（全プラットフォーム共通）
+  # 2) Linux/macOS 向け gem をビルド
   #    - release / test-release ブランチへの push で実行
   #    - Astro UI をビルドして含める
+  #    - bootsnap を依存関係に含む
   #
-  build-gem:
+  build-gem-linux:
     if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
-    name: Build gem
+    name: Build gem (Linux/macOS)
     runs-on: ubuntu-latest
 
     env:
@@ -159,28 +160,82 @@ jobs:
           VERSION=$(ruby -r ./lib/version.rb -e 'print Narou::VERSION + (Narou::COMMIT ? "-#{Narou::COMMIT}" : "")')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Build gem
+      - name: Build gem (Linux/macOS)
         id: build
         run: |
           gem build narou-mod.gemspec
-          GEMFILE=$(ls narou-mod-*.gem)
+          # mingw を含まない gem ファイルを取得
+          GEMFILE=$(ls narou-mod-*.gem | grep -v mingw || true)
           echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
 
       - name: Upload gem artifact
         uses: actions/upload-artifact@v4
         with:
-          name: narou-gem
+          name: narou-gem-linux
           path: ${{ steps.build.outputs.gemfile }}
 
   #
-  # 3) GitHub Release の作成/更新 (draft)
+  # 3) Windows (mingw-ucrt) 向け gem をビルド
+  #    - release / test-release ブランチへの push で実行
+  #    - win32ole を依存関係に含む
+  #
+  build-gem-windows:
+    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
+    name: Build gem (Windows)
+    runs-on: windows-latest
+
+    outputs:
+      gemfile: ${{ steps.build.outputs.gemfile }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby (3.4 on Windows)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Astro UI
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build gem (Windows)
+        id: build
+        shell: bash
+        run: |
+          gem build narou-mod.gemspec
+          # Windows向け: mingw を含む gem ファイルを取得
+          GEMFILE=$(ls narou-mod-*-mingw*.gem || ls narou-mod-*-x64-mingw*.gem || true)
+          echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
+
+      - name: Upload gem artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: narou-gem-windows
+          path: ${{ steps.build.outputs.gemfile }}
+
+  #
+  # 4) GitHub Release の作成/更新 (draft)
   #    - test-release ブランチへの push で実行
   #
   release-draft:
     if: github.event_name == 'push' && github.ref_name == 'test-release'
     name: Create/Update Draft Release (staging)
     runs-on: ubuntu-latest
-    needs: [ build-gem ]
+    needs: [ build-gem-linux, build-gem-windows ]
 
     permissions:
       contents: write
@@ -191,10 +246,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download gem artifact
+      - name: Download Linux gem artifact
         uses: actions/download-artifact@v4
         with:
-          name: narou-gem
+          name: narou-gem-linux
+          path: dist
+
+      - name: Download Windows gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: narou-gem-windows
           path: dist
 
       - name: List dist contents
@@ -205,7 +266,7 @@ jobs:
       - name: Generate release body with license info
         id: gen_body
         run: |
-          CURRENT_TAG="${{ needs.build-gem.outputs.version }}"
+          CURRENT_TAG="${{ needs.build-gem-linux.outputs.version }}"
           ALL_TAGS=$(git tag --sort=-creatordate)
           PREV_TAG=$(echo "$ALL_TAGS" | grep -v "^${CURRENT_TAG}$" | head -n1)
 
@@ -215,10 +276,16 @@ jobs:
           {
             echo "## 📦 インストール案内"
             echo ""
-            echo "すべてのプラットフォーム (Windows / macOS / Linux) 共通："
+            echo "### Linux / macOS"
             echo ""
             echo "\`\`\`bash"
-            echo "gem install ./narou-mod-${CURRENT_TAG}.gem"
+            echo "gem install ./narou-mod-${CURRENT_TAG}-x86_64-linux.gem"
+            echo "\`\`\`"
+            echo ""
+            echo "### Windows"
+            echo ""
+            echo "\`\`\`powershell"
+            echo "gem install ./narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem"
             echo "\`\`\`"
             echo ""
             echo "---"
@@ -260,8 +327,8 @@ jobs:
       - name: Create or Update Draft GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.build-gem.outputs.version }}
-          name: "${{ needs.build-gem.outputs.version }} (draft)"
+          tag_name: ${{ needs.build-gem-linux.outputs.version }}
+          name: "${{ needs.build-gem-linux.outputs.version }} (draft)"
           draft: true
           prerelease: false
           files: dist/*.gem
@@ -270,14 +337,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   #
-  # 4) GitHub Release の作成/更新 (public)
+  # 5) GitHub Release の作成/更新 (public)
   #    - release ブランチへの push で実行
   #
   release-final:
     if: github.event_name == 'push' && github.ref_name == 'release'
     name: Create/Update Public Release
     runs-on: ubuntu-latest
-    needs: [ build-gem ]
+    needs: [ build-gem-linux, build-gem-windows ]
 
     permissions:
       contents: write
@@ -288,10 +355,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download gem artifact
+      - name: Download Linux gem artifact
         uses: actions/download-artifact@v4
         with:
-          name: narou-gem
+          name: narou-gem-linux
+          path: dist
+
+      - name: Download Windows gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: narou-gem-windows
           path: dist
 
       - name: List dist contents
@@ -302,17 +375,23 @@ jobs:
       - name: Generate release body with license info
         id: gen_body
         run: |
-          CURRENT_TAG="${{ needs.build-gem.outputs.version }}"
+          CURRENT_TAG="${{ needs.build-gem-linux.outputs.version }}"
           ALL_TAGS=$(git tag --sort=-creatordate)
           PREV_TAG=$(echo "$ALL_TAGS" | grep -v "^${CURRENT_TAG}$" | head -n1)
 
           {
             echo "## 📦 インストール案内"
             echo ""
-            echo "すべてのプラットフォーム (Windows / macOS / Linux) 共通："
+            echo "### Linux / macOS"
             echo ""
             echo "\`\`\`bash"
-            echo "gem install ./narou-mod-${CURRENT_TAG}.gem"
+            echo "gem install ./narou-mod-${CURRENT_TAG}-x86_64-linux.gem"
+            echo "\`\`\`"
+            echo ""
+            echo "### Windows"
+            echo ""
+            echo "\`\`\`powershell"
+            echo "gem install ./narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem"
             echo "\`\`\`"
             echo ""
             echo "---"
@@ -350,8 +429,8 @@ jobs:
       - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.build-gem.outputs.version }}
-          name: ${{ needs.build-gem.outputs.version }}
+          tag_name: ${{ needs.build-gem-linux.outputs.version }}
+          name: ${{ needs.build-gem-linux.outputs.version }}
           draft: false
           prerelease: false
           files: dist/*.gem

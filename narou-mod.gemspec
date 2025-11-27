@@ -170,16 +170,21 @@ Gem::Specification.new do |gem|
 
   # その他
   gem.add_runtime_dependency "open_uri_redirections", "~> 0.2", ">= 0.2.1"
+  gem.add_runtime_dependency "parallel",              "~> 1.26"
   gem.add_runtime_dependency "unicode-display_width", ">= 1.5", "< 3.0"
 
   # ---------------------------------------------------------------------------
   # プラットフォーム固有の依存関係
   # ---------------------------------------------------------------------------
-  # NOTE: 以下のgemはネイティブ拡張を含むため、gemspecでは追加せず
-  #       Gemfileでplatform指定により管理する。
-  #
-  #   - win32ole:  Windows専用（他OSではビルドエラー）
-  #   - bootsnap:  Unix系で高速化（Windowsではオプショナル）
+  # gem build 時のプラットフォームに応じて依存関係を切り替える。
+  # CI では Linux と Windows で別々に gem build を実行し、
+  # それぞれのプラットフォーム向け gem をリリースする。
+  gem.platform = Gem::Platform::CURRENT
+  if Gem.win_platform?
+    gem.add_runtime_dependency "win32ole", "~> 1.9"
+  else
+    gem.add_runtime_dependency "bootsnap", "~> 1.18", ">= 1.18.6"
+  end
 
   # ---------------------------------------------------------------------------
   # 開発時依存関係（Development Dependencies）
@@ -192,6 +197,7 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency "rspec-retry",           "~> 0.6"
   gem.add_development_dependency "rspec_junit_formatter", "~> 0.6"
   gem.add_development_dependency "rubocop",               "~> 1.81", ">= 1.81.6"
+  gem.add_development_dependency "ruby-prof",             "~> 1.7"
   gem.add_development_dependency "simplecov",             "~> 0.22"
   gem.add_development_dependency "timecop",               "~> 0.9"
 end
