@@ -1,12 +1,12 @@
 <!--
   ヘッダーコンポーネント
-  
+
   ナビゲーションバーとアクションボタンを提供
 -->
 <script lang="ts">
   import { getVersion, getSettings } from "../lib/api";
   import { onMount, onDestroy } from "svelte";
-  import { getPushServer } from "../lib/pushserver";
+  import { getPushServer, type PushServerClient } from "../lib/pushserver";
   import { isServerStopped } from "../lib/stores/serverStatus";
   import ThemeToggle from "./ThemeToggle.svelte";
   import PowerMenu from "./PowerMenu.svelte";
@@ -18,12 +18,15 @@
   let queueSize = $state(0);
   let isConnected = $state(false);
   let hasAozoraEpub3 = $state<boolean | null>(null);
-  let pushServer = getPushServer();
+  let pushServer: PushServerClient | null = null;
   let currentPath = $state("/");
   let helpMenuOpen = $state(false);
   let aboutModalOpen = $state(false);
 
   onMount(() => {
+    // PushServerはブラウザ環境でのみ初期化
+    pushServer = getPushServer();
+
     // 現在のパスを取得
     currentPath = window.location.pathname;
 
@@ -51,27 +54,31 @@
     })();
 
     // PushServerイベントリスナー設定
-    pushServer.on("connected", handleConnected);
-    pushServer.on("disconnected", handleDisconnected);
-    pushServer.on("notification.queue", handleQueueNotification);
+    if (pushServer) {
+      pushServer.on("connected", handleConnected);
+      pushServer.on("disconnected", handleDisconnected);
+      pushServer.on("notification.queue", handleQueueNotification);
+    }
 
     // クリック外でヘルプメニューを閉じる（ブラウザ環境のみ）
-    if (typeof document !== 'undefined') {
+    if (typeof document !== "undefined") {
       document.addEventListener("click", handleOutsideClick);
     }
 
     return () => {
-      if (typeof document !== 'undefined') {
+      if (typeof document !== "undefined") {
         document.removeEventListener("click", handleOutsideClick);
       }
     };
   });
 
   onDestroy(() => {
-    pushServer.off("connected", handleConnected);
-    pushServer.off("disconnected", handleDisconnected);
-    pushServer.off("notification.queue", handleQueueNotification);
-    if (typeof document !== 'undefined') {
+    if (pushServer) {
+      pushServer.off("connected", handleConnected);
+      pushServer.off("disconnected", handleDisconnected);
+      pushServer.off("notification.queue", handleQueueNotification);
+    }
+    if (typeof document !== "undefined") {
       document.removeEventListener("click", handleOutsideClick);
     }
   });
@@ -107,7 +114,10 @@
           class="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
         >
           <img src="/logo_icon.svg" alt="Narou.rb MOD Logo" class="w-5 h-5" />
-          <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400" style="font-family: 'Stack Sans Headline', sans-serif; font-optical-sizing: auto; font-weight: 700;">
+          <h1
+            class="text-2xl font-bold text-blue-600 dark:text-blue-400"
+            style="font-family: 'Stack Sans Headline', sans-serif; font-optical-sizing: auto; font-weight: 700;"
+          >
             Narou.rb MOD
             {#if bootsnap}
               <span class="text-yellow-500" title="Bootsnap enabled">⚡︎</span>
@@ -255,7 +265,13 @@
                   stroke-width="2"
                   d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"
                 />
-                <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="none" />
+                <circle
+                  cx="12"
+                  cy="17"
+                  r="0.5"
+                  fill="currentColor"
+                  stroke="none"
+                />
               </svg>
             </button>
 
@@ -316,7 +332,7 @@
         </div>
 
         <!-- モバイルメニュー（md未満で表示） -->
-        <MobileMenu bind:aboutModalOpen={aboutModalOpen} />
+        <MobileMenu bind:aboutModalOpen />
       </div>
     </div>
   </nav>

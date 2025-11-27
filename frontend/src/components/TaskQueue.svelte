@@ -9,7 +9,7 @@
 -->
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { getPushServer, type EchoMessage } from "../lib/pushserver";
+  import { getPushServer } from "../lib/pushserver";
   import {
     getTasks,
     getTaskSummary,

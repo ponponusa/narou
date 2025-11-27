@@ -1,55 +1,67 @@
 <!--
   コンソールパネルコンポーネント
-  
+
   PushServerからのechoイベントを受信してコンソールログを表示する
 -->
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { getPushServer, type EchoMessage } from '../lib/pushserver';
+  import { onMount, onDestroy } from "svelte";
+  import {
+    getPushServer,
+    type EchoMessage,
+    type PushServerClient,
+  } from "../lib/pushserver";
 
   interface LogEntry {
     id: number;
     timestamp: Date;
-    console: 'stdout' | 'stdout2' | 'convert';
+    console: "stdout" | "stdout2" | "convert";
     message: string;
     isProgress?: boolean; // 進捗メッセージかどうか
     progressKey?: string; // 進捗を識別するキー
-    processType?: 'download' | 'convert' | 'other'; // 処理タイプ
+    processType?: "download" | "convert" | "other"; // 処理タイプ
     novelId?: string; // 小説ID
   }
 
   // localStorageから設定を読み込む
-  const STORAGE_KEY = 'narou-console-settings';
-  
+  const STORAGE_KEY = "narou-console-settings";
+
   function loadSettings() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const settings = JSON.parse(saved);
-        if (typeof settings.splitView === 'boolean') splitView = settings.splitView;
-        if (typeof settings.compactProgress === 'boolean') compactProgress = settings.compactProgress;
-        if (typeof settings.autoScroll === 'boolean') autoScroll = settings.autoScroll;
-        if (typeof settings.updateThrottle === 'number') updateThrottle = settings.updateThrottle;
-        if (typeof settings.splitRatio === 'number') splitRatio = settings.splitRatio;
+        if (typeof settings.splitView === "boolean")
+          splitView = settings.splitView;
+        if (typeof settings.compactProgress === "boolean")
+          compactProgress = settings.compactProgress;
+        if (typeof settings.autoScroll === "boolean")
+          autoScroll = settings.autoScroll;
+        if (typeof settings.updateThrottle === "number")
+          updateThrottle = settings.updateThrottle;
+        if (typeof settings.splitRatio === "number")
+          splitRatio = settings.splitRatio;
       }
     } catch (e) {
-      console.error('Failed to load console settings:', e);
+      console.error("Failed to load console settings:", e);
     }
   }
 
   function saveSettings() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        splitView,
-        compactProgress,
-        autoScroll,
-        updateThrottle,
-        splitRatio
-      }));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          splitView,
+          compactProgress,
+          autoScroll,
+          updateThrottle,
+          splitRatio,
+        })
+      );
     } catch (e) {
-      console.error('Failed to save console settings:', e);
+      console.error("Failed to save console settings:", e);
     }
   }
 
@@ -68,11 +80,14 @@
   let unsubscribe: (() => void) | null = null;
   let isConnected = $state(false);
   let lastUpdateTime = 0;
-  let pendingLogs: Array<{console: 'stdout' | 'stdout2' | 'convert', message: string}> = [];
-  
+  let pendingLogs: Array<{
+    console: "stdout" | "stdout2" | "convert";
+    message: string;
+  }> = [];
+
   // プログレスバーの状態
   let currentProgressBar: {
-    console: 'stdout' | 'stdout2' | 'convert';
+    console: "stdout" | "stdout2" | "convert";
     percent: number;
     logId?: number;
   } | null = null;
@@ -123,21 +138,21 @@
    */
   async function clearLogs() {
     logs = [];
-    
+
     // バックエンドの履歴もクリア
     try {
-      const response = await fetch('/api/v2/console/clear', {
-        method: 'POST',
+      const response = await fetch("/api/v2/console/clear", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
-      
+
       if (!response.ok) {
-        console.error('Failed to clear backend history:', response.statusText);
+        console.error("Failed to clear backend history:", response.statusText);
       }
     } catch (error) {
-      console.error('Error clearing backend history:', error);
+      console.error("Error clearing backend history:", error);
     }
   }
 
@@ -154,14 +169,16 @@
    */
   function handleResize(e: MouseEvent) {
     if (!isResizing) return;
-    
-    const consoleEl = document.querySelector('.console-split-view') as HTMLElement;
+
+    const consoleEl = document.querySelector(
+      ".console-split-view"
+    ) as HTMLElement;
     if (!consoleEl) return;
-    
+
     const rect = consoleEl.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const ratio = (x / rect.width) * 100;
-    
+
     // 20% ～ 80% の範囲に制限
     splitRatio = Math.max(20, Math.min(80, ratio));
   }
@@ -171,24 +188,27 @@
    */
   function stopResize() {
     isResizing = false;
-  }  /**
+  } /**
    * ログエントリを追加
    */
-  function addLog(consoleType: 'stdout' | 'stdout2' | 'convert', message: string) {
+  function addLog(
+    consoleType: "stdout" | "stdout2" | "convert",
+    message: string
+  ) {
     const now = Date.now();
-    
+
     // スロットリング: 指定間隔内は追加をペンディング
     if (now - lastUpdateTime < updateThrottle && pendingLogs.length > 0) {
       pendingLogs.push({ console: consoleType, message });
       return;
     }
-    
+
     // ペンディングされたログがあれば処理
     if (pendingLogs.length > 0) {
-      pendingLogs.forEach(log => processLog(log.console, log.message));
+      pendingLogs.forEach((log) => processLog(log.console, log.message));
       pendingLogs = [];
     }
-    
+
     processLog(consoleType, message);
     lastUpdateTime = now;
   }
@@ -196,43 +216,56 @@
   /**
    * ログを処理して追加
    */
-  function processLog(consoleType: 'stdout' | 'stdout2' | 'convert', message: string) {
-    let cleanMessage = message.replace(/\n$/, ''); // 末尾の改行を削除
-    
+  function processLog(
+    consoleType: "stdout" | "stdout2" | "convert",
+    message: string
+  ) {
+    let cleanMessage = message.replace(/\n$/, ""); // 末尾の改行を削除
+
     // ANSI escape sequence（プログレスバーのclear()）を無視
     // \e[2K\r（行削除+行頭移動）などのエスケープシーケンスを除去
     if (/\x1b\[[\d;]*[A-Za-z]/.test(cleanMessage)) {
       // エスケープシーケンスのみのメッセージは無視
-      if (cleanMessage.replace(/\x1b\[[\d;]*[A-Za-z]/g, '').replace(/\r/g, '').trim() === '') {
+      if (
+        cleanMessage
+          .replace(/\x1b\[[\d;]*[A-Za-z]/g, "")
+          .replace(/\r/g, "")
+          .trim() === ""
+      ) {
         return;
       }
       // エスケープシーケンスを削除
-      cleanMessage = cleanMessage.replace(/\x1b\[[\d;]*[A-Za-z]/g, '');
+      cleanMessage = cleanMessage.replace(/\x1b\[[\d;]*[A-Za-z]/g, "");
     }
-    
+
     // キャリッジリターン(\r)を削除（プログレスバーの上書き制御文字）
-    cleanMessage = cleanMessage.replace(/\r/g, '');
-    
+    cleanMessage = cleanMessage.replace(/\r/g, "");
+
     // 処理タイプと小説IDを抽出
     const { processType, novelId } = extractProcessInfo(cleanMessage);
-    
+
     // 進捗メッセージかどうかを判定
     const isProgress = isProgressMessage(cleanMessage);
     // novelIdがある場合はそれを含めたprogressKeyを生成
-    const baseProgressKey = isProgress ? extractProgressKey(cleanMessage) : undefined;
-    const progressKey = baseProgressKey && novelId ? `${baseProgressKey}-novel-${novelId}` : baseProgressKey;
-    
+    const baseProgressKey = isProgress
+      ? extractProgressKey(cleanMessage)
+      : undefined;
+    const progressKey =
+      baseProgressKey && novelId
+        ? `${baseProgressKey}-novel-${novelId}`
+        : baseProgressKey;
+
     // ★プログレスバーは無効化（すべて通常メッセージとして扱う）
     const isProgressBar = false;
     // const isProgressBar = /\[[#*]+[\s.-]*\]/.test(cleanMessage) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(cleanMessage);
-    
+
     // コンパクトモードで進捗メッセージの場合、既存のエントリを更新
     // ただし、プログレスバーは除外（すべての状態を表示するため）
     if (compactProgress && isProgress && progressKey && !isProgressBar) {
       const existingIndex = logs.findIndex(
-        log => log.isProgress && log.progressKey === progressKey
+        (log) => log.isProgress && log.progressKey === progressKey
       );
-      
+
       if (existingIndex !== -1) {
         // 既存の進捗メッセージを更新
         logs[existingIndex] = {
@@ -247,18 +280,21 @@
         return;
       }
     }
-    
+
     // 新しいログエントリを追加
-    logs = [...logs, {
-      id: nextId++,
-      timestamp: new Date(),
-      console: consoleType,
-      message: cleanMessage,
-      isProgress,
-      progressKey,
-      processType,
-      novelId,
-    }];
+    logs = [
+      ...logs,
+      {
+        id: nextId++,
+        timestamp: new Date(),
+        console: consoleType,
+        message: cleanMessage,
+        isProgress,
+        progressKey,
+        processType,
+        novelId,
+      },
+    ];
 
     // 最大1000件まで保持
     if (logs.length > 1000) {
@@ -276,28 +312,28 @@
     if (decodeMessage(message).trim().length === 0) {
       return false;
     }
-    
+
     const decoded = decodeMessage(message).trim();
-    
+
     // プログレスバー: [###...] または [*  ] を含むパターン
     // 0%[###...]100% や [***   ] 50% などに対応
     // ★プログレスバーは無効化（常に通常メッセージとして扱う）
     // if (/\[[#*]+[\s.-]*\]/.test(decoded) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(decoded)) {
     //   return true;
     // }
-    
+
     // 「第n部分」だけの行は進捗メッセージ
     if (/^第[\d０-９]+部分\s*$/.test(decoded)) {
       return true;
     }
-    
+
     // 章データ（「第一章」「第二章」「第１章」「第２章」「１章」「2章」など）も進捗メッセージとして扱う
     // 第○部分と同じキーで上書き更新される
     // 漢数字、全角数字、半角数字すべてに対応、「第」の有無も対応
     if (/^第?[一二三四五六七八九十百千壱弐参０-９\d]+章\s*$/.test(decoded)) {
       return true;
     }
-    
+
     // 章タイトル + (n/m) パターン
     // "第一話", "第二十話" などの漢数字パターンも検出
     return /\(\d+\/\d+\)|第[一二三四五六七八九十百千]+話/.test(decoded);
@@ -308,11 +344,11 @@
    */
   function extractProgressKey(message: string): string {
     const decoded = decodeMessage(message).trim();
-    
+
     // 小説IDがある場合は、それを最優先でキーにする
     const idMatch = decoded.match(/ID[:：]\s*(\d+)/i);
     if (idMatch) return `progress-id-${idMatch[1]}`;
-    
+
     // プログレスバー: [###...] または [*  ] を含むパターン
     // 0%[###...]100% や [***   ] 50% などに対応
     // 小説IDと組み合わせて固有のキーにする
@@ -321,60 +357,63 @@
     //   // プログレスバーは1つのキーで最新のものだけを保持
     //   return 'progress-bar';
     // }
-    
+
     // 「第n部分」と「第n章」を同じグループにまとめる
     // プログレスバー → 第n部分 → 第n章 → 章タイトル (n/m) の順で来るので
     // 最終的に章タイトルのみが表示される（第n部分と第n章は上書きされて隠れる）
     if (/^第[\d０-９]+部分\s*$/.test(decoded)) {
-      return 'progress-chapter-download';
+      return "progress-chapter-download";
     }
-    
+
     // 章データ: 漢数字、全角数字、半角数字すべてに対応、「第」の有無も対応
     if (/^第?[一二三四五六七八九十百千壱弐参０-９\d]+章\s*$/.test(decoded)) {
-      return 'progress-chapter-download';
+      return "progress-chapter-download";
     }
-    
+
     // 章タイトル + (n/m) パターンも同じキー
     if (/.*\(\d+\/\d+\)/.test(decoded)) {
-      return 'progress-chapter-download';
+      return "progress-chapter-download";
     }
-    
+
     // 「第一話」「第二十話」などの漢数字パターン
     if (/第[一二三四五六七八九十百千]+話/.test(decoded)) {
-      return 'progress-chapter-title';
+      return "progress-chapter-title";
     }
-    
+
     // (n/m) 形式のパターンがある場合、その前の文字列をキーにする
     // 例: "処理中 (1/10)" -> "処理中"
     const progressMatch = decoded.match(/^(.+?)\s*\(\d+\/\d+\)/);
     if (progressMatch) return `progress-${progressMatch[1].trim()}`;
-    
+
     // それ以外は先頭20文字をキーにする
     const titleMatch = decoded.match(/^(.{0,20})/);
     if (titleMatch) return `progress-${titleMatch[1].trim()}`;
-    
-    return 'progress-unknown';
+
+    return "progress-unknown";
   }
 
   /**
    * ログメッセージから処理タイプと小説IDを抽出
    */
-  function extractProcessInfo(message: string): { processType?: 'download' | 'convert' | 'other', novelId?: string } {
+  function extractProcessInfo(message: string): {
+    processType?: "download" | "convert" | "other";
+    novelId?: string;
+  } {
     // 小説IDを抽出
     const idMatch = message.match(/ID[:：]\s*(\d+)/i);
     const novelId = idMatch ? idMatch[1] : undefined;
-    
+
     // 処理タイプを判定
-    let processType: 'download' | 'convert' | 'other' | undefined;
-    
+    let processType: "download" | "convert" | "other" | undefined;
+
     if (/ダウンロード|download|DL/i.test(message)) {
-      processType = 'download';
+      processType = "download";
     } else if (/変換|convert|epub/i.test(message)) {
-      processType = 'convert';
+      processType = "convert";
     } else if (novelId || /処理|progress/i.test(message)) {
-      processType = 'other';
+      processType = "other";
     }
-    
+
     return { processType, novelId };
   }
 
@@ -411,11 +450,12 @@
    * ダウンロード系のログをフィルタ
    */
   function getDownloadLogs(): LogEntry[] {
-    return logs.filter(log => 
-      log.console !== 'convert' && (
-        log.processType === 'download' || 
-        (!log.processType && /ダウンロード|download|DL|フェッチ|fetch/i.test(log.message))
-      )
+    return logs.filter(
+      (log) =>
+        log.console !== "convert" &&
+        (log.processType === "download" ||
+          (!log.processType &&
+            /ダウンロード|download|DL|フェッチ|fetch/i.test(log.message)))
     );
   }
 
@@ -423,10 +463,11 @@
    * 変換系のログをフィルタ
    */
   function getConvertLogs(): LogEntry[] {
-    return logs.filter(log => 
-      log.console === 'convert' ||
-      log.processType === 'convert' ||
-      (!log.processType && /変換|convert|epub/i.test(log.message))
+    return logs.filter(
+      (log) =>
+        log.console === "convert" ||
+        log.processType === "convert" ||
+        (!log.processType && /変換|convert|epub/i.test(log.message))
     );
   }
 
@@ -434,9 +475,10 @@
    * その他のログをフィルタ（分割時は左ペインに表示）
    */
   function getOtherLogs(): LogEntry[] {
-    return logs.filter(log => 
-      log.console !== 'convert' &&
-      (!log.processType || log.processType === 'other')
+    return logs.filter(
+      (log) =>
+        log.console !== "convert" &&
+        (!log.processType || log.processType === "other")
     );
   }
 
@@ -445,7 +487,7 @@
    */
   function compactLogs(logList: LogEntry[]): LogEntry[] {
     // 空のメッセージを除外
-    const filtered = logList.filter(log => {
+    const filtered = logList.filter((log) => {
       const decoded = decodeMessage(log.message).trim();
       return decoded.length > 0;
     });
@@ -461,7 +503,7 @@
       // ★プログレスバーは無効化（すべて通常メッセージとして扱う）
       const isProgressBar = false;
       // const isProgressBar = /\[[#*]+[\s.-]*\]/.test(log.message) || /\d+%\s*\[[#*\s.-]*\]\s*\d+%/.test(log.message);
-      
+
       if (log.isProgress && log.progressKey && !isProgressBar) {
         // 進捗メッセージ（プログレスバー以外）は progressKey ごとに最新のものだけ保持
         const existing = progressMap.get(log.progressKey);
@@ -475,32 +517,35 @@
     }
 
     // 非進捗 + プログレスバー + 最新の進捗メッセージを結合し、タイムスタンプとID順にソート
-    return [...nonProgressLogs, ...Array.from(progressMap.values())]
-      .sort((a, b) => {
+    return [...nonProgressLogs, ...Array.from(progressMap.values())].sort(
+      (a, b) => {
         // まずタイムスタンプで比較
         const timeDiff = a.timestamp.getTime() - b.timestamp.getTime();
         if (timeDiff !== 0) return timeDiff;
         // タイムスタンプが同じ場合はIDで比較（追加順を保持）
         return a.id - b.id;
-      });
+      }
+    );
   }
 
   /**
    * ログをファイルにエクスポート
    */
   function exportLogs() {
-    const text = logs.map(log => {
-      const time = formatTime(log.timestamp);
-      const consoleType = formatConsoleType(log.console);
-      const message = decodeMessage(log.message);
-      return `[${time}] [${consoleType}] ${message}`;
-    }).join('\n');
-    
-    const blob = new Blob([text], { type: 'text/plain' });
+    const text = logs
+      .map((log) => {
+        const time = formatTime(log.timestamp);
+        const consoleType = formatConsoleType(log.console);
+        const message = decodeMessage(log.message);
+        return `[${time}] [${consoleType}] ${message}`;
+      })
+      .join("\n");
+
+    const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `console-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+    a.download = `console-${new Date().toISOString().replace(/[:.]/g, "-")}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -511,7 +556,7 @@
    * HTMLエスケープされたメッセージをデコード
    */
   function decodeMessage(html: string): string {
-    const txt = document.createElement('textarea');
+    const txt = document.createElement("textarea");
     txt.innerHTML = html;
     return txt.value;
   }
@@ -522,30 +567,43 @@
   function formatMessage(message: string, progressKey?: string): string {
     // HTMLエスケープされているのでデコード
     let text = decodeMessage(message);
-    
+
     // 改行を含むメッセージを1行にまとめる（調査ログのサマリなど）
-    text = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-    
+    text = text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+
     // TermColorタグをHTMLクラスに変換
     // <red>text</red> -> <span class="tc-red">text</span>
-    const colorTags = ['red', 'green', 'blue', 'yellow', 'cyan', 'magenta', 'white', 'black'];
-    colorTags.forEach(color => {
-      const regex = new RegExp(`<${color}>([^<]*)</${color}>`, 'g');
+    const colorTags = [
+      "red",
+      "green",
+      "blue",
+      "yellow",
+      "cyan",
+      "magenta",
+      "white",
+      "black",
+    ];
+    colorTags.forEach((color) => {
+      const regex = new RegExp(`<${color}>([^<]*)</${color}>`, "g");
       text = text.replace(regex, `<span class="tc-${color}">$1</span>`);
     });
-    
+
     // <bold>text</bold> -> <strong>text</strong>
-    text = text.replace(/<bold>([\s\S]*?)<\/bold>/g, '<strong>$1</strong>');
-    
+    text = text.replace(/<bold>([\s\S]*?)<\/bold>/g, "<strong>$1</strong>");
+
     // <underline>text</underline> -> <u>text</u>
-    text = text.replace(/<underline>([\s\S]*?)<\/underline>/g, '<u>$1</u>');
-    
+    text = text.replace(/<underline>([\s\S]*?)<\/underline>/g, "<u>$1</u>");
+
     // ネストされたタグを処理するため、再帰的に適用
     // 例: <bold><green>text</green></bold>
-    if (/<(red|green|blue|yellow|cyan|magenta|white|black|bold|underline)>/.test(text)) {
+    if (
+      /<(red|green|blue|yellow|cyan|magenta|white|black|bold|underline)>/.test(
+        text
+      )
+    ) {
       text = formatMessage(text, progressKey);
     }
-    
+
     return text;
   }
 
@@ -553,19 +611,21 @@
    * タイムスタンプをフォーマット
    */
   function formatTime(date: Date): string {
-    const h = date.getHours().toString().padStart(2, '0');
-    const m = date.getMinutes().toString().padStart(2, '0');
-    const s = date.getSeconds().toString().padStart(2, '0');
+    const h = date.getHours().toString().padStart(2, "0");
+    const m = date.getMinutes().toString().padStart(2, "0");
+    const s = date.getSeconds().toString().padStart(2, "0");
     return `${h}:${m}:${s}`;
   }
 
   /**
    * コンソールタイプを表示用にフォーマット
    */
-  function formatConsoleType(console: 'stdout' | 'stdout2' | 'convert'): string {
-    if (console === 'stdout2') return 'stderr';
-    if (console === 'convert') return 'convert';
-    return 'stdout';
+  function formatConsoleType(
+    console: "stdout" | "stdout2" | "convert"
+  ): string {
+    if (console === "stdout2") return "stderr";
+    if (console === "convert") return "convert";
+    return "stdout";
   }
 
   // イベントハンドラの参照を保持
@@ -575,79 +635,96 @@
   let handleProgressBarInit: ((data: any) => void) | null = null;
   let handleProgressBarStep: ((data: any) => void) | null = null;
   let handleProgressBarClear: ((data: any) => void) | null = null;
+  let pushServerInstance: PushServerClient | null = null;
 
   onMount(() => {
     // 設定を読み込み
     loadSettings();
-    
-    const pushServer = getPushServer();
-    
+
+    // PushServerはブラウザ環境でのみ初期化
+    pushServerInstance = getPushServer();
+    if (!pushServerInstance) return;
+
+    const pushServer = pushServerInstance;
+
     // デバッグ: インスタンスIDを生成
     const instanceId = Math.random().toString(36).substring(7);
-    console.log(`[ConsolePanel ${instanceId}] Mounting, current handlers:`, pushServer['eventHandlers']?.size || 0);
-    
+    console.log(
+      `[ConsolePanel ${instanceId}] Mounting, current handlers:`,
+      pushServer["eventHandlers"]?.size || 0
+    );
+
     // 接続イベント
     handleConnected = () => {
       isConnected = true;
-      addLog('stdout', '[PushServer] Connected');
+      addLog("stdout", "[PushServer] Connected");
     };
-    pushServer.on('connected', handleConnected);
+    pushServer.on("connected", handleConnected);
 
     handleDisconnected = () => {
       isConnected = false;
-      addLog('stdout', '[PushServer] Disconnected');
+      addLog("stdout", "[PushServer] Disconnected");
     };
-    pushServer.on('disconnected', handleDisconnected);
+    pushServer.on("disconnected", handleDisconnected);
 
     // echoイベント
     handleEcho = (data: EchoMessage) => {
-      console.log(`[ConsolePanel ${instanceId}] Received echo event:`, data.body);
+      console.log(
+        `[ConsolePanel ${instanceId}] Received echo event:`,
+        data.body
+      );
       if (!data.no_history) {
         addLog(data.target_console, data.body);
       }
     };
-    pushServer.on('echo', handleEcho);
+    pushServer.on("echo", handleEcho);
 
     // プログレスバーイベント
     handleProgressBarInit = (data: any) => {
-      const consoleType = (data.target_console || 'stdout') as 'stdout' | 'stdout2' | 'convert';
-      
+      const consoleType = (data.target_console || "stdout") as
+        | "stdout"
+        | "stdout2"
+        | "convert";
+
       // 進捗開始のログエントリを作成
       const newLog: LogEntry = {
         id: nextId++,
         timestamp: new Date(),
         console: consoleType,
-        message: '[          ] 0%',
+        message: "[          ] 0%",
         isProgress: false, // プログレスバーは個別表示
       };
-      
-      currentProgressBar = { 
-        console: consoleType, 
+
+      currentProgressBar = {
+        console: consoleType,
         percent: 0,
-        logId: newLog.id
+        logId: newLog.id,
       };
-      
+
       logs = [...logs, newLog];
       scrollIfNeeded();
     };
-    pushServer.on('progressbar.init', handleProgressBarInit);
+    pushServer.on("progressbar.init", handleProgressBarInit);
 
     handleProgressBarStep = (data: any) => {
       if (currentProgressBar) {
         currentProgressBar.percent = data.percent || 0;
-        const consoleType = (data.target_console || currentProgressBar.console) as 'stdout' | 'stdout2' | 'convert';
-        
+        const consoleType = (data.target_console ||
+          currentProgressBar.console) as "stdout" | "stdout2" | "convert";
+
         // プログレスバーの表示を生成
         const percent = Math.round(currentProgressBar.percent);
         const barLength = 10;
         const filled = Math.round((percent / 100) * barLength);
         const empty = barLength - filled;
-        const bar = '[' + '#'.repeat(filled) + ' '.repeat(empty) + ']';
+        const bar = "[" + "#".repeat(filled) + " ".repeat(empty) + "]";
         const message = `${bar} ${percent}%`;
-        
+
         // 既存のプログレスバーログを更新、なければ新規作成
         if (currentProgressBar.logId !== undefined) {
-          const index = logs.findIndex(log => log.id === currentProgressBar!.logId);
+          const index = logs.findIndex(
+            (log) => log.id === currentProgressBar!.logId
+          );
           if (index !== -1) {
             logs[index] = {
               ...logs[index],
@@ -679,19 +756,21 @@
           currentProgressBar.logId = newLog.id;
           logs = [...logs, newLog];
         }
-        
+
         scrollIfNeeded();
       } else {
-        window.console.warn('[DEBUG] Progress bar step received but no currentProgressBar');
+        window.console.warn(
+          "[DEBUG] Progress bar step received but no currentProgressBar"
+        );
       }
     };
-    pushServer.on('progressbar.step', handleProgressBarStep);
+    pushServer.on("progressbar.step", handleProgressBarStep);
 
     handleProgressBarClear = (data: any) => {
       // clearイベントは無視（プログレスバーを残す）
       currentProgressBar = null;
     };
-    pushServer.on('progressbar.clear', handleProgressBarClear);
+    pushServer.on("progressbar.clear", handleProgressBarClear);
 
     // getPushServer()が自動的に接続を管理するため、ここでは何もしない
     // 既に接続されている場合は再接続しない
@@ -699,49 +778,57 @@
 
   onDestroy(() => {
     // イベントハンドラを解除（重複登録を防ぐため）
-    const pushServer = getPushServer();
-    
+    if (!pushServerInstance) return;
+
+    const pushServer = pushServerInstance;
+
     console.log(`[ConsolePanel] Destroying, removing handlers`);
-    
+
     if (handleConnected) {
-      pushServer.off('connected', handleConnected);
+      pushServer.off("connected", handleConnected);
     }
     if (handleDisconnected) {
-      pushServer.off('disconnected', handleDisconnected);
+      pushServer.off("disconnected", handleDisconnected);
     }
     if (handleEcho) {
-      pushServer.off('echo', handleEcho);
+      pushServer.off("echo", handleEcho);
       console.log(`[ConsolePanel] Removed echo handler`);
     }
     if (handleProgressBarInit) {
-      pushServer.off('progressbar.init', handleProgressBarInit);
+      pushServer.off("progressbar.init", handleProgressBarInit);
     }
     if (handleProgressBarStep) {
-      pushServer.off('progressbar.step', handleProgressBarStep);
+      pushServer.off("progressbar.step", handleProgressBarStep);
     }
     if (handleProgressBarClear) {
-      pushServer.off('progressbar.clear', handleProgressBarClear);
+      pushServer.off("progressbar.clear", handleProgressBarClear);
     }
-    
+
     // 共有インスタンスなので切断しない（他のページで使用される可能性がある）
     // pushServer.disconnect();
   });
 </script>
 
 {#if isOpen}
-  <div 
+  <div
     class="fixed bottom-0 left-0 right-0 z-40 bg-gray-900 dark:bg-gray-950 border-t border-gray-700 shadow-lg"
     data-console-panel
     data-is-open="true"
   >
     <!-- ヘッダー -->
-    <div class="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-900 border-b border-gray-700">
+    <div
+      class="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-900 border-b border-gray-700"
+    >
       <div class="flex items-center gap-3">
         <h3 class="text-sm font-semibold text-gray-100">コンソール</h3>
         <div class="flex items-center gap-2">
-          <div class="w-2 h-2 rounded-full {isConnected ? 'bg-green-500' : 'bg-red-500'}"></div>
+          <div
+            class="w-2 h-2 rounded-full {isConnected
+              ? 'bg-green-500'
+              : 'bg-red-500'}"
+          ></div>
           <span class="text-xs text-gray-400">
-            {isConnected ? '接続中' : '切断'}
+            {isConnected ? "接続中" : "切断"}
           </span>
         </div>
         <span class="text-xs text-gray-500">
@@ -750,7 +837,10 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer" title="進捗を1行で表示">
+        <label
+          class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer"
+          title="進捗を1行で表示"
+        >
           <input
             type="checkbox"
             bind:checked={compactProgress}
@@ -758,7 +848,10 @@
           />
           コンパクト
         </label>
-        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer" title="ダウンロードと変換を分割表示">
+        <label
+          class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer"
+          title="ダウンロードと変換を分割表示"
+        >
           <input
             type="checkbox"
             bind:checked={splitView}
@@ -766,7 +859,9 @@
           />
           分割表示
         </label>
-        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+        <label
+          class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer"
+        >
           <input
             type="checkbox"
             bind:checked={autoScroll}
@@ -812,16 +907,21 @@
     {#if splitView}
       <!-- 左右分割表示 -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-      <div 
-        class="console-split-view flex h-64 relative" 
+      <div
+        class="console-split-view flex h-64 relative"
         role="group"
-        onmousemove={handleResize} 
-        onmouseup={stopResize} 
+        onmousemove={handleResize}
+        onmouseup={stopResize}
         onmouseleave={stopResize}
       >
         <!-- 左ペイン: ダウンロード・その他 -->
-        <div class="flex flex-col border-r border-gray-700" style="width: {splitRatio}%">
-          <div class="px-3 py-1 bg-gray-800 border-b border-gray-700 text-xs font-semibold text-blue-300">
+        <div
+          class="flex flex-col border-r border-gray-700"
+          style="width: {splitRatio}%"
+        >
+          <div
+            class="px-3 py-1 bg-gray-800 border-b border-gray-700 text-xs font-semibold text-blue-300"
+          >
             📥 ダウンロード・フェッチ
           </div>
           <div
@@ -829,12 +929,12 @@
             class="flex-1 overflow-y-auto px-4 py-2 font-mono text-xs bg-gray-900 dark:bg-black text-gray-300"
           >
             {#if getDownloadLogs().length === 0 && getOtherLogs().length === 0}
-              <div class="text-gray-500 text-center py-8">
-                ログがありません
-              </div>
+              <div class="text-gray-500 text-center py-8">ログがありません</div>
             {:else}
-              {#each compactLogs([...getDownloadLogs(), ...getOtherLogs()]) as log (log.id)}
-                <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
+              {#each compactLogs( [...getDownloadLogs(), ...getOtherLogs()] ) as log (log.id)}
+                <div
+                  class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded"
+                >
                   <span class="text-gray-500 shrink-0">
                     {formatTime(log.timestamp)}
                   </span>
@@ -842,25 +942,44 @@
                     {formatConsoleType(log.console)}
                   </span>
                   {#if log.processType}
-                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
-                      log.processType === 'download' ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50' :
-                      log.processType === 'convert' ? 'bg-green-900/50 text-green-300 border border-green-700/50' :
-                      'bg-purple-900/50 text-purple-300 border border-purple-700/50'
-                    }" title="処理タイプ">
-                      {log.processType === 'download' ? 'DL' : log.processType === 'convert' ? '変換' : '他'}
+                    <span
+                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {log.processType ===
+                      'download'
+                        ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50'
+                        : log.processType === 'convert'
+                          ? 'bg-green-900/50 text-green-300 border border-green-700/50'
+                          : 'bg-purple-900/50 text-purple-300 border border-purple-700/50'}"
+                      title="処理タイプ"
+                    >
+                      {log.processType === "download"
+                        ? "DL"
+                        : log.processType === "convert"
+                          ? "変換"
+                          : "他"}
                     </span>
                   {/if}
                   {#if log.novelId}
-                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600" title="小説ID">
+                    <span
+                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600"
+                      title="小説ID"
+                    >
                       ID:{log.novelId}
                     </span>
                   {/if}
-                  {#if log.progressKey === 'progress-chapter-download'}
-                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50" title="章ダウンロード中">
+                  {#if log.progressKey === "progress-chapter-download"}
+                    <span
+                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50"
+                      title="章ダウンロード中"
+                    >
                       READ
                     </span>
                   {/if}
-                  <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
+                  <span
+                    class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console ===
+                    'stdout2'
+                      ? 'text-yellow-400'
+                      : 'text-gray-300'}"
+                  >
                     {@html formatMessage(log.message, log.progressKey)}
                   </span>
                 </div>
@@ -872,8 +991,10 @@
         <!-- リサイザー -->
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <div 
-          class="w-1 bg-gray-700 hover:bg-blue-500 cursor-col-resize transition-colors absolute top-0 bottom-0 {isResizing ? 'bg-blue-500' : ''}" 
+        <div
+          class="w-1 bg-gray-700 hover:bg-blue-500 cursor-col-resize transition-colors absolute top-0 bottom-0 {isResizing
+            ? 'bg-blue-500'
+            : ''}"
           style="left: {splitRatio}%"
           onmousedown={startResize}
           role="separator"
@@ -883,7 +1004,9 @@
 
         <!-- 右ペイン: 変換 -->
         <div class="flex flex-col" style="width: {100 - splitRatio}%">
-          <div class="px-3 py-1 bg-gray-800 border-b border-gray-700 text-xs font-semibold text-green-300">
+          <div
+            class="px-3 py-1 bg-gray-800 border-b border-gray-700 text-xs font-semibold text-green-300"
+          >
             ⚙️ 変換・EPUB生成
           </div>
           <div
@@ -891,12 +1014,12 @@
             class="flex-1 overflow-y-auto px-4 py-2 font-mono text-xs bg-gray-900 dark:bg-black text-gray-300"
           >
             {#if getConvertLogs().length === 0}
-              <div class="text-gray-500 text-center py-8">
-                ログがありません
-              </div>
+              <div class="text-gray-500 text-center py-8">ログがありません</div>
             {:else}
               {#each compactLogs(getConvertLogs()) as log (log.id)}
-                <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
+                <div
+                  class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded"
+                >
                   <span class="text-gray-500 shrink-0">
                     {formatTime(log.timestamp)}
                   </span>
@@ -904,25 +1027,44 @@
                     {formatConsoleType(log.console)}
                   </span>
                   {#if log.processType}
-                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
-                      log.processType === 'download' ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50' :
-                      log.processType === 'convert' ? 'bg-green-900/50 text-green-300 border border-green-700/50' :
-                      'bg-purple-900/50 text-purple-300 border border-purple-700/50'
-                    }" title="処理タイプ">
-                      {log.processType === 'download' ? 'DL' : log.processType === 'convert' ? '変換' : '他'}
+                    <span
+                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {log.processType ===
+                      'download'
+                        ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50'
+                        : log.processType === 'convert'
+                          ? 'bg-green-900/50 text-green-300 border border-green-700/50'
+                          : 'bg-purple-900/50 text-purple-300 border border-purple-700/50'}"
+                      title="処理タイプ"
+                    >
+                      {log.processType === "download"
+                        ? "DL"
+                        : log.processType === "convert"
+                          ? "変換"
+                          : "他"}
                     </span>
                   {/if}
                   {#if log.novelId}
-                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600" title="小説ID">
+                    <span
+                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600"
+                      title="小説ID"
+                    >
                       ID:{log.novelId}
                     </span>
                   {/if}
-                  {#if log.progressKey === 'progress-chapter-download'}
-                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50" title="章ダウンロード中">
+                  {#if log.progressKey === "progress-chapter-download"}
+                    <span
+                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50"
+                      title="章ダウンロード中"
+                    >
                       READ
                     </span>
                   {/if}
-                  <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
+                  <span
+                    class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console ===
+                    'stdout2'
+                      ? 'text-yellow-400'
+                      : 'text-gray-300'}"
+                  >
                     {@html formatMessage(log.message, log.progressKey)}
                   </span>
                 </div>
@@ -938,12 +1080,12 @@
         class="overflow-y-auto h-64 px-4 py-2 font-mono text-xs bg-gray-900 dark:bg-black text-gray-300"
       >
         {#if logs.length === 0}
-          <div class="text-gray-500 text-center py-8">
-            ログがありません
-          </div>
+          <div class="text-gray-500 text-center py-8">ログがありません</div>
         {:else}
           {#each compactLogs(logs) as log (log.id)}
-            <div class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded">
+            <div
+              class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded"
+            >
               <span class="text-gray-500 shrink-0">
                 {formatTime(log.timestamp)}
               </span>
@@ -951,25 +1093,44 @@
                 {formatConsoleType(log.console)}
               </span>
               {#if log.processType}
-                <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {
-                  log.processType === 'download' ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50' :
-                  log.processType === 'convert' ? 'bg-green-900/50 text-green-300 border border-green-700/50' :
-                  'bg-purple-900/50 text-purple-300 border border-purple-700/50'
-                }" title="処理タイプ">
-                  {log.processType === 'download' ? 'DL' : log.processType === 'convert' ? '変換' : '他'}
+                <span
+                  class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {log.processType ===
+                  'download'
+                    ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50'
+                    : log.processType === 'convert'
+                      ? 'bg-green-900/50 text-green-300 border border-green-700/50'
+                      : 'bg-purple-900/50 text-purple-300 border border-purple-700/50'}"
+                  title="処理タイプ"
+                >
+                  {log.processType === "download"
+                    ? "DL"
+                    : log.processType === "convert"
+                      ? "変換"
+                      : "他"}
                 </span>
               {/if}
               {#if log.novelId}
-                <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600" title="小説ID">
+                <span
+                  class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600"
+                  title="小説ID"
+                >
                   ID:{log.novelId}
                 </span>
               {/if}
-              {#if log.progressKey === 'progress-chapter-download'}
-                <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50" title="章ダウンロード中">
+              {#if log.progressKey === "progress-chapter-download"}
+                <span
+                  class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50"
+                  title="章ダウンロード中"
+                >
                   READ
                 </span>
               {/if}
-              <span class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console === 'stdout2' ? 'text-yellow-400' : 'text-gray-300'}">
+              <span
+                class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console ===
+                'stdout2'
+                  ? 'text-yellow-400'
+                  : 'text-gray-300'}"
+              >
                 {@html formatMessage(log.message, log.progressKey)}
               </span>
             </div>
@@ -989,7 +1150,9 @@
     data-console-panel
     data-is-open="false"
   >
-    <div class="w-2 h-2 rounded-full {isConnected ? 'bg-green-500' : 'bg-red-500'}"></div>
+    <div
+      class="w-2 h-2 rounded-full {isConnected ? 'bg-green-500' : 'bg-red-500'}"
+    ></div>
     <span class="text-sm">コンソール</span>
     {#if logs.length > 0}
       <span class="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
@@ -1001,12 +1164,28 @@
 
 <style>
   /* TermColor タグのスタイル */
-  :global(.tc-red) { color: #ef4444; }
-  :global(.tc-green) { color: #22c55e; }
-  :global(.tc-blue) { color: #3b82f6; }
-  :global(.tc-yellow) { color: #eab308; }
-  :global(.tc-cyan) { color: #06b6d4; }
-  :global(.tc-magenta) { color: #d946ef; }
-  :global(.tc-white) { color: #f3f4f6; }
-  :global(.tc-black) { color: #1f2937; }
+  :global(.tc-red) {
+    color: #ef4444;
+  }
+  :global(.tc-green) {
+    color: #22c55e;
+  }
+  :global(.tc-blue) {
+    color: #3b82f6;
+  }
+  :global(.tc-yellow) {
+    color: #eab308;
+  }
+  :global(.tc-cyan) {
+    color: #06b6d4;
+  }
+  :global(.tc-magenta) {
+    color: #d946ef;
+  }
+  :global(.tc-white) {
+    color: #f3f4f6;
+  }
+  :global(.tc-black) {
+    color: #1f2937;
+  }
 </style>

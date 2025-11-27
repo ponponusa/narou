@@ -21,7 +21,7 @@
     getTagIndex,
   } from "../lib/api";
   import type { Novel, TagInfo } from "../types/api";
-  import { getPushServer } from "../lib/pushserver";
+  import { getPushServer, type PushServerClient } from "../lib/pushserver";
   import { progressStore } from "../lib/progressStore";
   import { isServerStopped } from "../lib/stores/serverStatus";
   import { measurePerformance, PerformanceMarker } from "../lib/performance";
@@ -43,7 +43,7 @@
   let selectedIds = $state<Set<number>>(new Set());
   let totalCount = $state(0);
   let allTags = $state<TagInfo[]>([]);
-  let pushServer = getPushServer();
+  let pushServer: PushServerClient | null = null;
   let addNovelModal: AddNovelModal;
   let tagModal: TagModal;
   let conversionSettingsModal: ConversionSettingsModal;
@@ -624,9 +624,12 @@
 
     loadTags(); // awaitしない - バックグラウンドで実行
 
-    // PushServerイベントリスナー設定
-    pushServer.on("table.reload", handleTableReload);
-    pushServer.on("tag.updateCanvas", handleTagUpdate);
+    // PushServerイベントリスナー設定（ブラウザ環境のみ）
+    pushServer = getPushServer();
+    if (pushServer) {
+      pushServer.on("table.reload", handleTableReload);
+      pushServer.on("tag.updateCanvas", handleTagUpdate);
+    }
 
     // スクロールイベントリスナー追加
     window.addEventListener("scroll", handleScroll);
@@ -634,8 +637,10 @@
 
   onDestroy(() => {
     // イベントリスナー解除
-    pushServer.off("table.reload", handleTableReload);
-    pushServer.off("tag.updateCanvas", handleTagUpdate);
+    if (pushServer) {
+      pushServer.off("table.reload", handleTableReload);
+      pushServer.off("tag.updateCanvas", handleTagUpdate);
+    }
 
     // ブラウザ環境でのみwindowにアクセス
     if (typeof window !== "undefined") {
