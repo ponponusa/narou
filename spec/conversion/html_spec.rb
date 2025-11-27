@@ -48,7 +48,7 @@ describe HTML do
     expect(@html.img_to_aozora('<img src="./images/100.jpg">')).to eq("［＃挿絵（./images/100.jpg）入る］")
     @html.set_illust_setting(current_url: "http://novel.example.com/10510/")
     expect(@html.img_to_aozora('<img src="./images/100.jpg">')).to eq(
-                        "［＃挿絵（http://novel.example.com/10510/images/100.jpg）入る］"
+      "［＃挿絵（http://novel.example.com/10510/images/100.jpg）入る］"
     )
     @html.set_illust_setting(current_url: nil)
   end

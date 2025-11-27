@@ -44,7 +44,7 @@ RSpec.describe Command::Download do
 
     it "shows correct count in prompt" do
       expect(TTYHelper).to receive(:ask_yes_no).with("3件をダウンロードしますか？", default: true).and_return(true)
-      command.print_prompt(["n1", "n2", "n3"])
+      command.print_prompt(%w(n1 n2 n3))
     end
   end
 

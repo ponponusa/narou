@@ -18,10 +18,10 @@ class Inspector
   INFO = 4
   ALL = ERROR | WARNING | INFO
 
-  KLASS_TAG = { ERROR => "エラー", WARNING =>  "警告", INFO => "INFO" }
+  KLASS_TAG = { ERROR => "エラー", WARNING => "警告", INFO => "INFO" }
 
   IGNORE_INDENT_CHAR = "(（「『〈《≪【〔―・※［〝\n"
-  AUTO_INDENT_THRESHOLD_RATIO = 0.5   # 括弧等を除く全ての行のうちこの割合以上字下げされてなければ強制字下げする
+  AUTO_INDENT_THRESHOLD_RATIO = 0.5 # 括弧等を除く全ての行のうちこの割合以上字下げされてなければ強制字下げする
 
   attr_writer :messages, :subtitle
 
@@ -29,8 +29,6 @@ class Inspector
     inspect_log = File.join(setting.archive_path, INSPECT_LOG_NAME)
     if File.exist?(inspect_log)
       File.read(inspect_log)
-    else
-      nil
     end
   end
 
@@ -70,7 +68,7 @@ class Inspector
       "#{klass_type}：#{num}件"
     }.join("、")
     parts << "）"
-    
+
     # 1つの文字列として結合してwriteで出力
     summary = parts.join
     target.write(summary)
@@ -202,7 +200,7 @@ class Inspector
       end
     end
     info("カギ括弧内の改行状況:\n" +
-         "検出したカギ括弧数: #{brackets_num}、そのうち#{BRACKETS_RETURN_COUNT_THRESHOLD}個以上改行を含む数: #{brackets_num_over_threshould}\n" + 
+         "検出したカギ括弧数: #{brackets_num}、そのうち#{BRACKETS_RETURN_COUNT_THRESHOLD}個以上改行を含む数: #{brackets_num_over_threshould}\n" +
          "1つのカギ括弧内で最大の改行数: #{max}、全カギ括弧内での改行合計: #{total}")
   end
 
@@ -221,6 +219,6 @@ class Inspector
       end
     }
     ratio = dont_indent_line_count / target_line_count.to_f
-    return ratio > AUTO_INDENT_THRESHOLD_RATIO
+    ratio > AUTO_INDENT_THRESHOLD_RATIO
   end
 end

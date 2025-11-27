@@ -34,7 +34,7 @@ describe NovelSetting do
     it "設定ファイルが読み込まれるか" do
       @novel_setting["test_key"] = "test_value"
       @novel_setting.save_settings
-      
+
       new_setting = NovelSetting.new(@tmpdir, true, false)
       expect(new_setting["test_key"]).to be_nil.or eq("test_value")
     end
@@ -42,7 +42,7 @@ describe NovelSetting do
     it "設定を更新できるか" do
       @novel_setting["key1"] = "value1"
       expect(@novel_setting["key1"]).to eq "value1"
-      
+
       @novel_setting["key1"] = "value2"
       expect(@novel_setting["key1"]).to eq "value2"
     end

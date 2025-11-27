@@ -11,7 +11,6 @@
 # - Refactored WebSocket implementation (RFC 6455 only)
 # - Drops support for obsolete Hixie-75/76 drafts.
 
-
 require "base64"
 require "socket"
 require "uri"
@@ -57,13 +56,13 @@ class WebSocket
     raise WebSocket::Error, "handshake has already been done" if @handshaked
 
     status ||= "101 Switching Protocols"
-    
+
     # RFC 6455 Server Handshake
     key = @header["sec-websocket-key"]
     unless key
       raise WebSocket::Error, "Client did not send Sec-WebSocket-Key"
     end
-    
+
     accept_token = security_digest(key)
 
     def_header = {
@@ -83,7 +82,7 @@ class WebSocket
   # データの送信
   def send(data)
     raise WebSocket::Error, "call WebSocket#handshake first" unless @handshaked
-    
+
     # クライアントモードならマスクする(true)、サーバーならしない(false)
     should_mask = !@server
     send_frame(OPCODE_TEXT, data, should_mask)
@@ -92,7 +91,7 @@ class WebSocket
   # データの受信
   def receive
     raise WebSocket::Error, "call WebSocket#handshake first" unless @handshaked
-    
+
     loop do
       frame = receive_frame
       return nil unless frame # Connection closed
@@ -160,15 +159,15 @@ class WebSocket
   def init_as_server(socket, server_instance)
     @server = server_instance
     @socket = socket
-    
+
     line = gets
     raise WebSocket::Error, "Client disconnected without sending anything." unless line
 
     line = line.chomp
-    unless line =~ /\AGET (\S+) HTTP\/1.1\z/n
+    unless line =~ %r{\AGET (\S+) HTTP/1.1\z}n
       raise WebSocket::Error, "Invalid request: #{line}"
     end
-    
+
     @path = ::Regexp.last_match(1)
     read_header
 
@@ -188,10 +187,10 @@ class WebSocket
     @path = (uri.path.empty? ? "/" : uri.path) + (uri.query ? "?#{uri.query}" : "")
     host_header = uri.host + ((!uri.port || uri.port == default_port) ? "" : ":#{uri.port}")
     origin = params[:origin] || "http://#{uri.host}"
-    
+
     # RFC 6455 Client Handshake
     key = Base64.strict_encode64(SecureRandom.random_bytes(16))
-    
+
     tcp_sock = TCPSocket.new(uri.host, uri.port || default_port)
     @socket = (uri.scheme == "ws") ? tcp_sock : ssl_handshake(tcp_sock)
 
@@ -208,19 +207,19 @@ class WebSocket
     flush
 
     line = gets.chomp
-    unless line =~ /\AHTTP\/1.1 101 /n
-      raise WebSocket::Error, "bad response: #{line}" 
+    unless line =~ %r{\AHTTP/1.1 101 }n
+      raise WebSocket::Error, "bad response: #{line}"
     end
-    
+
     read_header
-    
+
     accept = @header["sec-websocket-accept"]
     expected = security_digest(key)
-    
+
     if accept != expected
       raise WebSocket::Error, "Invalid Sec-WebSocket-Accept: #{accept} != #{expected}"
     end
-    
+
     @handshaked = true
   end
 
@@ -233,7 +232,7 @@ class WebSocket
     while (line = gets)
       line = line.chomp
       break if line.empty?
-      
+
       if line =~ /\A(\S+): (.*)\z/n
         key = ::Regexp.last_match(1)
         val = ::Regexp.last_match(2)
@@ -243,7 +242,7 @@ class WebSocket
         raise WebSocket::Error, "invalid header: #{line}"
       end
     end
-    
+
     # サーバー側の場合は必須ヘッダーをチェック
     if @server
       unless @header["upgrade"]
@@ -263,13 +262,13 @@ class WebSocket
 
   def send_frame(opcode, payload, mask)
     $stderr.printf("send_frame> opcode:%d masked:%d payload:%p\n", opcode, mask ? 1 : 0, payload) if WebSocket.debug
-    
+
     # frozen な文字列でも対応できるように String() で変換してから dup
     payload = payload.to_s.dup.force_encoding("ASCII-8BIT")
     buffer = StringIO.new(String.new("", encoding: "ASCII-8BIT"))
-    
+
     write_byte(buffer, 0x80 | opcode) # FIN bit set (0x80) + opcode
-    
+
     masked_byte = mask ? 0x80 : 0x00
     if payload.bytesize <= 125
       write_byte(buffer, masked_byte | payload.bytesize)
@@ -295,7 +294,7 @@ class WebSocket
     # Read first 2 bytes (FIN+Opcode, Mask+Length)
     head = read(2)
     bytes = head.unpack("C*")
-    
+
     fin = (bytes[0] & 0x80) != 0
     opcode = bytes[0] & 0x0f
     mask = (bytes[1] & 0x80) != 0
@@ -336,7 +335,7 @@ class WebSocket
     return "" if num_bytes == 0
     str = @socket.read(num_bytes)
     $stderr.printf("recv> %p\n", str) if WebSocket.debug
-    
+
     if str && str.bytesize == num_bytes
       str
     else
@@ -348,9 +347,9 @@ class WebSocket
     if WebSocket.debug
       # Debug logging
       if data.size < 100
-         $stderr.printf("send> %p\n", data)
+        $stderr.printf("send> %p\n", data)
       else
-         $stderr.printf("send> (binary data %d bytes)\n", data.size)
+        $stderr.printf("send> (binary data %d bytes)\n", data.size)
       end
     end
     @socket.write(data)
@@ -359,11 +358,11 @@ class WebSocket
   def flush
     @socket.flush
   end
-  
+
   def write_byte(buffer, byte)
     buffer.write([byte].pack("C"))
   end
-  
+
   def security_digest(key)
     Base64.encode64(Digest::SHA1.digest(key + WEB_SOCKET_GUID)).strip
   end
@@ -384,7 +383,6 @@ class WebSocket
   end
 end
 
-
 class WebSocketServer
   attr_reader :tcp_server, :port, :accepted_domains
 
@@ -399,7 +397,7 @@ class WebSocketServer
 
     @port = params[:port] || 80
     @accepted_domains = params[:accepted_domains]
-    
+
     raise ArgumentError, "params[:accepted_domains] is required" unless @accepted_domains
 
     host = params[:host] || "0.0.0.0" # Default bind to all interfaces
@@ -473,11 +471,11 @@ if __FILE__ == $0
   if ARGV[0] == "server" && ARGV.size == 3
     server = WebSocketServer.new(accepted_domains: [ARGV[1]], port: ARGV[2].to_i)
     puts "Server is running at port #{server.port}"
-    
+
     server.run do |ws|
       puts "Connection accepted"
       puts "Path: #{ws.path}, Origin: #{ws.origin}"
-      
+
       if ws.path == "/"
         ws.handshake
         while data = ws.receive
@@ -494,13 +492,13 @@ if __FILE__ == $0
   elsif ARGV[0] == "client" && ARGV.size == 2
     client = WebSocket.new(ARGV[1])
     puts "Connected"
-    
+
     Thread.new do
       while data = client.receive
         printf("Received: %p\n", data)
       end
     end
-    
+
     $stdin.each_line do |line|
       data = line.chomp
       client.send(data)

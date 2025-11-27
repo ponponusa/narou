@@ -85,7 +85,7 @@ module Narou
           # ユーザー設定が存在する場合のみ記録を保存
           user_config = load_user_config(domain, engine)
           return unless user_config
-          
+
           user_config["last_successful_selectors"] ||= {}
           user_config["last_successful_selectors"][selector_key] = {
             "selector" => selector,

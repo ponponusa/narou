@@ -56,17 +56,15 @@ module Narou
             end
 
             thread = Thread.new do
-              begin
-                while true
-                  data = que.pop
-                  ws.send(data)
-                end
-              rescue Errno::ECONNRESET, Errno::EPIPE, IOError => e
-                # 接続が切れた場合、スレッドを終了
-              rescue => e
-                # その他のエラーもログに出力してスレッド終了
-                puts "[ERROR] WebSocket send thread error: #{e.class}: #{e.message}" if $DEBUG
+              while true
+                data = que.pop
+                ws.send(data)
               end
+            rescue Errno::ECONNRESET, Errno::EPIPE, IOError => e
+              # 接続が切れた場合、スレッドを終了
+            rescue => e
+              # その他のエラーもログに出力してスレッド終了
+              puts "[ERROR] WebSocket send thread error: #{e.class}: #{e.message}" if $DEBUG
             end
 
             while data = ws.receive
@@ -122,7 +120,7 @@ module Narou
     # 接続している全てのクライアントに対してメッセージを送信
     #
     def send_all(data)
-      if data.kind_of?(Symbol)
+      if data.is_a?(Symbol)
         # send_all(:"events.name") としてイベント名だけで送りたい場合の対応
         data = { data => true }
       end

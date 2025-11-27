@@ -46,7 +46,7 @@ class ConverterBase
       stash_kanji_num(data)
       data.gsub!(/[\d０-９,，]+/) do |match|
         if match =~ /[,，]/
-          if match =~ /[\d]/
+          if match =~ /\d/
             stash_hankaku_num_and_comma(match.tr("，", ","))
           else
             match
@@ -135,7 +135,7 @@ class ConverterBase
         next match if total.to_s.length > KANJI_NUM_UNITS_DIGIT["京"] + 4
         m1 = total.to_s.tr("0-9", KANJI_NUM)
         if m1 =~ /〇{#{lower_digit_zero},}$/
-          digits = m1.reverse.scan(/.{1,4}/).map(&:reverse).reverse   # 下の桁から4桁ずつ区切った配列を作成
+          digits = m1.reverse.scan(/.{1,4}/).map(&:reverse).reverse # 下の桁から4桁ずつ区切った配列を作成
           keta = digits.size - 1
           digits.map.with_index { |nums, keta_i|
             four_digit_num = nums.scan(/./).map.with_index { |d, di|
@@ -167,7 +167,7 @@ class ConverterBase
     #
     def exception_reconvert_kanji_to_num(data)
       return unless @setting.enable_convert_num_to_kanji
-      data.gsub!(/([Ａ-Ｚａ-ｚ])([#{KANJI_NUM}・～]+)/) do   # ｖｅｒ１・０１ のようなパターンも許容する
+      data.gsub!(/([Ａ-Ｚａ-ｚ])([#{KANJI_NUM}・～]+)/) do # ｖｅｒ１・０１ のようなパターンも許容する
         $1 + $2.tr(KANJI_NUM, "０-９")
       end
       data.gsub!(/([#{KANJI_NUM}・～]+)([Ａ-Ｚａ-ｚ#{RECONVERT_KANJI_TO_NUM_PATTERN_UNIT}])/) do
@@ -185,8 +185,8 @@ class ConverterBase
         return
       end
       target_num = "\d０-９#{KANJI_NUM}十百千万億兆京垓"
-      data.gsub!(/[#{target_num}\/／]+/) do |match|
-        numerics = match.split(/[\/／]/)
+      data.gsub!(%r{[#{target_num}/／]+}) do |match|
+        numerics = match.split(%r{[/／]})
         case numerics.size
         when 2
           # 分数

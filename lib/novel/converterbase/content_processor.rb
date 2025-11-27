@@ -49,7 +49,8 @@ class ConverterBase
                 @text_type == "subtitle" || @text_type == "chapter"
       %w(・ 。 、 ．).each do |char|
         data.gsub!(/#{char}{3,}/) do |match|
-          pre_char, post_char = $`[-1], $'[0]
+          pre_char = $`[-1]
+          post_char = $'[0]
           if pre_char == "―" || post_char == "―"
             match
           else
@@ -72,10 +73,10 @@ class ConverterBase
           prefix = $`.tap { |it|
             break it[-10, 10] if it.length > 10
           }
-          @inspector.info(<<-EOS % (prefix + $1 + "ニ" + $2 + $'[0, 10]))
-カタカナのニを漢字の二に修正しました
-≫≫≫ 該当箇所
-...%s...
+          @inspector.info(<<~EOS % (prefix + $1 + "ニ" + $2 + $'[0, 10]))
+            カタカナのニを漢字の二に修正しました
+            ≫≫≫ 該当箇所
+            ...%s...
           EOS
           "#{$1}二#{$2}"
         end

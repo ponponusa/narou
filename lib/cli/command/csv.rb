@@ -63,22 +63,22 @@ module Command
       unless database_obj
         raise "Database not initialized"
       end
-      
+
       database_values = database_obj.values
       unless database_values
         raise "Database values not available"
       end
-      
+
       result = CSV.generate do |csv|
         csv << %w(id title author sitename url novel_type tags frozen last_update general_lastup)
-        
+
         database_values.each_with_index do |data, index|
           next unless data.is_a?(Hash)
-          
+
           begin
             tags = data["tags"] || []
             novel_id = data["id"]
-            
+
             csv << [
               novel_id,
               data["title"] || "",
@@ -98,7 +98,7 @@ module Command
           end
         end
       end
-      
+
       result
     end
 

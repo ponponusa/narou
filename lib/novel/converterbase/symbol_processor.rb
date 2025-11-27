@@ -15,7 +15,7 @@ class ConverterBase
     #
     def convert_special_characters(data)
       stash_kome(data)
-      convert_double_angle_quotation_to_gaiji(data)   # 最初からギュメなのはルビ対象外なので外字注記に
+      convert_double_angle_quotation_to_gaiji(data) # 最初からギュメなのはルビ対象外なので外字注記に
       symbols_to_zenkaku(data)
       convert_tatechuyoko(data)
       convert_novel_rule(data)
@@ -92,7 +92,7 @@ class ConverterBase
 
     #
     # おかしくなりやすい矢印文字の変換
-    # 
+    #
     def convert_arrow(data)
       # Kindle PW でしか確認してないのでとりあえず device=kindle の場合のみ変換
       if @device && @device.kindle?

@@ -13,7 +13,7 @@ module Narou
   module Input
     module_function
 
-    TIMEOUT_FOR_PONG = 2   # モーダルの生存確認を送って返答を待つ時間(s)
+    TIMEOUT_FOR_PONG = 2 # モーダルの生存確認を送って返答を待つ時間(s)
 
     @@modal_id = 0
     @@mutex = Mutex.new
@@ -41,7 +41,7 @@ module Narou
       answer_event_id = "answer.modal.#{id}"
 
       answer_handler = ->(value, connection) do
-        if value.kind_of?(Hash)
+        if value.is_a?(Hash)
           que.push(value["result"])
         else
           que.push(nil)

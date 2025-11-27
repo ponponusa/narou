@@ -3,7 +3,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-#require "pry"
+# require "pry"
 
 require "lib/novel/converterbase"
 

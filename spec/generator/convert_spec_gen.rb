@@ -22,10 +22,10 @@ convert_test_text_list = Dir.glob(File.join("*", "test_*.txt")).keep_if { |path|
   dir = File.dirname(path)
   basename = File.basename(path)
   unless File.exist?(File.join(dir, "correct_#{basename}"))
-    puts <<-EOS
-[Warning]
-テストケース(#{path})は見つかりましたが、出力例のテキストデータが見つかりません。
-correct_#{basename} を用意して下さい。
+    puts <<~EOS
+      [Warning]
+      テストケース(#{path})は見つかりましたが、出力例のテキストデータが見つかりません。
+      correct_#{basename} を用意して下さい。
 
     EOS
   end

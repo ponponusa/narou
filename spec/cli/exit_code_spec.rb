@@ -8,7 +8,7 @@
 # 引数数（対象件数）を返すことで高速化している。
 #
 # これによりネットワークアクセスやDB書き込みを伴わず即終了させています。
-# 
+#
 
 require "lib/cli/commandline"
 require "lib/output/narou_logger"
@@ -19,10 +19,10 @@ describe "exit code", :show_output do
   before(:all) do
     # Databaseのスナップショットを保存
     @original_db_data = Database.instance.get_object.dup
-    
+
     # Inventoryキャッシュもバックアップ（frozen状態を保存）
     require "core/inventory"
-    @original_inventory_cache = defined?(Inventory.class_variable_get(:@@cache)) ? 
+    @original_inventory_cache = defined?(Inventory.class_variable_get(:@@cache)) ?
       Inventory.class_variable_get(:@@cache).dup : {}
   end
 
@@ -30,10 +30,10 @@ describe "exit code", :show_output do
     # 各テスト前にDatabaseとInventoryを復元
     db = Database.instance
     db.instance_variable_set(:@database, @original_db_data.dup)
-    
+
     # Inventoryキャッシュをクリア（他テストのfrozen状態変更をリセット）
     Inventory.clear if defined?(Inventory.class_variable_get(:@@cache))
-    
+
     # download を超軽量化
     allow(Command::Download).to receive(:execute!) do |*args, **_kw|
       argv = args.flatten.compact
@@ -60,7 +60,7 @@ describe "exit code", :show_output do
     # 全テスト後にDatabaseとInventoryを復元
     db = Database.instance
     db.instance_variable_set(:@database, @original_db_data)
-    
+
     # Inventoryキャッシュも復元
     if defined?(Inventory.class_variable_get(:@@cache))
       Inventory.class_variable_set(:@@cache, @original_inventory_cache)

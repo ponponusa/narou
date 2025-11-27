@@ -114,9 +114,9 @@ module Command
           require "io/console"
           width = ORIGINAL_STDOUT.winsize[1]
         rescue StandardError
-          width = 80  # デフォルト幅
+          width = 80 # デフォルト幅
         end
-        
+
         ORIGINAL_STDOUT.puts TTY::Markdown.parse(markdown, width: width)
       end
     end
@@ -266,7 +266,7 @@ module Command
     #
     def strip_markdown(markdown)
       markdown
-        .gsub(/^#+\s*/, "")           # 見出し
+        .gsub(/^#+\s*/, "") # 見出し
         .gsub(/\*\*([^*]+)\*\*/, '\1') # 太字
         .gsub(/\*([^*]+)\*/, '\1')     # 斜体
         .gsub(/`([^`]+)`/, '\1')       # インラインコード

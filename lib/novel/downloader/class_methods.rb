@@ -49,7 +49,7 @@ class Downloader
     def get_novel_data_dir_by_target(target)
       data = get_data_by_target(target) or return nil
       id = data["id"]
-      file_title = data["file_title"] || data["title"]   # 互換性維持のための処理
+      file_title = data["file_title"] || data["title"] # 互換性維持のための処理
       use_subdirectory = data["use_subdirectory"] || false
       subdirectory = use_subdirectory ? create_subdirecotry_name(file_title) : ""
       path = Database.archive_root_path.join(data["sitename"], subdirectory, file_title)
@@ -83,7 +83,7 @@ class Downloader
         end
       when :ncode
         database.each_value do |data|
-          return data if data["toc_url"] =~ %r!#{Regexp.escape(target)}/$!
+          return data if data["toc_url"] =~ %r{#{Regexp.escape(target)}/$}
         end
       when :id
         data = database[target.to_i]
@@ -124,7 +124,7 @@ class Downloader
         return setting["toc_url"] if setting
       when :ncode
         database.each_value do |data|
-          if data["toc_url"] =~ %r!#{target}/$!
+          if data["toc_url"] =~ %r{#{target}/$}
             return data["toc_url"]
           end
         end

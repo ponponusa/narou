@@ -21,8 +21,8 @@ class ProgressBar
   def output(num)
     # プログレスバーの出力を無効化
     # フロントエンド側での表示問題があるため、バックエンド側で出力を抑制
-    return
-    
+    nil
+
     # 以下は無効化されたコード
     # return if silent?
     # if num > @max
@@ -38,8 +38,8 @@ class ProgressBar
 
   def clear
     # プログレスバーのクリア処理を無効化
-    return
-    
+    nil
+
     # 以下は無効化されたコード
     # return if silent?
     # io.stream.print "\e[2K\r" # 行削除して行頭へ移動

@@ -37,7 +37,9 @@ class ConverterBase
       end
       # 前書きがある場合は、前書き→見出しの順番を見出し→前書きに入れ替えて置換
       data.gsub!(/(［＃改ページ］\n)(#{AUTHOR_COMMENT_CHUKI[:introduction][:open]}.+?#{AUTHOR_COMMENT_CHUKI[:introduction][:close]}\n)(.+?\n)/m) do
-        m1, m2, m3 = $1, $2, $3
+        m1 = $1
+        m2 = $2
+        m3 = $3
         add_tail = $' =~ /\A$/ ? "" : "\n"
         "#{m1 + midashi(m3) + m2}#{add_tail}"
       end

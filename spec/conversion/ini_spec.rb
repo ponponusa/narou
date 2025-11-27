@@ -14,7 +14,7 @@ describe Ini, "#cast" do
   end
 
   it "class type should be Integer" do
-    integer_class = RUBY_VERSION >= "2.4.0" ? Integer : Fixnum
+    integer_class = RUBY_VERSION >= "2.4.0" ? Integer : Integer
     expect(@ini.cast("100").class).to eq integer_class
   end
 
@@ -141,7 +141,7 @@ describe "test.ini" do
     expect(@ini_data["sub_section"]["number"]).to eq 100
   end
 
-  it 'は quote_string が 囲まれた文字列 であること' do
-    expect(@ini_data["sub_section"]["quote_string"]).to eq '囲まれた文字列'
+  it "は quote_string が 囲まれた文字列 であること" do
+    expect(@ini_data["sub_section"]["quote_string"]).to eq "囲まれた文字列"
   end
 end

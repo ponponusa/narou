@@ -56,7 +56,7 @@ module Command
     COMMAND_FILES.key?(name.to_s)
   end
   class << self
-    alias exists? exist?  # 互換
+    alias exists? exist? # 互換
   end
 
   # 実行直前にだけ require する

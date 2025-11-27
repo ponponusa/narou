@@ -83,7 +83,7 @@ module ServerInitializer
   def setup_server_authentication
     auth = Inventory.load("global_setting", :global).group("server-basic-auth")
     user = auth.user
-    passwd = auth.password  # ハッシュは使わない
+    passwd = auth.password # ハッシュは使わない
 
     return unless auth.enable && user && passwd
 

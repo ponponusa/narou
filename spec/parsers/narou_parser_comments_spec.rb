@@ -51,7 +51,7 @@ RSpec.describe Narou::Parsers::NarouParser do
 
       expect(result["body"]).to include("人の熱気がすごい")
       expect(result["body"]).to include("三人の女の子が踊り歌っている")
-      
+
       # 前書き・後書きが本文に含まれていないこと
       expect(result["body"]).not_to include("初めて書いた作品になります")
       expect(result["body"]).not_to include("第一部は終了となります")
@@ -62,7 +62,7 @@ RSpec.describe Narou::Parsers::NarouParser do
 
       expect(result["introduction"]).to include("初めて書いた作品になります")
       expect(result["introduction"]).to include("感想などいただけると嬉しいです")
-      
+
       # 本文が前書きに含まれていないこと
       expect(result["introduction"]).not_to include("人の熱気がすごい")
     end
@@ -72,7 +72,7 @@ RSpec.describe Narou::Parsers::NarouParser do
 
       expect(result["postscript"]).to include("第一部は終了となります")
       expect(result["postscript"]).to include("引き続き読んでいただけると嬉しいです")
-      
+
       # 本文が後書きに含まれていないこと
       expect(result["postscript"]).not_to include("人の熱気がすごい")
     end
@@ -134,7 +134,7 @@ RSpec.describe Narou::Parsers::NarouParser do
 
       expect(result["body"]).to include("本文です")
       expect(result["body"]).not_to include("これは前書きです")
-      
+
       expect(result["introduction"]).to include("これは前書きです")
       expect(result["postscript"]).to eq("")
     end
@@ -162,7 +162,7 @@ RSpec.describe Narou::Parsers::NarouParser do
 
       expect(result["body"]).to include("本文です")
       expect(result["body"]).not_to include("これは後書きです")
-      
+
       expect(result["introduction"]).to eq("")
       expect(result["postscript"]).to include("これは後書きです")
     end

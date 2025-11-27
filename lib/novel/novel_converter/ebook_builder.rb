@@ -172,14 +172,14 @@ class NovelConverter
         end
 
         content = opf_body.dup
-        content.gsub!(%r!<dc:subject>.*?</dc:subject>\s*\n?\s*!m, "")
+        content.gsub!(%r{<dc:subject>.*?</dc:subject>\s*\n?\s*}m, "")
         dc_subject_lines = subjects.map(&:strip).reject(&:empty?).map { |s|
           esc = s.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;").gsub("\"", "&quot;").gsub("'", "&apos;")
           "    <dc:subject>#{esc}</dc:subject>"
         }
         if dc_subject_lines.any?
           dc_subjects_xml = "#{dc_subject_lines.join("\n")}\n"
-          content.sub!(%r!(\s*)</metadata>!, "\n#{dc_subjects_xml}\\1</metadata>")
+          content.sub!(%r{(\s*)</metadata>}, "\n#{dc_subjects_xml}\\1</metadata>")
         end
         entries[opf_name] = content
 

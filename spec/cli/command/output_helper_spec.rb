@@ -9,12 +9,12 @@ RSpec.describe Command::OutputHelper do
   before do
     # テスト用テンプレートディレクトリを作成
     FileUtils.mkdir_p(test_template_dir)
-    
+
     # モジュール変数をリセット
     described_class.instance_variable_set(:@logger, nil)
     described_class.instance_variable_set(:@output_mode, :stdout)
     described_class.instance_variable_set(:@tty_enabled, true)
-    
+
     # ログファイルがあれば削除
     FileUtils.rm_f(test_log_file) if File.exist?(test_log_file)
   end
@@ -118,7 +118,7 @@ RSpec.describe Command::OutputHelper do
         described_class.with_spinner("ファイル出力テスト") do
           "完了"
         end
-        
+
         log_content = File.read(test_log_file)
         expect(log_content).to include("ファイル出力テスト...")
         expect(log_content).to include("ファイル出力テスト...完了")

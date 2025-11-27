@@ -32,7 +32,7 @@ class Device
         device_root = get_device_root_dir(volume_name)
         raise Device::CantEject, "端末が接続されていません" unless device_root
 
-        pattern = %r!^(/dev/[^ ]+) .* #{device_root} .*\Wuhelper=(\w+)!
+        pattern = %r{^(/dev/[^ ]+) .* #{device_root} .*\Wuhelper=(\w+)}
         File.open("|mount") do |io|
           while line = io.gets
             if line =~ pattern

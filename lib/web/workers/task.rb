@@ -12,12 +12,12 @@ module Narou
   # タスクキュー管理用のタスククラス
   #
   class Task
-    attr_reader :id, :type, :novel_id, :novel_title, :novel_author, :status, :message, 
+    attr_reader :id, :type, :novel_id, :novel_title, :novel_author, :status, :message,
                 :created_at, :started_at, :completed_at, :error, :retry_count, :max_retries,
                 :progress, :total_steps, :current_step
 
     # タスクタイプ
-    TYPES = %i[download convert update remove].freeze
+    TYPES = %i(download convert update remove).freeze
 
     # タスク状態
     STATUS_QUEUED = :queued       # キュー待ち

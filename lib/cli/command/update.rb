@@ -63,13 +63,13 @@ module Command
       @opt.on("-a", "--convert-only-new-arrival", "新着がある場合のみ変換を実行する") {
         @options["convert-only-new-arrival"] = true
       }
-      @opt.on("--gl [OPT]", <<-EOS) { |option|
-データベースに最新話掲載日を反映させる
-                            |    OPT   |          概要
-                            | 指定なし | 全ての小説を対象にする
-                            |   narou  | なろうAPIを使える小説のみ対象
-                            |   other  | なろうAPIが使えない小説のみ対象
-        EOS
+      @opt.on("--gl [OPT]", <<~EOS) { |option|
+        データベースに最新話掲載日を反映させる
+                                    |    OPT   |          概要
+                                    | 指定なし | 全ての小説を対象にする
+                                    |   narou  | なろうAPIを使える小説のみ対象
+                                    |   other  | なろうAPIが使えない小説のみ対象
+      EOS
         if option && !["narou", "other"].include?(option)
           error "--gl で指定可能なオプションではありません。詳細は narou-mod u -h を参照"
           exit Narou::EXIT_ERROR_CODE
@@ -149,7 +149,7 @@ module Command
       end
       tagname_to_ids(update_target_list)
 
-      flush_cache    # memoist のキャッシュ削除
+      flush_cache # memoist のキャッシュ削除
 
       hotentry_manager = HotentryManager.new
       interval = Interval.new(@options["interval"])
@@ -217,20 +217,20 @@ module Command
           end
           convert_argv = [target]
           convert_argv << "--no-open" if @options["no-open"]
-          
+
           # WebUI: 変換メッセージを変換コンソールに出力するため、一時的に$stdout2を切り替え
           original_stdout2 = $stdout2
           if $stdout2.respond_to?(:push_server) && $stdout2.respond_to?(:target_console)
             # WebUIの場合、変換用の別コンソールに出力
             $stdout2 = Narou::StreamingLogger.new($stdout2.push_server, $stdout2, target_console: "convert")
           end
-          
+
           require "cli/command/convert" unless defined?(Command::Convert)
           convert_status = Convert.execute!(convert_argv)
-          
+
           # $stdout2を元に戻す
           $stdout2 = original_stdout2 if original_stdout2
-          
+
           if convert_status > 0
             # 変換が失敗したか、中断された
             data["_convert_failure"] = true
@@ -301,7 +301,7 @@ module Command
       begin
         hotentry.each do |id, subtitles|
           setting = NovelSetting.load(id, ignore_force, ignore_default)
-          setting.enable_illust = false   # 挿絵はパス解決が煩雑なので強制無効
+          setting.enable_illust = false # 挿絵はパス解決が煩雑なので強制無効
           novel_converter = NovelConverter.new(
             setting, output_filename,
             display_inspector, Update.hotentry_dirname,

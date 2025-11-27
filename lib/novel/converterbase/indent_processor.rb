@@ -56,8 +56,10 @@ class ConverterBase
       return unless @text_type == "body" || @text_type == "textfile"
       @@count_of_rebuild_container ||= 0
       data.gsub!(/^[ 　\t]*([－―<＜〈-]*)([0-9０-９#{KANJI_NUM}]{1,3})([－―>＞〉-]*)$/) do
-        top, chapter, bottom = $1, $2, $3
-        if top != "" && "―－-".include?(top)   # include?は空文字("")だとtrueなのでチェック必須
+        top = $1
+        chapter = $2
+        bottom = $3
+        if top != "" && "―－-".include?(top) # include?は空文字("")だとtrueなのでチェック必須
           top = "― "
           bottom = " ―"
         end
@@ -67,8 +69,8 @@ class ConverterBase
         # 前後に空行を入れたいが、それは行処理ループ中に行う
         symbols_to_zenkaku(str)
         index = @@count_of_rebuild_container += 1
-        @force_indent_special_chapter_list[convert_numbers(index.to_s.rjust(10,"0"))] = str
-        "［＃章見出しっぽい文＝#{index.to_s.rjust(10,"0")}］"
+        @force_indent_special_chapter_list[convert_numbers(index.to_s.rjust(10, "0"))] = str
+        "［＃章見出しっぽい文＝#{index.to_s.rjust(10, "0")}］"
       end
     end
 

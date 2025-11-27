@@ -16,7 +16,8 @@ converter "n1839bd オーバーロード：後編" do
       @inspector.warning("オバロっぽいルビを検出：#{$1}")
     end
     io.string.gsub!(/[≪『](.+?)／(.+?)[≫』]/) do
-      spell_ruby, spell_name = $1, $2
+      spell_ruby = $1
+      spell_name = $2
       if spell_name =~ /^([ぁ-んァ-ヴーゞ・Ａ-Ｚａ-ｚA-Za-z]+)$/
         spell_name = spell_ruby
         spell_ruby = $&

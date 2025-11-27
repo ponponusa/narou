@@ -53,8 +53,8 @@ class DiffViewer
       # index が途切れたら、ポジション情報を付与する
       result = +""
       if index - before_index >= 2
-        result += "<bold><cyan>@@ -#{event.old_position+1}, " \
-                  "+#{event.new_position+1} @@</cyan></bold>\n".termcolor
+        result += "<bold><cyan>@@ -#{event.old_position + 1}, " \
+                  "+#{event.new_position + 1} @@</cyan></bold>\n".termcolor
       end
       result += str
       before_index = index

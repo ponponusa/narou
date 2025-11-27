@@ -30,7 +30,7 @@ module Narou
       @worker_thread = nil
       @cancel_signal = false
       @thread_of_block_executing = nil
-      
+
       # タスク管理用
       @tasks = {}                    # task_id => Task
       @current_task = nil            # 現在実行中のTask
@@ -45,64 +45,62 @@ module Narou
       return if running?
       @worker_thread = Thread.new do
         loop do
-          begin
-            q = @queue.pop
-            task = q[:task]
-            
-            if canceled?
-              @queue.clear
-              @cancel_signal = false
-              # キューに残っているタスクをすべてキャンセル
-              @mutex.synchronize do
-                @tasks.each_value do |t|
-                  t.cancel! if t.queued?
-                end
-              end
-            else
-              # タスクを実行中状態にする
-              @mutex.synchronize do
-                @current_task = task
-              end
-              task.start! if task
-              
-              # ブロックを実行
-              @thread_of_block_executing = Thread.new do
-                q[:block].call
-              end
-              @thread_of_block_executing.join
-              @thread_of_block_executing = nil
-              
-              # タスクを完了状態にする
-              task.complete! if task
-              @mutex.synchronize do
-                move_to_history(task) if task
-                @current_task = nil
+          q = @queue.pop
+          task = q[:task]
+
+          if canceled?
+            @queue.clear
+            @cancel_signal = false
+            # キューに残っているタスクをすべてキャンセル
+            @mutex.synchronize do
+              @tasks.each_value do |t|
+                t.cancel! if t.queued?
               end
             end
-          rescue Interrupt
-            # タスクをキャンセル状態にする
-            task&.cancel!("中断されました")
+          else
+            # タスクを実行中状態にする
+            @mutex.synchronize do
+              @current_task = task
+            end
+            task.start! if task
+
+            # ブロックを実行
+            @thread_of_block_executing = Thread.new do
+              q[:block].call
+            end
+            @thread_of_block_executing.join
+            @thread_of_block_executing = nil
+
+            # タスクを完了状態にする
+            task.complete! if task
             @mutex.synchronize do
               move_to_history(task) if task
               @current_task = nil
             end
-          rescue SystemExit
-            # 正常終了
-          rescue Exception => e
-            # WebWorkerスレッド内での例外は表示するだけしてスレッドは生かしたままにする
-            output_error($stdout, e)
-            # タスクを失敗状態にする
-            task&.fail!(e.message, e)
-            @mutex.synchronize do
-              move_to_history(task) if task
-              @current_task = nil
-            end
-          ensure
-            if q && q[:counting]
-              countdown
-            end
-            notification_task_updated if task
           end
+        rescue Interrupt
+          # タスクをキャンセル状態にする
+          task&.cancel!("中断されました")
+          @mutex.synchronize do
+            move_to_history(task) if task
+            @current_task = nil
+          end
+        rescue SystemExit
+          # 正常終了
+        rescue Exception => e
+          # WebWorkerスレッド内での例外は表示するだけしてスレッドは生かしたままにする
+          output_error($stdout, e)
+          # タスクを失敗状態にする
+          task&.fail!(e.message, e)
+          @mutex.synchronize do
+            move_to_history(task) if task
+            @current_task = nil
+          end
+        ensure
+          if q && q[:counting]
+            countdown
+          end
+          notification_task_updated if task
         end
       end
     end
@@ -144,31 +142,31 @@ module Narou
     #
     # システム用のワーカー追加。内部カウントは増やさない
     #
-    def self.push_as_system_worker(&block)
-      instance.push(false, &block)
+    def self.push_as_system_worker(&)
+      instance.push(false, &)
     end
 
-    def self.push(&block)
-      instance.push(&block)
+    def self.push(&)
+      instance.push(&)
     end
 
     #
     # タスクを追加（新しいAPI）
     #
-    def self.push_task(task, &block)
-      instance.push_task_impl(task, &block)
+    def self.push_task(task, &)
+      instance.push_task_impl(task, &)
     end
 
     def push_task_impl(task, &block)
       raise ArgumentError, "Task must be a Narou::Task" unless task.is_a?(Narou::Task)
-      
+
       @mutex.synchronize do
         @tasks[task.id] = task
       end
-      
+
       countup
       @queue.push(block: block, counting: true, task: task)
-      
+
       notification_task_updated
       task.id
     end
@@ -184,7 +182,7 @@ module Narou
     def notification_queue
       push_server = Narou::AppServer.push_server
       return unless push_server
-      
+
       push_server.send_all("notification.queue" => [@size, Narou::Worker.size])
     end
 
@@ -194,7 +192,7 @@ module Narou
     def notification_task_updated
       push_server = Narou::AppServer.push_server
       return unless push_server
-      
+
       push_server.send_all("notification.task.updated" => get_tasks_summary_impl)
     end
 
@@ -272,11 +270,11 @@ module Narou
     def cancel_task_impl(task_id)
       result = nil
       should_notify = false
-      
+
       @mutex.synchronize do
         task = @tasks[task_id]
         return { success: false, message: "Task not found" } unless task
-        
+
         if task.queued?
           # キュー待ちの場合は即座にキャンセル
           task.cancel!("ユーザーによりキャンセルされました")
@@ -299,7 +297,7 @@ module Narou
           result = { success: false, message: "Task cannot be canceled in current state" }
         end
       end
-      
+
       notification_task_updated if should_notify
       result
     end
@@ -314,11 +312,11 @@ module Narou
     def pause_task_impl(task_id)
       result = nil
       should_notify = false
-      
+
       @mutex.synchronize do
         task = @tasks[task_id]
         return { success: false, message: "Task not found" } unless task
-        
+
         if task.running? || task.queued?
           task.pause!("ユーザーにより一時停止されました")
           should_notify = true
@@ -327,7 +325,7 @@ module Narou
           result = { success: false, message: "Task cannot be paused in current state" }
         end
       end
-      
+
       notification_task_updated if should_notify
       result
     end
@@ -342,11 +340,11 @@ module Narou
     def resume_task_impl(task_id)
       result = nil
       should_notify = false
-      
+
       @mutex.synchronize do
         task = @tasks[task_id]
         return { success: false, message: "Task not found" } unless task
-        
+
         if task.paused?
           task.resume!("ユーザーにより再開されました")
           should_notify = true
@@ -355,7 +353,7 @@ module Narou
           result = { success: false, message: "Task is not paused" }
         end
       end
-      
+
       notification_task_updated if should_notify
       result
     end

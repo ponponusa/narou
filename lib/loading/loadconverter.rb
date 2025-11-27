@@ -10,8 +10,8 @@ BlankConverter = Class.new(ConverterBase) {}
 
 $latest_converter = nil
 
-def converter(_title = nil, &block)
-  $latest_converter = Class.new(ConverterBase, &block)
+def converter(_title = nil, &)
+  $latest_converter = Class.new(ConverterBase, &)
 end
 
 #
@@ -73,10 +73,10 @@ def load_converter(archive_path)
 
   conv = $latest_converter
   if conv
-    return conv
+    conv
   else
     error "converter.rbは見つかりましたが、`converter'で登録されていないようです。" +
           "変換処理は converter do ... end として登録する必要があります"
-    return BlankConverter
+    BlankConverter
   end
 end

@@ -12,7 +12,7 @@
 module NovelsRoutes
   # Downloaderを遅延ロード（autoload）
   autoload :Downloader, "novel/downloader"
-  
+
   def self.registered(app)
     #
     # 小説個別ルートフィルター
@@ -32,7 +32,7 @@ module NovelsRoutes
       @title = "小説の変換設定 - #{h @novel_title}"
       @setting_variables = []
       @error_list = {}
-      @novel_setting = NovelSetting.new(@id, true, true)    # 空っぽの設定を作成
+      @novel_setting = NovelSetting.new(@id, true, true) # 空っぽの設定を作成
       @novel_setting.settings = @novel_setting.load_setting_ini["global"]
       @original_settings = NovelSetting.get_original_settings
       @force_settings = NovelSetting.load_force_settings
@@ -46,7 +46,8 @@ module NovelsRoutes
     app.post "/novels/:id/setting" do
       # 変換設定保存
       @original_settings.each do |info|
-        name, type = info[:name], info[:type]
+        name = info[:name]
+        type = info[:type]
         param_data = params[name]
         value = nil
         begin
@@ -56,7 +57,7 @@ module NovelsRoutes
             else
               value = false
             end
-          elsif param_data.kind_of?(Array)
+          elsif param_data.is_a?(Array)
             value = param_data.join(",")
           else
             if param_data.strip != ""
@@ -73,9 +74,10 @@ module NovelsRoutes
       # 置換設定保存
       params_replace_pattern = params["replace_pattern"]
       @novel_setting.replace_pattern.clear
-      if params_replace_pattern.kind_of?(Array)
+      if params_replace_pattern.is_a?(Array)
         params_replace_pattern.each do |pattern|
-          left, right = pattern["left"].strip, pattern["right"].strip
+          left = pattern["left"].strip
+          right = pattern["right"].strip
           next if left == ""
           @novel_setting.replace_pattern << [left, right]
         end
@@ -122,34 +124,32 @@ module NovelsRoutes
       introductions_count = 0
       postscripts_count = 0
       toc["subtitles"].each do |sub|
+        section_path = downloader.section_file_path(sub)
         begin
-          section_path = downloader.section_file_path(sub)
-          begin
-            element = YAML.unsafe_load_file(section_path)["element"]
-          rescue SystemCallError
-            # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
-            element = YAML.unsafe_load(File.read(section_path))["element"]
-          end
-          data_type = element["data_type"] || "text"
-          introduction = element["introduction"] || ""
-          postscript = element["postscript"] || ""
-          if data_type == "html"
-            html = HTML.new
-            html.strip_decoration_tag = true
-            html.string = introduction
-            introduction = html.to_aozora
-            html.string = postscript
-            postscript = html.to_aozora
-          end
-          @comments.push(
-            sub: sub,
-            introduction: introduction,
-            postscript: postscript
-          )
-          introductions_count += 1 unless introduction.empty?
-          postscripts_count += 1 unless postscript.empty?
-        rescue Errno::ENOENT
+          element = YAML.unsafe_load_file(section_path)["element"]
+        rescue SystemCallError
+          # bootsnap on Windows can raise Errno::E01 errors, fallback to standard YAML
+          element = YAML.unsafe_load(File.read(section_path))["element"]
         end
+        data_type = element["data_type"] || "text"
+        introduction = element["introduction"] || ""
+        postscript = element["postscript"] || ""
+        if data_type == "html"
+          html = HTML.new
+          html.strip_decoration_tag = true
+          html.string = introduction
+          introduction = html.to_aozora
+          html.string = postscript
+          postscript = html.to_aozora
+        end
+        @comments.push(
+          sub: sub,
+          introduction: introduction,
+          postscript: postscript
+        )
+        introductions_count += 1 unless introduction.empty?
+        postscripts_count += 1 unless postscript.empty?
+      rescue Errno::ENOENT
       end
       total = toc["subtitles"].count.to_f
       @introductions_ratio = (introductions_count / total * 100).round(2)

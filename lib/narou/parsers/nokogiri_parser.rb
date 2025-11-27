@@ -12,7 +12,7 @@ module Narou
       # 目次ページを解析
       def parse_toc(html)
         doc = Nokogiri::HTML(html, nil, @config["encoding"] || "UTF-8")
-        
+
         {
           "subtitles" => extract_subtitles(doc),
           "title" => extract_simple_selector(doc, "novel_info_selectors", "title"),
@@ -27,7 +27,7 @@ module Narou
       # 本文ページを解析
       def parse_section(html, subtitle_info = {})
         doc = Nokogiri::HTML(html, nil, @config["encoding"] || "UTF-8")
-        
+
         {
           "body" => extract_with_fallback(doc, "body_selectors", extract_type: "inner_html"),
           "introduction" => extract_optional(doc, "introduction_selectors"),
@@ -41,7 +41,7 @@ module Narou
             @config.dig("last_successful_selectors", "body_selectors", "selector")
           )
         end
-        
+
         @logger.error "本文ページの解析に失敗: #{e.message}"
         raise ParserError, "本文ページの解析に失敗しました"
       end
@@ -49,7 +49,7 @@ module Narou
       # 小説情報ページを解析
       def parse_novel_info(html)
         doc = Nokogiri::HTML(html, nil, @config["encoding"] || "UTF-8")
-        
+
         {
           "title" => extract_simple_selector(doc, "novel_info_selectors", "title"),
           "author" => extract_simple_selector(doc, "novel_info_selectors", "author"),
@@ -64,7 +64,7 @@ module Narou
 
       def extract_subtitles(doc)
         return [] unless @config["toc_selectors"]
-        
+
         items = extract_with_fallback(doc, "toc_selectors", extract_type: "list")
         items.map { |item| normalize_subtitle_item(item) }
       rescue AllSelectorsFailedError
@@ -86,10 +86,10 @@ module Narou
       def extract_simple_selector(doc, selector_group, key, type: "text")
         selector = @config.dig(selector_group, key)
         return nil unless selector
-        
+
         result = doc.css(selector).first
         return nil unless result
-        
+
         type == "inner_html" ? result.inner_html.strip : result.text.strip
       end
 

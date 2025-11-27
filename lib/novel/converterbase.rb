@@ -35,18 +35,18 @@ class ConverterBase
 
   KANJI_NUM = "〇一二三四五六七八九"
   ENGLISH_SENTENCES_CHARACTERS = /[\w.,!?'" &:;-]+/
-  ENGLISH_SENTENCES_MIN_LENGTH = 8   # この文字数以上アルファベットが続くと半角のまま
+  ENGLISH_SENTENCES_MIN_LENGTH = 8 # この文字数以上アルファベットが続くと半角のまま
 
   attr_reader :use_dakuten_font
   attr_accessor :output_text_dir, :subtitles, :data_type
-  attr_accessor :current_index   # 現在処理してる subtitles 内でのインデックス
+  attr_accessor :current_index # 現在処理してる subtitles 内でのインデックス
 
   def before(io, text_type)
     data = io.string
     convert_page_break(data) if @text_type == "body" || @text_type == "textfile"
     if @text_type != "story" && @setting.enable_pack_blank_line
       data.gsub!("\n\n", "\n")
-      data.gsub!(/(^\n){3}/m, "\n\n")   # 改行のみの行３つを２つに削減
+      data.gsub!(/(^\n){3}/m, "\n\n") # 改行のみの行３つを２つに削減
     end
     io
   end
@@ -104,7 +104,8 @@ class ConverterBase
   #
   def insert_separate_space(data)
     data.gsub!(/([!?！？]+)([^!?！？])/) do
-      m1, m2 = $1, $2
+      m1 = $1
+      m2 = $2
       m2 = "　" if m2 =~ /[ 、。]/
       if m2 =~ /[^」］｝\]\}』】〉》〕＞>≫)）"”’〟　☆★♪［―]/
         "#{m1}　#{m2}"
@@ -189,7 +190,7 @@ class ConverterBase
         if inclusion_author_comment_block?(line)
           # outputs を使うと改ページより前に注記が入ってしまうため、
           # delay_outputs を使って出力を line 出力の後に遅らせる
-          delay_outputs(AUTHOR_COMMENT_CHUKI[@in_author_comment_block][:open]) 
+          delay_outputs(AUTHOR_COMMENT_CHUKI[@in_author_comment_block][:open])
           if @in_author_comment_block == :postscript
             @request_skip_output_line = true
             line.clear
@@ -326,7 +327,7 @@ class ConverterBase
     after(io, @text_type)
   end
 
-  WORD_SEPARATOR = "［＃zws］"   # zws = zero width space
+  WORD_SEPARATOR = "［＃zws］" # zws = zero width space
 
   # 端末名を小文字で返す（@device を最優先。無ければ Narou.get_device）
   def current_device_name_for_gate
@@ -512,7 +513,7 @@ class ConverterBase
     (io = after_convert(io)).rewind
     data = replace_by_replace_txt(io.read)
     data = insert_separator_for_selection(data)
-    return data
+    data
   end
 
   # 複数のテキストをまとめて変換する
@@ -562,7 +563,7 @@ class ConverterBase
       @write_fp.write(data)
     else
       @read_fp.each_with_index do |line, i|
-        progressbar.output(i) if progressbar && (i % 50).zero?  # 50行ごとに制限
+        progressbar.output(i) if progressbar && (i % 50).zero? # 50行ごとに制限
         @request_skip_output_line = false
         zenkaku_rstrip(line)
         if @request_insert_blank_next_line

@@ -36,7 +36,8 @@ class Illustration
       end
     end
     source.gsub!(NAROU_ILLUST_TAG_PATTERN) do
-      id1, id2 = $1, $2
+      id1 = $1
+      id2 = $2
       basename = "#{id1},#{id2}.*"
       url = NAROU_ILLUST_URL % [id2, id1]
       path = download_image(url, basename)
@@ -108,6 +109,6 @@ class Illustration
     target = target.split(sep)
     while base.shift == target.shift
     end
-    File.join([".."]*base.size+target)
+    File.join([".."] * base.size + target)
   end
 end

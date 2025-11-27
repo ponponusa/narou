@@ -80,7 +80,9 @@ class NovelSetting
     force_settings = @ignore_force ? {} : NovelSetting.load_force_settings
     default_settings = @ignore_default ? {} : NovelSetting.load_default_settings
     ORIGINAL_SETTINGS.each do |element|
-      name, value, type = element[:name], element[:value], element[:type]
+      name = element[:name]
+      value = element[:value]
+      type = element[:type]
       if force_settings.include?(name)
         @settings[name] = force_settings[name]
       elsif ini["global"].include?(name) && type_eq_value(type, ini["global"][name])
@@ -108,8 +110,6 @@ class NovelSetting
     res = Inventory.load("local_setting").map { |name, value|
       if name =~ /^#{pattern}\.(.+)$/
         [$1, value]
-      else
-        nil
       end
     }.compact.flatten
     Hash[*res]

@@ -35,12 +35,12 @@ module Narou::ServerHelpers
   # Rubyバージョンを構築
   #
   def build_ruby_version
-    begin
-      `"#{RbConfig.ruby}" -v`.strip
-    rescue
-      config = RbConfig::CONFIG
-      "ruby #{RUBY_VERSION}p#{config["PATCHLEVEL"]} [#{RUBY_PLATFORM}]"
-    end
+
+    `"#{RbConfig.ruby}" -v`.strip
+  rescue
+    config = RbConfig::CONFIG
+    "ruby #{RUBY_VERSION}p#{config["PATCHLEVEL"]} [#{RUBY_PLATFORM}]"
+
   end
 
   #
@@ -48,7 +48,7 @@ module Narou::ServerHelpers
   # ID が指定されなかったか、１件も存在しない場合は nil を返す
   #
   def select_valid_novel_ids(ids)
-    return nil unless ids.kind_of?(Array)
+    return nil unless ids.is_a?(Array)
     result = ids.select do |id|
       # 数値または数値文字列をチェック
       case id
@@ -59,7 +59,7 @@ module Narou::ServerHelpers
       else
         false
       end
-    end.map(&:to_s)  # 最終的に文字列に統一
+    end.map(&:to_s) # 最終的に文字列に統一
     result.empty? ? nil : result
   end
 
@@ -69,22 +69,23 @@ module Narou::ServerHelpers
   def sort_ids_by_current_sort(ids)
     debug_puts "[DEBUG] sort_ids_by_current_sort called with #{ids ? ids.length : 0} IDs: #{ids.inspect}"
     return ids unless ids && ids.length > 0
-    
+
     server_setting = Inventory.load("server_setting", :global)
     current_sort = server_setting["current_sort"]
     debug_puts "[DEBUG] Current sort from server: #{current_sort.inspect}"
     return ids unless current_sort
-    
+
     order_column = current_sort["column"]
     order_dir = current_sort["dir"]
     debug_puts "[DEBUG] Sort params: column=#{order_column}, dir=#{order_dir}"
     return ids unless order_column && order_dir
-    
-    column_names = ["id", "last_update", "general_lastup", "last_check_date", "title", "author", "sitename", "novel_type", "tags", "general_all_no", "length", "status", "toc_url"]
+
+    column_names = %w(id last_update general_lastup last_check_date title author sitename novel_type tags general_all_no length status
+toc_url)
     sort_column = column_names[order_column]
     debug_puts "[DEBUG] Sort column: #{sort_column}"
     return ids unless sort_column
-    
+
     # IDから小説データを取得してソート
     database = Database.instance
     novels_data = ids.map do |id|
@@ -96,32 +97,32 @@ module Narou::ServerHelpers
       end
       data ? [id, data] : nil
     end.compact
-    
+
     debug_puts "[DEBUG] Found #{novels_data.length} novels with data"
-    
+
     # ソート実行
-    debug_puts "[DEBUG] Before sort: #{novels_data.map{|n| [n[0], n[1][sort_column]]}.inspect}"
-    
+    debug_puts "[DEBUG] Before sort: #{novels_data.map {|n| [n[0], n[1][sort_column]]}.inspect}"
+
     novels_data.sort! do |a, b|
       # データベースのHashは文字列キーを使用
       val_a = a[1][sort_column] || 0
       val_b = b[1][sort_column] || 0
-      
+
       debug_puts "[DEBUG] Comparing ID #{a[0]} (#{val_a}) vs ID #{b[0]} (#{val_b})"
-      
+
       if val_a.is_a?(Numeric) && val_b.is_a?(Numeric)
         comparison = val_a <=> val_b
       else
         comparison = val_a.to_s <=> val_b.to_s
       end
-      
+
       result = order_dir == "desc" ? -comparison : comparison
       debug_puts "[DEBUG] Comparison result: #{result} (#{order_dir})"
       result
     end
-    
-    debug_puts "[DEBUG] After sort: #{novels_data.map{|n| [n[0], n[1][sort_column]]}.inspect}"
-    
+
+    debug_puts "[DEBUG] After sort: #{novels_data.map {|n| [n[0], n[1][sort_column]]}.inspect}"
+
     # ソート済みのIDのみを返す
     sorted_ids = novels_data.map { |novel| novel[0] }
     debug_puts "[DEBUG] Sorted IDs: #{sorted_ids.inspect}"
@@ -136,40 +137,41 @@ module Narou::ServerHelpers
     debug_puts "[DEBUG] Fixed sort state: #{sort_state.inspect}"
     return ids unless ids && ids.length > 0
     return ids unless sort_state
-    
+
     order_column = sort_state["column"]
     order_dir = sort_state["dir"]
     debug_puts "[DEBUG] Fixed sort params: column=#{order_column}, dir=#{order_dir}"
     return ids unless order_column && order_dir
-    
-    column_names = ["id", "last_update", "general_lastup", "last_check_date", "title", "author", "sitename", "novel_type", "tags", "general_all_no", "length", "status", "toc_url"]
+
+    column_names = %w(id last_update general_lastup last_check_date title author sitename novel_type tags general_all_no length status
+toc_url)
     sort_column = column_names[order_column.to_i]
     debug_puts "[DEBUG] Fixed sort column: #{sort_column}"
     return ids unless sort_column
-    
+
     # IDから小説データを取得してソート（convert実行時点のデータを取得）
     database = Database.instance
     novels_data = ids.map do |id|
       data = database[id.to_i]
-      data ? [id, data.dup] : nil  # データをコピーして固定化
+      data ? [id, data.dup] : nil # データをコピーして固定化
     end.compact
-    
+
     debug_puts "[DEBUG] Found #{novels_data.length} novels with data for fixed sort"
-    
+
     # ソート実行（固定されたソート条件で）
     novels_data.sort! do |a, b|
       val_a = a[1][sort_column] || 0
       val_b = b[1][sort_column] || 0
-      
+
       if val_a.is_a?(Numeric) && val_b.is_a?(Numeric)
         comparison = val_a <=> val_b
       else
         comparison = val_a.to_s <=> val_b.to_s
       end
-      
+
       order_dir == "desc" ? -comparison : comparison
     end
-    
+
     # ソート済みのIDのみを返す
     sorted_ids = novels_data.map { |novel| novel[0] }
     debug_puts "[DEBUG] Fixed sorted IDs: #{sorted_ids.inspect}"
@@ -183,15 +185,15 @@ module Narou::ServerHelpers
     server_setting = Inventory.load("server_setting", :global)
     current_sort = server_setting["current_sort"]
     return "ID順" unless current_sort
-    
+
     order_column = current_sort["column"]
     order_dir = current_sort["dir"]
     return "ID順" unless order_column && order_dir
-    
-    column_names = ["ID", "最終更新日", "最新話掲載日", "最終確認日", "タイトル", "作者", "サイト名", "小説種別", "タグ", "話数", "文字数", "状態", "URL"]
+
+    column_names = %w(ID 最終更新日 最新話掲載日 最終確認日 タイトル 作者 サイト名 小説種別 タグ 話数 文字数 状態 URL)
     column_display = column_names[order_column] || "不明"
     dir_display = order_dir == "desc" ? "降順" : "昇順"
-    
+
     "#{column_display}#{dir_display}"
   end
 
@@ -219,8 +221,6 @@ module Narou::ServerHelpers
       true
     when "off"
       false
-    else
-      nil
     end
   end
 
@@ -305,8 +305,6 @@ module Narou::ServerHelpers
       "未設定時：#{formatted}"
     when :force
       FORCE_SETTING_DEFAULT_HINT
-    else
-      nil
     end
   end
 
@@ -355,7 +353,7 @@ module Narou::ServerHelpers
   end
 
   def partial(template, *args)
-    template_file_name = "_#{template}".intern
+    template_file_name = :"_#{template}"
     options = args.last.is_a?(Hash) ? args.pop : {}
     options[:layout] = false
     collection = options.delete(:collection)
@@ -382,11 +380,11 @@ module Narou::ServerHelpers
     HTML
   end
 
-  def concurrency_push(&block)
+  def concurrency_push(&)
     if Narou.concurrency_enabled?
       yield
     else
-      Narou::WebWorker.push(&block)
+      Narou::WebWorker.push(&)
     end
   end
 end

@@ -201,28 +201,26 @@ module Command
       tagname_to_ids(argv)
       total_count = argv.length
       completed_count = 0
-      
+
       $stdout2.puts "変換処理開始: #{total_count}件の小説を処理します"
-      
+
       argv.each.with_index(1) do |target, index|
-        begin
-          $stdout2.puts "[#{index}/#{total_count}] 処理中: #{target}"
-          Narou.lock(target) do
-            convert_novel_main(target, index)
-          end
-          completed_count += 1
-          $stdout2.puts "[#{index}/#{total_count}] 完了: #{target}"
-        rescue => e
-          if ENV["NAROU_ENV"] == "test"
-            # テスト時は握りつぶさずに原因を見える化
-            raise
-          else
-            $stdout2.error "[#{index}/#{total_count}] エラー: #{target} - #{e.message}"
-            # 個別のエラーでは処理を継続
-          end
+        $stdout2.puts "[#{index}/#{total_count}] 処理中: #{target}"
+        Narou.lock(target) do
+          convert_novel_main(target, index)
+        end
+        completed_count += 1
+        $stdout2.puts "[#{index}/#{total_count}] 完了: #{target}"
+      rescue => e
+        if ENV["NAROU_ENV"] == "test"
+          # テスト時は握りつぶさずに原因を見える化
+          raise
+        else
+          $stdout2.error "[#{index}/#{total_count}] エラー: #{target} - #{e.message}"
+          # 個別のエラーでは処理を継続
         end
       end
-      
+
       $stdout2.puts "変換処理完了: #{completed_count}/#{total_count}件が正常に変換されました"
     rescue Interrupt
       $stdout2.puts "変換を中断しました (#{completed_count}/#{total_count}件完了)"
@@ -293,7 +291,7 @@ module Command
     # 直接指定されたテキストファイルを変換する
     #
     def convert_txt(target)
-      return NovelConverter.convert_file(target, {
+      NovelConverter.convert_file(target, {
                encoding: @enc,
                output_filename: @output_filename,
                display_inspector: @options["inspect"],
@@ -305,7 +303,7 @@ module Command
         $stdout2.error "テキストファイルの文字コードがUTF-8ではありません。" \
                        "--enc オプションでテキストの文字コードを指定して下さい"
         warn "(#{e.message})"
-        return nil
+        nil
       else
         raise
       end
@@ -315,7 +313,7 @@ module Command
         テキストファイルの文字コードは#{@options["encoding"]}ではありませんでした。
         正しい文字コードを指定して下さい
       ERR
-      return nil
+      nil
     end
 
     #
@@ -329,7 +327,7 @@ module Command
         if tags.is_a?(Array)
           # 除外タグの設定を取得
           exclude_tags_setting = @options["dc-subject-exclude-tags"]
-          
+
           # 初回実行時にデフォルト値を設定
           if exclude_tags_setting.nil?
             exclude_tags_setting = "404,end"
@@ -338,12 +336,12 @@ module Command
             local_settings["convert.dc-subject-exclude-tags"] = exclude_tags_setting
             local_settings.save
           end
-          
+
           excluded_tags = exclude_tags_setting.split(",").map(&:strip).reject(&:empty?)
           dc_subjects = tags.reject { |tag| excluded_tags.include?(tag) }.map(&:strip).reject(&:empty?)
         end
       end
-      
+
       # EPUB生成（dc:subject 挿入を含む）
       # ZIPも生成する場合(cleanup_tempの影響を避けるため)は一旦txtのクリーンアップを抑止
       no_cleanup_txt = (@argument_target_type == :file) || @options["make-zip"]
@@ -384,7 +382,7 @@ module Command
         Device::Ibunko.instance_method(:create_pure_aozora_zip).bind(self).call
       else
         # フォールバック（互換性維持）
-        Device::Ibunko.instance_method(:hook_convert_txt_to_ebook_file).bind(self).call { ->{} }
+        Device::Ibunko.instance_method(:hook_convert_txt_to_ebook_file).bind(self).call { -> {} }
       end
     ensure
       @device = prev_device

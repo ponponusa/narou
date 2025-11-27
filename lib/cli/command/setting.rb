@@ -283,7 +283,7 @@ module Command
           error "#{arg} は存在しません"
           next
         end
-        novel_setting = NovelSetting.new(arg, true, true)    # 空っぽの設定を作成
+        novel_setting = NovelSetting.new(arg, true, true) # 空っぽの設定を作成
         novel_setting.settings = novel_setting.load_setting_ini["global"]
         original_settings = NovelSetting.get_original_settings
         default_settings = NovelSetting.load_default_settings

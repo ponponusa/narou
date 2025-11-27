@@ -11,7 +11,7 @@
 converter "n9463br 僕と彼女と実弾兵器（アンティーク）" do
   # 各種変換処理がされる「前」の生データに対しての変換処理を記述
   def before(io, text_type)
-    #super
+    # super
     io.string.gsub!("\n\n", "\n")
     io
   end

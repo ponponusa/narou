@@ -30,7 +30,7 @@ RSpec.describe Narou::Parsers do
           { "selector" => "div.test2", "priority" => 5 }
         ]
         error = Narou::Parsers::AllSelectorsFailedError.new("body_selectors", selectors)
-        
+
         expect(error.selector_key).to eq("body_selectors")
         expect(error.tried_selectors).to eq(selectors)
         expect(error.message).to include("body_selectors")
@@ -44,7 +44,7 @@ RSpec.describe Narou::Parsers do
           "https://example.com/novel/1",
           "div.old-selector"
         )
-        
+
         expect(error.url).to eq("https://example.com/novel/1")
         expect(error.last_successful_selector).to eq("div.old-selector")
         expect(error.message).to include("サイト構造が変更")

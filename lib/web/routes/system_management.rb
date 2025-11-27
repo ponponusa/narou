@@ -50,31 +50,29 @@ module SystemManagementRoutes
     #
     app.post "/update_system" do
       Thread.new do
-        begin
-          result = Narou::SystemUpdater.update_from_github
-          @@gem_update_last_log = result.log
+        result = Narou::SystemUpdater.update_from_github
+        @@gem_update_last_log = result.log
 
-          case result.status
-          when :success
-            @@already_update_system = true
-            Narou::AppServer.push_server.send_all("server.update.success" => result.log)
-          when :nothing
-            Narou::AppServer.push_server.send_all("server.update.nothing" => result.log)
-          else
-            Narou::AppServer.push_server.send_all("server.update.failure" => result.log)
-          end
-        rescue Narou::SystemUpdater::Error => e
-          log = "更新に失敗しました: #{e.message}"
-          @@gem_update_last_log = log
-          Narou::AppServer.push_server.send_all("server.update.failure" => log)
-        rescue StandardError => e
-          log = <<~LOG.strip
-            予期しないエラーが発生しました: #{e.class} #{e.message}
-            #{Array(e.backtrace).join("\n")}
-          LOG
-          @@gem_update_last_log = log
-          Narou::AppServer.push_server.send_all("server.update.failure" => log)
+        case result.status
+        when :success
+          @@already_update_system = true
+          Narou::AppServer.push_server.send_all("server.update.success" => result.log)
+        when :nothing
+          Narou::AppServer.push_server.send_all("server.update.nothing" => result.log)
+        else
+          Narou::AppServer.push_server.send_all("server.update.failure" => result.log)
         end
+      rescue Narou::SystemUpdater::Error => e
+        log = "更新に失敗しました: #{e.message}"
+        @@gem_update_last_log = log
+        Narou::AppServer.push_server.send_all("server.update.failure" => log)
+      rescue StandardError => e
+        log = <<~LOG.strip
+          予期しないエラーが発生しました: #{e.class} #{e.message}
+          #{Array(e.backtrace).join("\n")}
+        LOG
+        @@gem_update_last_log = log
+        Narou::AppServer.push_server.send_all("server.update.failure" => log)
       end
     end
 

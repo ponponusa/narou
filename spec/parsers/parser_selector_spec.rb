@@ -24,14 +24,14 @@ RSpec.describe Narou::Parsers::ParserSelector do
         allow(Narou::Parsers::ConfigManager).to receive(:load_global_config).and_return({
           "default_engine" => "nokogiri"
         })
-        
+
         engine = described_class.determine_engine(nil)
         expect(engine).to eq("nokogiri")
       end
 
       it "グローバル設定がない場合は nokogiri を返す" do
         allow(Narou::Parsers::ConfigManager).to receive(:load_global_config).and_return({})
-        
+
         engine = described_class.determine_engine(nil)
         expect(engine).to eq("nokogiri")
       end
@@ -40,7 +40,7 @@ RSpec.describe Narou::Parsers::ParserSelector do
     context "小説IDが指定されている場合" do
       it "小説ごとのエンジン設定を返す" do
         allow(Narou::Parsers::ConfigManager).to receive(:get_engine_for_novel).with("123").and_return("legacy")
-        
+
         engine = described_class.determine_engine("123")
         expect(engine).to eq("legacy")
       end
@@ -94,7 +94,7 @@ RSpec.describe Narou::Parsers::ParserSelector do
 
     it "domain が設定されていない場合はエラーを raise する" do
       allow(site_setting).to receive(:[]).with("domain").and_return(nil)
-      
+
       expect {
         described_class.select(site_setting)
       }.to raise_error(Narou::Parsers::ParserError, /domain が設定されていません/)
@@ -102,7 +102,7 @@ RSpec.describe Narou::Parsers::ParserSelector do
 
     it "novel_id を指定した場合は小説ごとのエンジンを使用する" do
       allow(Narou::Parsers::ConfigManager).to receive(:get_engine_for_novel).with("123").and_return("legacy")
-      
+
       parser = described_class.select(site_setting, novel_id: "123")
       expect(parser).to be_a(Narou::Parsers::LegacyParser)
     end

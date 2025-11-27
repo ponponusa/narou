@@ -44,7 +44,7 @@ module Device::Ibunko
     # 挿絵注記
     data.gsub!(/［＃挿絵（(.+?)）入る］/, '<IMG SRC="\1">')
     # 改ページ
-    data.gsub!(/［＃改ページ］/, '<PBR>')
+    data.gsub!(/［＃改ページ］/, "<PBR>")
     # 改行コードをCR+LFに正規化（i文庫HDの仕様に準拠）
     data.gsub!("\r\n", "\n")
     data.gsub!("\r", "\n")
@@ -53,11 +53,11 @@ module Device::Ibunko
 
     zipfile_path = @converted_txt_path.sub(/.txt$/, @device.ebook_file_ext)
     File.delete(zipfile_path) if File.exist?(zipfile_path)
-    
+
     # Windowsでのスレッド内ファイル操作対策: GCを強制実行してファイルハンドルを解放
     GC.start
     sleep 0.1
-    
+
     Zip::File.open(zipfile_path, create: true) do |zip|
       # テキスト本体（整形済み）
       zip.add(File.basename(@converted_txt_path), sanitized_txt_path) { true }
@@ -89,11 +89,11 @@ module Device::Ibunko
   #
   # i文庫用にテキストと挿絵ファイルをzipアーカイブ化する
   #
-  def hook_convert_txt_to_ebook_file(&original_func)
+  def hook_convert_txt_to_ebook_file(&)
     # 既存の no-zip 設定、または make-zip=false の場合はZIPを作らない
     return false if @options["no-zip"] || (@options.key?("make-zip") && !@options["make-zip"])
     require "zip"
-    Zip.unicode_names = true  # 日本語ファイル名対応
+    Zip.unicode_names = true # 日本語ファイル名対応
     # TODO: テキストファイル変換時もsettingを取れるようにする
     setting = {}
     if @novel_data
@@ -103,11 +103,11 @@ module Device::Ibunko
     translate_illust_chuki_to_img_tag
     zipfile_path = @converted_txt_path.sub(/.txt$/, @device.ebook_file_ext)
     File.delete(zipfile_path) if File.exist?(zipfile_path)
-    
+
     # Windowsでのスレッド内ファイル操作対策: GCを強制実行してファイルハンドルを解放
     GC.start
     sleep 0.1
-    
+
     Zip::File.open(zipfile_path, create: true) do |zip|
       # テキスト本体
       zip.add(File.basename(@converted_txt_path), @converted_txt_path) { true }

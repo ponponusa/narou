@@ -12,7 +12,7 @@ describe Narou::Task do
         novel_title: "Test Novel",
         novel_author: "Test Author"
       )
-      
+
       expect(task.type).to eq(:download)
       expect(task.novel_id).to eq(1)
       expect(task.novel_title).to eq("Test Novel")
@@ -32,7 +32,7 @@ describe Narou::Task do
     it "changes status to running" do
       task = Narou::Task.new(type: :download)
       task.start!
-      
+
       expect(task.status).to eq(:running)
       expect(task.started_at).not_to be_nil
     end
@@ -40,7 +40,7 @@ describe Narou::Task do
     it "raises error if already started" do
       task = Narou::Task.new(type: :download)
       task.start!
-      
+
       expect {
         task.start!
       }.to raise_error("Task already started")
@@ -52,7 +52,7 @@ describe Narou::Task do
       task = Narou::Task.new(type: :download)
       task.start!
       task.complete!
-      
+
       expect(task.status).to eq(:completed)
       expect(task.completed_at).not_to be_nil
       expect(task.error).to be_nil
@@ -63,10 +63,10 @@ describe Narou::Task do
     it "changes status to failed with error message" do
       task = Narou::Task.new(type: :download)
       task.start!
-      
+
       error = StandardError.new("Test error")
       task.fail!("Download failed", error)
-      
+
       expect(task.status).to eq(:failed)
       expect(task.message).to eq("Download failed")
       expect(task.error).not_to be_nil
@@ -78,7 +78,7 @@ describe Narou::Task do
     it "changes status to canceled" do
       task = Narou::Task.new(type: :download)
       task.cancel!
-      
+
       expect(task.status).to eq(:canceled)
       expect(task.message).to eq("キャンセルされました")
     end
@@ -89,7 +89,7 @@ describe Narou::Task do
       task = Narou::Task.new(type: :download)
       task.start!
       task.pause!
-      
+
       expect(task.status).to eq(:paused)
       expect(task.paused?).to be true
       expect(task.pause_requested?).to be true
@@ -98,7 +98,7 @@ describe Narou::Task do
     it "changes status to paused from queued" do
       task = Narou::Task.new(type: :download)
       task.pause!
-      
+
       expect(task.status).to eq(:paused)
     end
 
@@ -107,7 +107,7 @@ describe Narou::Task do
       task.start!
       task.complete!
       task.pause!
-      
+
       expect(task.status).to eq(:completed)
     end
   end
@@ -118,7 +118,7 @@ describe Narou::Task do
       task.start!
       task.pause!
       task.resume!
-      
+
       expect(task.status).to eq(:running)
       expect(task.paused?).to be false
       expect(task.pause_requested?).to be false
@@ -128,7 +128,7 @@ describe Narou::Task do
       task = Narou::Task.new(type: :download)
       task.pause!
       task.resume!
-      
+
       expect(task.status).to eq(:queued)
     end
 
@@ -136,7 +136,7 @@ describe Narou::Task do
       task = Narou::Task.new(type: :download)
       original_status = task.status
       task.resume!
-      
+
       expect(task.status).to eq(original_status)
     end
   end
@@ -151,7 +151,7 @@ describe Narou::Task do
       task = Narou::Task.new(type: :download, max_retries: 3)
       task.start!
       task.fail!("Test error")
-      
+
       expect(task.retryable?).to be true
     end
 
@@ -162,7 +162,7 @@ describe Narou::Task do
       task.retry!
       task.start!
       task.fail!("Test error again")
-      
+
       expect(task.retryable?).to be false
     end
   end
@@ -172,9 +172,9 @@ describe Narou::Task do
       task = Narou::Task.new(type: :download, max_retries: 3)
       task.start!
       task.fail!("Test error")
-      
+
       task.retry!
-      
+
       expect(task.status).to eq(:queued)
       expect(task.retry_count).to eq(1)
       expect(task.error).to be_nil
@@ -189,9 +189,9 @@ describe Narou::Task do
         novel_title: "Test Novel",
         novel_author: "Test Author"
       )
-      
+
       hash = task.to_h
-      
+
       expect(hash[:type]).to eq("download")
       expect(hash[:novel_id]).to eq(1)
       expect(hash[:novel_title]).to eq("Test Novel")
@@ -210,7 +210,7 @@ describe Narou::Task do
       task = Narou::Task.new(type: :download)
       task.start!
       sleep 0.1
-      
+
       expect(task.elapsed_time).to be > 0
     end
 
@@ -219,10 +219,10 @@ describe Narou::Task do
       task.start!
       sleep 0.1
       task.complete!
-      
+
       elapsed = task.elapsed_time
       sleep 0.1
-      
+
       # 完了後は時間が進まない
       expect(task.elapsed_time).to eq(elapsed)
     end
@@ -232,7 +232,7 @@ describe Narou::Task do
     it "updates progress percentage" do
       task = Narou::Task.new(type: :download)
       task.update_progress(50.0, "50% complete")
-      
+
       expect(task.progress).to eq(50.0)
       expect(task.message).to eq("50% complete")
     end
@@ -241,7 +241,7 @@ describe Narou::Task do
       task = Narou::Task.new(type: :download)
       task.update_progress(-10.0)
       expect(task.progress).to eq(0.0)
-      
+
       task.update_progress(150.0)
       expect(task.progress).to eq(100.0)
     end
@@ -251,16 +251,16 @@ describe Narou::Task do
     it "tracks progress by steps" do
       task = Narou::Task.new(type: :download)
       task.set_total_steps(10)
-      
+
       expect(task.total_steps).to eq(10)
       expect(task.current_step).to eq(0)
       expect(task.progress).to eq(0.0)
-      
+
       task.advance_step("Step 1")
       expect(task.current_step).to eq(1)
       expect(task.progress).to eq(10.0)
       expect(task.message).to eq("Step 1")
-      
+
       task.advance_step("Step 2")
       expect(task.current_step).to eq(2)
       expect(task.progress).to eq(20.0)

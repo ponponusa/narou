@@ -13,7 +13,7 @@ module Narou
       # 目次ページを解析（JSON データを優先）
       def parse_toc(html)
         doc = Nokogiri::HTML(html, nil, @config["encoding"] || "UTF-8")
-        
+
         # JSON データ抽出を試みる
         if @config["json_data_source"]
           begin
@@ -23,7 +23,7 @@ module Narou
             @logger.warn "JSON解析失敗、HTMLフォールバック: #{e.message}"
           end
         end
-        
+
         # HTML からのフォールバック
         parse_toc_from_html(doc)
       end
@@ -31,10 +31,10 @@ module Narou
       # 本文ページを解析
       def parse_section(html, subtitle_info = {})
         doc = Nokogiri::HTML(html, nil, @config["encoding"] || "UTF-8")
-        
+
         {
           "body" => extract_body(doc),
-          "introduction" => "",  # カクヨムには前書き・後書きがない
+          "introduction" => "", # カクヨムには前書き・後書きがない
           "postscript" => "",
           "data_type" => "html"
         }
@@ -45,7 +45,7 @@ module Narou
             @config.dig("last_successful_selectors", "body_selectors", "selector")
           )
         end
-        
+
         @logger.error "本文ページの解析に失敗: #{e.message}"
         raise ParserError, "本文ページの解析に失敗しました"
       end
@@ -53,7 +53,7 @@ module Narou
       # 小説情報ページを解析
       def parse_novel_info(html)
         doc = Nokogiri::HTML(html, nil, @config["encoding"] || "UTF-8")
-        
+
         # JSON データから取得を試みる
         if @config["json_data_source"]
           begin
@@ -63,7 +63,7 @@ module Narou
             @logger.warn "JSON解析失敗、HTMLフォールバック: #{e.message}"
           end
         end
-        
+
         # HTML からのフォールバック
         parse_novel_info_from_html(doc)
       end
@@ -74,12 +74,12 @@ module Narou
       def extract_json_data(doc)
         json_config = @config["json_data_source"]
         selector = json_config["selector"]
-        
+
         script_tag = doc.css(selector).first
         unless script_tag
           raise JsonParseError, "JSON script tag not found: #{selector}"
         end
-        
+
         json_text = script_tag.content
         JSON.parse(json_text)
       rescue JSON::ParserError => e
@@ -90,11 +90,11 @@ module Narou
       def parse_toc_from_json(json_data)
         paths = @config["json_data_source"]["paths"]
         work_id = dig_json_path(json_data, paths["work_id"])
-        
+
         # パス内の {workId} を実際の値に置換
         toc_path = paths["toc"].gsub("{workId}", work_id.to_s)
         toc_data = dig_json_path(json_data, toc_path)
-        
+
         {
           "subtitles" => parse_toc_chapters(toc_data, json_data),
           "title" => dig_json_path(json_data, paths["title"].gsub("{workId}", work_id.to_s)),
@@ -106,7 +106,7 @@ module Narou
       # JSON パスを辿ってデータを取得
       def dig_json_path(data, path)
         return nil unless path
-        
+
         keys = path.split(".")
         keys.reduce(data) do |current, key|
           case current
@@ -114,8 +114,6 @@ module Narou
             current[key]
           when Array
             key.to_i < current.size ? current[key.to_i] : nil
-          else
-            nil
           end
         end
       end
@@ -123,17 +121,17 @@ module Narou
       # TOC の章データを解析
       def parse_toc_chapters(toc_data, apollo_state)
         return [] unless toc_data.is_a?(Array)
-        
+
         subtitles = []
         current_chapter = ""
-        
+
         toc_data.each do |item_ref|
           ref_key = item_ref.is_a?(Hash) ? item_ref["__ref"] : nil
           next unless ref_key
-          
+
           item = apollo_state[ref_key]
           next unless item
-          
+
           case item["__typename"]
           when "Chapter"
             current_chapter = item["title"] if item["level"] == 1
@@ -148,7 +146,7 @@ module Narou
             }
           end
         end
-        
+
         subtitles
       end
 
@@ -156,10 +154,10 @@ module Narou
       def extract_author_from_json(json_data, work_id)
         author_path = @config["json_data_source"]["paths"]["author"]
         return nil unless author_path
-        
+
         author_ref = dig_json_path(json_data, author_path.gsub("{workId}", work_id.to_s))
         return nil unless author_ref
-        
+
         author_data = json_data[author_ref]
         author_data ? author_data["activityName"] : nil
       end
@@ -178,7 +176,7 @@ module Narou
       def parse_novel_info_from_json(json_data)
         paths = @config["json_data_source"]["paths"]
         work_id = dig_json_path(json_data, paths["work_id"])
-        
+
         {
           "title" => dig_json_path(json_data, paths["title"]&.gsub("{workId}", work_id.to_s)),
           "author" => extract_author_from_json(json_data, work_id),

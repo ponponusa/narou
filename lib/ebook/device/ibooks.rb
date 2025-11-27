@@ -18,7 +18,7 @@ module Device::Ibooks
     "default.enable_half_indent_bracket" => false,
   }
 
-  def hook_change_settings(&original_func)
+  def hook_change_settings(&)
     @@__already_exec_change_settings ||= false
     return if @@__already_exec_change_settings
     @@__ibooks_container_dir = File.expand_path(IBOOKS_CONTAINER_DIR)
@@ -64,8 +64,6 @@ module Device::Ibooks
     list = Inventory.load("ibooks_epubdir_path_list")
     if list[@toc_url]
       list[@toc_url]
-    else
-      nil
     end
   end
 
@@ -80,7 +78,7 @@ module Device::Ibooks
         extract_path = File.join(epubdir_path, entry.name)
         FileUtils.mkdir_p(File.dirname(extract_path))
         # entry.extract は既に2.3.2で安全に動作します
-        entry.extract(extract_path) { true }  # 上書き許可
+        entry.extract(extract_path) { true } # 上書き許可
       end
     end
   end

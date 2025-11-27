@@ -44,7 +44,7 @@ module Narou
       #
       def parse_section(html, subtitle_info = {})
         @site_setting.multi_match(html, "body_pattern", "introduction_pattern", "postscript_pattern")
-        
+
         result = {
           "data_type" => @site_setting["data_type"] || "html",
           "body" => @site_setting["body_pattern"].to_s,
@@ -70,9 +70,9 @@ module Narou
       # @param [Array<String>] fields - 取得したいフィールド名のリスト
       # @return [Hash] 抽出結果
       #
-      def parse_novel_info(html, fields = %w[title author story])
+      def parse_novel_info(html, fields = %w(title author story))
         @site_setting.multi_match(html, *fields)
-        
+
         result = {}
         fields.each do |field|
           result[field] = @site_setting[field].to_s

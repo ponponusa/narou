@@ -104,10 +104,10 @@ class Downloader
     def a_section_download(subtitle_info)
       index = subtitle_info["index"]
       return @section_download_cache[index] if @section_download_cache[index]
-      
+
       # キャッシュサイズ制限をチェック
       cleanup_cache_if_needed
-      
+
       sleep_for_download
       href = subtitle_info["href"]
       subtitle_url =
@@ -118,7 +118,7 @@ class Downloader
         end
       raw = download_raw_data(subtitle_url)
       save_raw_data(raw, subtitle_info, ".html")
-      
+
       # 新パーサーが利用可能な場合は新パーサーを使用
       if @parser
         result = @parser.parse_section(raw, subtitle_info)
@@ -137,7 +137,7 @@ class Downloader
           element[type] = @setting[type].to_s
         }
       end
-      
+
       subtitle_info["download_time"] = Time.now
       @section_download_cache[index] = element
       element
@@ -148,7 +148,7 @@ class Downloader
     #
     def cleanup_cache_if_needed
       return if @section_download_cache.size <= @max_cache_size
-      
+
       # 古いエントリから削除（インデックスの小さいものから）
       sorted_keys = @section_download_cache.keys.sort
       keys_to_remove = sorted_keys.first(@section_download_cache.size - @max_cache_size + 1)
@@ -196,7 +196,8 @@ class Downloader
         URI.open(url, "r:#{@setting["encoding"]}", open_uri_options) do |fp|
           raw = Helper.pretreatment_source(fp.read, @setting["encoding"])
         end
-      rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError, SocketError => e
+      rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError,
+SocketError => e
         case e.message
         when /^503/
           # 503 はアクセス規制やメンテ等でリトライしてもほぼ意味がないことが多いため一度で諦める

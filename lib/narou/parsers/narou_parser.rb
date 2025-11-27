@@ -12,7 +12,7 @@ module Narou
       # 目次ページを解析
       def parse_toc(html)
         doc = Nokogiri::HTML(html, nil, @config["encoding"] || "UTF-8")
-        
+
         {
           "subtitles" => extract_subtitles(doc),
           "title" => extract_title(doc),
@@ -27,7 +27,7 @@ module Narou
       # 本文ページを解析
       def parse_section(html, subtitle_info = {})
         doc = Nokogiri::HTML(html, nil, @config["encoding"] || "UTF-8")
-        
+
         {
           "body" => extract_body(doc),
           "introduction" => extract_introduction(doc),
@@ -42,7 +42,7 @@ module Narou
             @config.dig("last_successful_selectors", "body_selectors", "selector")
           )
         end
-        
+
         @logger.error "本文ページの解析に失敗: #{e.message}"
         raise ParserError, "本文ページの解析に失敗しました"
       end
@@ -50,7 +50,7 @@ module Narou
       # 小説情報ページを解析
       def parse_novel_info(html)
         doc = Nokogiri::HTML(html, nil, @config["encoding"] || "UTF-8")
-        
+
         {
           "title" => extract_novel_info_item(doc, "title_selector"),
           "author" => extract_novel_info_item(doc, "author_selector"),
@@ -73,7 +73,7 @@ module Narou
         end
 
         items = extract_with_fallback(doc, "toc_selectors", extract_type: "list")
-        
+
         items.map.with_index do |item, idx|
           {
             "index" => extract_index_from_href(item["href"]),
@@ -95,7 +95,7 @@ module Narou
       def extract_title(doc)
         selector = @config.dig("novel_info_selectors", "title")
         return nil unless selector
-        
+
         result = doc.css(selector).first
         result&.text&.strip
       end
@@ -103,7 +103,7 @@ module Narou
       def extract_author(doc)
         selector = @config.dig("novel_info_selectors", "author")
         return nil unless selector
-        
+
         result = doc.css(selector).first
         result&.text&.strip
       end
@@ -111,7 +111,7 @@ module Narou
       def extract_story(doc)
         selector = @config.dig("novel_info_selectors", "story")
         return nil unless selector
-        
+
         result = doc.css(selector).first
         result&.inner_html&.strip
       end
@@ -141,7 +141,7 @@ module Narou
       def extract_novel_info_item(doc, selector_key)
         selector = @config.dig("novel_info_selectors", selector_key.sub(/_selector$/, ""))
         return nil unless selector
-        
+
         result = doc.css(selector).first
         result&.text&.strip
       end

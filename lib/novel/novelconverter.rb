@@ -110,20 +110,20 @@ class NovelConverter
   end
 
   # EbookBuilderへの委譲
-  def self.txt_to_epub(*args, **kwargs)
-    EbookBuilder.txt_to_epub(*args, **kwargs)
+  def self.txt_to_epub(*, **)
+    EbookBuilder.txt_to_epub(*, **)
   end
 
-  def self.add_dc_subject_to_epub(*args, **kwargs)
-    EbookBuilder.add_dc_subject_to_epub(*args, **kwargs)
+  def self.add_dc_subject_to_epub(*, **)
+    EbookBuilder.add_dc_subject_to_epub(*, **)
   end
 
-  def self.epub_to_mobi(*args, **kwargs)
-    EbookBuilder.epub_to_mobi(*args, **kwargs)
+  def self.epub_to_mobi(*, **)
+    EbookBuilder.epub_to_mobi(*, **)
   end
 
-  def self.convert_txt_to_ebook_file(*args, **kwargs)
-    EbookBuilder.convert_txt_to_ebook_file(*args, **kwargs)
+  def self.convert_txt_to_ebook_file(*, **)
+    EbookBuilder.convert_txt_to_ebook_file(*, **)
   end
 
   # OutputHelperへの委譲

@@ -13,12 +13,12 @@
 #
 #
 # This is free and unencumbered software released into the public domain.
-# 
+#
 # Anyone is free to copy, modify, publish, use, compile, sell, or
 # distribute this software, either in source code form or as a compiled
 # binary, for any purpose, commercial or non-commercial, and by any
 # means.
-# 
+#
 # In jurisdictions that recognize copyright laws, the author or authors
 # of this software dedicate any and all copyright interest in the
 # software to the public domain. We make this dedication for the benefit
@@ -26,7 +26,7 @@
 # successors. We intend this dedication to be an overt act of
 # relinquishment in perpetuity of all present and future rights to this
 # software under copyright law.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -34,7 +34,7 @@
 # OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-# 
+#
 # For more information, please refer to <http://unlicense.org/>
 #
 # Written by Paul Durrant, 2010-2011, paul@durrant.co.uk, pdurrant on mobileread.com
@@ -51,7 +51,7 @@
 #  1.34 - added credit for Kevin Hendricks
 #  1.35 - fixed bug when more than one compilation (SRCS/CMET) records
 
-KINDLESTRIP_VERSION = '1.35'
+KINDLESTRIP_VERSION = "1.35"
 
 class StripException < StandardError; end
 
@@ -96,7 +96,7 @@ class SectionStripper
           pos = 12
           nitems.times do
             type, size = exth[pos ... pos + 8].unpack("NN")
-            #puts "#{type}, #{size}"
+            # puts "#{type}, #{size}"
             if type == 121
               boundaryptr, = exth[pos + 8 ... pos + size].unpack("N")
               if srcs_secnum <= boundaryptr
@@ -118,7 +118,7 @@ class SectionStripper
 
   def initialize(datain, verbose = true)
     @verbose = verbose
-    if datain[0x3C...0x3C+8] != "BOOKMOBI"
+    if datain[0x3C...0x3C + 8] != "BOOKMOBI"
       raise StripException, "invalid file format"
     end
     @num_sections, = datain[76...78].unpack("n")
@@ -135,16 +135,16 @@ class SectionStripper
     puts "Found SRCS section number %d, and count %d" % [srcs_secnum, srcs_cnt] if @verbose
     # find its offset and length
     _next = srcs_secnum + srcs_cnt
-    srcs_offset, = datain.unpack("@#{78+srcs_secnum*8}NN")
-    next_offset, = datain.unpack("@#{78+_next*8}NN")
+    srcs_offset, = datain.unpack("@#{78 + srcs_secnum * 8}NN")
+    next_offset, = datain.unpack("@#{78 + _next * 8}NN")
     srcs_length = next_offset - srcs_offset
-    if datain[srcs_offset ... srcs_offset+4] != "SRCS"
+    if datain[srcs_offset ... srcs_offset + 4] != "SRCS"
       raise StripException, "SRCS section num does not point to SRCS."
     end
     puts "   beginning at offset %0x and ending at offset %0x" % [srcs_offset, srcs_length] if @verbose
 
     # it appears bytes 68-71 always contain (2*num_sections) + 1
-    # this is not documented anyplace at all but it appears to be some sort of next 
+    # this is not documented anyplace at all but it appears to be some sort of next
     # available unique_id used to identify specific sections in the palm db
     @data_file = datain[0, 68] + [(@num_sections - srcs_cnt) * 2 + 1].pack("N")
     @data_file += datain[72...76]
@@ -156,7 +156,7 @@ class SectionStripper
     # up to the srcs secnum must begin 8 bytes earlier per section removed (each table entry is 8 )
     delta = -8 * srcs_cnt
     srcs_secnum.times do |i|
-      offset, flgval = datain.unpack("@#{78+i*8}NN")
+      offset, flgval = datain.unpack("@#{78 + i * 8}NN")
       offset += delta
       @data_file += [offset].pack("N") + [flgval].pack("N")
     end
@@ -165,7 +165,7 @@ class SectionStripper
     # earlier by 8*srcs_cnt + the length of the srcs sections themselves)
     delta = delta - srcs_length
     (srcs_secnum + srcs_cnt ... @num_sections).each do |i|
-      offset, = datain.unpack("@#{78+i*8}NN")
+      offset, = datain.unpack("@#{78 + i * 8}NN")
       offset += delta
       flgval = 2 * (i - srcs_cnt)
       @data_file += [offset].pack("N") + [flgval].pack("N")
@@ -178,11 +178,11 @@ class SectionStripper
 
     # now finally add on every thing up to the original src_offset
     @data_file += datain[offset0...srcs_offset]
-    
+
     # and everything afterwards
     @data_file += datain[srcs_offset + srcs_length .. -1]
 
-    #store away the SRCS section in case the user wants it output
+    # store away the SRCS section in case the user wants it output
     @stripped_data_header = datain[srcs_offset ... srcs_offset + 16]
     @stripped_data = datain[srcs_offset + 16 ... srcs_offset + srcs_length]
 
@@ -237,7 +237,7 @@ if __FILE__ == $0
     outfile = ARGV[1]
     begin
       stripped_file = SectionStripper.strip(infile, outfile)
-      #print "Header Bytes: " + binascii.b2a_hex(strippedFile.getHeader())
+      # print "Header Bytes: " + binascii.b2a_hex(strippedFile.getHeader())
       if ARGV.length == 3
         File.binwrite(ARGV[2], stripped_file.get_stripped_data)
       end

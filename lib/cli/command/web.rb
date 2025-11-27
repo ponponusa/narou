@@ -445,7 +445,7 @@ module Command
       config_file = File.join(frontend_dir, "astro.config.mjs")
       if File.exist?(config_file)
         config_content = File.read(config_file)
-        config_content.gsub!(%r!target:\s*['"]http://localhost:\d+['"]!, "target: 'http://localhost:#{port}'")
+        config_content.gsub!(%r{target:\s*['"]http://localhost:\d+['"]}, "target: 'http://localhost:#{port}'")
         File.write(config_file, config_content)
       end
 

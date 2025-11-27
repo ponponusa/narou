@@ -28,7 +28,7 @@ RSpec.describe Command::Tag do
     end
 
     it "accepts valid tag names" do
-      valid_tags = ["fav", "later", "end", "404", "test_tag"]
+      valid_tags = %w(fav later end 404 test_tag)
       valid_tags.each do |tag|
         expect(tag).not_to match(Command::Tag::BAN_CHAR)
         expect(Command::Tag::BAN_WORD).not_to include(tag)

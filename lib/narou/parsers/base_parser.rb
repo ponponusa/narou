@@ -55,7 +55,7 @@ module Narou
       # セレクタチェーンによる要素抽出（フォールバック機構）
       def extract_with_fallback(doc, selector_key, extract_type: "inner_html")
         selectors = @config[selector_key]
-        
+
         unless selectors && selectors.is_a?(Array) && selectors.any?
           raise AllSelectorsFailedError.new(selector_key, []),
                 "セレクタ設定が見つかりません: #{selector_key}"
@@ -70,19 +70,19 @@ module Narou
 
           begin
             @logger.debug "Trying selector: #{selector} (priority: #{config['priority']})"
-            
+
             result = doc.css(selector)
-            
+
             if result.empty?
               @logger.debug "No elements found for: #{selector}"
               next
             end
 
             @logger.debug "Found #{result.size} element(s) for: #{selector}"
-            
+
             # 成功したセレクタを記録
             update_successful_selector(selector_key, selector)
-            
+
             # 抽出タイプに応じて結果を返す
             return extract_content(result, extract_type, config)
           rescue => e
@@ -123,7 +123,8 @@ module Narou
         item_selectors.each do |key, selector|
           # セレクタに ::attr(name) が含まれる場合は属性値を取得
           if selector =~ /^(.+)::attr\((.+)\)$/
-            sel, attr = $1, $2
+            sel = $1
+            attr = $2
             node = element.css(sel).first
             item[key] = node ? node[attr] : nil
           else
@@ -139,7 +140,7 @@ module Narou
       def update_successful_selector(selector_key, selector)
         domain = @config["domain"]
         engine = self.class.name.include?("Legacy") ? "legacy" : "nokogiri"
-        
+
         ConfigManager.update_successful_selector(domain, selector_key, selector, engine)
       rescue => e
         @logger.warn "Failed to update successful selector: #{e.message}"

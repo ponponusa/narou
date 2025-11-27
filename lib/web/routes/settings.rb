@@ -44,7 +44,7 @@ module SettingsRoutes
             else
               argument = "false"
             end
-          elsif param_data.kind_of?(Array)
+          elsif param_data.is_a?(Array)
             argument = param_data.join(",")
           else
             argument = param_data
@@ -64,7 +64,7 @@ module SettingsRoutes
         end
         setting.execute!(built_arguments, io: Narou::NullIO.new)
         Inventory.clear
-        
+
         # 自動アップデート設定が変更された場合、スケジューラーを再起動
         if built_arguments.any? { |arg| arg.start_with?("update.auto-schedule") }
           require "web/command/update/scheduler"
@@ -76,9 +76,10 @@ module SettingsRoutes
       # 置換設定保存
       params_replace_pattern = params["replace_pattern"]
       @global_replace_pattern.clear
-      if params_replace_pattern.kind_of?(Array)
+      if params_replace_pattern.is_a?(Array)
         params_replace_pattern.each do |pattern|
-          left, right = pattern["left"].strip, pattern["right"].strip
+          left = pattern["left"].strip
+          right = pattern["right"].strip
           next if left == ""
           @global_replace_pattern << [left, right]
         end
@@ -103,18 +104,16 @@ module SettingsRoutes
         # Astro UI の settings ページ
         # 開発環境のパス
         dev_settings_path = "../frontend/dist/settings/index.html"
-        
+
         # gem環境のパス
         gem_settings_path = "../frontend/dist/settings/index.html"
-        
+
         settings_path = if File.exist?(dev_settings_path)
                           dev_settings_path
                         elsif File.exist?(gem_settings_path)
                           gem_settings_path
-                        else
-                          nil
                         end
-        
+
         if settings_path && File.exist?(settings_path)
           send_file settings_path
         else

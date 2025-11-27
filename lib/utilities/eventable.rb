@@ -66,8 +66,8 @@ module Narou::Eventable
   alias :off :remove_event_listener
   alias :trigger :trigger_event
 
-  def one(event_name, &block)
-    add_event_listener(event_name, true, &block)
+  def one(event_name, &)
+    add_event_listener(event_name, true, &)
   end
 end
 

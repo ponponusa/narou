@@ -27,9 +27,9 @@ module Narou
 
     DEFAULT_PROMO_REGEXES = DEFAULT_PROMO_KEYWORDS.map { |pattern| Regexp.new(pattern) }.freeze
 
-    SEP = %r!\s*[|｜／/・\-—–―~〜:：;；]+?\s*!x.freeze
-    TOKEN_SEPARATOR = %r!\s*[|｜／/・･\-—–―~〜:：;；＋+＠@＆&]+?\s*!x.freeze
-    TRAILING_DECORATIONS = /[！!？?。．､，,、…‥☆★♪♪※‼⁉︎〜～ー─—―・\s]+\z/.freeze
+    SEP = %r{\s*[|｜／/・\-—–―~〜:：;；]+?\s*}x.freeze
+    TOKEN_SEPARATOR = %r{\s*[|｜／/・･\-—–―~〜:：;；＋+＠@＆&]+?\s*}x.freeze
+    TRAILING_DECORATIONS = /[！!？?。．､，,、…‥☆★♪※‼⁉︎〜～ー─—―・\s]+\z/.freeze
     WHITESPACE_PATTERN = /[\s\u3000]+/.freeze
 
     BRACKET_REGEXES = BRACKETS.map do |opening, closing|

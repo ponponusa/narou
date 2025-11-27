@@ -26,14 +26,14 @@ class Ini
 
   def self.load_file(file)
     case
-    when file.kind_of?(String)
+    when file.is_a?(String)
       text = File.read(file, mode: "r:BOM|UTF-8")
       ini = new(text)
       ini.filename = file
-      return ini.object
+      ini.object
     when file.respond_to?(:read)
       text = file.read
-      return load(text)
+      load(text)
     else
       raise NoFilenameError
     end
@@ -109,7 +109,7 @@ class Ini
           fp.puts("[#{section}]")
         end
         values.each do |key, value|
-          value = "\"#{value}\"" if value.kind_of?(String)
+          value = "\"#{value}\"" if value.is_a?(String)
           fp.puts("#{key} #{DELIMITER} #{value}")
         end
       end

@@ -27,16 +27,16 @@ module Narou
       def get_tag_list(ids = nil)
         database = Database.instance
         tag_list = Hash.new(0)
-        
+
         database.each_value do |data|
           next if ids.is_a?(Array) && !ids.include?(data["id"])
-          
+
           tags = data["tags"] || []
           tags.each do |tag|
             tag_list[tag] += 1
           end
         end
-        
+
         tag_list.default = nil
         tag_list
       end
@@ -77,7 +77,7 @@ module Narou
       def get_tag_info(ids, with_exclusion: false)
         database = Database.instance
         tag_info = {}
-        
+
         # まず全体のタグ一覧を取得
         all_tags = get_tag_list
         all_tags.each do |tag, total_count|
@@ -88,12 +88,12 @@ module Narou
             color: get_color(tag)
           }
         end
-        
+
         # 選択されたIDの小説での各タグの出現回数を計算
         ids.each do |id|
           data = database[id]
           next unless data
-          
+
           tags = data["tags"] || []
           tags.each do |tag|
             tag_info[tag] ||= {
@@ -105,7 +105,7 @@ module Narou
             tag_info[tag][:count] += 1
           end
         end
-        
+
         tag_info
       end
 
@@ -119,7 +119,7 @@ module Narou
       def add_tags(tag_names, novel_ids)
         require "cli/command/tag"
         require "output/narou_logger"
-        
+
         begin
           Command::Tag.execute!("--add", tag_names.join(" "), novel_ids, io: Narou::NullIO.new)
           { success: true, added_count: novel_ids.length }
@@ -138,7 +138,7 @@ module Narou
       def delete_tags(tag_names, novel_ids)
         require "cli/command/tag"
         require "output/narou_logger"
-        
+
         begin
           Command::Tag.execute!("--delete", tag_names.join(" "), novel_ids, io: Narou::NullIO.new)
           { success: true, deleted_count: novel_ids.length }
@@ -157,13 +157,13 @@ module Narou
       def edit_tags(states, novel_ids)
         require "cli/command/tag"
         require "output/narou_logger"
-        
+
         # key と value を重複を維持したまま反転
         invert_states = states.inject({}) { |h, (k, v)| (h[v] ||= []) << k; h }
-        
+
         added_tags = []
         deleted_tags = []
-        
+
         invert_states.each do |state, tags|
           case state.to_i
           when 0
@@ -178,10 +178,10 @@ module Narou
             added_tags.concat(tags)
           end
         end
-        
+
         # タグ追加がある場合は、データベース書き込み完了を待つ
         sleep(0.5) if added_tags.any?
-        
+
         {
           success: true,
           added: added_tags,

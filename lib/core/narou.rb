@@ -62,7 +62,7 @@ module Narou
           root = drive_letter + path
           break
         end
-        path.gsub!(%r!/[^/]*$!, "")
+        path.gsub!(%r{/[^/]*$}, "")
       end
       Pathname(root) if root
     end

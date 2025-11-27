@@ -76,7 +76,7 @@ class Device
   def self.create(device_name)
     @@device_cache ||= {}
     name = device_name.downcase
-    return @@device_cache[name] ||= new(name)
+    @@device_cache[name] ||= new(name)
   end
 
   private_class_method :new
@@ -171,8 +171,6 @@ class Device
         FileUtils.rm_f(src_file)
       end
       dst_path
-    else
-      nil
     end
   rescue SendFailure => e
     puts

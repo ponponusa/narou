@@ -54,10 +54,10 @@ RSpec.describe Narou::Parsers::ConfigManager do
   describe ".load_global_config" do
     it "グローバル設定が存在しない場合、デフォルトを作成して返す" do
       config = described_class.load_global_config
-      
+
       expect(config["default_engine"]).to eq("nokogiri")
       expect(config["novels"]).to eq({})
-      
+
       # ファイルが作成されているか確認
       path = File.join(test_root, ".narou/parser_config.yaml")
       expect(File.exist?(path)).to be true
@@ -73,7 +73,7 @@ RSpec.describe Narou::Parsers::ConfigManager do
       }))
 
       config = described_class.load_global_config
-      
+
       expect(config["default_engine"]).to eq("legacy")
       expect(config["novels"]["n1234ab"]["engine"]).to eq("nokogiri")
     end
@@ -83,10 +83,10 @@ RSpec.describe Narou::Parsers::ConfigManager do
     context "Nokogiri エンジンの場合" do
       it "デフォルト設定を読み込む" do
         config = described_class.load_parser_config("test.example.com", "nokogiri")
-        
+
         expect(config["name"]).to eq("Test Site")
         expect(config["body_selectors"]).to be_a(Array)
-        
+
         # ユーザー設定ファイルは自動作成されない
         user_path = File.join(test_root, ".narou/parsers/test.example.com.yaml")
         expect(File.exist?(user_path)).to be false
@@ -104,7 +104,7 @@ RSpec.describe Narou::Parsers::ConfigManager do
         }))
 
         config = described_class.load_parser_config("test.example.com", "nokogiri")
-        
+
         expect(config["name"]).to eq("Custom Config")
         expect(config["body_selectors"].first["selector"]).to eq("div.custom")
       end
@@ -113,10 +113,10 @@ RSpec.describe Narou::Parsers::ConfigManager do
     context "Legacy エンジンの場合" do
       it "webnovel/ からデフォルト設定を読み込む" do
         config = described_class.load_parser_config("test.example.com", "legacy")
-        
+
         expect(config["name"]).to eq("Test Site")
         expect(config["body_pattern"]).to include("<div>")
-        
+
         # ユーザー設定ファイルは自動作成されない
         user_path = File.join(test_root, ".narou/legacy_parsers/test.example.com.yaml")
         expect(File.exist?(user_path)).to be false
@@ -132,7 +132,7 @@ RSpec.describe Narou::Parsers::ConfigManager do
 
       # エンジンを設定
       described_class.set_engine_for_novel("n1234ab", "legacy")
-      
+
       # 設定が反映されているか確認
       engine = described_class.get_engine_for_novel("n1234ab")
       expect(engine).to eq("legacy")
@@ -144,7 +144,7 @@ RSpec.describe Narou::Parsers::ConfigManager do
       # まずデフォルト設定を読み込んでユーザー設定として保存
       config = described_class.load_parser_config("test.example.com", "nokogiri")
       described_class.save_parser_config("test.example.com", config, "nokogiri")
-      
+
       # セレクタを記録（新しいシグネチャ: domain, selector_key, selector, engine）
       described_class.update_successful_selector(
         "test.example.com",
@@ -156,7 +156,7 @@ RSpec.describe Narou::Parsers::ConfigManager do
       # 設定を再読み込みして確認
       config = described_class.load_parser_config("test.example.com", "nokogiri")
       last_successful = config.dig("last_successful_selectors", "body_selectors")
-      
+
       expect(last_successful["selector"]).to eq("div.new-body")
       expect(last_successful["date"]).to match(/\d{4}-\d{2}-\d{2}/)
     end

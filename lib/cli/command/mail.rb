@@ -72,7 +72,7 @@ module Command
           if send_all && !@options["force"]
             new_arrivals_date = data["new_arrivals_date"] || Time.now
             if data["last_mail_date"] && new_arrivals_date < data["last_mail_date"]
-              next   # すでに送信済みなので送信しない
+              next # すでに送信済みなので送信しない
             end
           end
         end

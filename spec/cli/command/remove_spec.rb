@@ -35,7 +35,7 @@ RSpec.describe Command::Remove do
 
     it "returns empty array when no short stories exist" do
       db_object[1] = { "id" => 1, "title" => "連載1", "novel_type" => 1 }
-      
+
       result = command.get_all_short_story
       expect(result).to be_empty
     end
@@ -53,7 +53,7 @@ RSpec.describe Command::Remove do
     it "removes all short stories with --all-ss option" do
       db_object[1] = { "id" => 1, "title" => "短編1", "novel_type" => 2 }
       db_object[2] = { "id" => 2, "title" => "短編2", "novel_type" => 2 }
-      
+
       command.instance_variable_set(:@options, { "all-ss" => true, "yes" => true })
       allow(command).to receive(:tagname_to_ids)
       allow(Downloader).to receive(:get_data_by_target).and_return(db_object[1], db_object[2])
@@ -61,11 +61,11 @@ RSpec.describe Command::Remove do
       allow(Narou).to receive(:novel_frozen?).and_return(false)
       allow(Downloader).to receive(:remove_novel)
       allow(Helper).to receive(:print_horizontal_rule)
-      
+
       # Kernel.exitを明示的にstub
       allow(command).to receive(:exit)
       allow(Kernel).to receive(:exit)
-      
+
       expect { command.execute([]) }.to output.to_stdout
     end
 
@@ -74,7 +74,7 @@ RSpec.describe Command::Remove do
       allow(command).to receive(:display_help!)
       allow(command).to receive(:exit)
       allow(Kernel).to receive(:exit)
-      
+
       # --all-ssオプションを引数として渡す
       expect { command.execute(["--all-ss"]) }.to output(/短編小説がひとつもありません/).to_stdout
     end
@@ -82,16 +82,16 @@ RSpec.describe Command::Remove do
     it "shows error for non-existent novel" do
       allow(command).to receive(:tagname_to_ids)
       allow(Downloader).to receive(:get_data_by_target).with("invalid").and_return(nil)
-      
+
       # Kernel.exitをstub
       allow(command).to receive(:exit)
       allow(Kernel).to receive(:exit)
-      
+
       # errorメソッドをstub（$stdout.errorが呼ばれるため）
       allow(command).to receive(:error)
-      
+
       command.execute(["invalid"])
-      
+
       # errorメソッドが呼ばれたことを検証
       expect(command).to have_received(:error).with(/は存在しません/)
     end

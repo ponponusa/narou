@@ -54,7 +54,7 @@ module Narou
       if $disable_color
         str
       else
-        str.gsub(%r!</?span.*?>!, "")
+        str.gsub(%r{</?span.*?>}, "")
       end
     end
 

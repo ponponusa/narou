@@ -6,7 +6,7 @@
 
 #
 # API v2 エンドポイント
-# 
+#
 # SPA (Single Page Application) 向けの最新API実装
 # JSON レスポンスを基本とし、REST原則に従う
 #
@@ -44,11 +44,11 @@ module Narou
 
       # CORS ヘッダー設定
       def set_cors_headers
-        headers['Access-Control-Allow-Origin'] = '*'
-        headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        headers['Access-Control-Allow-Headers'] = 'Content-Type, Accept, Authorization'
-        headers['Access-Control-Expose-Headers'] = 'Content-Disposition'
-        headers['Access-Control-Max-Age'] = '86400'
+        headers["Access-Control-Allow-Origin"] = "*"
+        headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        headers["Access-Control-Allow-Headers"] = "Content-Type, Accept, Authorization"
+        headers["Access-Control-Expose-Headers"] = "Content-Disposition"
+        headers["Access-Control-Max-Age"] = "86400"
       end
 
       # JSON リクエストボディのパース
@@ -60,14 +60,14 @@ module Narou
         begin
           JSON.parse(raw_body)
         rescue JSON::ParserError => e
-          halt 400, json(error_response('INVALID_JSON', "Invalid JSON: #{e.message}"))
+          halt 400, json(error_response("INVALID_JSON", "Invalid JSON: #{e.message}"))
         end
       end
 
       # ID パラメータのバリデーション
       def validate_ids(ids)
         return nil unless ids.is_a?(Array)
-        
+
         result = ids.select do |id|
           case id
           when Integer
@@ -78,22 +78,22 @@ module Narou
             false
           end
         end.map(&:to_s)
-        
+
         result.empty? ? nil : result
       end
 
       # データベースの準備状態をチェック
       def database_ready?
         return false unless defined?(Database)
-        
+
         # Databaseインスタンスが取得できるかチェック
         db = Database.instance
         return false unless db
-        
+
         # データベースオブジェクトが存在するかチェック
         db_obj = db.get_object
         return false unless db_obj
-        
+
         true
       rescue StandardError => e
         # エラーが発生した場合は準備未完了とみなす

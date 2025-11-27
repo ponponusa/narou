@@ -35,12 +35,12 @@ class Downloader
             uri = URI.parse(toc_fp.base_uri.to_s)
             if uri.host == "nl.syosetu.com"
               decode = Hash[URI.decode_www_form(uri.query)]
-              toc_url = decode["url"]   # 年齢認証確認ページからの転送先
+              toc_url = decode["url"] # 年齢認証確認ページからの転送先
               raise DownloaderForceRedirect
             end
             s = Downloader.get_sitesetting_by_target(toc_fp.base_uri.to_s)
-            raise DownloaderNotFoundError unless s   # 非公開や削除等でトップページへリダイレクトされる場合がある
-            @setting.clear   # 今まで使っていたのは一旦クリア
+            raise DownloaderNotFoundError unless s # 非公開や削除等でトップページへリダイレクトされる場合がある
+            @setting.clear # 今まで使っていたのは一旦クリア
             @setting = s
             toc_url = @setting["toc_url"]
           end
@@ -54,7 +54,8 @@ class Downloader
         else
           raise
         end
-      rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError, SocketError => e
+      rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError,
+SocketError => e
         case e.message
         when /^503/
           @stream&.error "server message: #{e.message}"
@@ -123,8 +124,9 @@ class Downloader
         "subtitles" => subtitles
       }
       toc_objects
-    rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError, SocketError => e
-      raise if through_error   # エラー処理はしなくていいからそのまま例外を受け取りたい時用
+    rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError,
+SocketError => e
+      raise if through_error # エラー処理はしなくていいからそのまま例外を受け取りたい時用
       if e.message.include?("404")
         @stream.error "小説が削除されているか非公開な可能性があります"
         sleep_for_download

@@ -45,15 +45,15 @@ class Downloader
 
   SECTION_SAVE_DIR_NAME = "本文"    # 本文を保存するディレクトリ名
   CACHE_SAVE_DIR_NAME = "cache"   # 差分用キャッシュ保存用ディレクトリ名
-  RAW_DATA_DIR_NAME = "raw"    # 本文の生データを保存するディレクトリ名
+  RAW_DATA_DIR_NAME = "raw" # 本文の生データを保存するディレクトリ名
   TOC_FILE_NAME = "toc.yaml"
-  STEPS_WAIT_TIME = 5   # 数話ごとにかかるwaitの秒数
+  STEPS_WAIT_TIME = 5 # 数話ごとにかかるwaitの秒数
   WAIT_TIME_TO_RETRY_NETWORK = 10 # タイムアウト等でリトライするまでの待機時間
   LIMIT_TO_RETRY_NETWORK = 5 # タイムアウト等でリトライする回数上限
   NOVEL_TYPE_SERIES = 1   # 連載
   NOVEL_TYPE_SS = 2       # 短編
-  DISPLAY_LIMIT_DIGITS = 4   # indexの表示桁数限界
-  DEFAULT_INTERVAL_WAIT = 0.7   # download.interval のデフォルト値(秒)
+  DISPLAY_LIMIT_DIGITS = 4 # indexの表示桁数限界
+  DEFAULT_INTERVAL_WAIT = 0.7 # download.interval のデフォルト値(秒)
 
   attr_reader :id, :setting
 
@@ -93,7 +93,7 @@ class Downloader
     @new_novel = record.!
     @from_download = options[:from_download]
     @section_download_cache = {}
-    @max_cache_size = 20  # セクションキャッシュの上限
+    @max_cache_size = 20 # セクションキャッシュの上限
     @download_wait_steps = Inventory.load("local_setting")["download.wait-steps"] || 0
     @download_use_subdirectory = use_subdirectory?
     if @setting["is_narou"] && (@download_wait_steps > 10 || @download_wait_steps == 0)
@@ -102,10 +102,10 @@ class Downloader
     @nosave_diff = Narou.economy?("nosave_diff")
     @nosave_raw = Narou.economy?("nosave_raw")
     @gurad_spoiler = Inventory.load("local_setting")["guard-spoiler"]
-    
+
     # 新パーサーの初期化
     @parser = Narou::Parsers::ParserSelector.select(@setting, novel_id: @id) rescue nil
-    
+
     # RateLimiter のシングルトンインスタンスを取得
     @rate_limiter = RateLimiter.instance
   end
@@ -142,9 +142,9 @@ class Downloader
     if Narou::Input.confirm("年齢認証：あなたは18歳以上ですか")
       global_setting["over18"] = true
       global_setting.save
-      return true
+      true
     else
-      return false
+      false
     end
   end
 
@@ -239,7 +239,9 @@ class Downloader
 
     auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
     if @setting["tag"] && auto_add_tags
-      clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワードが設定されていません/, '').gsub(/キーワード/, '').gsub(/\"?\(\?\.\+\?\)\"?/, '').gsub(/\(\?\<?[^)]*\)/, '').strip
+      clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワードが設定されていません/, "").gsub(/キーワード/, "").gsub(/\"?\(\?\.\+\?\)\"?/, "").gsub(
+/\(\?\<?[^)]*\)/, ""
+).strip
       if clean_tag.length > 0
         new_tags = clean_tag.split(/[ 　]+/).uniq
         old_tags = (record && record["tags"]) ? record["tags"] : []
@@ -308,12 +310,12 @@ class Downloader
     old_subtitles_count = old_toc["subtitles"].size
     if latest_subtitles_count < old_subtitles_count
       title = latest_toc["title"]
-      message = <<-EOS
-更新後の話数が保存されている話数より減少していることを検知しました。
-ダイジェスト化されている可能性があるので、更新に関しての処理を選択して下さい。
+      message = <<~EOS
+        更新後の話数が保存されている話数より減少していることを検知しました。
+        ダイジェスト化されている可能性があるので、更新に関しての処理を選択して下さい。
 
-保存済み話数: #{old_subtitles_count}
-更新後の話数: #{latest_subtitles_count}
+        保存済み話数: #{old_subtitles_count}
+        更新後の話数: #{latest_subtitles_count}
 
       EOS
 
@@ -360,13 +362,14 @@ class Downloader
           Command::Convert.execute!(latest_toc["toc_url"], sync: true)
         end
         unless Narou.web?
-          message = ""   # 長いので二度は表示しない
+          message = "" # 長いので二度は表示しない
         end
       end
     else
-      return false
+      false
     end
   end
+
   #
   # 小説を格納するためのディレクトリ名を取得する
   #
@@ -430,8 +433,8 @@ if defined?(Narou::Downloader)
     # get_latest_table_of_contents の戻り値を UTF-8 に正規化
     if method_defined?(:get_latest_table_of_contents)
       alias __orig_get_latest_table_of_contents get_latest_table_of_contents
-      def get_latest_table_of_contents(*args, **kwargs, &blk)
-        res = __orig_get_latest_table_of_contents(*args, **kwargs, &blk)
+      def get_latest_table_of_contents(...)
+        res = __orig_get_latest_table_of_contents(...)
         Narou::Utf8Hotfix.utf8(res)
       end
     end
@@ -439,8 +442,8 @@ if defined?(Narou::Downloader)
     # 念のため run_download の戻り値も正規化（TOC 以外の経路対策）
     if method_defined?(:run_download)
       alias __orig_run_download run_download
-      def run_download(*args, **kwargs, &blk)
-        res = __orig_run_download(*args, **kwargs, &blk)
+      def run_download(...)
+        res = __orig_run_download(...)
         Narou::Utf8Hotfix.utf8(res)
       end
     end

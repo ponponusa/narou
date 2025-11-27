@@ -104,11 +104,9 @@ describe Narou::Logger, :show_output do
           exit 1
         end
         dummy_caller = proc do
-          begin
-            dummy.call
-          rescue SystemExit => e
-            e.status
-          end
+          dummy.call
+        rescue SystemExit => e
+          e.status
         end
         expect($stdout.capture { dummy_caller.call }).to eq "hello"
       end

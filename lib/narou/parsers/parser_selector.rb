@@ -18,10 +18,10 @@ module Narou
 
           # パーサーエンジンを決定
           engine = determine_engine(novel_id)
-          
+
           # ユーザー設定を読み込み
           user_config = ConfigManager.load_parser_config(domain, engine)
-          
+
           # エンジンに応じてパーサーを生成
           create_parser(domain, engine, site_setting, user_config, logger)
         end
@@ -59,7 +59,7 @@ module Narou
             KakuyomuParser
           when "syosetu.org"
             require "narou/parsers/narou_parser"
-            NarouParser  # syosetu.org も同じ構造
+            NarouParser # syosetu.org も同じ構造
           else
             # デフォルトは汎用 Nokogiri パーサー
             require "narou/parsers/nokogiri_parser"

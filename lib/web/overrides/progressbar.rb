@@ -17,9 +17,9 @@ class ProgressBar
 
   alias :original_initialize :initialize
 
-  def initialize(*args, **opt)
+  def initialize(*, **opt)
     # 親クラスのinitializeを呼ぶ（@ioを設定するため）
-    original_initialize(*args, **opt)
+    original_initialize(*, **opt)
     # プログレスバーイベントは送信しない（無効化）
     # @@push_server.send_all("progressbar.init" => { target_console: io.target_console })
   end

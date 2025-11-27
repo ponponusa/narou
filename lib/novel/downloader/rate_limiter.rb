@@ -52,8 +52,8 @@ class Downloader
         end
 
         # 指定されたステップごとに長い待機を入れる
-        if download_wait_steps > 0 && 
-           @wait_counter % download_wait_steps == 0 && 
+        if download_wait_steps > 0 &&
+           @wait_counter % download_wait_steps == 0 &&
            @wait_counter >= download_wait_steps
           # MEMO:
           # 小説家になろうは連続DL規制があるため、ウェイトを入れる必要がある。

@@ -33,8 +33,8 @@ def File.write(path, string, *options, mode: nil)
   FileUtils.makedirs(dirpath) unless Dir.exist?(dirpath)
   temp_path = File.join(dirpath, SecureRandom.hex(15))
   section_dir_name = if defined?(Downloader::SECTION_SAVE_DIR_NAME)
-    Downloader::SECTION_SAVE_DIR_NAME
-  end
+                       Downloader::SECTION_SAVE_DIR_NAME
+                     end
   if File.extname(path) == ".yaml" && File.basename(dirpath) != section_dir_name
     backup = "#{path}.backup"
   end

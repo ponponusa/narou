@@ -10,8 +10,8 @@ module Narou
   module MonkyPatches
     module PathnameGlob
       # Pathname#glob は Ruby2.5 から実装された
-      def glob(pattern, flags = 0, &block)
-        Pathname.glob(self.join(pattern), flags, &block)
+      def glob(pattern, flags = 0, &)
+        Pathname.glob(self.join(pattern), flags, &)
       end
     end
   end

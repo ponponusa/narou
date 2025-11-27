@@ -61,11 +61,11 @@ module Command
         end
         print res[0]
         print res[1]
-        if ! res[2].success?
+        if !res[2].success?
           puts res[2]
           puts "Java実行時にエラーが発生しました"
           # javaの実行でエラーが発生したならAozoraEpub3の実行は試みない
-        elsif ! aozoraepub3_path
+        elsif !aozoraepub3_path
           puts
           puts "AozoraEpub3が見つかりません"
         else

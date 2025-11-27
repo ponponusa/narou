@@ -34,7 +34,7 @@ module CommandLine
 
     command_class = Command.load_command(cmd_name)
     unless command_class
-  error "不明なコマンドです。narou-mod help を確認してください"
+      error "不明なコマンドです。narou-mod help を確認してください"
       exit Narou::EXIT_ERROR_CODE
     end
 
@@ -79,7 +79,7 @@ module CommandLine
     end
 
     unless Command.names.include?(name)
-  error "不明なコマンドです。narou-mod help を確認してください"
+      error "不明なコマンドです。narou-mod help を確認してください"
       exit Narou::EXIT_ERROR_CODE
     end
     name

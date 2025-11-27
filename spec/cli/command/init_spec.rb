@@ -8,15 +8,13 @@ RSpec.describe Command::Init do
   around do |example|
     Dir.mktmpdir do |dir|
       Dir.chdir(dir) do
-        begin
-          Narou.flush_cache if Narou.respond_to?(:flush_cache)
-          Inventory.clear if Inventory.respond_to?(:clear)
-          FileUtils.mkdir_p(Narou::GLOBAL_SETTING_DIR_NAME)
-          example.run
-        ensure
-          Narou.flush_cache if Narou.respond_to?(:flush_cache)
-          Inventory.clear if Inventory.respond_to?(:clear)
-        end
+        Narou.flush_cache if Narou.respond_to?(:flush_cache)
+        Inventory.clear if Inventory.respond_to?(:clear)
+        FileUtils.mkdir_p(Narou::GLOBAL_SETTING_DIR_NAME)
+        example.run
+      ensure
+        Narou.flush_cache if Narou.respond_to?(:flush_cache)
+        Inventory.clear if Inventory.respond_to?(:clear)
       end
     end
   end
@@ -70,10 +68,8 @@ RSpec.describe Command::Init do
       command = Command::Init.new
 
       expect do
-        begin
-          command.execute(["help"])
-        rescue SystemExit
-        end
+        command.execute(["help"])
+      rescue SystemExit
       end.to output(a_string_including("詳細ヘルプ").and(include("--non-interactive"))).to_stdout
     end
 
@@ -81,10 +77,8 @@ RSpec.describe Command::Init do
       command = Command::Init.new
 
       expect do
-        begin
-          command.execute(["help", "mystery"])
-        rescue SystemExit
-        end
+        command.execute(["help", "mystery"])
+      rescue SystemExit
       end.to output(a_string_including("未対応のヘルプトピック").and(include("mystery"))).to_stdout
     end
   end

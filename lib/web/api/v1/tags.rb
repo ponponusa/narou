@@ -38,7 +38,7 @@ module Narou
             ids = select_valid_novel_ids(params["ids"])
             bad_request!("小説が選択されていません") unless ids
             ids.map!(&:to_i)
-            
+
             # tag情報取得時点でのソート状態が渡された場合はそれを使用
             if params["sort_state"] && params["timestamp"]
               debug_puts "[DEBUG] TagInfo with fixed sort state (timestamp: #{params["timestamp"]})"
@@ -48,10 +48,10 @@ module Narou
               debug_puts "[DEBUG] TagInfo with current state"
               sorted_ids = ids
             end
-            
+
             database = Database.instance
             tag_info = {}
-            
+
             # まず全体のタグ一覧を取得（すべてのタグを選択肢として表示するため）
             all_tags = Command::Tag.get_tag_list
             all_tags.each do |tag, total_count|
@@ -63,12 +63,12 @@ module Narou
                 exclusion_html: params["with_exclusion"] ? decorate_exclusion_tags([tag]) : ""
               }
             end
-            
+
             # 選択されたIDの小説での各タグの出現回数を計算
             sorted_ids.each do |id|
               data = database[id]
               next unless data
-              
+
               tags = data["tags"] || []
               tags.each do |tag|
                 if tag_info[tag]
@@ -76,7 +76,7 @@ module Narou
                 end
               end
             end
-            
+
             debug_puts "[DEBUG] TagInfo processing #{sorted_ids.length} novels for #{tag_info.keys.length} tags (#{all_tags.keys.length} total tags available)"
             json Hash[tag_info.sort_by { |k, v| k }].values
           end
@@ -114,7 +114,7 @@ module Narou
 
             ids = select_valid_novel_ids(request_payload["ids"])
             bad_request!("小説が選択されていません") unless ids
-            
+
             # tag編集実行時点でのソート状態が渡された場合はそれを使用
             if request_payload["sort_state"] && request_payload["timestamp"]
               debug_puts "[DEBUG] Tag edit with fixed sort state (timestamp: #{request_payload["timestamp"]})"
@@ -123,33 +123,33 @@ module Narou
               debug_puts "[DEBUG] Tag edit with current sort state"
               sorted_ids = ids
             end
-            
+
             debug_puts "[DEBUG] Tag edit processing #{sorted_ids.length} novels: #{sorted_ids.inspect}"
             debug_puts "[DEBUG] Received payload: #{request_payload.inspect}"
             debug_puts "[DEBUG] Received states param: #{request_payload["states"].inspect}"
             debug_puts "[DEBUG] Received states class: #{request_payload["states"]&.class&.name || 'nil'}"
-            
+
             # states パラメータの存在チェック
             if request_payload["states"].nil? || request_payload["states"].empty?
               debug_puts "[ERROR] States parameter is nil or empty"
               return { success: false, error: "No tag states provided" }.to_json
             end
-            
+
             # TagManager を使ってタグ編集を実行
             begin
               result = Narou::TagManager.edit_tags(request_payload["states"], sorted_ids.map(&:to_i))
-              
+
               if result[:success]
                 debug_puts "タグ編集完了 (追加: #{result[:added].join(', ')}, 削除: #{result[:deleted].join(', ')})"
-                
+
                 # キャッシュをクリアしてからイベント送信
-                NovelListProcessor.clear_all_cache 
+                NovelListProcessor.clear_all_cache
                 debug_puts "全キャッシュクリア後にリロードイベントを送信"
-                
+
                 # テーブルリロードとタグキャンバス更新を順次実行
                 Narou::AppServer.push_server.send_all(:"table.reload")
                 Narou::AppServer.push_server.send_all(:"tag.updateCanvas")
-                
+
                 { success: true }.to_json
               else
                 debug_puts "[ERROR] Tag edit failed: #{result[:error]}"
@@ -169,11 +169,11 @@ module Narou
             tag_colors = Inventory.load("tag_colors")
             tag_colors[tag] = color
             tag_colors.save
-            
+
             # キャッシュを確実にクリアしてからイベント送信
-            NovelListProcessor.clear_all_cache 
+            NovelListProcessor.clear_all_cache
             puts "タグ色変更完了: 全キャッシュクリア後にリロードイベントを送信"
-            
+
             # テーブルリロードとタグキャンバス更新を順次実行
             Narou::AppServer.push_server.send_all(:"table.reload")
             Narou::AppServer.push_server.send_all(:"tag.updateCanvas")

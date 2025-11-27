@@ -28,7 +28,7 @@ RSpec.describe Command::Freeze do
       allow(Downloader).to receive(:get_data_by_target).with("n9669bk").and_return(data)
       allow(command).to receive(:tagname_to_ids)
       allow(frozen_list).to receive(:include?).with(1).and_return(false)
-      
+
       expect { command.execute(["n9669bk"]) }.to output(/凍結しました/).to_stdout
       expect(frozen_list).to have_received(:[]=).with(1, true)
     end
@@ -42,7 +42,7 @@ RSpec.describe Command::Freeze do
       allow(Downloader).to receive(:get_data_by_target).with("n9669bk").and_return(data)
       allow(command).to receive(:tagname_to_ids)
       allow(frozen_list).to receive(:include?).with(1).and_return(true)
-      
+
       expect { command.execute(["n9669bk"]) }.to output(/解除しました/).to_stdout
       expect(frozen_list).to have_received(:delete).with(1)
     end
@@ -50,7 +50,7 @@ RSpec.describe Command::Freeze do
     it "shows error for non-existent novel" do
       allow(Downloader).to receive(:get_data_by_target).with("invalid").and_return(nil)
       allow(command).to receive(:tagname_to_ids)
-      
+
       expect { command.execute(["invalid"]) }.to output(/は存在しません/).to_stdout
     end
   end

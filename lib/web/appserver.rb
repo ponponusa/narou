@@ -55,12 +55,13 @@ class Narou::AppServer < Sinatra::Base
   autoload :SystemManagementRoutes, "web/routes/system_management"
   autoload :SettingsRoutes, "web/routes/settings"
   autoload :NovelsRoutes, "web/routes/novels"
-  
+
   register Sinatra::Reloader if $development
   helpers Narou::ServerHelpers
 
   include NovelListProcessor
   include ServerInitializer
+
   register StaticFileRoutes
   register SystemManagementRoutes
   register SettingsRoutes
@@ -111,6 +112,7 @@ class Narou::AppServer < Sinatra::Base
 
   # API v2 エンドポイント登録
   include Narou::ApiV2::Base
+
   Narou::ApiV2::Novels.register(self)
   Narou::ApiV2::NovelSettings.register(self)
   Narou::ApiV2::System.register(self)
