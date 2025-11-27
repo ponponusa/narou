@@ -250,7 +250,7 @@ function Start-NarouServers {
         Write-ColorOutput "バックエンドサーバーを起動中..." -ForegroundColor Green
 
         $backendLogPath = Join-Path $ProjectRoot "backend.log"
-        $backendProcess = Start-Process -FilePath "bundle" -ArgumentList "exec", "ruby", "narou.rb", "web", "--no-browser" `
+        $backendProcess = Start-Process -FilePath "bundle" -ArgumentList "exec", "ruby", "bin/narou-mod", "web", "--no-browser" `
             -WorkingDirectory $ProjectRoot -PassThru -WindowStyle Hidden `
             -RedirectStandardOutput $backendLogPath -RedirectStandardError "$backendLogPath.err"
 

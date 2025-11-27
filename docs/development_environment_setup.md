@@ -290,7 +290,7 @@ cd /path/to/narou-mod
 
 # または個別に起動
 # バックエンド
-bundle exec ruby narou.rb web
+bundle exec ruby bin/narou-mod web
 
 # フロントエンド（別ターミナル）
 cd frontend && npm run dev

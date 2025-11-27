@@ -8,7 +8,7 @@ ruby -x "%~f0" %*
 @goto endofruby
 #! ruby
 
-require_relative "narou.rb"
+load File.join(__dir__, "bin", "narou-mod")
 
 __END__
 :endofruby
