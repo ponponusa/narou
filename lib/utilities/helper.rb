@@ -81,7 +81,7 @@ module Helper
   end
 
   if engine_jruby? && os_windows?
-    require "extensions/windows"
+    require "lib/extensions/windows"
     def $stdin.getch
       WinAPI._getch.chr
     end

@@ -67,7 +67,7 @@ module SettingsRoutes
 
         # 自動アップデート設定が変更された場合、スケジューラーを再起動
         if built_arguments.any? { |arg| arg.start_with?("update.auto-schedule") }
-          require "web/command/update/scheduler"
+          require "lib/web/command/update/scheduler"
           Command::Update::Scheduler.stop
           Command::Update::Scheduler.start
         end

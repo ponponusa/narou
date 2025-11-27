@@ -189,7 +189,7 @@ module Narou
 
                 # ProcessManagerを使用してフロントエンドを停止
                 begin
-                  require "narou/process_manager"
+                  require "lib/narou/process_manager"
                   frontend_manager = Narou::ProcessManager.new("narou-frontend")
                   if frontend_manager.process_running?
                     frontend_manager.stop_process(timeout: 5)
@@ -238,7 +238,7 @@ module Narou
 
                 # ProcessManagerを使用してフロントエンドを停止
                 begin
-                  require "narou/process_manager"
+                  require "lib/narou/process_manager"
                   frontend_manager = Narou::ProcessManager.new("narou-frontend")
                   if frontend_manager.process_running?
                     frontend_manager.stop_process(timeout: 5)

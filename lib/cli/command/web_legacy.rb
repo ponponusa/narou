@@ -245,7 +245,7 @@ module Command
         open_browser_when_server_boot(address)
 
         # 自動アップデートスケジューラーを開始
-        require "cli/command/update/scheduler"
+        require "lib/cli/command/update/scheduler"
         Command::Update::Scheduler.start
 
         Narou::AppServer.run!
@@ -407,12 +407,12 @@ module Command
 
     def load_web_dependencies
       Command.require_all
-      require "output/narou_logger"
-      require "novel/downloader"
-      require "novel/sitesetting"
-      require "core/database"
-      require "conversion/html"
-      require "web/all"
+      require "lib/output/narou_logger"
+      require "lib/novel/downloader"
+      require "lib/novel/sitesetting"
+      require "lib/core/database"
+      require "lib/conversion/html"
+      require "lib/web/all"
     end
 
   end

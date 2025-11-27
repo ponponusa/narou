@@ -131,8 +131,8 @@ SocketError => e
         @stream.error "小説が削除されているか非公開な可能性があります"
         sleep_for_download
         if database.novel_exists?(@id)
-          require "novel/downloader/command/tag" unless defined?(Command::Tag)
-          require "novel/downloader/command/freeze" unless defined?(Command::Freeze)
+          require "lib/novel/downloader/command/tag" unless defined?(Command::Tag)
+          require "lib/novel/downloader/command/freeze" unless defined?(Command::Freeze)
           Command::Tag.execute!(%W(#{@id} --add 404 --color white --no-overwrite-color), io: Narou::NullIO.new)
           Command::Freeze.execute!(@id, "--on")
         end

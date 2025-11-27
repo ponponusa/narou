@@ -9,6 +9,6 @@ def write_color(str, console = STDOUT)
 end
 
 if RbConfig::CONFIG["host_os"] =~ /mswin(?!ce)|mingw|bccwin/i
-  require "extensions/windows"
-  require "extensions/windows_write_color" if $color_parser == "self"
+  require "lib/extensions/windows"
+  require "lib/extensions/windows_write_color" if $color_parser == "self"
 end

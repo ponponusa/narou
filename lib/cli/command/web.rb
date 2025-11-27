@@ -83,7 +83,7 @@ module Command
         argv_copy = argv.dup
 
         # 外部ループでのシグナルハンドラ（クリーンアップ用）
-        require "narou/process_manager"
+        require "lib/narou/process_manager"
         backend_manager = Narou::ProcessManager.new("narou-backend")
         frontend_manager = Narou::ProcessManager.new("narou-frontend")
 
@@ -161,7 +161,7 @@ module Command
       # プロセス競合の場合、ユーザーに選択肢を提示
       Command::OutputHelper.error(e.message)
 
-      require "utilities/tty_helper"
+      require "lib/utilities/tty_helper"
       raise e unless TTYHelper.ask_yes_no("自動的にクリーンアップしますか?", default: false)
       Command::OutputHelper.info("既存プロセスをクリーンアップしています...")
       @backend_manager.stop_process
@@ -178,7 +178,7 @@ module Command
       port = @options["port"] || 5678
       update_frontend_env(port) if should_start_frontend?
 
-      # 起動メッセージを表示（require "core/narou" より前に実行）
+      # 起動メッセージを表示（require "lib/core/narou" より前に実行）
       # narou.rbをrequireすると$stdoutがNarou::Loggerに置き換わるため
       Command::OutputHelper.render("web_starting", {
         host: display_host,
@@ -187,9 +187,9 @@ module Command
       })
 
       # Narouモジュールをロード（$stdoutがNarou::Loggerに置き換わる）
-      require "core/narou"
-      require "narou/process_manager"
-      require "web/appserver"
+      require "lib/core/narou"
+      require "lib/narou/process_manager"
+      require "lib/web/appserver"
 
       # プロセスマネージャーを初期化
       @backend_manager = Narou::ProcessManager.new("narou-backend")
@@ -391,7 +391,7 @@ module Command
       push_server.run
 
       # StreamingLoggerを設定（標準出力をPushServerに送信）
-      require "web/logging/streaming_logger"
+      require "lib/web/logging/streaming_logger"
       verbose = @options["verbose"] || false
       $stdout = Narou::StreamingLogger.new(push_server, $stdout, verbose: verbose)
       $stdout2 = if Inventory.load["concurrency"]

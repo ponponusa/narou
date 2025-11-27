@@ -20,7 +20,7 @@ module Narou
             set_cors_headers
 
             begin
-              require "narou/tag_manager"
+              require "lib/narou/tag_manager"
               tag_list = Narou::TagManager.get_tag_list
 
               tags = tag_list.map do |tagname, count|
@@ -110,7 +110,7 @@ module Narou
             end
 
             begin
-              require "narou/tag_manager"
+              require "lib/narou/tag_manager"
               tag_info = Narou::TagManager.get_tag_info(ids)
 
               json success_response({ tag_info: tag_info })
@@ -140,7 +140,7 @@ module Narou
             end
 
             begin
-              require "narou/tag_manager"
+              require "lib/narou/tag_manager"
               result = Narou::TagManager.edit_tags(states, ids)
 
               if result[:success]
@@ -192,7 +192,7 @@ module Narou
             end
 
             begin
-              require "narou/tag_manager"
+              require "lib/narou/tag_manager"
               result = Narou::TagManager.add_tags(tags, ids)
 
               if result[:success]
@@ -240,7 +240,7 @@ module Narou
             end
 
             begin
-              require "narou/tag_manager"
+              require "lib/narou/tag_manager"
               result = Narou::TagManager.delete_tags(tags, ids)
 
               if result[:success]
@@ -282,7 +282,7 @@ module Narou
             end
 
             begin
-              require "narou/tag_manager"
+              require "lib/narou/tag_manager"
               Narou::TagManager.set_colors(colors)
 
               # PushServerでイベント送信

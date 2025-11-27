@@ -123,7 +123,7 @@ module Command
               puts "自動アップデート処理を開始します"
               begin
                 # 同一プロセス内でupdateコマンドを実行して詳細ログを表示
-                require "cli/command/update"
+                require "lib/cli/command/update"
 
                 update_command = Command::Update.new
 

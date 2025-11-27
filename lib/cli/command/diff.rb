@@ -318,7 +318,7 @@ module Command
     # diff-lcs を使って自力で差分表示
     #
     def display_diff_on_oneself(id)
-      require "cli/diffviewer"
+      require "lib/cli/diffviewer"
       temp_paths = create_temp_files(id) or return
       stream_io.puts "#{@novel_data["title"]} の差分を表示します"
       stream_io.puts DiffViewer.new(*temp_paths).result

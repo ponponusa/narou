@@ -13,7 +13,7 @@ require "lib/core/inventory"
 require "lib/mixin/all"
 require "lib/narou/github_release"
 if Helper.engine_jruby?
-  require "extensions/jruby"
+  require "lib/extensions/jruby"
 end
 
 module Narou
@@ -106,7 +106,7 @@ module Narou
       return nil if already_init?
       FileUtils.mkdir(LOCAL_SETTING_DIR_NAME)
       puts "#{LOCAL_SETTING_DIR_NAME}/ を作成しました" unless silent
-      require "core/database"
+      require "lib/core/database"
       Database.init(silent: silent)
     end
 
@@ -124,7 +124,7 @@ module Narou
     end
 
     def novel_frozen?(target)
-      require "novel/downloader" unless defined?(Downloader)
+      require "lib/novel/downloader" unless defined?(Downloader)
       id = Downloader.get_id_by_target(target) or return false
       Inventory.load("freeze").include?(id)
     end
