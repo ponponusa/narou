@@ -153,10 +153,16 @@ class NovelConverter
 
       if parallel_enabled
         # プロセスベースの並列化を使用（GILの影響を回避）
-        # ただし、WindowsではParallelのプロセスベースが動作しないため、スレッドベースを使用
-        # 環境変数で明示的に指定された場合はそれを優先
+        # ただし、以下の場合はスレッドベースを使用:
+        # - Windows環境（Parallelのプロセスベースが動作しない）
+        # - Webサーバー経由の実行（フォークとスレッドの相性問題を回避）
+        # - 環境変数で明示的に指定された場合
         if ENV["NAROU_PARALLEL_USE_PROCESSES"]
           use_processes = ENV["NAROU_PARALLEL_USE_PROCESSES"] == "true"
+        elsif Narou.web?
+          # Webサーバー経由の場合はスレッドベースを強制
+          # WSL2等でプロセスフォークとWebWorkerスレッドの組み合わせでクラッシュする問題を回避
+          use_processes = false
         else
           # デフォルト: Windows以外ではプロセスベース
           use_processes = !Helper.os_windows?
