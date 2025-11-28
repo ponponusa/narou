@@ -19,6 +19,7 @@
     deleteNovel,
     getTagList,
     getTagIndex,
+    updateNovels,
   } from "../lib/api";
   import type { Novel, TagInfo } from "../types/api";
   import { getPushServer, type PushServerClient } from "../lib/pushserver";
@@ -871,7 +872,7 @@
     }
   ) {
     let targetIds = Array.from(selectedIds);
-    const isForceDownload = mode === "force-download";
+    const isForceRedownload = mode === "force-download";
 
     // タグフィルターや凍結フィルターが適用されている場合、対象小説を絞り込む
     if (options.filterByTags || options.includeFrozen !== undefined) {
@@ -923,14 +924,14 @@
       });
 
       // API呼び出し（バックグラウンド処理開始）
-      // convertAfterUpdateオプションをAPIに渡す
-      await downloadNovels(
-        targetIds,
-        isForceDownload,
-        options.convertAfterUpdate || false
-      );
+      // 新しい updateNovels API を使用
+      await updateNovels(targetIds, {
+        forceRedownload: isForceRedownload,
+        includeFrozen: options.includeFrozen || false,
+        convertAfterUpdate: options.convertAfterUpdate ?? true,
+      });
 
-      const action = isForceDownload ? "再取得" : "更新";
+      const action = isForceRedownload ? "再取得" : "更新チェック";
       const convertMessage = options.convertAfterUpdate
         ? "（更新後に自動変換を実行します）"
         : "";
@@ -947,7 +948,7 @@
       targetIds.forEach((id) => {
         progressStore.setProgress(id, "error", message);
       });
-      const action = isForceDownload ? "再取得" : "更新";
+      const action = isForceRedownload ? "再取得" : "更新チェック";
       toast?.show(`${action}に失敗しました: ${message}`, "error");
     }
   }

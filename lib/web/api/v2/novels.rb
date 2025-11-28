@@ -242,6 +242,114 @@ module Narou
             end
           end
 
+          # POST /api/v2/novels/update
+          # 小説更新チェック（既存小説の新着確認）
+          post "/api/v2/novels/update" do
+            set_cors_headers
+
+            body = parse_json_body
+            ids = body["ids"]
+            force_redownload = body["force_redownload"] || false
+            include_frozen = body["include_frozen"] || false
+            # convert_after_update のデフォルトは true（指定がなければ変換も実行）
+            convert_after_update = body.fetch("convert_after_update", true)
+
+            if ids.nil? || ids.empty?
+              status 400
+              return json error_response("INVALID_PARAMS", "ids parameter is required")
+            end
+
+            begin
+              task_ids = []
+              skipped_ids = []
+
+              ids.each do |id|
+                # 小説IDから情報を取得
+                data = Database.instance[id.to_i]
+
+                unless data
+                  skipped_ids << id
+                  next
+                end
+
+                novel_id = data["id"]
+                novel_title = data["title"]
+                novel_author = data["author"]
+
+                # タスクを作成
+                task = Narou::Task.new(
+                  type: :update,
+                  novel_id: novel_id,
+                  novel_title: novel_title,
+                  novel_author: novel_author,
+                  max_retries: 0
+                )
+
+                # 凍結状態を確認（force_redownload + include_frozen の場合に一時解除が必要）
+                is_frozen = Narou.novel_frozen?(novel_id)
+                need_temp_unfreeze = force_redownload && include_frozen && is_frozen
+
+                # タスクをキューに追加
+                Narou::WebWorker.push_task(task) do
+                  if force_redownload
+                    # 全話強制再ダウンロード（download --force 相当）
+                    # 凍結小説の場合は一時的に解除してダウンロード後に再凍結
+                    if need_temp_unfreeze
+                      frozen_list = Inventory.load("freeze")
+                      frozen_list.delete(novel_id)
+                      frozen_list.save
+                    end
+                    begin
+                      args = ["--force"]
+                      args << "--no-convert" unless convert_after_update
+                      args << novel_id.to_s
+                      CommandLine.run!("download", *args)
+                    ensure
+                      # 元々凍結されていた場合は再凍結
+                      if need_temp_unfreeze
+                        frozen_list = Inventory.load("freeze")
+                        frozen_list[novel_id] = true
+                        frozen_list.save
+                      end
+                    end
+                  else
+                    # 新着のみ確認（update コマンド）
+                    args = []
+                    args << "--force" if include_frozen # 凍結小説も対象
+                    args << "--no-convert" unless convert_after_update
+                    args << novel_id.to_s
+                    CommandLine.run!("update", *args)
+                  end
+                  NovelListProcessor.clear_all_cache
+                  @@push_server.send_all(:'table.reload') if defined?(@@push_server)
+                end
+
+                task_ids << task.id
+              end
+
+              response_data = {
+                ids: ids.map(&:to_i) - skipped_ids.map(&:to_i),
+                force_redownload: force_redownload,
+                include_frozen: include_frozen,
+                convert_after_update: convert_after_update,
+                task_ids: task_ids
+              }
+
+              if skipped_ids.any?
+                response_data[:skipped_ids] = skipped_ids
+                json success_response(
+                  response_data,
+                  message: "Update started (#{skipped_ids.length} novels not found)"
+                )
+              else
+                json success_response(response_data, message: "Update started")
+              end
+            rescue StandardError => e
+              status 500
+              json error_response("UPDATE_ERROR", e.message)
+            end
+          end
+
           # POST /api/v2/novels/remove
           # 小説削除
           post "/api/v2/novels/remove" do
