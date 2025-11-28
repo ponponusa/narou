@@ -183,7 +183,7 @@ Gem::Specification.new do |gem|
   # NOTE: プラットフォーム固有の gem (win32ole, bootsnap) は Gemfile の
   #       platforms 指定で管理しているため、開発時の bundle install は
   #       問題なく動作する。gemspec での指定は gem install 時のみ影響。
-  gem.platform = Gem.win_platform? ? Gem::Platform.new("x86_64-mingw32") : Gem::Platform::RUBY
+  gem.platform = Gem.win_platform? ? Gem::Platform.new("x64-mingw-ucrt") : Gem::Platform::RUBY
 
   if Gem.win_platform?
     gem.add_runtime_dependency "win32ole", "~> 1.9"
