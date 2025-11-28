@@ -19,6 +19,7 @@
     deleteNovel,
     getTagList,
     getTagIndex,
+    updateNovels,
   } from "../lib/api";
   import type { Novel, TagInfo } from "../types/api";
   import { getPushServer, type PushServerClient } from "../lib/pushserver";
@@ -30,6 +31,7 @@
   import ConversionSettingsModal from "./ConversionSettingsModal.svelte";
   import NovelDetailModal from "./NovelDetailModal.svelte";
   import NovelUpdateModal from "./NovelUpdateModal.svelte";
+  import FrozenNovelsConfirmModal from "./FrozenNovelsConfirmModal.svelte";
   import ConsolePanel from "./ConsolePanel.svelte";
   import Toast from "./Toast.svelte";
   import LoadingScreen from "./LoadingScreen.svelte";
@@ -49,6 +51,7 @@
   let conversionSettingsModal: ConversionSettingsModal;
   let novelDetailModal: NovelDetailModal;
   let novelUpdateModal: NovelUpdateModal;
+  let frozenNovelsConfirmModal: FrozenNovelsConfirmModal;
   let consolePanel = $state<ConsolePanel>();
   let retryCount = $state(0);
   let maxRetries = 10; // 最大10回リトライ（約20秒）
@@ -858,6 +861,19 @@
     novelUpdateModal?.open();
   }
 
+  // 凍結確認後の更新実行用に一時保存する変数
+  let pendingUpdateOptions: {
+    mode: "update" | "force-download";
+    options: {
+      convertAfterUpdate?: boolean;
+      createBackup?: boolean;
+      includeFrozen?: boolean;
+      filterByTags?: string[];
+    };
+    targetIds: number[];
+    frozenNovelIds: number[];
+  } | null = null;
+
   /**
    * 更新モーダルからの確認処理
    */
@@ -871,28 +887,18 @@
     }
   ) {
     let targetIds = Array.from(selectedIds);
-    const isForceDownload = mode === "force-download";
+    const isForceRedownload = mode === "force-download";
 
-    // タグフィルターや凍結フィルターが適用されている場合、対象小説を絞り込む
-    if (options.filterByTags || options.includeFrozen !== undefined) {
+    // タグフィルターが適用されている場合、対象小説を絞り込む
+    if (options.filterByTags && options.filterByTags.length > 0) {
       const filteredNovels = novels.filter((novel) => {
         if (!selectedIds.has(novel.id)) return false;
 
-        // タグフィルター
-        if (options.filterByTags && options.filterByTags.length > 0) {
-          const novelTags = novel.tags || [];
-          const hasMatchingTag = options.filterByTags.some((tag) =>
-            novelTags.includes(tag)
-          );
-          if (!hasMatchingTag) return false;
-        }
-
-        // 凍結フィルター（includeFrozenがfalseの場合、凍結中を除外）
-        if (options.includeFrozen === false && novel.frozen) {
-          return false;
-        }
-
-        return true;
+        const novelTags = novel.tags || [];
+        const hasMatchingTag = options.filterByTags!.some((tag) =>
+          novelTags.includes(tag)
+        );
+        return hasMatchingTag;
       });
 
       targetIds = filteredNovels.map((n) => n.id);
@@ -903,9 +909,97 @@
       }
     }
 
+    // includeFrozenがtrueの場合、凍結小説が存在するか確認
+    if (options.includeFrozen) {
+      const frozenNovels = novels.filter(
+        (novel) => targetIds.includes(novel.id) && novel.frozen
+      );
+
+      if (frozenNovels.length > 0) {
+        // 凍結小説確認モーダルを表示
+        pendingUpdateOptions = {
+          mode,
+          options,
+          targetIds,
+          frozenNovelIds: frozenNovels.map((n) => n.id),
+        };
+        frozenNovelsConfirmModal?.open(frozenNovels);
+        return;
+      }
+    } else {
+      // includeFrozenがfalseの場合、凍結中を除外
+      targetIds = targetIds.filter((id) => {
+        const novel = novels.find((n) => n.id === id);
+        return novel && !novel.frozen;
+      });
+
+      if (targetIds.length === 0) {
+        toast?.show("指定した条件に一致する小説がありません", "warning");
+        return;
+      }
+    }
+
+    // 更新実行
+    await executeUpdate(targetIds, isForceRedownload, options);
+  }
+
+  /**
+   * 凍結小説確認モーダルからの確認処理
+   */
+  function handleFrozenNovelsConfirm(confirmedFrozenIds: number[]) {
+    if (!pendingUpdateOptions) return;
+
+    const { mode, options, targetIds, frozenNovelIds } = pendingUpdateOptions;
+    const isForceRedownload = mode === "force-download";
+
+    // 凍結小説のうち、確認で選択されなかったものを除外
+    const excludedFrozenIds = frozenNovelIds.filter(
+      (id) => !confirmedFrozenIds.includes(id)
+    );
+    const finalTargetIds = targetIds.filter(
+      (id) => !excludedFrozenIds.includes(id)
+    );
+
+    pendingUpdateOptions = null;
+
+    if (finalTargetIds.length === 0) {
+      toast?.show("更新対象の小説がありません", "warning");
+      return;
+    }
+
+    // includeFrozenを調整（確認で選択された凍結小説がある場合のみtrue）
+    const hasFrozenInTarget = confirmedFrozenIds.length > 0;
+    const adjustedOptions = {
+      ...options,
+      includeFrozen: hasFrozenInTarget,
+    };
+
+    executeUpdate(finalTargetIds, isForceRedownload, adjustedOptions);
+  }
+
+  /**
+   * 凍結小説確認モーダルからのキャンセル処理
+   */
+  function handleFrozenNovelsCancel() {
+    pendingUpdateOptions = null;
+  }
+
+  /**
+   * 更新処理の実行
+   */
+  async function executeUpdate(
+    targetIds: number[],
+    isForceRedownload: boolean,
+    options: {
+      convertAfterUpdate?: boolean;
+      createBackup?: boolean;
+      includeFrozen?: boolean;
+      filterByTags?: string[];
+    }
+  ) {
     try {
       console.log(
-        `[NovelList] Starting ${mode} for ${targetIds.length} novels:`,
+        `[NovelList] Starting ${isForceRedownload ? "force-download" : "update"} for ${targetIds.length} novels:`,
         targetIds,
         "options:",
         options
@@ -923,14 +1017,14 @@
       });
 
       // API呼び出し（バックグラウンド処理開始）
-      // convertAfterUpdateオプションをAPIに渡す
-      await downloadNovels(
-        targetIds,
-        isForceDownload,
-        options.convertAfterUpdate || false
-      );
+      // 新しい updateNovels API を使用
+      await updateNovels(targetIds, {
+        forceRedownload: isForceRedownload,
+        includeFrozen: options.includeFrozen || false,
+        convertAfterUpdate: options.convertAfterUpdate ?? true,
+      });
 
-      const action = isForceDownload ? "再取得" : "更新";
+      const action = isForceRedownload ? "再取得" : "更新チェック";
       const convertMessage = options.convertAfterUpdate
         ? "（更新後に自動変換を実行します）"
         : "";
@@ -947,7 +1041,7 @@
       targetIds.forEach((id) => {
         progressStore.setProgress(id, "error", message);
       });
-      const action = isForceDownload ? "再取得" : "更新";
+      const action = isForceRedownload ? "再取得" : "更新チェック";
       toast?.show(`${action}に失敗しました: ${message}`, "error");
     }
   }
@@ -2771,6 +2865,13 @@
   {selectedIds}
   allNovels={novels}
   onConfirm={handleUpdateConfirm}
+/>
+
+<!-- 凍結小説確認モーダル -->
+<FrozenNovelsConfirmModal
+  bind:this={frozenNovelsConfirmModal}
+  onConfirm={handleFrozenNovelsConfirm}
+  onCancel={handleFrozenNovelsCancel}
 />
 
 <!-- 個別変換設定モーダル -->

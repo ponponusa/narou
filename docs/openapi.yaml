@@ -563,6 +563,147 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /api/v2/novels/update:
+    post:
+      tags:
+        - novels
+      summary: 小説更新チェック
+      description: |
+        指定された小説の更新をチェックし、新着話数があればダウンロードします。
+        WebWorker を通じて非同期で実行されます。
+
+        **download API との違い:**
+        - `download`: 新規小説の追加（Nコード/URLを指定）
+        - `update`: 既存小説の更新チェック・再取得（小説IDを指定）
+
+        **パラメータ:**
+        - `force_redownload`: `true` にすると全話を強制再ダウンロード（`download --force` 相当）
+        - `include_frozen`: `true` にすると凍結中の小説も更新対象に含める
+        - `convert_after_update`: `true` にすると更新完了後に自動変換（デフォルト: true）
+      operationId: updateNovels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: 更新対象の小説ID
+                  example: [1, 2, 3]
+                force_redownload:
+                  type: boolean
+                  description: 全話を強制再ダウンロード（download --force 相当）
+                  default: false
+                include_frozen:
+                  type: boolean
+                  description: 凍結中の小説も更新対象に含める
+                  default: false
+                convert_after_update:
+                  type: boolean
+                  description: 更新完了後に自動変換を実行
+                  default: true
+            examples:
+              basic:
+                summary: 基本的な更新チェック（新着のみ取得）
+                value:
+                  ids: [1, 2, 3]
+              forceRedownload:
+                summary: 全話強制再ダウンロード
+                value:
+                  ids: [1, 2]
+                  force_redownload: true
+              includeFrozen:
+                summary: 凍結中の小説も更新
+                value:
+                  ids: [1, 2, 3]
+                  include_frozen: true
+              noConvert:
+                summary: 変換なしで更新のみ
+                value:
+                  ids: [1]
+                  convert_after_update: false
+      responses:
+        '200':
+          description: 受付成功（非同期処理開始）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      ids:
+                        type: array
+                        items:
+                          type: integer
+                        description: 更新対象の小説ID
+                      force_redownload:
+                        type: boolean
+                        description: 全話強制再ダウンロードか
+                      include_frozen:
+                        type: boolean
+                        description: 凍結小説を含むか
+                      convert_after_update:
+                        type: boolean
+                        description: 更新後に変換を実行するか
+                      task_ids:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                        description: 作成されたタスクID
+                  message:
+                    type: string
+                    example: "Update started"
+                  timestamp:
+                    type: integer
+                    description: タイムスタンプ（Unix時間）
+              example:
+                success: true
+                data:
+                  ids: [1, 2]
+                  force_redownload: false
+                  include_frozen: false
+                  convert_after_update: true
+                  task_ids:
+                    - "550e8400-e29b-41d4-a716-446655440000"
+                    - "550e8400-e29b-41d4-a716-446655440001"
+                message: "Update started"
+                timestamp: 1732780800
+        '400':
+          description: リクエストパラメータ不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingIds:
+                  summary: IDs パラメータがない
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_PARAMS
+                      message: "ids parameter is required"
+                    timestamp: "2025-11-28T00:00:00Z"
+                emptyIds:
+                  summary: IDs が空配列
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_PARAMS
+                      message: "ids parameter is required"
+                    timestamp: "2025-11-28T00:00:00Z"
+
   /api/v2/novels/freeze:
     post:
       tags:

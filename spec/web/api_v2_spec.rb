@@ -284,6 +284,235 @@ RSpec.describe "Narou::AppServer API v2" do
     end
   end
 
+  describe "POST /api/v2/novels/update" do
+    before do
+      # データベースに小説が存在することをモック
+      allow(Database.instance).to receive(:[]).with(1).and_return({
+        "id" => 1,
+        "title" => "Test Novel 1",
+        "author" => "Test Author 1"
+      })
+      allow(Database.instance).to receive(:[]).with(2).and_return({
+        "id" => 2,
+        "title" => "Test Novel 2",
+        "author" => "Test Author 2"
+      })
+      allow(Database.instance).to receive(:[]).with(999).and_return(nil)
+    end
+
+    it "queues update when IDs are provided" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(CommandLine).to receive(:run!)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+
+      payload = { ids: [1, 2] }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+      expect(json_response["success"]).to be true
+      actual = json_response["data"]["ids"]
+      expect(actual.map(&:to_s)).to match_array(["1", "2"])
+    end
+
+    it "calls CommandLine.run! with update command" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+      expect(CommandLine).to receive(:run!).with("update", "1")
+
+      payload = { ids: [1] }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "calls update with --no-convert when convert_after_update is false" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+      expect(CommandLine).to receive(:run!).with("update", "--no-convert", "1")
+
+      payload = { ids: [1], convert_after_update: false }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "calls update with --force when include_frozen is true" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+      expect(CommandLine).to receive(:run!).with("update", "--force", "1")
+
+      payload = { ids: [1], include_frozen: true }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "calls update with both --force and --no-convert when specified" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+      expect(CommandLine).to receive(:run!).with("update", "--force", "--no-convert", "1")
+
+      payload = { ids: [1], include_frozen: true, convert_after_update: false }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "calls download --force when force_redownload is true" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+      expect(CommandLine).to receive(:run!).with("download", "--force", "1")
+
+      payload = { ids: [1], force_redownload: true }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "calls download --force with convert when force_redownload and convert_after_update are true" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+      # force_redownload の場合、download コマンドを使用
+      # convert_after_update=true の場合、download コマンドはデフォルトで変換するので追加オプション不要
+      expect(CommandLine).to receive(:run!).with("download", "--force", "1")
+
+      payload = { ids: [1], force_redownload: true, convert_after_update: true }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "calls download --force --no-convert when force_redownload is true and convert_after_update is false" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+      expect(CommandLine).to receive(:run!).with("download", "--force", "--no-convert", "1")
+
+      payload = { ids: [1], force_redownload: true, convert_after_update: false }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "temporarily unfreezes frozen novel for force_redownload with include_frozen" do
+      # spec_helper では id=22 が凍結されている
+      # データベースモック設定
+      allow(Database.instance).to receive(:[]).with(22).and_return({
+        "id" => 22, "title" => "Frozen Novel", "author" => "Author"
+      })
+
+      # 凍結リストのモック（実際のHashで代用、saveはスタブ化）
+      frozen_list = { 22 => true }
+      frozen_list.define_singleton_method(:save) { }
+      allow(Inventory).to receive(:load).and_call_original
+      allow(Inventory).to receive(:load).with("freeze").and_return(frozen_list)
+
+      # グローバルモックが既にあるので、ここでは追加のモックのみ
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+      allow(CommandLine).to receive(:run!).with("download", "--force", "22")
+
+      payload = { ids: [22], force_redownload: true, include_frozen: true }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "does not unfreeze non-frozen novel for force_redownload with include_frozen" do
+      # id=1 は凍結されていない（spec_helper の設定）
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+      expect(CommandLine).to receive(:run!).with("download", "--force", "1")
+
+      payload = { ids: [1], force_redownload: true, include_frozen: true }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "calls NovelListProcessor.clear_all_cache after update" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(CommandLine).to receive(:run!)
+      expect(NovelListProcessor).to receive(:clear_all_cache).at_least(:once)
+
+      payload = { ids: [1] }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+    end
+
+    it "returns 400 when IDs are missing" do
+      post "/api/v2/novels/update", {}.to_json, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response.status).to eq(400)
+      expect(json_response["success"]).to be false
+      expect(json_response["error"]["code"]).to eq("INVALID_PARAMS")
+    end
+
+    it "returns 400 for empty IDs array" do
+      post "/api/v2/novels/update", { ids: [] }.to_json, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response.status).to eq(400)
+      expect(json_response["success"]).to be false
+    end
+
+    it "handles multiple IDs" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(CommandLine).to receive(:run!)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+
+      payload = { ids: [1, 2] }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+      expect(json_response["success"]).to be true
+      expect(json_response["data"]["ids"].length).to eq(2)
+    end
+
+    it "returns task_ids in response" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(CommandLine).to receive(:run!)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+
+      payload = { ids: [1] }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+      expect(json_response["data"]).to have_key("task_ids")
+    end
+
+    it "skips non-existent novel IDs gracefully" do
+      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(CommandLine).to receive(:run!)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+
+      # ID 999 は存在しない
+      payload = { ids: [1, 999] }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+      # 存在する小説のみがタスクに追加される
+      expect(json_response["success"]).to be true
+    end
+
+    it "includes novel_id, novel_title, novel_author in task metadata" do
+      task_instance = nil
+      allow(Narou::WebWorker).to receive(:push_task) do |task, &block|
+        task_instance = task
+        block.call if block
+      end
+      allow(CommandLine).to receive(:run!)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+
+      payload = { ids: [1] }.to_json
+      post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+      expect(last_response).to be_ok
+      expect(task_instance).not_to be_nil
+      expect(task_instance.novel_id).to eq(1)
+      expect(task_instance.novel_title).to eq("Test Novel 1")
+      expect(task_instance.novel_author).to eq("Test Author 1")
+    end
+  end
+
   describe "POST /api/v2/novels/remove" do
     it "queues remove when IDs are provided" do
       allow(Narou::WebWorker).to receive(:push).and_yield

@@ -292,11 +292,41 @@ export async function convertNovel(id: number): Promise<void> {
 }
 
 /**
- * 小説を更新（Legacy API - API v2 未実装）
+ * 小説更新オプション
  */
-export async function updateNovels(ids?: number[]): Promise<void> {
-  await fetchApiForm("/api/update", {
-    ids: ids ? ids.map(String) : [],
+export interface UpdateNovelsOptions {
+  /** 全話強制再ダウンロード（download --force 相当） */
+  forceRedownload?: boolean;
+  /** 凍結中の小説も更新対象に含める */
+  includeFrozen?: boolean;
+  /** 更新完了後に自動変換を実行（デフォルト: true） */
+  convertAfterUpdate?: boolean;
+}
+
+/**
+ * 小説を更新（API v2）
+ * 既存小説の更新チェック・再取得
+ * @param ids - 小説ID配列
+ * @param options - 更新オプション
+ */
+export async function updateNovels(
+  ids: number[],
+  options: UpdateNovelsOptions = {}
+): Promise<void> {
+  const {
+    forceRedownload = false,
+    includeFrozen = false,
+    convertAfterUpdate = true,
+  } = options;
+
+  await fetchApiV2<null>("/api/v2/novels/update", {
+    method: "POST",
+    body: JSON.stringify({
+      ids,
+      force_redownload: forceRedownload,
+      include_frozen: includeFrozen,
+      convert_after_update: convertAfterUpdate,
+    }),
   });
 }
 
