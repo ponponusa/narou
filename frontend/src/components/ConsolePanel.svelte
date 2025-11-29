@@ -10,6 +10,7 @@
     type EchoMessage,
     type PushServerClient,
   } from "../lib/pushserver";
+  import { LogEntry as LogEntryComponent } from "./console";
 
   interface LogEntry {
     id: number;
@@ -974,64 +975,12 @@
               <div class="text-gray-500 text-center py-8">ログがありません</div>
             {:else}
               {#each compactLogs( [...getDownloadLogs(), ...getOtherLogs()] ) as log (log.id)}
-                <div
-                  class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded"
-                >
-                  <span class="text-gray-500 shrink-0">
-                    {formatTime(log.timestamp)}
-                  </span>
-                  <span class="text-gray-400 shrink-0 w-16">
-                    {formatConsoleType(log.console)}
-                  </span>
-                  {#if log.processType}
-                    <span
-                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {log.processType ===
-                      'download'
-                        ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50'
-                        : log.processType === 'convert'
-                          ? 'bg-green-900/50 text-green-300 border border-green-700/50'
-                          : 'bg-purple-900/50 text-purple-300 border border-purple-700/50'}"
-                      title="処理タイプ"
-                    >
-                      {log.processType === "download"
-                        ? "DL"
-                        : log.processType === "convert"
-                          ? "変換"
-                          : "他"}
-                    </span>
-                  {:else if log.progressKey !== "progress-chapter-download"}
-                    <span
-                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700/50 text-gray-400 border border-gray-600/50"
-                      title="情報"
-                    >
-                      INFO
-                    </span>
-                  {/if}
-                  {#if log.novelId}
-                    <span
-                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600"
-                      title="小説ID"
-                    >
-                      ID:{log.novelId}
-                    </span>
-                  {/if}
-                  {#if log.progressKey === "progress-chapter-download"}
-                    <span
-                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50"
-                      title="章ダウンロード中"
-                    >
-                      READ
-                    </span>
-                  {/if}
-                  <span
-                    class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console ===
-                      'stdout2' && log.processType !== 'convert'
-                      ? 'text-yellow-400'
-                      : 'text-gray-300'}"
-                  >
-                    {@html formatMessage(log.message, log.progressKey)}
-                  </span>
-                </div>
+                <LogEntryComponent
+                  {log}
+                  {formatTime}
+                  {formatConsoleType}
+                  {formatMessage}
+                />
               {/each}
             {/if}
           </div>
@@ -1066,61 +1015,13 @@
               <div class="text-gray-500 text-center py-8">ログがありません</div>
             {:else}
               {#each compactLogs(getConvertLogs()) as log (log.id)}
-                <div
-                  class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded"
-                >
-                  <span class="text-gray-500 shrink-0">
-                    {formatTime(log.timestamp)}
-                  </span>
-                  <span class="text-gray-400 shrink-0 w-16">
-                    {formatConsoleType(log.console)}
-                  </span>
-                  {#if log.processType}
-                    <span
-                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {log.processType ===
-                      'download'
-                        ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50'
-                        : log.processType === 'convert'
-                          ? 'bg-green-900/50 text-green-300 border border-green-700/50'
-                          : 'bg-purple-900/50 text-purple-300 border border-purple-700/50'}"
-                      title="処理タイプ"
-                    >
-                      {log.processType === "download"
-                        ? "DL"
-                        : log.processType === "convert"
-                          ? "変換"
-                          : "他"}
-                    </span>
-                  {:else if log.progressKey !== "progress-chapter-download"}
-                    <span
-                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700/50 text-gray-400 border border-gray-600/50"
-                      title="情報"
-                    >
-                      INFO
-                    </span>
-                  {/if}
-                  {#if log.novelId}
-                    <span
-                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600"
-                      title="小説ID"
-                    >
-                      ID:{log.novelId}
-                    </span>
-                  {/if}
-                  {#if log.progressKey === "progress-chapter-download"}
-                    <span
-                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50"
-                      title="章ダウンロード中"
-                    >
-                      READ
-                    </span>
-                  {/if}
-                  <span
-                    class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis text-gray-300"
-                  >
-                    {@html formatMessage(log.message, log.progressKey)}
-                  </span>
-                </div>
+                <LogEntryComponent
+                  {log}
+                  {formatTime}
+                  {formatConsoleType}
+                  {formatMessage}
+                  isConvertPane={true}
+                />
               {/each}
             {/if}
           </div>
@@ -1136,64 +1037,12 @@
           <div class="text-gray-500 text-center py-8">ログがありません</div>
         {:else}
           {#each compactLogs(logs) as log (log.id)}
-            <div
-              class="flex gap-2 hover:bg-gray-800 dark:hover:bg-gray-900 px-2 py-1 rounded"
-            >
-              <span class="text-gray-500 shrink-0">
-                {formatTime(log.timestamp)}
-              </span>
-              <span class="text-gray-400 shrink-0 w-16">
-                {formatConsoleType(log.console)}
-              </span>
-              {#if log.processType}
-                <span
-                  class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none {log.processType ===
-                  'download'
-                    ? 'bg-blue-900/50 text-blue-300 border border-blue-700/50'
-                    : log.processType === 'convert'
-                      ? 'bg-green-900/50 text-green-300 border border-green-700/50'
-                      : 'bg-purple-900/50 text-purple-300 border border-purple-700/50'}"
-                  title="処理タイプ"
-                >
-                  {log.processType === "download"
-                    ? "DL"
-                    : log.processType === "convert"
-                      ? "変換"
-                      : "他"}
-                </span>
-              {:else if log.progressKey !== "progress-chapter-download"}
-                <span
-                  class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700/50 text-gray-400 border border-gray-600/50"
-                  title="情報"
-                >
-                  INFO
-                </span>
-              {/if}
-              {#if log.novelId}
-                <span
-                  class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700 text-gray-300 border border-gray-600"
-                  title="小説ID"
-                >
-                  ID:{log.novelId}
-                </span>
-              {/if}
-              {#if log.progressKey === "progress-chapter-download"}
-                <span
-                  class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-blue-900/50 text-blue-300 border border-blue-700/50"
-                  title="章ダウンロード中"
-                >
-                  READ
-                </span>
-              {/if}
-              <span
-                class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console ===
-                  'stdout2' && log.processType !== 'convert'
-                  ? 'text-yellow-400'
-                  : 'text-gray-300'}"
-              >
-                {@html formatMessage(log.message, log.progressKey)}
-              </span>
-            </div>
+            <LogEntryComponent
+              {log}
+              {formatTime}
+              {formatConsoleType}
+              {formatMessage}
+            />
           {/each}
         {/if}
       </div>
