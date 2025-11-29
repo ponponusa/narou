@@ -4,7 +4,11 @@
   コンソールログの各種バッジを表示するための再利用可能なコンポーネント
 -->
 <script lang="ts">
-  import { BADGE_CONFIGS, getBadgeClasses, type BadgeType } from './BadgeConfig';
+  import {
+    BADGE_CONFIGS,
+    getBadgeClasses,
+    type BadgeType,
+  } from "./BadgeConfig";
 
   interface Props {
     type: BadgeType;
@@ -16,7 +20,9 @@
 
   const config = $derived(BADGE_CONFIGS[type]);
   const classes = $derived(getBadgeClasses(config));
-  const label = $derived(type === 'novelId' && novelId ? `ID:${novelId}` : config.label);
+  const label = $derived(
+    type === "novelId" && novelId ? `ID:${novelId}` : config.label
+  );
 </script>
 
 <span class={classes} title={config.title}>

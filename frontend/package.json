@@ -20,6 +20,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
-    "playwright": "^1.56.1"
+    "playwright": "^1.56.1",
+    "prettier": "^3.7.2",
+    "prettier-plugin-svelte": "^3.4.0"
   }
 }
