@@ -25,7 +25,13 @@
     filterByTags?: string[];
   }
 
-  let { selectedCount = 0, allNovels = [], selectedIds = new Set(), onConfirm, onCancel }: Props = $props();
+  let {
+    selectedCount = 0,
+    allNovels = [],
+    selectedIds = new Set(),
+    onConfirm,
+    onCancel,
+  }: Props = $props();
 
   let isOpen = $state(false);
   let mode = $state<UpdateMode>("update");
@@ -41,7 +47,7 @@
     if (selectedTags.length === 0 && includeFrozen === false) {
       return selectedCount;
     }
-    
+
     if (!allNovels || allNovels.length === 0) {
       return selectedCount;
     }
@@ -50,20 +56,22 @@
     for (const novel of allNovels) {
       // 選択されている小説のみを対象
       if (!selectedIds.has(novel.id)) continue;
-      
+
       // タグフィルター
       if (selectedTags.length > 0) {
         const novelTags = novel.tags || [];
-        const hasMatchingTag = selectedTags.some(tag => novelTags.includes(tag));
+        const hasMatchingTag = selectedTags.some((tag) =>
+          novelTags.includes(tag)
+        );
         if (!hasMatchingTag) continue;
       }
-      
+
       // 凍結フィルター（includeFrozenがfalseの場合は凍結中を除外）
       if (includeFrozen === false && novel.frozen) continue;
-      
+
       count++;
     }
-    
+
     return count;
   });
 
@@ -74,7 +82,7 @@
     createBackup = false;
     includeFrozen = false;
     selectedTags = [];
-    
+
     // タグリストを取得
     try {
       allTags = await getTagList();
@@ -82,7 +90,7 @@
       console.error("Failed to load tags:", err);
       allTags = [];
     }
-    
+
     dialog?.showModal();
   }
 
@@ -109,7 +117,7 @@
 
   function toggleTag(tagName: string) {
     if (selectedTags.includes(tagName)) {
-      selectedTags = selectedTags.filter(t => t !== tagName);
+      selectedTags = selectedTags.filter((t) => t !== tagName);
     } else {
       selectedTags = [...selectedTags, tagName];
     }
@@ -136,7 +144,9 @@
   {#if isOpen}
     <div class="bg-white dark:bg-gray-800 rounded-lg">
       <!-- ヘッダー -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+      <div
+        class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700"
+      >
         <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
           小説の更新オプション
         </h3>
@@ -154,7 +164,9 @@
       <div class="p-6 space-y-6">
         <!-- 更新モード選択 -->
         <div class="space-y-3">
-          <div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
             更新モード
           </div>
           <div class="flex flex-col sm:flex-row gap-2">
@@ -207,7 +219,9 @@
         </div>
 
         <!-- 更新オプション -->
-        <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div
+          class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+        >
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
             更新オプション
           </h4>
@@ -232,11 +246,7 @@
 
             <!-- バックアップ作成 -->
             <label class="flex items-start space-x-3 cursor-pointer">
-              <input
-                type="checkbox"
-                bind:checked={createBackup}
-                class="mt-1"
-              />
+              <input type="checkbox" bind:checked={createBackup} class="mt-1" />
               <div class="flex-1">
                 <div class="text-sm font-medium text-gray-900 dark:text-white">
                   <i class="fas fa-save text-yellow-600"></i> 更新前にバックアップを作成
@@ -268,7 +278,9 @@
 
         <!-- タグフィルター -->
         {#if allTags.length > 0}
-          <div class="space-y-1 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div
+            class="space-y-1 pt-4 border-t border-gray-200 dark:border-gray-700"
+          >
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
               タグで絞り込み（任意）
             </h4>
@@ -276,7 +288,9 @@
               特定のタグを持つ小説のみを更新対象にできます
             </p>
 
-            <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <div
+              class="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900 rounded-lg"
+            >
               {#each allTags as tag}
                 <button
                   type="button"
@@ -290,7 +304,9 @@
                   class:dark:text-gray-300={!selectedTags.includes(tag.name)}
                   class:hover:bg-purple-500={selectedTags.includes(tag.name)}
                   class:hover:bg-gray-300={!selectedTags.includes(tag.name)}
-                  class:dark:hover:bg-gray-600={!selectedTags.includes(tag.name)}
+                  class:dark:hover:bg-gray-600={!selectedTags.includes(
+                    tag.name
+                  )}
                 >
                   {#if selectedTags.includes(tag.name)}
                     <i class="fas fa-check-circle mr-1"></i>
@@ -302,10 +318,12 @@
 
             {#if selectedTags.length > 0}
               <div class="text-xs text-purple-600 dark:text-purple-400">
-                <i class="fas fa-filter"></i> 選択中のタグ: {selectedTags.join(", ")}
+                <i class="fas fa-filter"></i> 選択中のタグ: {selectedTags.join(
+                  ", "
+                )}
                 <button
                   type="button"
-                  onclick={() => selectedTags = []}
+                  onclick={() => (selectedTags = [])}
                   class="ml-2 underline hover:no-underline"
                 >
                   クリア
@@ -317,20 +335,26 @@
       </div>
 
       <!-- フッター -->
-      <div class="flex items-center justify-between gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+      <div
+        class="flex items-center justify-between gap-3 p-6 border-t border-gray-200 dark:border-gray-700"
+      >
         <!-- 対象件数表示 -->
         <div class="text-sm text-gray-700 dark:text-gray-300">
           <i class="fas fa-info-circle text-blue-600 dark:text-blue-400"></i>
           {#if selectedTags.length > 0 || includeFrozen}
-            対象: <span class="font-semibold text-blue-600 dark:text-blue-400">{effectiveCount}件</span>
+            対象: <span class="font-semibold text-blue-600 dark:text-blue-400"
+              >{effectiveCount}件</span
+            >
             {#if effectiveCount !== selectedCount}
               <span class="text-xs ml-1">（選択: {selectedCount}件）</span>
             {/if}
           {:else}
-            対象: <span class="font-semibold text-blue-600 dark:text-blue-400">{selectedCount}件</span>
+            対象: <span class="font-semibold text-blue-600 dark:text-blue-400"
+              >{selectedCount}件</span
+            >
           {/if}
         </div>
-        
+
         <!-- アクションボタン -->
         <div class="flex gap-3">
           <button

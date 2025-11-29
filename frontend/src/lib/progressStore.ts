@@ -1,21 +1,21 @@
 /**
  * 小説の一括操作進捗状態管理ストア
- * 
+ *
  * 各小説の処理状態をリアルタイムで追跡
  */
 
-import { writable } from 'svelte/store';
+import { writable } from "svelte/store";
 
 /**
  * 進捗状態の定義
  */
-export type ProgressStatus = 
-  | 'idle'          // 待機中（表示なし）
-  | 'waiting'       // キュー待ち
-  | 'downloading'   // ダウンロード中
-  | 'converting'    // 変換中
-  | 'completed'     // 完了（永続表示）
-  | 'error';        // エラー（永続表示）
+export type ProgressStatus =
+  | "idle" // 待機中（表示なし）
+  | "waiting" // キュー待ち
+  | "downloading" // ダウンロード中
+  | "converting" // 変換中
+  | "completed" // 完了（永続表示）
+  | "error"; // エラー（永続表示）
 
 /**
  * 進捗情報の型
@@ -39,12 +39,12 @@ function createProgressStore() {
 
   return {
     subscribe,
-    
+
     /**
      * 小説の進捗状態を設定
      */
     setProgress(novelId: number, status: ProgressStatus, message?: string) {
-      update(state => ({
+      update((state) => ({
         ...state,
         [novelId]: {
           status,
@@ -59,7 +59,7 @@ function createProgressStore() {
      */
     getProgress(novelId: number): ProgressInfo | undefined {
       let result: ProgressInfo | undefined;
-      subscribe(state => {
+      subscribe((state) => {
         result = state[novelId];
       })();
       return result;
@@ -69,7 +69,7 @@ function createProgressStore() {
      * 小説の進捗をクリア
      */
     clearProgress(novelId: number) {
-      update(state => {
+      update((state) => {
         const newState = { ...state };
         delete newState[novelId];
         return newState;
@@ -87,9 +87,9 @@ function createProgressStore() {
      * 複数の小説を一括で状態設定
      */
     setBatch(novelIds: number[], status: ProgressStatus, message?: string) {
-      update(state => {
+      update((state) => {
         const updates: ProgressMap = {};
-        novelIds.forEach(id => {
+        novelIds.forEach((id) => {
           updates[id] = {
             status,
             message,

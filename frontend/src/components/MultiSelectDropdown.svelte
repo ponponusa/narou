@@ -4,7 +4,7 @@
   セレクト風の見た目でチェックボックス式の複数選択を提供
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount } from "svelte";
 
   interface Option {
     value: string;
@@ -24,10 +24,10 @@
   let {
     value = $bindable([]),
     options,
-    placeholder = 'すべて',
-    label = '',
-    id = '',
-    onchange
+    placeholder = "すべて",
+    label = "",
+    id = "",
+    onchange,
   }: Props = $props();
 
   let isOpen = $state(false);
@@ -38,7 +38,7 @@
     if (value.length === 0) {
       return placeholder;
     } else if (value.length === 1) {
-      const option = options.find(opt => opt.value === value[0]);
+      const option = options.find((opt) => opt.value === value[0]);
       return option ? option.label : value[0];
     } else {
       return `${value.length}件選択中`;
@@ -53,11 +53,11 @@
   // 選択状態をトグル
   function toggleOption(optionValue: string) {
     if (value.includes(optionValue)) {
-      value = value.filter(v => v !== optionValue);
+      value = value.filter((v) => v !== optionValue);
     } else {
       value = [...value, optionValue];
     }
-    
+
     // 変更を通知
     if (onchange) {
       onchange(value);
@@ -80,9 +80,9 @@
   }
 
   onMount(() => {
-    document.addEventListener('click', handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener("click", handleClickOutside);
     };
   });
 </script>
@@ -96,7 +96,7 @@
       {label}
     </label>
   {/if}
-  
+
   <!-- ドロップダウンボタン -->
   <button
     type="button"
@@ -106,7 +106,10 @@
     class:ring-2={isOpen}
     class:ring-blue-500={isOpen}
   >
-    <span class="truncate flex-1 min-w-0" class:text-gray-500={value.length === 0}>
+    <span
+      class="truncate flex-1 min-w-0"
+      class:text-gray-500={value.length === 0}
+    >
       {displayText}
     </span>
     <div class="flex items-center gap-1 shrink-0">
@@ -119,7 +122,7 @@
             clearAll();
           }}
           onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.stopPropagation();
               e.preventDefault();
               clearAll();
@@ -158,7 +161,9 @@
             <span class="flex-1 text-sm text-gray-900 dark:text-gray-100">
               {option.label}
               {#if option.count !== undefined}
-                <span class="text-gray-500 dark:text-gray-400">({option.count})</span>
+                <span class="text-gray-500 dark:text-gray-400"
+                  >({option.count})</span
+                >
               {/if}
             </span>
           </label>
@@ -173,24 +178,24 @@
   .overflow-y-auto::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   .overflow-y-auto::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .overflow-y-auto::-webkit-scrollbar-thumb {
     background: #cbd5e0;
     border-radius: 4px;
   }
-  
+
   :global(.dark) .overflow-y-auto::-webkit-scrollbar-thumb {
     background: #4b5563;
   }
-  
+
   .overflow-y-auto::-webkit-scrollbar-thumb:hover {
     background: #a0aec0;
   }
-  
+
   :global(.dark) .overflow-y-auto::-webkit-scrollbar-thumb:hover {
     background: #6b7280;
   }

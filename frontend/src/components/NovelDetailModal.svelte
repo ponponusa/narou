@@ -15,7 +15,7 @@
     show: (
       message: string,
       type: "success" | "error" | "info" | "warning",
-      duration?: number,
+      duration?: number
     ) => void;
   } | null = null;
 
@@ -56,7 +56,7 @@
       onDelete?: () => void;
       onTagEdit?: (novelId: number) => void;
       onConversionSettings?: (novelId: number, title: string) => void;
-    },
+    }
   ) {
     novel = novelData;
     showModal = true;
@@ -103,7 +103,7 @@
     try {
       const downloadUrl = `http://localhost:5678/api/v2/novels/${novel.id}/epub`;
       const response = await fetch(downloadUrl);
-      
+
       if (!response.ok) {
         toast?.show(`EPUBダウンロードに失敗しました`, "error");
         return;
@@ -112,9 +112,11 @@
       // Content-Dispositionヘッダーからファイル名を取得
       const contentDisposition = response.headers.get("Content-Disposition");
       let filename = `${novel.title}.epub`;
-      
+
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        const filenameMatch = contentDisposition.match(
+          /filename\*=UTF-8''(.+)/
+        );
         if (filenameMatch) {
           // RFC 5987形式のデコード
           filename = decodeURIComponent(filenameMatch[1]);
@@ -241,7 +243,7 @@
 
     if (
       !confirm(
-        `「${novel.title}」を削除しますか？\n\nこの操作は取り消せません。`,
+        `「${novel.title}」を削除しますか？\n\nこの操作は取り消せません。`
       )
     )
       return;
@@ -307,7 +309,7 @@
   <div
     class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto"
     onclick={(e) => e.target === e.currentTarget && closeModal()}
-    onkeydown={(e) => e.key === 'Escape' && closeModal()}
+    onkeydown={(e) => e.key === "Escape" && closeModal()}
     role="button"
     tabindex="-1"
     aria-label="モーダルを閉じる"
@@ -416,7 +418,12 @@
             </dt>
             <dd class="mt-1 text-base text-gray-900 dark:text-white">
               {#if novel.author_url}
-                <a href={novel.author_url} target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">
+                <a
+                  href={novel.author_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-blue-600 dark:text-blue-400 hover:underline"
+                >
                   {novel.author}
                 </a>
               {:else}
@@ -436,7 +443,12 @@
             </dt>
             <dd class="mt-1 text-base text-gray-900 dark:text-white">
               {#if novel.site_top_url}
-                <a href={novel.site_top_url} target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">
+                <a
+                  href={novel.site_top_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-blue-600 dark:text-blue-400 hover:underline"
+                >
                   {novel.sitename}
                 </a>
               {:else}

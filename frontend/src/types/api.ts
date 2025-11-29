@@ -1,6 +1,6 @@
 /**
  * API型定義
- * 
+ *
  * バックエンドのREST APIとの連携に使用する型定義
  */
 
@@ -18,8 +18,14 @@ export interface ApiV2Response<T> {
 /**
  * タスクの型定義
  */
-export type TaskType = 'download' | 'convert' | 'update' | 'remove';
-export type TaskStatus = 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'canceled';
+export type TaskType = "download" | "convert" | "update" | "remove";
+export type TaskStatus =
+  | "queued"
+  | "running"
+  | "paused"
+  | "completed"
+  | "failed"
+  | "canceled";
 
 export interface TaskError {
   message: string;
@@ -62,18 +68,18 @@ export interface Novel {
   id: number;
   title: string;
   author: string;
-  author_url?: string;     // 著者ページURL
+  author_url?: string; // 著者ページURL
   sitename: string;
-  site_top_url?: string;   // サイトトップURL
+  site_top_url?: string; // サイトトップURL
   status: string;
-  story?: string;          // あらすじ
+  story?: string; // あらすじ
   frozen: boolean;
   tags: string[];
   toc_url: string;
   novel_type?: string;
   general_lastup?: string;
   last_update?: string;
-  newest_article_date?: string;  // 最新話掲載日
+  newest_article_date?: string; // 最新話掲載日
   new_arrivals_date?: string;
   download_date?: string;
   convert_date?: string;
@@ -81,8 +87,8 @@ export interface Novel {
   promo_tags?: string[];
   promo_tags_title?: string;
   promo_tags_author?: string;
-  general_all_no?: number;  // 話数
-  length?: number;          // 文字数
+  general_all_no?: number; // 話数
+  length?: number; // 文字数
 }
 
 /**
@@ -168,7 +174,12 @@ export interface LogMessage {
 /**
  * 小説設定項目の型
  */
-export type NovelSettingType = 'boolean' | 'integer' | 'string' | 'select' | 'multiple';
+export type NovelSettingType =
+  | "boolean"
+  | "integer"
+  | "string"
+  | "select"
+  | "multiple";
 
 /**
  * 個別小説設定項目
@@ -210,4 +221,3 @@ export interface NovelSettingsUpdateRequest {
   settings: Record<string, any>;
   replace_pattern?: ReplacePattern[];
 }
-

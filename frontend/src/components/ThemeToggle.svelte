@@ -1,37 +1,37 @@
 <script lang="ts">
   /**
    * テーマ切り替えトグルコンポーネント
-   * 
+   *
    * ダークモード/ライトモードの切り替え機能を提供
    * LocalStorageでテーマ設定を永続化
    */
-  import { onMount } from 'svelte';
+  import { onMount } from "svelte";
 
   let isDark = $state(false);
 
   onMount(() => {
     // LocalStorageからテーマ設定を復元（デフォルトはライトモード）
-    const savedTheme = localStorage.getItem('theme');
-    
-    if (savedTheme === 'dark') {
+    const savedTheme = localStorage.getItem("theme");
+
+    if (savedTheme === "dark") {
       isDark = true;
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.add("dark");
     } else {
       // 明示的にライトモードまたは未設定の場合
       isDark = false;
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
     }
   });
 
   function toggleTheme() {
     isDark = !isDark;
-    
+
     if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   }
 </script>
@@ -40,18 +40,18 @@
   type="button"
   onclick={toggleTheme}
   class="theme-toggle"
-  aria-label={isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
-  title={isDark ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+  aria-label={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
+  title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
 >
   <div class="toggle-container">
     <!-- ライトモードアイコン（左側） -->
     <div class="icon-wrapper" class:active={!isDark}>
       <i class="fas fa-sun"></i>
     </div>
-    
+
     <!-- スライダー -->
     <div class="slider" class:dark={isDark}></div>
-    
+
     <!-- ダークモードアイコン（右側） -->
     <div class="icon-wrapper" class:active={isDark}>
       <i class="fas fa-moon"></i>
@@ -110,7 +110,9 @@
     height: 1.5rem;
     border-radius: 9999px;
     background-color: #fbbf24;
-    transition: transform 0.2s, background-color 0.2s;
+    transition:
+      transform 0.2s,
+      background-color 0.2s;
     z-index: 1;
   }
 

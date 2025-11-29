@@ -5,11 +5,11 @@
   複数の小説を一括で追加可能
 -->
 <script lang="ts">
-  import { addNovel } from '../lib/api';
+  import { addNovel } from "../lib/api";
 
   let isOpen = $state(false);
-  let inputText = $state('');
-  let tags = $state('');
+  let inputText = $state("");
+  let tags = $state("");
   let forceAdd = $state(false);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
@@ -19,8 +19,8 @@
 
   export function open() {
     isOpen = true;
-    inputText = '';
-    tags = '';
+    inputText = "";
+    tags = "";
     forceAdd = false;
     error = null;
     validationMessages = [];
@@ -28,8 +28,8 @@
 
   export function close() {
     isOpen = false;
-    inputText = '';
-    tags = '';
+    inputText = "";
+    tags = "";
     forceAdd = false;
     error = null;
     validationMessages = [];
@@ -42,9 +42,9 @@
     // 改行、スペース、カンマで分割
     const items = text
       .split(/[\n\r,\s　]+/)
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
     return items;
   }
 
@@ -58,22 +58,22 @@
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
-    
+
     if (!inputText.trim()) {
-      error = 'URLまたはncodeを入力してください';
+      error = "URLまたはncodeを入力してください";
       return;
     }
 
     const novels = parseInput(inputText);
-    
+
     // バリデーション
     validationMessages = [];
-    
+
     if (novels.length === 0) {
-      error = 'URLまたはncodeを入力してください';
+      error = "URLまたはncodeを入力してください";
       return;
     }
-    
+
     if (novels.length > MAX_NOVELS) {
       error = `一度に追加できる小説は最大${MAX_NOVELS}件までです（現在: ${novels.length}件）`;
       return;
@@ -93,7 +93,8 @@
         await addNovel(novel, forceAdd);
         results.success.push(novel);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'ダウンロードに失敗しました';
+        const errorMessage =
+          err instanceof Error ? err.message : "ダウンロードに失敗しました";
         results.failed.push({ input: novel, error: errorMessage });
         console.error(`小説追加エラー [${novel}]:`, err);
       }
@@ -103,11 +104,15 @@
 
     // 結果を表示
     if (results.success.length > 0) {
-      validationMessages.push(`✓ ${results.success.length}件の小説をダウンロードキューに追加しました`);
+      validationMessages.push(
+        `✓ ${results.success.length}件の小説をダウンロードキューに追加しました`
+      );
     }
-    
+
     if (results.failed.length > 0) {
-      validationMessages.push(`✗ ${results.failed.length}件の小説の追加に失敗しました:`);
+      validationMessages.push(
+        `✗ ${results.failed.length}件の小説の追加に失敗しました:`
+      );
       results.failed.forEach(({ input, error }) => {
         validationMessages.push(`  - ${input}: ${error}`);
       });
@@ -140,10 +145,17 @@
     aria-labelledby="add-novel-title"
   >
     <!-- モーダルコンテンツ -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4"
+    >
       <!-- ヘッダー -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 id="add-novel-title" class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+      <div
+        class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700"
+      >
+        <h2
+          id="add-novel-title"
+          class="text-xl font-semibold text-gray-900 dark:text-gray-100"
+        >
           小説を追加
         </h2>
         <button
@@ -158,7 +170,10 @@
       <!-- フォーム -->
       <form onsubmit={handleSubmit} class="p-6">
         <div class="mb-4">
-          <label for="novel-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label
+            for="novel-input"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
             小説のURL または ncode
           </label>
           <textarea
@@ -170,11 +185,16 @@
             disabled={isLoading}
           ></textarea>
           <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            小説家になろう、カクヨムなどのURLまたはncodeを入力してください。<br />
+            小説家になろう、カクヨムなどのURLまたはncodeを入力してください。<br
+            />
             複数の場合は改行、スペース、カンマで区切ってください（最大{MAX_NOVELS}件）
           </p>
           {#if novelCount > 0}
-            <p class="mt-1 text-sm {novelCount > MAX_NOVELS ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}">
+            <p
+              class="mt-1 text-sm {novelCount > MAX_NOVELS
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-blue-600 dark:text-blue-400'}"
+            >
               {novelCount}件の小説が入力されています
             </p>
           {/if}
@@ -183,7 +203,10 @@
         <!-- オプション -->
         <div class="mb-4 space-y-3">
           <div>
-            <label for="novel-tags" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              for="novel-tags"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               タグ（オプション）
             </label>
             <input
@@ -207,20 +230,27 @@
               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               disabled={isLoading}
             />
-            <label for="force-add" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+            <label
+              for="force-add"
+              class="ml-2 text-sm text-gray-700 dark:text-gray-300"
+            >
               凍結中や既存の小説も強制的に追加
             </label>
           </div>
         </div>
 
         {#if error}
-          <div class="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded text-sm">
+          <div
+            class="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded text-sm"
+          >
             {error}
           </div>
         {/if}
 
         {#if validationMessages.length > 0}
-          <div class="mb-4 p-3 bg-blue-100 dark:bg-blue-900 border border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-200 rounded text-sm space-y-1">
+          <div
+            class="mb-4 p-3 bg-blue-100 dark:bg-blue-900 border border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-200 rounded text-sm space-y-1"
+          >
             {#each validationMessages as message}
               <div>{message}</div>
             {/each}
@@ -242,7 +272,9 @@
             class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             disabled={isLoading || novelCount === 0 || novelCount > MAX_NOVELS}
           >
-            {isLoading ? `追加中... (${novelCount}件)` : `追加 (${novelCount}件)`}
+            {isLoading
+              ? `追加中... (${novelCount}件)`
+              : `追加 (${novelCount}件)`}
           </button>
         </div>
       </form>

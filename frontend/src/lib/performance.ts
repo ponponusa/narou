@@ -1,6 +1,6 @@
 /**
  * パフォーマンス計測ユーティリティ
- * 
+ *
  * フィルタリング処理などの実行時間を計測し、開発時にコンソールに出力
  */
 
@@ -9,7 +9,7 @@ const isDev = import.meta.env.DEV;
 
 /**
  * 関数の実行時間を計測
- * 
+ *
  * @param label 計測ラベル
  * @param fn 計測対象の関数
  * @param logThreshold ログ出力する閾値（ミリ秒）、この値以上の場合のみログ出力
@@ -39,7 +39,7 @@ export function measurePerformance<T>(
 
 /**
  * 複数回実行して平均実行時間を計測
- * 
+ *
  * @param label 計測ラベル
  * @param fn 計測対象の関数
  * @param iterations 実行回数
@@ -94,7 +94,7 @@ export class PerformanceMarker {
 
   /**
    * 中間マーク
-   * 
+   *
    * @param label マークラベル
    */
   mark(label: string): void {
@@ -105,7 +105,7 @@ export class PerformanceMarker {
 
   /**
    * 計測終了してログ出力
-   * 
+   *
    * @param label 計測ラベル
    * @param logThreshold ログ出力する閾値（ミリ秒）
    */
@@ -153,7 +153,7 @@ export interface FilterStats {
 
 /**
  * フィルタリングパフォーマンスを計測
- * 
+ *
  * @param label フィルタラベル
  * @param inputData 入力データ
  * @param filterFn フィルタ関数
@@ -195,7 +195,7 @@ export function measureFilterPerformance<T>(
 
 /**
  * メモリ使用量を計測（Chrome DevTools API使用）
- * 
+ *
  * @param label 計測ラベル
  */
 export function measureMemory(label: string): void {

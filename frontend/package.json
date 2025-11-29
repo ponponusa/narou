@@ -7,7 +7,13 @@
     "build": "astro build && node -e \"require('fs').writeFileSync('dist/.build-commit', require('child_process').execSync('git describe --always').toString().trim())\"",
     "preview": "astro preview",
     "astro": "astro",
-    "check": "astro check"
+    "check": "astro check",
+    "format": "prettier --write \"src/**/*.{ts,js,svelte,astro,css,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,svelte,astro,css,json}\"",
+    "prepare": "cd .. && husky frontend/.husky"
+  },
+  "lint-staged": {
+    "*.{ts,js,svelte,astro,css,json}": "prettier --write"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.5",

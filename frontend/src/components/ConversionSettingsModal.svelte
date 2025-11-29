@@ -1,22 +1,28 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import type { 
-    NovelSettingsData, 
-    NovelSettingItem, 
+  import { onMount, onDestroy } from "svelte";
+  import type {
+    NovelSettingsData,
+    NovelSettingItem,
     NovelSettingsUpdateRequest,
-    ReplacePattern 
-  } from '../types/api';
+    ReplacePattern,
+  } from "../types/api";
 
-	// ===========================================================================================
-	// Constants and Bindings
-	// ===========================================================================================
-	const API_BASE_URL = 'http://localhost:5678/api/v2';  // Props
-  let toast: { show: (message: string, type: 'success' | 'error' | 'info' | 'warning', duration?: number) => void } | null = null;
+  // ===========================================================================================
+  // Constants and Bindings
+  // ===========================================================================================
+  const API_BASE_URL = "http://localhost:5678/api/v2"; // Props
+  let toast: {
+    show: (
+      message: string,
+      type: "success" | "error" | "info" | "warning",
+      duration?: number
+    ) => void;
+  } | null = null;
 
   // モーダル表示状態
   let showModal = $state(false);
   let novelId = $state<number | null>(null);
-  let novelTitle = $state<string>('');
+  let novelTitle = $state<string>("");
   let settings = $state<NovelSettingItem[]>([]);
   let replacePatterns = $state<ReplacePattern[]>([]);
   let loading = $state(false);
@@ -28,7 +34,7 @@
 
   // 設定値の作業用コピー
   let workingSettings = $state<Record<string, any>>({});
-  
+
   // トップに戻るボタンの表示制御
   let showScrollTopButton = $state(false);
 
@@ -52,31 +58,31 @@
       // 設定データを取得
       const response = await fetch(`${API_BASE_URL}/novels/${id}/settings`);
       if (!response.ok) {
-        throw new Error('設定の取得に失敗しました');
+        throw new Error("設定の取得に失敗しました");
       }
 
       const result = await response.json();
       if (result.success && result.data) {
         const data: NovelSettingsData = result.data;
         settings = data.settings;
-        
+
         // 置換パターンを変換
         replacePatterns = (data.replace_pattern || []).map(([left, right]) => ({
           left,
-          right
+          right,
         }));
 
         // 作業用設定オブジェクトを初期化
         workingSettings = {};
-        settings.forEach(item => {
+        settings.forEach((item) => {
           workingSettings[item.name] = item.value;
         });
       } else {
-        throw new Error(result.error || '設定の取得に失敗しました');
+        throw new Error(result.error || "設定の取得に失敗しました");
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
-      toast?.show('設定の読み込みに失敗しました', 'error');
+      console.error("Error loading settings:", error);
+      toast?.show("設定の読み込みに失敗しました", "error");
       closeModal();
     } finally {
       loading = false;
@@ -89,7 +95,7 @@
   function closeModal() {
     showModal = false;
     novelId = null;
-    novelTitle = '';
+    novelTitle = "";
     settings = [];
     replacePatterns = [];
     workingSettings = {};
@@ -106,28 +112,31 @@
     try {
       const updateData: NovelSettingsUpdateRequest = {
         settings: workingSettings,
-        replace_pattern: replacePatterns
+        replace_pattern: replacePatterns,
       };
 
-      const response = await fetch(`${API_BASE_URL}/novels/${novelId}/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData)
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/novels/${novelId}/settings`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
+        }
+      );
 
       const result = await response.json();
 
       if (result.success) {
-        toast?.show('設定を保存しました', 'success');
+        toast?.show("設定を保存しました", "success");
         closeModal();
       } else {
-        throw new Error(result.error || '設定の保存に失敗しました');
+        throw new Error(result.error || "設定の保存に失敗しました");
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
-      toast?.show('設定の保存に失敗しました', 'error');
+      console.error("Error saving settings:", error);
+      toast?.show("設定の保存に失敗しました", "error");
     } finally {
       saving = false;
     }
@@ -137,7 +146,7 @@
    * 置換パターンを追加
    */
   function addReplacePattern() {
-    replacePatterns = [...replacePatterns, { left: '', right: '' }];
+    replacePatterns = [...replacePatterns, { left: "", right: "" }];
   }
 
   /**
@@ -150,29 +159,31 @@
   /**
    * 設定値の型に応じたHTMLを生成
    */
-  function getSettingControl(item: NovelSettingItem): 'boolean' | 'select' | 'multiple' | 'text' {
-    if (item.type === 'boolean') return 'boolean';
-    if (item.type === 'select') return 'select';
-    if (item.type === 'multiple') return 'multiple';
-    return 'text';
+  function getSettingControl(
+    item: NovelSettingItem
+  ): "boolean" | "select" | "multiple" | "text" {
+    if (item.type === "boolean") return "boolean";
+    if (item.type === "select") return "select";
+    if (item.type === "multiple") return "multiple";
+    return "text";
   }
 
   /**
    * Boolean設定の値を文字列表現に変換
    */
-  function getBooleanValueString(value: any): 'nil' | 'off' | 'on' {
-    if (value === null || value === undefined) return 'nil';
-    if (value === false) return 'off';
-    return 'on';
+  function getBooleanValueString(value: any): "nil" | "off" | "on" {
+    if (value === null || value === undefined) return "nil";
+    if (value === false) return "off";
+    return "on";
   }
 
   /**
    * Boolean設定の値を設定
    */
-  function setBooleanValue(name: string, strValue: 'nil' | 'off' | 'on') {
-    if (strValue === 'nil') {
+  function setBooleanValue(name: string, strValue: "nil" | "off" | "on") {
+    if (strValue === "nil") {
       workingSettings[name] = null;
-    } else if (strValue === 'off') {
+    } else if (strValue === "off") {
       workingSettings[name] = false;
     } else {
       workingSettings[name] = true;
@@ -183,20 +194,20 @@
    * デフォルト値の表示用文字列
    */
   function formatDefaultValue(value: any): string {
-    if (value === null || value === undefined) return '未設定';
-    if (typeof value === 'boolean') return value ? 'はい' : 'いいえ';
+    if (value === null || value === undefined) return "未設定";
+    if (typeof value === "boolean") return value ? "はい" : "いいえ";
     return String(value);
   }
 
   onMount(() => {
     // ESCキーでモーダルを閉じる
     const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showModal) {
+      if (e.key === "Escape" && showModal) {
         closeModal();
       }
     };
-    window.addEventListener('keydown', handleKeydown);
-    return () => window.removeEventListener('keydown', handleKeydown);
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
   });
 
   // モーダル内のスクロールイベントハンドラー
@@ -212,7 +223,7 @@
     if (modalContentElement) {
       modalContentElement.scrollTo({
         top: 0,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
   }
@@ -220,19 +231,21 @@
 
 {#if showModal}
   <!-- モーダルオーバーレイ -->
-  <div 
+  <div
     class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto"
     onclick={(e) => e.target === e.currentTarget && closeModal()}
     onscroll={handleModalScroll}
     bind:this={modalContentElement}
   >
     <!-- モーダルコンテンツ -->
-    <div 
+    <div
       class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full my-8 relative"
       onclick={(e) => e.stopPropagation()}
     >
       <!-- ヘッダー -->
-      <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <div
+        class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700"
+      >
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
           {novelTitle} の変換設定
         </h2>
@@ -255,10 +268,16 @@
           <!-- 説明 -->
           <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1">
-              <li>• この小説専用の変換時の設定を変更できます（setting.ini を書き換えます）</li>
+              <li>
+                • この小説専用の変換時の設定を変更できます（setting.ini
+                を書き換えます）
+              </li>
               <li>• 変更を反映させるには再度変換を実行する必要があります</li>
               <li>• 未設定の項目は、変換時に共通設定が適用されます</li>
-              <li>• 環境設定で force.* 系設定が有効な場合、ここでの該当項目は無視されます</li>
+              <li>
+                • 環境設定で force.*
+                系設定が有効な場合、ここでの該当項目は無視されます
+              </li>
             </ul>
           </div>
 
@@ -268,53 +287,66 @@
               <div class="setting-item {item.is_forced ? 'forced-item' : ''}">
                 <div class="setting-row">
                   <div class="setting-label">
-                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{item.name}</span>
+                    <span
+                      class="text-sm font-medium text-gray-900 dark:text-gray-100"
+                      >{item.name}</span
+                    >
                     {#if item.is_forced}
-                      <span class="ml-2 px-2 py-0.5 text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">Force</span>
+                      <span
+                        class="ml-2 px-2 py-0.5 text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded"
+                        >Force</span
+                      >
                     {/if}
                     {#if item.help}
-                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.help}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {item.help}
+                      </p>
                     {/if}
                     <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
                       未設定時：{formatDefaultValue(item.default_value)}
                     </p>
                   </div>
                   <div class="setting-value">
-                    {#if getSettingControl(item) === 'boolean'}
+                    {#if getSettingControl(item) === "boolean"}
                       <!-- Boolean型（3択セグメント型トグル） -->
                       <div class="toggle-3way">
                         <input
                           type="radio"
                           id="{item.name}-nil"
                           name={item.name}
-                          checked={getBooleanValueString(workingSettings[item.name]) === 'nil'}
-                          onchange={() => setBooleanValue(item.name, 'nil')}
+                          checked={getBooleanValueString(
+                            workingSettings[item.name]
+                          ) === "nil"}
+                          onchange={() => setBooleanValue(item.name, "nil")}
                           disabled={item.is_forced}
                         />
                         <label for="{item.name}-nil">未設定</label>
-                        
+
                         <input
                           type="radio"
                           id="{item.name}-off"
                           name={item.name}
-                          checked={getBooleanValueString(workingSettings[item.name]) === 'off'}
-                          onchange={() => setBooleanValue(item.name, 'off')}
+                          checked={getBooleanValueString(
+                            workingSettings[item.name]
+                          ) === "off"}
+                          onchange={() => setBooleanValue(item.name, "off")}
                           disabled={item.is_forced}
                         />
                         <label for="{item.name}-off">いいえ</label>
-                        
+
                         <input
                           type="radio"
                           id="{item.name}-on"
                           name={item.name}
-                          checked={getBooleanValueString(workingSettings[item.name]) === 'on'}
-                          onchange={() => setBooleanValue(item.name, 'on')}
+                          checked={getBooleanValueString(
+                            workingSettings[item.name]
+                          ) === "on"}
+                          onchange={() => setBooleanValue(item.name, "on")}
                           disabled={item.is_forced}
                         />
                         <label for="{item.name}-on">はい</label>
                       </div>
-
-                    {:else if getSettingControl(item) === 'select'}
+                    {:else if getSettingControl(item) === "select"}
                       <!-- Select型 -->
                       <select
                         bind:value={workingSettings[item.name]}
@@ -324,12 +356,13 @@
                         <option value="">未設定</option>
                         {#if item.select_keys && item.select_summaries}
                           {#each item.select_keys as key, i}
-                            <option value={key}>{item.select_summaries[i]}</option>
+                            <option value={key}
+                              >{item.select_summaries[i]}</option
+                            >
                           {/each}
                         {/if}
                       </select>
-
-                    {:else if getSettingControl(item) === 'multiple'}
+                    {:else if getSettingControl(item) === "multiple"}
                       <!-- Multiple型 -->
                       <select
                         bind:value={workingSettings[item.name]}
@@ -340,19 +373,24 @@
                       >
                         {#if item.select_keys && item.select_summaries}
                           {#each item.select_keys as key, i}
-                            <option value={key}>{item.select_summaries[i]}</option>
+                            <option value={key}
+                              >{item.select_summaries[i]}</option
+                            >
                           {/each}
                         {/if}
                       </select>
-                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Ctrl/Cmdキーを押しながらクリックで複数選択</p>
-
+                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Ctrl/Cmdキーを押しながらクリックで複数選択
+                      </p>
                     {:else}
                       <!-- Text/Integer型 -->
                       <input
-                        type={item.type === 'integer' ? 'number' : 'text'}
+                        type={item.type === "integer" ? "number" : "text"}
                         bind:value={workingSettings[item.name]}
                         disabled={item.is_forced}
-                        placeholder={item.type === 'integer' ? '整数値' : 'テキスト'}
+                        placeholder={item.type === "integer"
+                          ? "整数値"
+                          : "テキスト"}
                         class="input-field"
                       />
                     {/if}
@@ -364,13 +402,19 @@
 
           <!-- 置換設定 -->
           <div class="mt-8">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3
+              class="text-lg font-semibold text-gray-900 dark:text-white mb-4"
+            >
               置換設定
             </h3>
-            
+
             <div class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1">
-                <li>• この小説の文章を置換する設定を行うことができます（replace.txt を書き換えます）</li>
+                <li>
+                  •
+                  この小説の文章を置換する設定を行うことができます（replace.txt
+                  を書き換えます）
+                </li>
                 <li>• 変更を反映させるには再度変換を実行する必要があります</li>
               </ul>
             </div>
@@ -414,7 +458,9 @@
       </div>
 
       <!-- フッター -->
-      <div class="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700">
+      <div
+        class="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700"
+      >
         <button
           onclick={closeModal}
           disabled={saving}
@@ -430,10 +476,10 @@
           {#if saving}
             <i class="fas fa-spinner fa-spin"></i>
           {/if}
-          {saving ? '保存中...' : '設定を保存'}
+          {saving ? "保存中..." : "設定を保存"}
         </button>
       </div>
-      
+
       <!-- トップに戻るボタン（モーダル内） -->
       {#if showScrollTopButton}
         <button
@@ -514,7 +560,9 @@
     font-size: 0.875rem;
     background-color: white;
     color: #111827;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
   }
 
   .input-field::placeholder {
