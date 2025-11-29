@@ -96,6 +96,20 @@
   $effect(() => {
     saveSettings();
   });
+
+  // ログ数が変化したときに自動スクロール（DOM更新後に実行）
+  let previousLogCount = 0;
+  $effect(() => {
+    const currentCount = logs.length;
+    if (currentCount !== previousLogCount) {
+      previousLogCount = currentCount;
+      // DOM更新後にスクロール
+      requestAnimationFrame(() => {
+        scrollIfNeeded();
+      });
+    }
+  });
+
   /**
    * コンソールを開く
    */
@@ -240,6 +254,34 @@
 
     // キャリッジリターン(\r)を削除（プログレスバーの上書き制御文字）
     cleanMessage = cleanMessage.replace(/\r/g, "");
+
+    // 末尾追加メッセージの処理（「.」「（新規）」「（削除）」など）
+    // これらは直前のログエントリに追加すべきメッセージ
+    const appendPatterns = /^(\.+|（新規）|（削除）|（変更）|（更新）)$/;
+    const decodedClean = decodeMessage(cleanMessage).trim();
+    if (appendPatterns.test(decodedClean) && logs.length > 0) {
+      // 直前のログエントリに追加
+      const lastLog = logs[logs.length - 1];
+      const lastMessage = decodeMessage(lastLog.message).trim();
+      // 直前のメッセージが「.」で終わっている場合は連結
+      if (decodedClean.match(/^\.+$/)) {
+        logs[logs.length - 1] = {
+          ...lastLog,
+          message: lastLog.message + cleanMessage,
+          timestamp: new Date(),
+        };
+      } else {
+        // その他の追加メッセージは末尾に追加
+        logs[logs.length - 1] = {
+          ...lastLog,
+          message: lastLog.message + " " + cleanMessage,
+          timestamp: new Date(),
+        };
+      }
+      logs = [...logs]; // リアクティビティをトリガー
+      scrollIfNeeded();
+      return;
+    }
 
     // 処理タイプと小説IDを抽出
     const { processType, novelId } = extractProcessInfo(cleanMessage);
@@ -957,6 +999,13 @@
                           ? "変換"
                           : "他"}
                     </span>
+                  {:else if log.progressKey !== "progress-chapter-download"}
+                    <span
+                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700/50 text-gray-400 border border-gray-600/50"
+                      title="情報"
+                    >
+                      INFO
+                    </span>
                   {/if}
                   {#if log.novelId}
                     <span
@@ -976,7 +1025,7 @@
                   {/if}
                   <span
                     class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console ===
-                    'stdout2'
+                      'stdout2' && log.processType !== 'convert'
                       ? 'text-yellow-400'
                       : 'text-gray-300'}"
                   >
@@ -1042,6 +1091,13 @@
                           ? "変換"
                           : "他"}
                     </span>
+                  {:else if log.progressKey !== "progress-chapter-download"}
+                    <span
+                      class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700/50 text-gray-400 border border-gray-600/50"
+                      title="情報"
+                    >
+                      INFO
+                    </span>
                   {/if}
                   {#if log.novelId}
                     <span
@@ -1060,10 +1116,7 @@
                     </span>
                   {/if}
                   <span
-                    class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console ===
-                    'stdout2'
-                      ? 'text-yellow-400'
-                      : 'text-gray-300'}"
+                    class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis text-gray-300"
                   >
                     {@html formatMessage(log.message, log.progressKey)}
                   </span>
@@ -1108,6 +1161,13 @@
                       ? "変換"
                       : "他"}
                 </span>
+              {:else if log.progressKey !== "progress-chapter-download"}
+                <span
+                  class="shrink-0 px-1.5 py-0.5 rounded text-[10px] leading-none bg-gray-700/50 text-gray-400 border border-gray-600/50"
+                  title="情報"
+                >
+                  INFO
+                </span>
               {/if}
               {#if log.novelId}
                 <span
@@ -1127,7 +1187,7 @@
               {/if}
               <span
                 class="flex-1 whitespace-nowrap overflow-hidden text-ellipsis {log.console ===
-                'stdout2'
+                  'stdout2' && log.processType !== 'convert'
                   ? 'text-yellow-400'
                   : 'text-gray-300'}"
               >
