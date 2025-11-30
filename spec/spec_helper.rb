@@ -5,6 +5,36 @@ require "simplecov"
 # プロジェクトルートをロードパスに追加（相対パス地獄回避）
 $LOAD_PATH.unshift File.expand_path("..", __dir__)
 
+# Windows環境でのTempfileファイナライザー警告を抑制
+# $stderrをラップして特定の警告メッセージをフィルタリング
+if Gem.win_platform?
+  class FilteredStderr
+    def initialize(original)
+      @original = original
+      @filter_patterns = [
+        /Exception in finalizer/,
+        /Permission denied @ apply2files/,
+        /RackMultipart.*\.zip/
+      ]
+    end
+
+    def write(message)
+      return 0 if @filter_patterns.any? { |pattern| message.to_s =~ pattern }
+      @original.write(message)
+    end
+
+    def method_missing(method, *args, **kwargs, &block)
+      @original.send(method, *args, **kwargs, &block)
+    end
+
+    def respond_to_missing?(method, include_private = false)
+      @original.respond_to?(method, include_private)
+    end
+  end
+
+  $stderr = FilteredStderr.new($stderr)
+end
+
 # ARGV退避: lib/配下のコードがrequire時にARGVを誤解釈しないように
 original_argv = ARGV.dup
 ARGV.clear
@@ -86,6 +116,16 @@ end
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
+  end
+
+  # Windows環境でのファイルハンドル解放
+  # GCを実行してTempfileのファイナライザーを呼び出す
+  config.after(:suite) do
+    GC.start
+    if Gem.win_platform?
+      sleep 0.1
+      GC.start
+    end
   end
 end
 
