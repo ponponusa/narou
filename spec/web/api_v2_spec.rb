@@ -39,6 +39,10 @@ RSpec.describe "Narou::AppServer API v2" do
     allow(Narou::WebWorker).to receive(:push_task) do |task, &block|
       block.call if block
     end
+    # ConvertWorkerのモック（変換タスク並列化対応）
+    allow(Narou::ConvertWorker).to receive(:push_task) do |task, &block|
+      block.call if block
+    end
   end
 
   describe "GET /api/v2/system/version" do
@@ -250,8 +254,8 @@ RSpec.describe "Narou::AppServer API v2" do
       })
     end
 
-    it "queues convert when IDs are provided" do
-      allow(Narou::WebWorker).to receive(:push_task).and_yield
+    it "queues convert to ConvertWorker when IDs are provided" do
+      allow(Narou::ConvertWorker).to receive(:push_task).and_yield
       allow(CommandLine).to receive(:run!)
       allow(NovelListProcessor).to receive(:clear_all_cache)
 
@@ -266,7 +270,7 @@ RSpec.describe "Narou::AppServer API v2" do
     end
 
     it "calls NovelListProcessor.clear_all_cache after convert" do
-      allow(Narou::WebWorker).to receive(:push_task).and_yield
+      allow(Narou::ConvertWorker).to receive(:push_task).and_yield
       allow(CommandLine).to receive(:run!)
       expect(NovelListProcessor).to receive(:clear_all_cache).at_least(:once)
 
@@ -314,10 +318,13 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(actual.map(&:to_s)).to match_array(["1", "2"])
     end
 
-    it "calls CommandLine.run! with update command" do
+    it "calls CommandLine.run! with update command (always with --no-convert)" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      expect(CommandLine).to receive(:run!).with("update", "1")
+      # 新実装では常に--no-convertで実行し、変換はConvertWorkerに委譲
+      expect(CommandLine).to receive(:run!).with("update", "--no-convert", "1")
+      # convert_after_update=true（デフォルト）なのでConvertWorkerにも追加される
+      allow(Narou::ConvertWorker).to receive(:push_task)
 
       payload = { ids: [1] }.to_json
       post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
@@ -325,10 +332,12 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response).to be_ok
     end
 
-    it "calls update with --no-convert when convert_after_update is false" do
+    it "calls update with --no-convert and does not queue convert when convert_after_update is false" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(NovelListProcessor).to receive(:clear_all_cache)
       expect(CommandLine).to receive(:run!).with("update", "--no-convert", "1")
+      # convert_after_update=false なのでConvertWorkerには追加されない
+      expect(Narou::ConvertWorker).not_to receive(:push_task)
 
       payload = { ids: [1], convert_after_update: false }.to_json
       post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
@@ -336,10 +345,11 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response).to be_ok
     end
 
-    it "calls update with --force when include_frozen is true" do
+    it "calls update with --no-convert and --force when include_frozen is true" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      expect(CommandLine).to receive(:run!).with("update", "--force", "1")
+      expect(CommandLine).to receive(:run!).with("update", "--no-convert", "--force", "1")
+      allow(Narou::ConvertWorker).to receive(:push_task)
 
       payload = { ids: [1], include_frozen: true }.to_json
       post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
@@ -347,10 +357,11 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response).to be_ok
     end
 
-    it "calls update with both --force and --no-convert when specified" do
+    it "calls update with --no-convert and --force when both specified, no convert task" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      expect(CommandLine).to receive(:run!).with("update", "--force", "--no-convert", "1")
+      expect(CommandLine).to receive(:run!).with("update", "--no-convert", "--force", "1")
+      expect(Narou::ConvertWorker).not_to receive(:push_task)
 
       payload = { ids: [1], include_frozen: true, convert_after_update: false }.to_json
       post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
@@ -358,10 +369,13 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response).to be_ok
     end
 
-    it "calls download --force when force_redownload is true" do
+    it "calls download --force --no-convert when force_redownload is true (always --no-convert)" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      expect(CommandLine).to receive(:run!).with("download", "--force", "1")
+      # 新実装では常に--no-convertで実行
+      expect(CommandLine).to receive(:run!).with("download", "--force", "--no-convert", "1")
+      # convert_after_update=true（デフォルト）なのでConvertWorkerに追加
+      allow(Narou::ConvertWorker).to receive(:push_task)
 
       payload = { ids: [1], force_redownload: true }.to_json
       post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
@@ -369,12 +383,13 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response).to be_ok
     end
 
-    it "calls download --force with convert when force_redownload and convert_after_update are true" do
+    it "calls download --force --no-convert and queues convert when force_redownload and convert_after_update are true" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      # force_redownload の場合、download コマンドを使用
-      # convert_after_update=true の場合、download コマンドはデフォルトで変換するので追加オプション不要
-      expect(CommandLine).to receive(:run!).with("download", "--force", "1")
+      # force_redownload の場合、download コマンドを使用（常に--no-convert）
+      expect(CommandLine).to receive(:run!).with("download", "--force", "--no-convert", "1")
+      # convert_after_update=true なのでConvertWorkerに追加
+      allow(Narou::ConvertWorker).to receive(:push_task)
 
       payload = { ids: [1], force_redownload: true, convert_after_update: true }.to_json
       post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
@@ -382,10 +397,12 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(last_response).to be_ok
     end
 
-    it "calls download --force --no-convert when force_redownload is true and convert_after_update is false" do
+    it "calls download --force --no-convert without convert task when convert_after_update is false" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(NovelListProcessor).to receive(:clear_all_cache)
       expect(CommandLine).to receive(:run!).with("download", "--force", "--no-convert", "1")
+      # convert_after_update=false なのでConvertWorkerには追加されない
+      expect(Narou::ConvertWorker).not_to receive(:push_task)
 
       payload = { ids: [1], force_redownload: true, convert_after_update: false }.to_json
       post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
@@ -408,7 +425,8 @@ RSpec.describe "Narou::AppServer API v2" do
 
       # グローバルモックが既にあるので、ここでは追加のモックのみ
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      allow(CommandLine).to receive(:run!).with("download", "--force", "22")
+      allow(CommandLine).to receive(:run!).with("download", "--force", "--no-convert", "22")
+      allow(Narou::ConvertWorker).to receive(:push_task)
 
       payload = { ids: [22], force_redownload: true, include_frozen: true }.to_json
       post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
@@ -420,7 +438,8 @@ RSpec.describe "Narou::AppServer API v2" do
       # id=1 は凍結されていない（spec_helper の設定）
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(NovelListProcessor).to receive(:clear_all_cache)
-      expect(CommandLine).to receive(:run!).with("download", "--force", "1")
+      expect(CommandLine).to receive(:run!).with("download", "--force", "--no-convert", "1")
+      allow(Narou::ConvertWorker).to receive(:push_task)
 
       payload = { ids: [1], force_redownload: true, include_frozen: true }.to_json
       post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
@@ -431,6 +450,7 @@ RSpec.describe "Narou::AppServer API v2" do
     it "calls NovelListProcessor.clear_all_cache after update" do
       allow(Narou::WebWorker).to receive(:push_task).and_yield
       allow(CommandLine).to receive(:run!)
+      allow(Narou::ConvertWorker).to receive(:push_task)
       expect(NovelListProcessor).to receive(:clear_all_cache).at_least(:once)
 
       payload = { ids: [1] }.to_json
