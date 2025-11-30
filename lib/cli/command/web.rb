@@ -402,6 +402,9 @@ module Command
 
       # WebWorkerを起動（タスクキュー処理用）
       Narou::WebWorker.run
+      # ConvertWorkerを起動（変換タスク専用処理用）
+      require "lib/web/workers/convert_worker"
+      Narou::ConvertWorker.run
 
       if @options["open-browser"]
         frontend_url = should_start_frontend? ? "http://#{display_host}:4321/" : "http://#{display_host}:#{port}/"

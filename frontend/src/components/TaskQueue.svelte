@@ -373,7 +373,7 @@
     <div class="flex flex-col lg:flex-row gap-4">
       <!-- サマリーカード -->
       {#if taskSummary}
-        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:w-1/2">
+        <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 lg:w-2/3">
           <button
             onclick={() => {
               draftStatusFilter = "running";
@@ -383,10 +383,25 @@
           >
             <div class="flex flex-col items-center justify-center h-full">
               <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">
-                実行中
+                更新中
               </div>
               <div class="text-xl font-bold text-blue-700 dark:text-blue-300">
                 {taskSummary.current ? 1 : 0}
+              </div>
+            </div>
+          </button>
+          <button
+            class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 cursor-default"
+            disabled
+          >
+            <div class="flex flex-col items-center justify-center h-full">
+              <div class="text-xs text-purple-600 dark:text-purple-400 mb-1">
+                変換中
+              </div>
+              <div
+                class="text-xl font-bold text-purple-700 dark:text-purple-300"
+              >
+                {taskSummary.convert_current ? 1 : 0}
               </div>
             </div>
           </button>
@@ -402,7 +417,8 @@
                 待機中
               </div>
               <div class="text-xl font-bold text-gray-700 dark:text-gray-300">
-                {taskSummary.queued.length}
+                {taskSummary.queued.length +
+                  (taskSummary.convert_queued?.length || 0)}
               </div>
             </div>
           </button>
@@ -460,7 +476,7 @@
       {/if}
 
       <!-- フィルタ・ソートコントロール -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 lg:w-1/2">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 lg:w-1/3">
         <div class="flex flex-col sm:flex-row gap-4 items-end">
           <!-- テキスト検索 -->
           <div class="flex-1">

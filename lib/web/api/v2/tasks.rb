@@ -3,6 +3,7 @@
 require "sinatra/base"
 require "lib/web/api/v2/base"
 require "lib/web/workers/web_worker"
+require "lib/web/workers/convert_worker"
 require "lib/web/workers/task"
 
 module Narou
@@ -18,9 +19,13 @@ module Narou
             set_cors_headers
 
             begin
-              # 全タスクを取得（制限なし）
+              # 全タスクを取得（WebWorkerとConvertWorkerの両方から）
               # Rack::Deflaterが自動的にgzip圧縮してくれる
-              tasks = Narou::WebWorker.get_tasks
+              web_tasks = Narou::WebWorker.get_tasks
+              convert_tasks = Narou::ConvertWorker.get_tasks
+
+              # 両方のタスクを結合してタイムスタンプでソート
+              tasks = (web_tasks + convert_tasks).sort_by { |t| t[:created_at] || Time.now.to_s }.reverse
 
               json success_response(
                 { tasks: tasks, count: tasks.length }
@@ -37,7 +42,25 @@ module Narou
             set_cors_headers
 
             begin
-              summary = Narou::WebWorker.get_tasks_summary
+              # WebWorkerとConvertWorkerの統合されたサマリーを取得
+              web_summary = Narou::WebWorker.get_tasks_summary
+              convert_summary = Narou::ConvertWorker.get_tasks_summary
+
+              # 統合されたサマリーを作成
+              summary = {
+                current: web_summary[:current],
+                queued: web_summary[:queued] || [],
+                recent_completed: ((web_summary[:recent_completed] || []) + (convert_summary[:recent_completed] || []))
+                        .sort_by { |t| t[:completed_at] || t[:created_at] || "" }
+                        .reverse
+                        .first(10),
+                recent_failed: ((web_summary[:recent_failed] || []) + (convert_summary[:recent_failed] || []))
+                        .sort_by { |t| t[:failed_at] || t[:created_at] || "" }
+                        .reverse
+                        .first(10),
+                convert_current: convert_summary[:current],
+                convert_queued: convert_summary[:queued] || []
+              }
 
               json success_response(summary)
             rescue StandardError => e
@@ -54,7 +77,9 @@ module Narou
             task_id = params["id"]
 
             begin
+              # WebWorkerとConvertWorkerの両方から検索
               task = Narou::WebWorker.get_task(task_id)
+              task ||= Narou::ConvertWorker.get_task(task_id)
 
               unless task
                 status 404
@@ -94,7 +119,9 @@ module Narou
             task_id = params["id"]
 
             begin
+              # WebWorkerとConvertWorkerの両方から検索してキャンセル
               result = Narou::WebWorker.cancel_task(task_id)
+              result = Narou::ConvertWorker.cancel_task(task_id) unless result[:success]
 
               if result[:success]
                 json success_response({ message: result[:message] })
@@ -116,7 +143,9 @@ module Narou
             task_id = params["id"]
 
             begin
+              # WebWorkerとConvertWorkerの両方から検索して一時停止
               result = Narou::WebWorker.pause_task(task_id)
+              result = Narou::ConvertWorker.pause_task(task_id) unless result[:success]
 
               if result[:success]
                 json success_response({ message: result[:message] })
@@ -138,7 +167,9 @@ module Narou
             task_id = params["id"]
 
             begin
+              # WebWorkerとConvertWorkerの両方から検索して再開
               result = Narou::WebWorker.resume_task(task_id)
+              result = Narou::ConvertWorker.resume_task(task_id) unless result[:success]
 
               if result[:success]
                 json success_response({ message: result[:message] })
@@ -177,6 +208,7 @@ module Narou
 
             begin
               Narou::WebWorker.cancel
+              Narou::ConvertWorker.cancel
               Worker.cancel
               json success_response({ message: "All tasks canceled" })
             rescue StandardError => e
@@ -192,6 +224,7 @@ module Narou
 
             begin
               Narou::WebWorker.cancel
+              Narou::ConvertWorker.cancel
               Worker.cancel
               json success_response({ message: "All tasks canceled" })
             rescue StandardError => e
@@ -210,6 +243,7 @@ module Narou
               # task_id = params[:id]
               # 本来は個別タスクのキャンセルを実装すべき
               Narou::WebWorker.cancel
+              Narou::ConvertWorker.cancel
               Worker.cancel
               json success_response({ message: "Task canceled (currently cancels all tasks)" })
             rescue StandardError => e
