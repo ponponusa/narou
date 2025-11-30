@@ -461,39 +461,27 @@
 
       <!-- フィルタ・ソートコントロール -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 lg:w-1/2">
-        <div class="flex flex-col sm:flex-row gap-4">
+        <div class="flex flex-col sm:flex-row gap-4 items-end">
           <!-- テキスト検索 -->
           <div class="flex-1">
-            <label
-              for="search-text"
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
-              検索（ID, タイトル, 著者名）
-            </label>
             <input
               id="search-text"
               type="text"
               bind:value={draftSearchText}
               onkeydown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="検索..."
+              placeholder="小説ID、タイトル、著者名"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
 
           <!-- ステータスフィルタ -->
           <div class="sm:w-40">
-            <label
-              for="status-filter"
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
-              ステータス
-            </label>
             <select
               id="status-filter"
               bind:value={draftStatusFilter}
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
-              <option value="">すべて</option>
+              <option value="">ステータス</option>
               <option value="queued">待機中</option>
               <option value="running">実行中</option>
               <option value="paused">一時停止</option>
