@@ -257,11 +257,16 @@ export async function downloadNovels(
  * URLまたはIDから小説を追加してダウンロード（API v2）
  * @param url - 小説のURL または ncode
  * @param force - 強制ダウンロードフラグ
+ * @param tags - 追加するタグ（配列または文字列）
  */
-export async function addNovel(url: string, force = false): Promise<void> {
+export async function addNovel(
+  url: string,
+  force = false,
+  tags?: string[] | string
+): Promise<void> {
   await fetchApiV2<null>("/api/v2/novels/download", {
     method: "POST",
-    body: JSON.stringify({ targets: [url], force }),
+    body: JSON.stringify({ targets: [url], force, tags }),
   });
 }
 

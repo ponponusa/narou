@@ -6,6 +6,7 @@
 /* Base font size */
 body {
   font-size: 14px;
+  overflow-y: scroll; /* 縦スクロールバーを常に表示（レイアウトシフト防止） */
 }
 
 /* Heading styles with relative sizes */

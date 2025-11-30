@@ -1,6 +1,6 @@
 <!--
   小説追加モーダル
-  
+
   URLまたはncodeを入力して小説を追加
   複数の小説を一括で追加可能
 -->
@@ -90,7 +90,16 @@
     // 各小説を順番に追加
     for (const novel of novels) {
       try {
-        await addNovel(novel, forceAdd);
+        // タグを配列に変換
+        const tagArray = tags
+          .split(/[,、\s]+/)
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0);
+        await addNovel(
+          novel,
+          forceAdd,
+          tagArray.length > 0 ? tagArray : undefined
+        );
         results.success.push(novel);
       } catch (err) {
         const errorMessage =

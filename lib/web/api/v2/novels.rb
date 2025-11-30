@@ -94,6 +94,17 @@ module Narou
             targets = body["targets"]
             force = body["force"] || false
             convert_after_download = body["convert_after_download"] || false
+            tags = body["tags"] # タグ（配列または文字列）
+
+            # タグを配列に変換
+            tags_array = case tags
+                         when Array
+                           tags.map(&:to_s).reject(&:empty?)
+                         when String
+                           tags.split(/[,、\s]+/).map(&:strip).reject(&:empty?)
+                         else
+                           []
+                         end
 
             if targets.nil? || targets.empty?
               status 400
@@ -135,6 +146,18 @@ module Narou
                   NovelListProcessor.clear_all_cache
                   @@push_server.send_all(:'table.reload') if defined?(@@push_server)
 
+                  # ダウンロード完了後にタグを付与
+                  if tags_array.any?
+                    # 新規ダウンロードの場合、targetから小説データを検索
+                    downloaded_data = Downloader.get_data_by_target(target)
+                    if downloaded_data
+                      downloaded_id = downloaded_data["id"]
+                      # タグコマンドを実行
+                      CommandLine.run!("tag", "--add", tags_array.join(" "), downloaded_id.to_s)
+                      NovelListProcessor.clear_all_cache
+                    end
+                  end
+
                   # ダウンロード完了後に変換を実行
                   if convert_after_download && novel_id
                     # 変換タスクを作成
@@ -146,8 +169,9 @@ module Narou
                       max_retries: 0
                     )
 
-                    # 変換タスクをキューに追加
-                    Narou::WebWorker.push_task(convert_task) do
+                    # 変換タスクを変換専用ワーカーに追加（並列処理）
+                    require "lib/web/workers/convert_worker"
+                    Narou::ConvertWorker.push_task(convert_task) do
                       CommandLine.run!("convert", "--no-open", novel_id.to_s)
                       NovelListProcessor.clear_all_cache
                     end
@@ -210,8 +234,9 @@ module Narou
                   max_retries: 0
                 )
 
-                # タスクをキューに追加
-                Narou::WebWorker.push_task(task) do
+                # タスクを変換専用ワーカーに追加
+                require "lib/web/workers/convert_worker"
+                Narou::ConvertWorker.push_task(task) do
                   CommandLine.run!("convert", "--no-open", id)
                   NovelListProcessor.clear_all_cache
                 end
@@ -300,9 +325,8 @@ module Narou
                       frozen_list.save
                     end
                     begin
-                      args = ["--force"]
-                      args << "--no-convert" unless convert_after_update
-                      args << novel_id.to_s
+                      # 常に --no-convert で実行（変換は別ワーカーで実行）
+                      args = ["--force", "--no-convert", novel_id.to_s]
                       CommandLine.run!("download", *args)
                     ensure
                       # 元々凍結されていた場合は再凍結
@@ -314,14 +338,31 @@ module Narou
                     end
                   else
                     # 新着のみ確認（update コマンド）
-                    args = []
+                    # 常に --no-convert で実行（変換は別ワーカーで実行）
+                    args = ["--no-convert"]
                     args << "--force" if include_frozen # 凍結小説も対象
-                    args << "--no-convert" unless convert_after_update
                     args << novel_id.to_s
                     CommandLine.run!("update", *args)
                   end
                   NovelListProcessor.clear_all_cache
                   @@push_server.send_all(:'table.reload') if defined?(@@push_server)
+
+                  # 更新完了後に変換タスクをConvertWorkerに追加
+                  if convert_after_update
+                    convert_task = Narou::Task.new(
+                      type: :convert,
+                      novel_id: novel_id,
+                      novel_title: novel_title,
+                      novel_author: novel_author,
+                      max_retries: 0
+                    )
+
+                    require "lib/web/workers/convert_worker"
+                    Narou::ConvertWorker.push_task(convert_task) do
+                      CommandLine.run!("convert", "--no-open", novel_id.to_s)
+                      NovelListProcessor.clear_all_cache
+                    end
+                  end
                 end
 
                 task_ids << task.id
