@@ -373,9 +373,9 @@
           <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {novel.title}
           </h3>
-          {#if novel.promo_tags_title}
+          {#if novel.title_original && novel.title_original !== novel.title}
             <p class="text-sm text-gray-600 dark:text-gray-400">
-              元タイトル: {novel.promo_tags_title}
+              元タイトル: {novel.title_original}
             </p>
           {/if}
 
@@ -429,9 +429,9 @@
               {:else}
                 {novel.author}
               {/if}
-              {#if novel.promo_tags_author}
+              {#if novel.author_original && novel.author_original !== novel.author}
                 <span class="text-sm text-gray-600 dark:text-gray-400">
-                  (元: {novel.promo_tags_author})
+                  (元: {novel.author_original})
                 </span>
               {/if}
             </dd>

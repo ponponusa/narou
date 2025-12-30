@@ -71,6 +71,8 @@ export interface Novel {
   id: number;
   title: string;
   author: string;
+  title_original?: string; // プロモタグ除去前の元タイトル
+  author_original?: string; // プロモタグ除去前の元著者
   author_url?: string; // 著者ページURL
   sitename: string;
   site_top_url?: string; // サイトトップURL
@@ -88,8 +90,8 @@ export interface Novel {
   convert_date?: string;
   send_date?: string;
   promo_tags?: string[];
-  promo_tags_title?: string;
-  promo_tags_author?: string;
+  promo_tags_title?: string[];
+  promo_tags_author?: string[];
   general_all_no?: number; // 話数
   length?: number; // 文字数
 }

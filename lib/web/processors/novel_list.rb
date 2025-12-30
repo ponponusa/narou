@@ -4,6 +4,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require "lib/web/helpers/novel_status_helper"
+
 #
 # 小説一覧データの処理を担当するモジュール
 #
@@ -362,12 +364,7 @@ module NovelListProcessor
       novel_type: data["novel_type"] == 2 ? "短編" : "連載",
       tags: tags_html,
       raw_tags: tags, # 生のタグ配列も追加（JavaScript側での直接アクセス用）
-      status: [
-        is_frozen ? "凍結" : nil,
-        tags.include?("end") ? "完結" : nil,
-        tags.include?("404") ? "削除" : nil,
-        data["suspend"] ? "中断" : nil
-      ].compact.join(", "),
+      status: NovelStatusHelper.generate_novel_status(id, data),
       promo_tags: promo_tags,
       promo_tags_title: promo_tags_title,
       promo_tags_author: promo_tags_author,

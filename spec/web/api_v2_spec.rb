@@ -136,8 +136,11 @@ RSpec.describe "Narou::AppServer API v2" do
       allow(database).to receive(:[]).with(1).and_return({
         "id" => 1,
         "title" => "Test Novel",
-        "author" => "Test Author"
+        "author" => "Test Author",
+        "tags" => []
       })
+      allow(Narou).to receive(:novel_frozen?).with(1).and_return(false)
+      allow(Downloader).to receive(:get_novel_data_dir_by_target).and_return(nil)
 
       get "/api/v2/novels/1"
 
@@ -156,6 +159,81 @@ RSpec.describe "Narou::AppServer API v2" do
 
       expect(last_response.status).to eq(404)
       expect(json_response["success"]).to be false
+    end
+
+    it "generates status field dynamically" do
+      database = instance_double(Database)
+      allow(Database).to receive(:instance).and_return(database)
+      allow(database).to receive(:[]).with(1).and_return({
+        "id" => 1,
+        "title" => "Test Novel",
+        "author" => "Test Author",
+        "tags" => ["end"],
+        "suspend" => false
+      })
+      allow(Narou).to receive(:novel_frozen?).with(1).and_return(false)
+      allow(Downloader).to receive(:get_novel_data_dir_by_target).and_return(nil)
+
+      get "/api/v2/novels/1"
+
+      expect(last_response).to be_ok
+      expect(json_response["data"]["status"]).to eq("完結")
+    end
+
+    it "includes title_original and author_original when present" do
+      database = instance_double(Database)
+      allow(Database).to receive(:instance).and_return(database)
+      allow(database).to receive(:[]).with(1).and_return({
+        "id" => 1,
+        "title" => "Test Novel",
+        "author" => "Test Author",
+        "title_original" => "【書籍化】Test Novel",
+        "author_original" => "Test Author【受賞】",
+        "tags" => []
+      })
+      allow(Narou).to receive(:novel_frozen?).with(1).and_return(false)
+      allow(Downloader).to receive(:get_novel_data_dir_by_target).and_return(nil)
+
+      get "/api/v2/novels/1"
+
+      expect(last_response).to be_ok
+      expect(json_response["data"]["title_original"]).to eq("【書籍化】Test Novel")
+      expect(json_response["data"]["author_original"]).to eq("Test Author【受賞】")
+    end
+
+    it "includes download_date and convert_date from filesystem" do
+      database = instance_double(Database)
+      allow(Database).to receive(:instance).and_return(database)
+      allow(database).to receive(:[]).with(1).and_return({
+        "id" => 1,
+        "title" => "Test Novel",
+        "author" => "Test Author",
+        "tags" => []
+      })
+      allow(Narou).to receive(:novel_frozen?).with(1).and_return(false)
+
+      # ファイルシステムのモック
+      novel_dir = "/test/novel/dir"
+      allow(Downloader).to receive(:get_novel_data_dir_by_target).with(1).and_return(novel_dir)
+      allow(Dir).to receive(:exist?).with(novel_dir).and_return(true)
+
+      toc_file = File.join(novel_dir, "toc.yaml")
+      allow(File).to receive(:exist?).with(toc_file).and_return(true)
+      download_time = Time.new(2025, 1, 1, 12, 0, 0)
+      allow(File).to receive(:mtime).with(toc_file).and_return(download_time)
+
+      allow(Narou).to receive(:get_device).and_return(nil)
+      epub_path = "/test/novel.epub"
+      allow(Narou).to receive(:get_ebook_file_paths).with(1, ".epub").and_return([epub_path])
+      allow(File).to receive(:exist?).with(epub_path).and_return(true)
+      convert_time = Time.new(2025, 1, 2, 12, 0, 0)
+      allow(File).to receive(:mtime).with(epub_path).and_return(convert_time)
+
+      get "/api/v2/novels/1"
+
+      expect(last_response).to be_ok
+      expect(json_response["data"]["download_date"]).not_to be_nil
+      expect(json_response["data"]["convert_date"]).not_to be_nil
     end
   end
 

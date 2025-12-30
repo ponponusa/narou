@@ -81,6 +81,7 @@
     | "title"
     | "author"
     | "sitename"
+    | "novel_type"
     | "updated_at"
     | "status"
     | "tags"
@@ -117,6 +118,7 @@
     title: boolean;
     author: boolean;
     sitename: boolean;
+    novel_type: boolean; // 掲載種別
     status: boolean;
     tags: boolean;
     episode_count: boolean; // 話数
@@ -133,6 +135,7 @@
     title: true,
     author: true,
     sitename: true,
+    novel_type: true,
     status: true,
     tags: true,
     episode_count: false,
@@ -245,6 +248,7 @@
         title: true,
         author: true,
         sitename: false,
+        novel_type: false,
         status: true,
         tags: false,
         episode_count: false,
@@ -261,6 +265,7 @@
         title: true,
         author: true,
         sitename: true,
+        novel_type: true,
         status: true,
         tags: true,
         episode_count: false,
@@ -286,6 +291,7 @@
       title: true,
       author: true,
       sitename: true,
+      novel_type: true,
       status: true,
       tags: true,
       episode_count: true,
@@ -305,6 +311,7 @@
       title: true, // 必須
       author: true, // 必須
       sitename: true, // 必須
+      novel_type: false,
       status: false,
       tags: false,
       episode_count: false,
@@ -486,6 +493,10 @@
             case "sitename":
               aVal = a.sitename || "";
               bVal = b.sitename || "";
+              break;
+            case "novel_type":
+              aVal = a.novel_type || "";
+              bVal = b.novel_type || "";
               break;
             case "updated_at":
               aVal = a.last_update || 0;
@@ -1209,6 +1220,7 @@
       | "title"
       | "author"
       | "sitename"
+      | "novel_type"
       | "updated_at"
       | "status"
       | "tags"
@@ -1705,13 +1717,15 @@
                         ? "著者"
                         : sortBy === "sitename"
                           ? "サイト"
-                          : sortBy === "updated_at"
-                            ? "更新日"
-                            : sortBy === "status"
-                              ? "状態"
-                              : sortBy === "tags"
-                                ? "タグ"
-                                : "不明"} ({sortOrder === "asc"
+                          : sortBy === "novel_type"
+                            ? "掲載種別"
+                            : sortBy === "updated_at"
+                              ? "更新日"
+                              : sortBy === "status"
+                                ? "状態"
+                                : sortBy === "tags"
+                                  ? "タグ"
+                                  : "不明"} ({sortOrder === "asc"
                     ? "昇順"
                     : "降順"})
                 </span>
@@ -1950,6 +1964,24 @@
               <span class="text-sm text-gray-700 dark:text-gray-300"
                 >掲載サイト <span class="text-xs text-gray-500">（必須）</span
                 ></span
+              >
+            </label>
+
+            <label
+              class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={columnVisibility.novel_type}
+                onchange={(e) =>
+                  handleColumnToggle(
+                    "novel_type",
+                    (e.target as HTMLInputElement).checked
+                  )}
+                class="w-4 h-4 rounded"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300"
+                >掲載種別</span
               >
             </label>
 
@@ -2372,6 +2404,25 @@
                     {/if}
                   </span>
                 </th>
+                {#if columnVisibility.novel_type}
+                  <th
+                    class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                    onclick={() => handleSort("novel_type")}
+                  >
+                    <span class="flex items-center gap-1">
+                      掲載種別
+                      {#if sortBy === "novel_type"}
+                        <i
+                          class="fas fa-sort-{sortOrder === 'asc'
+                            ? 'up'
+                            : 'down'} text-blue-500"
+                        ></i>
+                      {:else}
+                        <i class="fas fa-sort text-gray-400"></i>
+                      {/if}
+                    </span>
+                  </th>
+                {/if}
                 {#if columnVisibility.status}
                   <th
                     class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -2529,9 +2580,7 @@
                           onclick={() => openNovelDetail(novel)}
                           class="text-blue-600 dark:text-blue-400 hover:underline wrap-break-word text-left font-medium"
                         >
-                          {(typeof novel.promo_tags_title === "string" &&
-                            novel.promo_tags_title.trim()) ||
-                            novel.title}
+                          {novel.title}
                         </button>
                         {#if novel.frozen}
                           <span
@@ -2586,6 +2635,17 @@
                       {novel.sitename}
                     {/if}
                   </td>
+                  {#if columnVisibility.novel_type}
+                    <td class="px-3 py-2 text-sm">
+                      {#if novel.novel_type}
+                        <span
+                          class="px-2 py-1 text-xs rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 whitespace-nowrap"
+                        >
+                          {novel.novel_type}
+                        </span>
+                      {/if}
+                    </td>
+                  {/if}
                   {#if columnVisibility.status}
                     <td class="px-3 py-2 text-sm">
                       <div class="flex flex-wrap gap-1">
@@ -2601,13 +2661,6 @@
                             class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 whitespace-nowrap"
                           >
                             {novel.status}
-                          </span>
-                        {/if}
-                        {#if novel.novel_type}
-                          <span
-                            class="px-2 py-1 text-xs rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 whitespace-nowrap"
-                          >
-                            {novel.novel_type}
                           </span>
                         {/if}
                       </div>

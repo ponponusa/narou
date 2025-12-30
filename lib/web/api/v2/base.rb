@@ -11,6 +11,8 @@
 # JSON レスポンスを基本とし、REST原則に従う
 #
 
+require "lib/web/helpers/novel_status_helper"
+
 module Narou
   module ApiV2
     # API v2 共通レスポンスフォーマット
@@ -99,6 +101,14 @@ module Narou
         # エラーが発生した場合は準備未完了とみなす
         logger.warn "Database ready check failed: #{e.message}" if defined?(logger)
         false
+      end
+
+      # 小説の状態を生成（共通ヘルパーへの委譲）
+      # @param novel_id [Integer] 小説ID
+      # @param data [Hash] 小説データ（データベースレコード）
+      # @return [String] 状態文字列（例: "凍結, 完結"）
+      def generate_novel_status(novel_id, data)
+        NovelStatusHelper.generate_novel_status(novel_id, data)
       end
     end
   end

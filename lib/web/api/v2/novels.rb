@@ -78,6 +78,31 @@ module Narou
                 end
               end
 
+              # プロモタグ除去前の元のタイトルと著者を含める
+              novel_data["title_original"] = data["title_original"] if data["title_original"]
+              novel_data["author_original"] = data["author_original"] if data["author_original"]
+
+              # 状態を動的に生成
+              novel_data["status"] = generate_novel_status(id, data)
+
+              # ダウンロード日時と変換日時をファイルシステムから取得
+              novel_dir = Downloader.get_novel_data_dir_by_target(id)
+              if novel_dir && Dir.exist?(novel_dir)
+                # toc.yaml の最終更新日時 = ダウンロード日時
+                toc_file = File.join(novel_dir, "toc.yaml")
+                if File.exist?(toc_file)
+                  novel_data["download_date"] = File.mtime(toc_file)
+                end
+
+                # EPUB ファイルの最終更新日時 = 変換日時
+                device = Narou.get_device
+                ext = device ? device.ebook_file_ext : ".epub"
+                epub_paths = Narou.get_ebook_file_paths(id, ext)
+                if !epub_paths.empty? && File.exist?(epub_paths[0])
+                  novel_data["convert_date"] = File.mtime(epub_paths[0])
+                end
+              end
+
               json success_response(novel_data)
             else
               status 404
