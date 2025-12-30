@@ -13,11 +13,16 @@
   let onSaveCallback = $state<(() => void) | null>(null);
   let tagStates = $state<Record<string, number>>({});
   let tagColors = $state<Record<string, string>>({});
+  let tagCounts = $state<Record<string, number>>({});
   let newTagName = $state("");
   let newTagColor = $state("green");
   let isLoading = $state(false);
   let isSaving = $state(false);
   let error = $state<string | null>(null);
+  let colorPickerOpenTag = $state<string | null>(null);
+  let newTagColorPickerOpen = $state(false);
+  let editingTagName = $state<string | null>(null);
+  let editingTagNewName = $state<string>("");
 
   // 利用可能な色
   const AVAILABLE_COLORS = [
@@ -85,15 +90,16 @@
     try {
       const tagInfo = await getTagInfo(selectedIds);
 
-      // タグ状態を初期化 - すべての既存タグをデフォルトで「維持」に設定
+      // タグ状態を初期化
       tagStates = {};
       tagColors = {};
+      tagCounts = {};
       Object.entries(tagInfo).forEach(([tagName, info]) => {
-        // すべての既存タグを「維持」状態で表示
-        // count > 0: 選択された小説の一部または全部が持っている
-        // count === 0: 選択された小説は持っていない（でも他の小説が持っている）
+        // 既存の紐付け状態をそのまま維持
+        // すべてのタグの初期状態は KEEP（維持）
         tagStates[tagName] = TAG_STATE.KEEP;
         tagColors[tagName] = info.color;
+        tagCounts[tagName] = info.count;
       });
     } catch (err) {
       error =
@@ -105,18 +111,19 @@
   }
 
   /**
-   * タグ状態を切り替え
+   * タグ状態を切り替え（トリステート）
+   * KEEP → ADD → DELETE → KEEP ...
    */
   function toggleTagState(tagName: string) {
-    const currentState = tagStates[tagName] ?? TAG_STATE.DELETE;
+    const currentState = tagStates[tagName] ?? TAG_STATE.KEEP;
 
-    // 状態を順番に切り替え: DELETE → KEEP → ADD → DELETE → ...
-    if (currentState === TAG_STATE.DELETE) {
-      tagStates[tagName] = TAG_STATE.KEEP;
-    } else if (currentState === TAG_STATE.KEEP) {
+    // トリステートトグル: KEEP → ADD → DELETE → KEEP ...
+    if (currentState === TAG_STATE.KEEP) {
       tagStates[tagName] = TAG_STATE.ADD;
-    } else {
+    } else if (currentState === TAG_STATE.ADD) {
       tagStates[tagName] = TAG_STATE.DELETE;
+    } else {
+      tagStates[tagName] = TAG_STATE.KEEP;
     }
   }
 
@@ -137,6 +144,7 @@
 
     tagStates[trimmed] = TAG_STATE.ADD;
     tagColors[trimmed] = newTagColor;
+    tagCounts[trimmed] = 0;
     newTagName = "";
     error = null;
   }
@@ -185,22 +193,6 @@
       console.error("Failed to save tags:", err);
     } finally {
       isSaving = false;
-    }
-  }
-
-  /**
-   * タグ状態のラベルを取得
-   */
-  function getStateLabel(state: number): string {
-    switch (state) {
-      case TAG_STATE.DELETE:
-        return "削除";
-      case TAG_STATE.KEEP:
-        return "維持";
-      case TAG_STATE.ADD:
-        return "追加";
-      default:
-        return "不明";
     }
   }
 
@@ -280,6 +272,91 @@
    */
   function changeTagColor(tagName: string, newColor: string) {
     tagColors[tagName] = newColor;
+    colorPickerOpenTag = null;
+  }
+
+  /**
+   * 色ピッカーのトグル
+   */
+  function toggleColorPicker(tagName: string) {
+    colorPickerOpenTag = colorPickerOpenTag === tagName ? null : tagName;
+  }
+
+  /**
+   * 色の●記号を取得
+   */
+  function getColorDot(color: string): string {
+    const colorHex: Record<string, string> = {
+      red: "#EF4444",
+      blue: "#3B82F6",
+      green: "#10B981",
+      yellow: "#F59E0B",
+      magenta: "#EC4899",
+      cyan: "#06B6D4",
+      white: "#9CA3AF",
+    };
+    return colorHex[color] || colorHex.white;
+  }
+
+  /**
+   * 既存の紐付け状態を判定
+   * @returns 'all' - 全ての選択小説に紐付いている, 'partial' - 一部に紐付いている, 'none' - 紐付いていない
+   */
+  function getExistingLinkState(tagName: string): "all" | "partial" | "none" {
+    const count = tagCounts[tagName] || 0;
+    if (count === 0) return "none";
+    if (count === selectedIds.length) return "all";
+    return "partial";
+  }
+
+  /**
+   * タグ名の編集を開始
+   */
+  function startEditingTag(tagName: string) {
+    editingTagName = tagName;
+    editingTagNewName = tagName;
+  }
+
+  /**
+   * タグ名の編集を完了
+   */
+  function finishEditingTag() {
+    if (!editingTagName) return;
+
+    const trimmed = editingTagNewName.trim();
+    if (!trimmed) {
+      error = "タグ名は空にできません";
+      return;
+    }
+
+    if (trimmed !== editingTagName && tagStates[trimmed] !== undefined) {
+      error = "このタグ名は既に存在します";
+      return;
+    }
+
+    if (trimmed !== editingTagName) {
+      // タグ名を変更
+      tagStates[trimmed] = tagStates[editingTagName];
+      tagColors[trimmed] = tagColors[editingTagName];
+      tagCounts[trimmed] = tagCounts[editingTagName];
+
+      delete tagStates[editingTagName];
+      delete tagColors[editingTagName];
+      delete tagCounts[editingTagName];
+    }
+
+    editingTagName = null;
+    editingTagNewName = "";
+    error = null;
+  }
+
+  /**
+   * タグ名の編集をキャンセル
+   */
+  function cancelEditingTag() {
+    editingTagName = null;
+    editingTagNewName = "";
+    error = null;
   }
 
   /**
@@ -352,7 +429,56 @@
             >
               新しいタグを追加
             </label>
-            <div class="flex gap-2 flex-wrap">
+            <div class="flex gap-2 flex-wrap items-center">
+              <!-- 色選択ドット -->
+              <div class="relative">
+                <button
+                  type="button"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    newTagColorPickerOpen = !newTagColorPickerOpen;
+                  }}
+                  class="color-dot-button-large"
+                  style="color: {getColorDot(newTagColor)}"
+                  disabled={isSaving}
+                  title="色を選択"
+                >
+                  ●
+                </button>
+
+                <!-- 色選択ポップアップ -->
+                {#if newTagColorPickerOpen}
+                  <div class="color-picker-popup">
+                    {#each AVAILABLE_COLORS as color}
+                      <button
+                        type="button"
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          newTagColor = color;
+                          newTagColorPickerOpen = false;
+                        }}
+                        class="color-option"
+                        style="color: {getColorDot(color)}"
+                        title={color === "green"
+                          ? "緑"
+                          : color === "yellow"
+                            ? "黄"
+                            : color === "blue"
+                              ? "青"
+                              : color === "magenta"
+                                ? "マゼンタ"
+                                : color === "cyan"
+                                  ? "シアン"
+                                  : color === "red"
+                                    ? "赤"
+                                    : "白"}
+                      >
+                        ●
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
               <input
                 id="new-tag"
                 type="text"
@@ -362,29 +488,6 @@
                 class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isSaving}
               />
-              <select
-                bind:value={newTagColor}
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isSaving}
-              >
-                {#each AVAILABLE_COLORS as color}
-                  <option value={color}>
-                    {color === "green"
-                      ? "緑"
-                      : color === "yellow"
-                        ? "黄"
-                        : color === "blue"
-                          ? "青"
-                          : color === "magenta"
-                            ? "マゼンタ"
-                            : color === "cyan"
-                              ? "シアン"
-                              : color === "red"
-                                ? "赤"
-                                : "白"}
-                  </option>
-                {/each}
-              </select>
               <button
                 onclick={addNewTag}
                 class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
@@ -397,73 +500,263 @@
 
           <!-- タグリスト -->
           <div>
-            <h3
-              class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3"
-            >
-              タグをクリックして状態を変更
-            </h3>
-
             {#if Object.keys(tagStates).length === 0}
               <p class="text-center text-gray-500 dark:text-gray-400 py-8">
                 タグがありません。上のフォームから新しいタグを追加してください。
               </p>
             {:else}
-              <div class="space-y-2">
-                {#each Object.entries(tagStates) as [tagName, state]}
-                  <div class="flex items-center gap-2">
-                    <button
-                      onclick={() => toggleTagState(tagName)}
-                      class="flex-1 flex items-center justify-between px-4 py-3 border-2 rounded-lg transition-all hover:shadow-md {getStateClass(
-                        state
-                      )}"
-                      disabled={isSaving}
-                    >
-                      <div class="flex items-center gap-2">
-                        <span
-                          class="px-2 py-1 rounded text-xs font-semibold"
-                          style={getColorStyle(tagColors[tagName] || "white")}
+              <!-- 紐付け済みタグ -->
+              {@const linkedTags = Object.entries(tagStates).filter(
+                ([name]) => getExistingLinkState(name) !== "none"
+              )}
+              {#if linkedTags.length > 0}
+                <div class="mb-6">
+                  <h3
+                    class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3"
+                  >
+                    紐付け済みタグ
+                  </h3>
+                  <div class="grid grid-cols-2 gap-2">
+                    {#each linkedTags as [tagName, state]}
+                      <div
+                        class="tag-item-new {getStateClass(
+                          state
+                        )} {getExistingLinkState(tagName) === 'all'
+                          ? 'linked-all'
+                          : 'linked-partial'}"
+                      >
+                        <!-- 色選択ボタン -->
+                        <div class="relative color-picker-container">
+                          <button
+                            type="button"
+                            onclick={(e) => {
+                              e.stopPropagation();
+                              toggleColorPicker(tagName);
+                            }}
+                            class="color-dot-button"
+                            style="color: {getColorDot(
+                              tagColors[tagName] || 'white'
+                            )}"
+                            disabled={isSaving}
+                            title="色を変更"
+                          >
+                            ●
+                          </button>
+
+                          <!-- 色選択ポップアップ -->
+                          {#if colorPickerOpenTag === tagName}
+                            <div class="color-picker-popup">
+                              {#each AVAILABLE_COLORS as color}
+                                <button
+                                  type="button"
+                                  onclick={(e) => {
+                                    e.stopPropagation();
+                                    changeTagColor(tagName, color);
+                                  }}
+                                  class="color-option"
+                                  style="color: {getColorDot(color)}"
+                                  title={color === "green"
+                                    ? "緑"
+                                    : color === "yellow"
+                                      ? "黄"
+                                      : color === "blue"
+                                        ? "青"
+                                        : color === "magenta"
+                                          ? "マゼンタ"
+                                          : color === "cyan"
+                                            ? "シアン"
+                                            : color === "red"
+                                              ? "赤"
+                                              : "白"}
+                                >
+                                  ●
+                                </button>
+                              {/each}
+                            </div>
+                          {/if}
+                        </div>
+
+                        <!-- タグ名（編集可能） -->
+                        {#if editingTagName === tagName}
+                          <input
+                            type="text"
+                            bind:value={editingTagNewName}
+                            onkeydown={(e) => {
+                              if (e.key === "Enter") finishEditingTag();
+                              if (e.key === "Escape") cancelEditingTag();
+                            }}
+                            onblur={finishEditingTag}
+                            class="tag-name-input"
+                            disabled={isSaving}
+                            autofocus
+                          />
+                        {:else}
+                          <div
+                            onclick={() => startEditingTag(tagName)}
+                            class="tag-name-display"
+                            role="button"
+                            tabindex="0"
+                          >
+                            {tagName}
+                          </div>
+                        {/if}
+
+                        <!-- 小説数カウント（複数選択時のみ） -->
+                        {#if selectedIds.length > 1}
+                          <span class="tag-count-new">
+                            {tagCounts[tagName] || 0}/{selectedIds.length}
+                          </span>
+                        {/if}
+
+                        <!-- 操作状態トグル -->
+                        <button
+                          type="button"
+                          onclick={() => toggleTagState(tagName)}
+                          class="tag-state-toggle {state === TAG_STATE.DELETE
+                            ? 'toggle-off'
+                            : state === TAG_STATE.ADD
+                              ? 'toggle-on'
+                              : 'toggle-partial'}"
+                          disabled={isSaving}
                         >
-                          {tagName}
-                        </span>
+                          <div class="toggle-track">
+                            <div class="toggle-thumb"></div>
+                          </div>
+                          <span class="toggle-label">
+                            {state === TAG_STATE.DELETE
+                              ? "紐付けない"
+                              : state === TAG_STATE.ADD
+                                ? "すべて連携"
+                                : getExistingLinkState(tagName) === "all"
+                                  ? "すべて連携"
+                                  : "一部連携"}
+                          </span>
+                        </button>
                       </div>
-                      <div class="flex items-center gap-3">
-                        <span class="state-badge">
-                          {getStateLabel(state)}
-                        </span>
-                        <span class="text-xs text-gray-900 dark:text-gray-900">
-                          クリックで切り替え
-                        </span>
-                      </div>
-                    </button>
-                    <select
-                      value={tagColors[tagName] || "white"}
-                      onchange={(e) =>
-                        changeTagColor(tagName, e.currentTarget.value)}
-                      class="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      disabled={isSaving}
-                      title="タグの色を変更"
-                    >
-                      {#each AVAILABLE_COLORS as color}
-                        <option value={color}>
-                          {color === "green"
-                            ? "緑"
-                            : color === "yellow"
-                              ? "黄"
-                              : color === "blue"
-                                ? "青"
-                                : color === "magenta"
-                                  ? "マゼンタ"
-                                  : color === "cyan"
-                                    ? "シアン"
-                                    : color === "red"
-                                      ? "赤"
-                                      : "白"}
-                        </option>
-                      {/each}
-                    </select>
+                    {/each}
                   </div>
-                {/each}
-              </div>
+                </div>
+              {/if}
+
+              <!-- 未紐付けタグ -->
+              {@const unlinkedTags = Object.entries(tagStates).filter(
+                ([name]) => getExistingLinkState(name) === "none"
+              )}
+              {#if unlinkedTags.length > 0}
+                <div>
+                  <h3
+                    class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3"
+                  >
+                    未紐付けタグ
+                  </h3>
+                  <div class="grid grid-cols-2 gap-2">
+                    {#each unlinkedTags as [tagName, state]}
+                      <div
+                        class="tag-item-new {getStateClass(state)} linked-none"
+                      >
+                        <!-- 色選択ボタン -->
+                        <div class="relative color-picker-container">
+                          <button
+                            type="button"
+                            onclick={(e) => {
+                              e.stopPropagation();
+                              toggleColorPicker(tagName);
+                            }}
+                            class="color-dot-button"
+                            style="color: {getColorDot(
+                              tagColors[tagName] || 'white'
+                            )}"
+                            disabled={isSaving}
+                            title="色を変更"
+                          >
+                            ●
+                          </button>
+
+                          <!-- 色選択ポップアップ -->
+                          {#if colorPickerOpenTag === tagName}
+                            <div class="color-picker-popup">
+                              {#each AVAILABLE_COLORS as color}
+                                <button
+                                  type="button"
+                                  onclick={(e) => {
+                                    e.stopPropagation();
+                                    changeTagColor(tagName, color);
+                                  }}
+                                  class="color-option"
+                                  style="color: {getColorDot(color)}"
+                                  title={color === "green"
+                                    ? "緑"
+                                    : color === "yellow"
+                                      ? "黄"
+                                      : color === "blue"
+                                        ? "青"
+                                        : color === "magenta"
+                                          ? "マゼンタ"
+                                          : color === "cyan"
+                                            ? "シアン"
+                                            : color === "red"
+                                              ? "赤"
+                                              : "白"}
+                                >
+                                  ●
+                                </button>
+                              {/each}
+                            </div>
+                          {/if}
+                        </div>
+
+                        <!-- タグ名（編集可能） -->
+                        {#if editingTagName === tagName}
+                          <input
+                            type="text"
+                            bind:value={editingTagNewName}
+                            onkeydown={(e) => {
+                              if (e.key === "Enter") finishEditingTag();
+                              if (e.key === "Escape") cancelEditingTag();
+                            }}
+                            onblur={finishEditingTag}
+                            class="tag-name-input"
+                            disabled={isSaving}
+                            autofocus
+                          />
+                        {:else}
+                          <div
+                            onclick={() => startEditingTag(tagName)}
+                            class="tag-name-display"
+                            role="button"
+                            tabindex="0"
+                          >
+                            {tagName}
+                          </div>
+                        {/if}
+
+                        <!-- 操作状態トグル -->
+                        <button
+                          type="button"
+                          onclick={() => toggleTagState(tagName)}
+                          class="tag-state-toggle {state === TAG_STATE.DELETE
+                            ? 'toggle-off'
+                            : state === TAG_STATE.ADD
+                              ? 'toggle-on'
+                              : 'toggle-partial'}"
+                          disabled={isSaving}
+                        >
+                          <div class="toggle-track">
+                            <div class="toggle-thumb"></div>
+                          </div>
+                          <span class="toggle-label">
+                            {state === TAG_STATE.DELETE
+                              ? "紐付けない"
+                              : state === TAG_STATE.ADD
+                                ? "リンクする"
+                                : "未連携"}
+                          </span>
+                        </button>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
             {/if}
           </div>
 
@@ -510,69 +803,291 @@
 {/if}
 
 <style>
-  /* タグ状態別のスタイル */
+  /* 新しいタグアイテム */
+  .tag-item-new {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    transition: all 0.15s;
+    background-color: #f9fafb;
+  }
+
+  :global(.dark) .tag-item-new {
+    background-color: #1f2937;
+  }
+
+  /* 既存の紐付け状態に応じた枠線 */
+  .linked-all {
+    border: 3px solid #3b82f6;
+  }
+
+  :global(.dark) .linked-all {
+    border-color: #60a5fa;
+  }
+
+  .linked-partial {
+    border: 2px solid #f59e0b;
+  }
+
+  :global(.dark) .linked-partial {
+    border-color: #fbbf24;
+  }
+
+  .linked-none {
+    border: 1px solid #d1d5db;
+  }
+
+  :global(.dark) .linked-none {
+    border-color: #4b5563;
+  }
+
+  /* 操作状態別の背景色 */
   .state-delete {
-    border-color: #ef4444;
     background-color: #fee2e2;
   }
 
   :global(.dark) .state-delete {
-    border-color: #991b1b;
     background-color: #7f1d1d;
   }
 
   .state-keep {
-    border-color: #9ca3af;
-    background-color: #d1d5db;
-  }
-
-  :global(.dark) .state-keep {
-    border-color: #6b7280;
-    background-color: #9ca3af;
+    /* デフォルトの背景色を使用 */
   }
 
   .state-add {
-    border-color: #10b981;
     background-color: #d1fae5;
   }
 
   :global(.dark) .state-add {
-    border-color: #065f46;
     background-color: #064e3b;
   }
 
-  .state-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
+  /* 色選択コンテナ */
+  .color-picker-container {
+    flex-shrink: 0;
+  }
+
+  /* 色選択ボタン */
+  .color-dot-button {
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .color-dot-button:hover:not(:disabled) {
+    transform: scale(1.2);
+  }
+
+  .color-dot-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* 新規タグ追加用の大きめ色選択ボタン */
+  .color-dot-button-large {
+    font-size: 2rem;
+    line-height: 1;
+    padding: 0.25rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .color-dot-button-large:hover:not(:disabled) {
+    transform: scale(1.2);
+  }
+
+  .color-dot-button-large:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* 色選択ポップアップ */
+  .color-picker-popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.25rem;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    display: flex;
+    gap: 0.25rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+  }
+
+  :global(.dark) .color-picker-popup {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  /* 色選択オプション */
+  .color-option {
+    font-size: 1.5rem;
+    line-height: 1;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .color-option:hover {
+    transform: scale(1.3);
+  }
+
+  /* タグ名表示 */
+  .tag-name-display {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1f2937;
+    min-width: 0;
+    cursor: text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.15s;
+  }
+
+  :global(.dark) .tag-name-display {
+    color: #f3f4f6;
+  }
+
+  .tag-name-display:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  :global(.dark) .tag-name-display:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  /* タグ名入力 */
+  .tag-name-input {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1f2937;
+    min-width: 0;
+    padding: 0.25rem 0.5rem;
+    border: 2px solid #3b82f6;
+    border-radius: 0.25rem;
+    background-color: white;
+    outline: none;
+  }
+
+  :global(.dark) .tag-name-input {
+    color: #f3f4f6;
+    background-color: #374151;
+    border-color: #60a5fa;
+  }
+
+  /* 小説数カウント */
+  .tag-count-new {
+    flex-shrink: 0;
     font-size: 0.75rem;
     font-weight: 600;
+    color: #6b7280;
+  }
+
+  :global(.dark) .tag-count-new {
+    color: #d1d5db;
+  }
+
+  /* トリステートトグル */
+  .tag-state-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .tag-state-toggle:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* トグルトラック */
+  .toggle-track {
+    position: relative;
+    width: 2.5rem;
+    height: 1.25rem;
     border-radius: 9999px;
+    transition: background-color 0.2s;
   }
 
-  .state-delete .state-badge {
-    background-color: #ef4444;
-    color: white;
+  .toggle-off .toggle-track {
+    background-color: #d1d5db;
   }
 
-  .state-keep .state-badge {
-    background-color: #6b7280;
-    color: white;
-  }
-
-  .state-add .state-badge {
-    background-color: #10b981;
-    color: white;
-  }
-
-  :global(.dark) .state-delete .state-badge {
-    background-color: #dc2626;
-  }
-
-  :global(.dark) .state-keep .state-badge {
+  :global(.dark) .toggle-off .toggle-track {
     background-color: #4b5563;
   }
 
-  :global(.dark) .state-add .state-badge {
+  .toggle-partial .toggle-track {
+    background-color: #f59e0b;
+  }
+
+  :global(.dark) .toggle-partial .toggle-track {
+    background-color: #d97706;
+  }
+
+  .toggle-on .toggle-track {
+    background-color: #10b981;
+  }
+
+  :global(.dark) .toggle-on .toggle-track {
     background-color: #059669;
+  }
+
+  /* トグルサム（丸いボタン） */
+  .toggle-thumb {
+    position: absolute;
+    top: 0.125rem;
+    width: 1rem;
+    height: 1rem;
+    background-color: white;
+    border-radius: 9999px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .toggle-off .toggle-thumb {
+    left: 0.125rem;
+  }
+
+  .toggle-partial .toggle-thumb {
+    left: 0.75rem;
+  }
+
+  .toggle-on .toggle-thumb {
+    left: 1.375rem;
+  }
+
+  /* トグルラベル */
+  .toggle-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+  }
+
+  :global(.dark) .toggle-label {
+    color: #e5e7eb;
   }
 </style>

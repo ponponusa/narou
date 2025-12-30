@@ -91,7 +91,12 @@ module Narou
 
         # 選択されたIDの小説での各タグの出現回数を計算
         ids.each do |id|
-          data = database[id]
+          # データベースのキーは文字列または整数の可能性があるため、両方を試す
+          # 文字列が渡された場合は整数にも変換して試す
+          id_int = id.is_a?(String) ? id.to_i : id
+          id_str = id.to_s
+          data = database[id] || database[id_int] || database[id_str]
+
           next unless data
 
           tags = data["tags"] || []

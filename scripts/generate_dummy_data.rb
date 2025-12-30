@@ -95,7 +95,7 @@ class DummyDataGenerator
       count.times do |i|
         id = start_id + i
         novel_data = generate_novel_data(id)
-        database[id.to_s] = novel_data
+        database[id] = novel_data
 
         # 小説ディレクトリとファイルを生成
         create_novel_files(id, novel_data)
@@ -319,6 +319,9 @@ class DummyDataGenerator
   def cleanup
     puts "ダミーデータをクリーンアップ中..."
 
+    # ARGVをクリアしないとgetsがARGVからファイルを読もうとする
+    ARGV.clear
+
     # データベース読み込み
     database = load_database
 
@@ -352,7 +355,8 @@ class DummyDataGenerator
         database.delete(id)
 
         # 小説ディレクトリを削除
-        novel_dir = File.join(@novel_dir, id)
+        # IDは整数または文字列の可能性があるため、文字列に変換してディレクトリ名に使用
+        novel_dir = File.join(@novel_dir, id.to_s)
         FileUtils.rm_rf(novel_dir) if File.exist?(novel_dir)
 
         if dummy_ids.index(id) % 1000 == 0
