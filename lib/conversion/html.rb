@@ -62,13 +62,13 @@ class HTML
     previous = nil
     while text != previous
       previous = text
-      text = text.gsub(/<.+?>/, "")
+      text = text.gsub(/<[^>]+>/, "")
     end
     text
   end
 
   def br_to_aozora(text = @string)
-    text.gsub(/[\r\n]+/, "").gsub(/<br.*?>/i, "\n")
+    text.gsub(/[\r\n]+/, "").gsub(/<br[^>]*>/i, "\n")
   end
 
   # p タグで段落を作ってる場合（brタグが無い場合）に改行されるように
