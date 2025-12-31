@@ -5,7 +5,7 @@
 #
 
 module Narou
-  VERSION = "3.0.0.dev".freeze
+  VERSION = "3.0.0".freeze
 
   commit_path = "../commitversion"
   commit_value = if File.exist?(commit_path)
