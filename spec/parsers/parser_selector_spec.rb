@@ -78,18 +78,67 @@ RSpec.describe Narou::Parsers::ParserSelector do
   end
 
   describe ".select" do
-    let(:user_config) { {} }
-
     before do
-      allow(Narou::Parsers::ConfigManager).to receive(:load_parser_config).and_return(user_config)
       allow(Narou::Parsers::ConfigManager).to receive(:load_global_config).and_return({
         "default_engine" => "nokogiri"
       })
     end
 
-    it "適切なパーサーを選択できる" do
-      parser = described_class.select(site_setting)
-      expect(parser).to be_a(Narou::Parsers::NarouParser)
+    context "Nokogiriエンジンの場合" do
+      let(:parser_config) do
+        {
+          "name" => "小説家になろう",
+          "domain" => "ncode.syosetu.com",
+          "body_selectors" => [
+            { "selector" => "div.js-novel-text", "priority" => 10 }
+          ],
+          "introduction_selectors" => [
+            { "selector" => "div.p-novel__text--preface", "priority" => 10 }
+          ]
+        }
+      end
+
+      before do
+        # Nokogiriエンジンの場合はpreset/parsers/から設定を読み込む
+        allow(Narou::Parsers::ConfigManager).to receive(:load_parser_config)
+          .with("ncode.syosetu.com", "nokogiri")
+          .and_return(parser_config)
+      end
+
+      it "適切なパーサーを選択できる" do
+        parser = described_class.select(site_setting)
+        expect(parser).to be_a(Narou::Parsers::NarouParser)
+      end
+
+      it "パーサーの設定に必要なセレクタが含まれている" do
+        parser = described_class.select(site_setting)
+        expect(parser.config).to include("body_selectors")
+        expect(parser.config["body_selectors"]).to be_an(Array)
+        expect(parser.config["body_selectors"].first).to include("selector")
+      end
+
+      it "preset/parsers/配下の設定ファイルが読み込まれる" do
+        parser = described_class.select(site_setting)
+        # パーサーの設定がpreset/parsers/の内容を含んでいることを確認
+        expect(parser.config["name"]).to eq("小説家になろう")
+        expect(parser.config["domain"]).to eq("ncode.syosetu.com")
+      end
+    end
+
+    context "Legacyエンジンの場合" do
+      let(:user_config) { {} }
+
+      before do
+        allow(Narou::Parsers::ConfigManager).to receive(:get_engine_for_novel).with("123").and_return("legacy")
+        allow(Narou::Parsers::ConfigManager).to receive(:load_parser_config)
+          .with("ncode.syosetu.com", "legacy")
+          .and_return(user_config)
+      end
+
+      it "novel_id を指定した場合は小説ごとのエンジンを使用する" do
+        parser = described_class.select(site_setting, novel_id: "123")
+        expect(parser).to be_a(Narou::Parsers::LegacyParser)
+      end
     end
 
     it "domain が設定されていない場合はエラーを raise する" do
@@ -99,12 +148,83 @@ RSpec.describe Narou::Parsers::ParserSelector do
         described_class.select(site_setting)
       }.to raise_error(Narou::Parsers::ParserError, /domain が設定されていません/)
     end
+  end
 
-    it "novel_id を指定した場合は小説ごとのエンジンを使用する" do
-      allow(Narou::Parsers::ConfigManager).to receive(:get_engine_for_novel).with("123").and_return("legacy")
+  describe "統合テスト: 実際の設定ファイルを使用" do
+    before do
+      # 実際のスクリプトディレクトリを使用
+      allow(Narou).to receive(:script_dir).and_return(Pathname.new(File.expand_path("../../", __dir__)))
+    end
 
-      parser = described_class.select(site_setting, novel_id: "123")
-      expect(parser).to be_a(Narou::Parsers::LegacyParser)
+    context "ncode.syosetu.com の場合" do
+      let(:real_site_setting) do
+        setting = double("SiteSetting")
+        allow(setting).to receive(:[]).with("domain").and_return("ncode.syosetu.com")
+        setting
+      end
+
+      it "preset/parsers/ncode.syosetu.com.yaml から設定を読み込む" do
+        # ConfigManagerのモックを解除して実際のファイルを読み込む
+        allow(Narou::Parsers::ConfigManager).to receive(:load_global_config).and_call_original
+        allow(Narou::Parsers::ConfigManager).to receive(:load_parser_config).and_call_original
+
+        parser = described_class.select(real_site_setting)
+
+        # パーサーが正しく生成される
+        expect(parser).to be_a(Narou::Parsers::NarouParser)
+
+        # 設定に必要なセレクタが含まれている
+        expect(parser.config["body_selectors"]).to be_a(Array)
+        expect(parser.config["body_selectors"].size).to be > 0
+        expect(parser.config["body_selectors"].first).to include("selector", "priority")
+
+        # 小説家になろうの設定が正しく読み込まれている
+        expect(parser.config["name"]).to eq("小説家になろう")
+        expect(parser.config["domain"]).to eq("ncode.syosetu.com")
+
+        # 前書き・後書きのセレクタも含まれている
+        expect(parser.config["introduction_selectors"]).to be_a(Array)
+        expect(parser.config["postscript_selectors"]).to be_a(Array)
+      end
+    end
+
+    context "kakuyomu.jp の場合" do
+      let(:kakuyomu_site_setting) do
+        setting = double("SiteSetting")
+        allow(setting).to receive(:[]).with("domain").and_return("kakuyomu.jp")
+        setting
+      end
+
+      it "preset/parsers/kakuyomu.jp.yaml から設定を読み込む" do
+        allow(Narou::Parsers::ConfigManager).to receive(:load_global_config).and_call_original
+        allow(Narou::Parsers::ConfigManager).to receive(:load_parser_config).and_call_original
+
+        parser = described_class.select(kakuyomu_site_setting)
+
+        expect(parser).to be_a(Narou::Parsers::KakuyomuParser)
+        expect(parser.config["body_selectors"]).to be_a(Array)
+        expect(parser.config["name"]).to eq("カクヨム")
+      end
+    end
+
+    context "レガシーエンジンを使用する場合" do
+      # このテストケースはspec/parsers/legacy_parser_spec.rbで詳細にテストされているため
+      # ここではパーサーが正しく生成されることのみを確認する
+      it "レガシーパーサーが生成される" do
+        legacy_setting = double("SiteSetting")
+        allow(legacy_setting).to receive(:[]).with("domain").and_return("ncode.syosetu.com")
+        allow(legacy_setting).to receive(:yaml).and_return({})
+
+        allow(Narou::Parsers::ConfigManager).to receive(:load_global_config).and_return({
+          "default_engine" => "legacy"
+        })
+        allow(Narou::Parsers::ConfigManager).to receive(:load_parser_config)
+          .with("ncode.syosetu.com", "legacy")
+          .and_return({})
+
+        parser = described_class.select(legacy_setting)
+        expect(parser).to be_a(Narou::Parsers::LegacyParser)
+      end
     end
   end
 end

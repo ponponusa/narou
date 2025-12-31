@@ -19,11 +19,16 @@ module Narou
           # パーサーエンジンを決定
           engine = determine_engine(novel_id)
 
-          # ユーザー設定を読み込み
-          user_config = ConfigManager.load_parser_config(domain, engine)
-
-          # エンジンに応じてパーサーを生成
-          create_parser(domain, engine, site_setting, user_config, logger)
+          # エンジンに応じて適切な設定を読み込み
+          if engine == "nokogiri"
+            # Nokogiriエンジンの場合はpreset/parsers/配下から設定を読み込む
+            parser_config = ConfigManager.load_parser_config(domain, engine)
+            create_parser(domain, engine, parser_config, {}, logger)
+          else
+            # Legacyエンジンの場合はSiteSettingをそのまま使用
+            user_config = ConfigManager.load_parser_config(domain, engine)
+            create_parser(domain, engine, site_setting, user_config, logger)
+          end
         end
 
         # 小説IDまたはグローバル設定からエンジンを決定

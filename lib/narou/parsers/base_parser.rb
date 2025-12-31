@@ -23,7 +23,11 @@ module Narou
 
       # ユーザー設定を優先してマージ
       def merge_configs(site, user)
-        merged = site.dup
+        # サイト設定をHashに変換（SiteSettingの場合はyamlデータを取得）
+        site_hash = site.is_a?(SiteSetting) ? site.yaml : site
+        merged = site_hash.dup
+
+        # ユーザー設定をマージ
         user.each do |key, value|
           # セレクタ設定はユーザー設定を優先
           if key.end_with?("_selectors") || key == "last_successful_selectors"
@@ -32,6 +36,7 @@ module Narou
             merged[key] = value unless value.nil?
           end
         end
+
         merged
       end
 
@@ -149,7 +154,13 @@ module Narou
 
       # サイト構造変更を検出
       def detect_structure_change?(html, selector_key)
-        last_successful = @config.dig("last_successful_selectors", selector_key, "selector")
+        last_successful_selectors = @config["last_successful_selectors"]
+        return false unless last_successful_selectors.is_a?(Hash)
+
+        selector_info = last_successful_selectors[selector_key]
+        return false unless selector_info.is_a?(Hash)
+
+        last_successful = selector_info["selector"]
         return false unless last_successful
 
         doc = Nokogiri::HTML(html)

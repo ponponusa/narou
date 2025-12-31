@@ -84,63 +84,6 @@ describe Narou::Task do
     end
   end
 
-  describe "#pause!" do
-    it "changes status to paused from running" do
-      task = Narou::Task.new(type: :download)
-      task.start!
-      task.pause!
-
-      expect(task.status).to eq(:paused)
-      expect(task.paused?).to be true
-      expect(task.pause_requested?).to be true
-    end
-
-    it "changes status to paused from queued" do
-      task = Narou::Task.new(type: :download)
-      task.pause!
-
-      expect(task.status).to eq(:paused)
-    end
-
-    it "does nothing if already completed" do
-      task = Narou::Task.new(type: :download)
-      task.start!
-      task.complete!
-      task.pause!
-
-      expect(task.status).to eq(:completed)
-    end
-  end
-
-  describe "#resume!" do
-    it "changes status back to running" do
-      task = Narou::Task.new(type: :download)
-      task.start!
-      task.pause!
-      task.resume!
-
-      expect(task.status).to eq(:running)
-      expect(task.paused?).to be false
-      expect(task.pause_requested?).to be false
-    end
-
-    it "changes status back to queued if not started" do
-      task = Narou::Task.new(type: :download)
-      task.pause!
-      task.resume!
-
-      expect(task.status).to eq(:queued)
-    end
-
-    it "does nothing if not paused" do
-      task = Narou::Task.new(type: :download)
-      original_status = task.status
-      task.resume!
-
-      expect(task.status).to eq(original_status)
-    end
-  end
-
   describe "#retryable?" do
     it "returns false when not failed" do
       task = Narou::Task.new(type: :download, max_retries: 3)

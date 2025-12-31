@@ -37,9 +37,15 @@ module Narou
       rescue AllSelectorsFailedError => e
         # サイト構造変更の可能性をチェック
         if detect_structure_change?(html, "body_selectors")
+          last_successful_selectors = @config["last_successful_selectors"]
+          last_selector = if last_successful_selectors.is_a?(Hash)
+                            body_info = last_successful_selectors["body_selectors"]
+                            body_info["selector"] if body_info.is_a?(Hash)
+                          end
+
           raise StructureChangedError.new(
             subtitle_info["href"] || "unknown",
-            @config.dig("last_successful_selectors", "body_selectors", "selector")
+            last_selector
           )
         end
 
@@ -93,7 +99,10 @@ module Narou
       end
 
       def extract_title(doc)
-        selector = @config.dig("novel_info_selectors", "title")
+        novel_info_selectors = @config["novel_info_selectors"]
+        return nil unless novel_info_selectors.is_a?(Hash)
+
+        selector = novel_info_selectors["title"]
         return nil unless selector
 
         result = doc.css(selector).first
@@ -101,7 +110,10 @@ module Narou
       end
 
       def extract_author(doc)
-        selector = @config.dig("novel_info_selectors", "author")
+        novel_info_selectors = @config["novel_info_selectors"]
+        return nil unless novel_info_selectors.is_a?(Hash)
+
+        selector = novel_info_selectors["author"]
         return nil unless selector
 
         result = doc.css(selector).first
@@ -109,7 +121,10 @@ module Narou
       end
 
       def extract_story(doc)
-        selector = @config.dig("novel_info_selectors", "story")
+        novel_info_selectors = @config["novel_info_selectors"]
+        return nil unless novel_info_selectors.is_a?(Hash)
+
+        selector = novel_info_selectors["story"]
         return nil unless selector
 
         result = doc.css(selector).first
@@ -139,7 +154,10 @@ module Narou
       end
 
       def extract_novel_info_item(doc, selector_key)
-        selector = @config.dig("novel_info_selectors", selector_key.sub(/_selector$/, ""))
+        novel_info_selectors = @config["novel_info_selectors"]
+        return nil unless novel_info_selectors.is_a?(Hash)
+
+        selector = novel_info_selectors[selector_key.sub(/_selector$/, "")]
         return nil unless selector
 
         result = doc.css(selector).first

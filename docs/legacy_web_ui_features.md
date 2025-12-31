@@ -338,7 +338,6 @@
 - `GET /api/v2/system/queue` - キュー情報
 - `GET /api/v2/system/status` - システムステータス
 - `POST /api/v2/cancel` - 全キャンセル
-- `POST /api/v2/cancel/:id` - 個別キャンセル
 - `POST /api/v2/console/clear` - コンソールクリア
 - `POST /api/v2/server/stop` - サーバー停止
 - `POST /api/v2/server/restart` - サーバー再起動
