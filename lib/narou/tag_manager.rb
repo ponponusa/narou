@@ -4,8 +4,9 @@
 # Copyright 2025 ponponusa. All rights reserved.
 #
 
-require_relative "../database"
-require_relative "../inventory"
+require "lib/core/database"
+require "lib/core/inventory"
+require "lib/cli/command/tag"
 
 module Narou
   #
@@ -26,16 +27,16 @@ module Narou
       def get_tag_list(ids = nil)
         database = Database.instance
         tag_list = Hash.new(0)
-        
+
         database.each_value do |data|
           next if ids.is_a?(Array) && !ids.include?(data["id"])
-          
+
           tags = data["tags"] || []
           tags.each do |tag|
             tag_list[tag] += 1
           end
         end
-        
+
         tag_list.default = nil
         tag_list
       end
@@ -47,7 +48,7 @@ module Narou
       # @return [String] タグの色（CSSクラス名）
       #
       def get_color(tagname)
-        require_relative "../command/tag"
+        require "lib/cli/command/tag"
         Command::Tag.get_color(tagname)
       end
 
@@ -58,7 +59,7 @@ module Narou
       # @return [void]
       #
       def set_colors(colors)
-        require_relative "../command/tag"
+        require "lib/cli/command/tag"
         tag_colors = Inventory.load("tag_colors")
         colors.each do |tagname, color|
           tag_colors[tagname] = color if Command::Tag::COLORS.include?(color)
@@ -76,7 +77,7 @@ module Narou
       def get_tag_info(ids, with_exclusion: false)
         database = Database.instance
         tag_info = {}
-        
+
         # まず全体のタグ一覧を取得
         all_tags = get_tag_list
         all_tags.each do |tag, total_count|
@@ -87,12 +88,17 @@ module Narou
             color: get_color(tag)
           }
         end
-        
+
         # 選択されたIDの小説での各タグの出現回数を計算
         ids.each do |id|
-          data = database[id]
+          # データベースのキーは文字列または整数の可能性があるため、両方を試す
+          # 文字列が渡された場合は整数にも変換して試す
+          id_int = id.is_a?(String) ? id.to_i : id
+          id_str = id.to_s
+          data = database[id] || database[id_int] || database[id_str]
+
           next unless data
-          
+
           tags = data["tags"] || []
           tags.each do |tag|
             tag_info[tag] ||= {
@@ -104,7 +110,7 @@ module Narou
             tag_info[tag][:count] += 1
           end
         end
-        
+
         tag_info
       end
 
@@ -116,9 +122,9 @@ module Narou
       # @return [Hash] { success: Boolean, added_count: Integer }
       #
       def add_tags(tag_names, novel_ids)
-        require_relative "../command/tag"
-        require_relative "../narou_logger"
-        
+        require "lib/cli/command/tag"
+        require "lib/output/narou_logger"
+
         begin
           Command::Tag.execute!("--add", tag_names.join(" "), novel_ids, io: Narou::NullIO.new)
           { success: true, added_count: novel_ids.length }
@@ -135,9 +141,9 @@ module Narou
       # @return [Hash] { success: Boolean, deleted_count: Integer }
       #
       def delete_tags(tag_names, novel_ids)
-        require_relative "../command/tag"
-        require_relative "../narou_logger"
-        
+        require "lib/cli/command/tag"
+        require "lib/output/narou_logger"
+
         begin
           Command::Tag.execute!("--delete", tag_names.join(" "), novel_ids, io: Narou::NullIO.new)
           { success: true, deleted_count: novel_ids.length }
@@ -154,15 +160,15 @@ module Narou
       # @return [Hash] { success: Boolean, added: Array, deleted: Array }
       #
       def edit_tags(states, novel_ids)
-        require_relative "../command/tag"
-        require_relative "../narou_logger"
-        
+        require "lib/cli/command/tag"
+        require "lib/output/narou_logger"
+
         # key と value を重複を維持したまま反転
         invert_states = states.inject({}) { |h, (k, v)| (h[v] ||= []) << k; h }
-        
+
         added_tags = []
         deleted_tags = []
-        
+
         invert_states.each do |state, tags|
           case state.to_i
           when 0
@@ -177,10 +183,10 @@ module Narou
             added_tags.concat(tags)
           end
         end
-        
+
         # タグ追加がある場合は、データベース書き込み完了を待つ
         sleep(0.5) if added_tags.any?
-        
+
         {
           success: true,
           added: added_tags,

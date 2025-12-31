@@ -1,6 +1,6 @@
 /**
  * バックエンド設定の動的取得
- * 
+ *
  * バックエンドが起動時に生成する backend-port.json から
  * ポート情報を取得する
  */
@@ -22,7 +22,7 @@ export async function getBackendConfig(): Promise<BackendConfig> {
   }
 
   // サーバーサイドレンダリング時はデフォルト値を返す
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return {
       backend_port: 5678,
       push_server_port: 5679,
@@ -31,14 +31,17 @@ export async function getBackendConfig(): Promise<BackendConfig> {
   }
 
   try {
-    const response = await fetch('/backend-port.json');
+    const response = await fetch("/backend-port.json");
     if (!response.ok) {
       throw new Error(`Failed to fetch backend config: ${response.statusText}`);
     }
     cachedConfig = await response.json();
     return cachedConfig!;
   } catch (error) {
-    console.error('[BackendConfig] Failed to load backend-port.json, using defaults:', error);
+    console.error(
+      "[BackendConfig] Failed to load backend-port.json, using defaults:",
+      error
+    );
     // デフォルト値を返す
     return {
       backend_port: 5678,

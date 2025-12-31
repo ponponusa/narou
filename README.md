@@ -195,6 +195,24 @@ Swagger UIでは以下が可能です：
 
 詳細は [docs/web_api_endpoints.md](docs/web_api_endpoints.md) を参照してください。
 
+## Windows環境への同期 - Sync to Windows
+
+WSL環境からWindows環境へプロジェクトファイルを同期するスクリプトを提供しています。
+
+```bash
+# 設定ファイルを作成（初回のみ）
+cp rsync.env.example rsync.env
+nano rsync.env
+
+# 同期スクリプトの実行
+./sync-to-windows.sh
+
+# または、引数で指定
+./sync-to-windows.sh ~/git/narou-mod /mnt/c/git/narou
+```
+
+詳細は [docs/sync-to-windows.md](docs/sync-to-windows.md) を参照してください。
+
 ----
 
 ## License

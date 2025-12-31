@@ -1,35 +1,35 @@
 /**
  * PushServer WebSocket クライアント
- * 
+ *
  * バックエンドのPushServerと接続し、リアルタイム通知を受け取る
  */
 
-import { getPushServerPort } from './backend-config';
+import { getPushServerPort } from "./backend-config";
 
-export type PushServerEvent = 
-  | 'table.reload'
-  | 'tag.updateCanvas'
-  | 'device.ejectable'
-  | 'server.update.success'
-  | 'server.update.nothing'
-  | 'server.update.failure'
-  | 'notification.queue'
-  | 'echo'
-  | 'show.modal'
-  | 'hide.modal'
-  | 'ping.modal'
-  | 'progressbar.init'
-  | 'progressbar.step'
-  | 'progressbar.clear';
+export type PushServerEvent =
+  | "table.reload"
+  | "tag.updateCanvas"
+  | "device.ejectable"
+  | "server.update.success"
+  | "server.update.nothing"
+  | "server.update.failure"
+  | "notification.queue"
+  | "echo"
+  | "show.modal"
+  | "hide.modal"
+  | "ping.modal"
+  | "progressbar.init"
+  | "progressbar.step"
+  | "progressbar.clear";
 
 export interface EchoMessage {
-  target_console: 'stdout' | 'stdout2' | 'convert';
+  target_console: "stdout" | "stdout2" | "convert";
   body: string;
   no_history?: boolean;
 }
 
 export interface ProgressBarMessage {
-  target_console?: 'stdout' | 'stdout2' | 'convert';
+  target_console?: "stdout" | "stdout2" | "convert";
   percent?: number;
 }
 
@@ -50,7 +50,8 @@ type EventHandler = (data: any) => void;
 export class PushServerClient {
   private ws: WebSocket | null = null;
   private url: string;
-  private eventHandlers: Map<PushServerEvent | string, Set<EventHandler>> = new Map();
+  private eventHandlers: Map<PushServerEvent | string, Set<EventHandler>> =
+    new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
   private reconnectDelay = 1000;
@@ -65,7 +66,7 @@ export class PushServerClient {
    */
   connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log('[PushServer] Already connected');
+      console.log("[PushServer] Already connected");
       return;
     }
 
@@ -76,9 +77,9 @@ export class PushServerClient {
       this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
-        console.log('[PushServer] Connected');
+        console.log("[PushServer] Connected");
         this.reconnectAttempts = 0;
-        this.trigger('connected', true);
+        this.trigger("connected", true);
       };
 
       this.ws.onmessage = (event) => {
@@ -86,25 +87,28 @@ export class PushServerClient {
           const data = JSON.parse(event.data);
           this.handleMessage(data);
         } catch (err) {
-          console.error('[PushServer] Failed to parse message:', err);
+          console.error("[PushServer] Failed to parse message:", err);
         }
       };
 
       this.ws.onerror = (error) => {
-        console.error('[PushServer] WebSocket error:', error);
-        this.trigger('error', error);
+        console.error("[PushServer] WebSocket error:", error);
+        this.trigger("error", error);
       };
 
       this.ws.onclose = (event) => {
-        console.log('[PushServer] Disconnected', event.code, event.reason);
-        this.trigger('disconnected', { code: event.code, reason: event.reason });
+        console.log("[PushServer] Disconnected", event.code, event.reason);
+        this.trigger("disconnected", {
+          code: event.code,
+          reason: event.reason,
+        });
 
         if (!this.isManualClose) {
           this.attemptReconnect();
         }
       };
     } catch (err) {
-      console.error('[PushServer] Failed to create WebSocket:', err);
+      console.error("[PushServer] Failed to create WebSocket:", err);
       this.attemptReconnect();
     }
   }
@@ -125,14 +129,16 @@ export class PushServerClient {
    */
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('[PushServer] Max reconnection attempts reached');
-      this.trigger('max-reconnect-reached', this.reconnectAttempts);
+      console.error("[PushServer] Max reconnection attempts reached");
+      this.trigger("max-reconnect-reached", this.reconnectAttempts);
       return;
     }
 
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * this.reconnectAttempts;
-    console.log(`[PushServer] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    console.log(
+      `[PushServer] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+    );
 
     setTimeout(() => {
       this.connect();
@@ -175,11 +181,14 @@ export class PushServerClient {
   private trigger(event: string, data: any): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
-      handlers.forEach(handler => {
+      handlers.forEach((handler) => {
         try {
           handler(data);
         } catch (err) {
-          console.error(`[PushServer] Error in event handler for ${event}:`, err);
+          console.error(
+            `[PushServer] Error in event handler for ${event}:`,
+            err
+          );
         }
       });
     }
@@ -193,7 +202,7 @@ export class PushServerClient {
       const message = { [event]: data };
       this.ws.send(JSON.stringify(message));
     } else {
-      console.warn('[PushServer] Cannot send message: not connected');
+      console.warn("[PushServer] Cannot send message: not connected");
     }
   }
 
@@ -224,7 +233,9 @@ async function fetchPushServerPort(): Promise<number> {
     console.log(`[PushServer] Using port from backend config: ${cachedPort}`);
     return cachedPort as number;
   } catch (error) {
-    console.warn('[PushServer] Failed to fetch port from backend config, using default: 5679');
+    console.warn(
+      "[PushServer] Failed to fetch port from backend config, using default: 5679"
+    );
     cachedPort = 5679;
     return cachedPort as number;
   }
@@ -232,28 +243,43 @@ async function fetchPushServerPort(): Promise<number> {
 
 /**
  * PushServerクライアントのグローバルインスタンスを取得または作成
+ * 注意: SSR/ビルド時は null を返す（ブラウザ環境でのみ動作）
  */
-export function getPushServer(): PushServerClient {
+export function getPushServer(): PushServerClient | null {
+  // SSR/ビルド時は何もしない
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   if (!globalPushServer) {
-    const host = typeof window !== 'undefined' 
-      ? window.location.hostname 
-      : (import.meta.env.PUBLIC_API_BASE_URL?.replace(/^https?:\/\//, '').split(':')[0] || 'localhost');
-    
-    // 初期はデフォルトポートで作成（後でinitializePushServerで更新）
-    const port = cachedPort || parseInt(import.meta.env.PUBLIC_PUSH_SERVER_PORT || '5679');
-    
+    const host = window.location.hostname;
+
+    // 初期はデフォルトポートで作成
+    const port =
+      cachedPort || parseInt(import.meta.env.PUBLIC_PUSH_SERVER_PORT || "5679");
+
     globalPushServer = new PushServerClient(host, port);
-    
-    // 非同期でポート番号を取得して再接続
+
+    // 初回作成時に自動接続
+    globalPushServer.connect();
+
+    // 非同期でポート番号を取得して、ポートが異なる場合のみ再接続
     if (!portInitialized) {
       portInitialized = true;
-      fetchPushServerPort().then(actualPort => {
+      fetchPushServerPort().then((actualPort) => {
         if (actualPort !== port && globalPushServer) {
-          console.log(`[PushServer] Updating port from ${port} to ${actualPort}`);
-          // 新しいポートで再作成
+          console.log(
+            `[PushServer] Port changed from ${port} to ${actualPort}, reconnecting`
+          );
+          // 既存の接続を切断
           globalPushServer.disconnect();
+          // 新しいポートで再作成して接続
           globalPushServer = new PushServerClient(host, actualPort);
           globalPushServer.connect();
+        } else {
+          console.log(
+            `[PushServer] Port ${actualPort} confirmed, using existing connection`
+          );
         }
       });
     }
@@ -263,8 +289,14 @@ export function getPushServer(): PushServerClient {
 
 /**
  * PushServerの初期化（ページロード時に呼び出し推奨）
+ * 注意: SSR/ビルド時は何もしない
  */
 export async function initializePushServer(): Promise<void> {
+  // SSR/ビルド時は何もしない
+  if (typeof window === "undefined") {
+    return;
+  }
+
   await fetchPushServerPort();
   getPushServer();
 }

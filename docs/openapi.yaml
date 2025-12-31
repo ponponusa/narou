@@ -3,18 +3,18 @@ info:
   title: Narou.rb MOD API
   description: |
     Narou.rb MOD の REST API 仕様書です。
-    
+
     ## 概要
-    
+
     このAPIは、小説管理ツール Narou.rb MOD の各種機能をプログラムから操作するためのインターフェースです。
-    
+
     ## バージョニング
-    
+
     - **API v2** (`/api/v2/*`): 最新の RESTful API（推奨）
     - **Legacy API v1** (`/api/*`): 旧 API（非推奨、後方互換性のため提供）
-    
+
     新規開発では必ず API v2 を使用してください。
-    
+
   version: 2.0.0
   contact:
     name: Narou.rb MOD Project
@@ -34,6 +34,8 @@ tags:
     description: システム管理 API
   - name: novels
     description: 小説管理 API
+  - name: tasks
+    description: タスク管理 API
   - name: tags
     description: タグ管理 API
   - name: settings
@@ -45,7 +47,7 @@ paths:
   # ========================================
   # System API
   # ========================================
-  
+
   /api/v2/system/version:
     get:
       tags:
@@ -67,7 +69,7 @@ paths:
                   ruby_version: "3.4.7"
                 meta:
                   timestamp: "2025-11-11T00:00:00Z"
-  
+
   /api/v2/system/queue:
     get:
       tags:
@@ -96,7 +98,7 @@ paths:
                       status: queued
                 meta:
                   timestamp: "2025-11-11T00:00:00Z"
-  
+
   /api/v2/system/status:
     get:
       tags:
@@ -120,11 +122,270 @@ paths:
                   uptime_seconds: 3600
                 meta:
                   timestamp: "2025-11-11T00:00:00Z"
-  
+
+  # ========================================
+  # Tasks API
+  # ========================================
+
+  /api/v2/tasks:
+    get:
+      tags:
+        - tasks
+      summary: タスク一覧取得
+      description: |
+        サーバーで管理されているタスクの一覧を取得します。
+        ステータスでフィルタリング可能。
+      operationId: getTasks
+      parameters:
+        - name: status
+          in: query
+          description: タスクステータスでフィルタ
+          schema:
+            type: string
+            enum: [queued, running, paused, completed, failed, canceled]
+        - name: limit
+          in: query
+          description: 取得する最大件数
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      tasks:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Task'
+                      count:
+                        type: integer
+                        example: 5
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v2/tasks/summary:
+    get:
+      tags:
+        - tasks
+      summary: タスクサマリー取得
+      description: |
+        実行中タスク、キュー待ちタスク、最近の完了・失敗タスクのサマリーを取得します。
+      operationId: getTasksSummary
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/TaskSummary'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v2/tasks/{id}:
+    get:
+      tags:
+        - tasks
+      summary: タスク詳細取得
+      description: 特定のタスクの詳細情報を取得します。
+      operationId: getTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: タスクID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '404':
+          description: タスクが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v2/tasks/{id}/cancel:
+    post:
+      tags:
+        - tasks
+      summary: タスクをキャンセル
+      description: 実行中またはキュー待ちのタスクをキャンセルします。
+      operationId: cancelTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: タスクID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Task canceled
+        '400':
+          description: タスクをキャンセルできない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v2/tasks/{id}/pause:
+    post:
+      tags:
+        - tasks
+      summary: タスクを一時停止
+      description: 実行中またはキュー待ちのタスクを一時停止します。
+      operationId: pauseTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: タスクID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Task paused
+        '400':
+          description: タスクを一時停止できない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v2/tasks/{id}/resume:
+    post:
+      tags:
+        - tasks
+      summary: タスクを再開
+      description: 一時停止中のタスクを再開します。
+      operationId: resumeTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: タスクID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Task resumed
+        '400':
+          description: タスクを再開できない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   # ========================================
   # Novels API
   # ========================================
-  
+
   /api/v2/novels:
     get:
       tags:
@@ -132,52 +393,10 @@ paths:
       summary: 小説一覧取得
       description: |
         登録されている小説の一覧を取得します。
-        フィルタリング、ソート、ページネーションをサポートします。
+        YAMLベースのデータストアのため、サーバー側ではページネーションせず全データを返します。
+        クライアント側でSvelte 5 Runesを使って処理する設計です。
+        レスポンスはgzip圧縮されます。
       operationId: getNovels
-      parameters:
-        - name: page
-          in: query
-          description: ページ番号（1から開始）
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - name: per_page
-          in: query
-          description: 1ページあたりの件数
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
-        - name: tag
-          in: query
-          description: タグでフィルタリング（複数指定可）
-          schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
-        - name: frozen
-          in: query
-          description: 凍結状態でフィルタリング
-          schema:
-            type: boolean
-        - name: sort
-          in: query
-          description: ソートキー
-          schema:
-            type: string
-            enum: [id, title, author, updated_at, created_at]
-            default: updated_at
-        - name: order
-          in: query
-          description: ソート順
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: desc
       responses:
         '200':
           description: 成功
@@ -185,9 +404,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NovelsListResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-  
+        '503':
+          description: データベース準備中
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v2/novels/{id}:
     get:
       tags:
@@ -206,7 +429,57 @@ paths:
                 $ref: '#/components/schemas/NovelResponse'
         '404':
           $ref: '#/components/responses/NotFound'
-  
+
+  /api/v2/novels/{id}/epub:
+    get:
+      tags:
+        - novels
+      summary: EPUB ファイルダウンロード
+      description: |
+        指定された小説の EPUB ファイルをダウンロードします。
+        デバイス設定に応じて適切な拡張子のファイル（.epub, .kepub.epub など）を返します。
+        EPUB ファイルが存在しない場合は 404 エラーを返します。
+      operationId: downloadNovelEpub
+      parameters:
+        - $ref: '#/components/parameters/NovelId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/epub+zip:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: ダウンロードファイル名
+              schema:
+                type: string
+                example: 'attachment; filename="novel.epub"'
+        '404':
+          description: 小説が見つからない、または EPUB ファイルが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                novelNotFound:
+                  summary: 小説が見つからない
+                  value:
+                    success: false
+                    error:
+                      code: NOT_FOUND
+                      message: "Novel ID 123 not found"
+                    timestamp: "2025-11-18T00:00:00Z"
+                epubNotFound:
+                  summary: EPUB ファイルが見つからない
+                  value:
+                    success: false
+                    error:
+                      code: EPUB_NOT_FOUND
+                      message: "EPUB file not found. Please convert the novel first."
+                    timestamp: "2025-11-18T00:00:00Z"
+
   /api/v2/novels/download:
     post:
       tags:
@@ -215,6 +488,9 @@ paths:
       description: |
         指定された小説をダウンロードします。
         WebWorker を通じて非同期で実行されます。
+
+        `convert_after_download` オプションを `true` に設定すると、
+        ダウンロード完了後に自動的に EPUB 変換が実行されます。
       operationId: downloadNovels
       requestBody:
         required: true
@@ -235,6 +511,10 @@ paths:
                   type: boolean
                   description: 強制ダウンロード
                   default: false
+                convert_after_download:
+                  type: boolean
+                  description: ダウンロード完了後に自動変換を実行
+                  default: false
                 mail:
                   type: boolean
                   description: ダウンロード後にメール送信
@@ -248,7 +528,7 @@ paths:
                 $ref: '#/components/schemas/AsyncTaskResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
   /api/v2/novels/convert:
     post:
       tags:
@@ -282,15 +562,160 @@ paths:
           $ref: '#/components/responses/AsyncTaskAccepted'
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
+  /api/v2/novels/update:
+    post:
+      tags:
+        - novels
+      summary: 小説更新チェック
+      description: |
+        指定された小説の更新をチェックし、新着話数があればダウンロードします。
+        WebWorker を通じて非同期で実行されます。
+
+        **download API との違い:**
+        - `download`: 新規小説の追加（Nコード/URLを指定）
+        - `update`: 既存小説の更新チェック・再取得（小説IDを指定）
+
+        **パラメータ:**
+        - `force_redownload`: `true` にすると全話を強制再ダウンロード（`download --force` 相当）
+        - `include_frozen`: `true` にすると凍結中の小説も更新対象に含める
+        - `convert_after_update`: `true` にすると更新完了後に自動変換（デフォルト: true）
+      operationId: updateNovels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: 更新対象の小説ID
+                  example: [1, 2, 3]
+                force_redownload:
+                  type: boolean
+                  description: 全話を強制再ダウンロード（download --force 相当）
+                  default: false
+                include_frozen:
+                  type: boolean
+                  description: 凍結中の小説も更新対象に含める
+                  default: false
+                convert_after_update:
+                  type: boolean
+                  description: 更新完了後に自動変換を実行
+                  default: true
+            examples:
+              basic:
+                summary: 基本的な更新チェック（新着のみ取得）
+                value:
+                  ids: [1, 2, 3]
+              forceRedownload:
+                summary: 全話強制再ダウンロード
+                value:
+                  ids: [1, 2]
+                  force_redownload: true
+              includeFrozen:
+                summary: 凍結中の小説も更新
+                value:
+                  ids: [1, 2, 3]
+                  include_frozen: true
+              noConvert:
+                summary: 変換なしで更新のみ
+                value:
+                  ids: [1]
+                  convert_after_update: false
+      responses:
+        '200':
+          description: 受付成功（非同期処理開始）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      ids:
+                        type: array
+                        items:
+                          type: integer
+                        description: 更新対象の小説ID
+                      force_redownload:
+                        type: boolean
+                        description: 全話強制再ダウンロードか
+                      include_frozen:
+                        type: boolean
+                        description: 凍結小説を含むか
+                      convert_after_update:
+                        type: boolean
+                        description: 更新後に変換を実行するか
+                      task_ids:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                        description: 作成されたタスクID
+                  message:
+                    type: string
+                    example: "Update started"
+                  timestamp:
+                    type: integer
+                    description: タイムスタンプ（Unix時間）
+              example:
+                success: true
+                data:
+                  ids: [1, 2]
+                  force_redownload: false
+                  include_frozen: false
+                  convert_after_update: true
+                  task_ids:
+                    - "550e8400-e29b-41d4-a716-446655440000"
+                    - "550e8400-e29b-41d4-a716-446655440001"
+                message: "Update started"
+                timestamp: 1732780800
+        '400':
+          description: リクエストパラメータ不正
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingIds:
+                  summary: IDs パラメータがない
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_PARAMS
+                      message: "ids parameter is required"
+                    timestamp: "2025-11-28T00:00:00Z"
+                emptyIds:
+                  summary: IDs が空配列
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_PARAMS
+                      message: "ids parameter is required"
+                    timestamp: "2025-11-28T00:00:00Z"
+
   /api/v2/novels/freeze:
     post:
       tags:
         - novels
-      summary: 小説凍結
+      summary: 小説凍結/凍結解除
       description: |
         指定された小説の凍結状態を変更します。
         凍結された小説は自動更新の対象外になります。
+
+        - `freeze: true` - 凍結する
+        - `freeze: false` - 凍結を解除する
+        - パラメータ省略 - 現在の状態をトグル（反転）する
       operationId: freezeNovels
       requestBody:
         required: true
@@ -307,11 +732,13 @@ paths:
                     type: string
                   description: 対象の小説ID
                   example: ["1", "2"]
-                action:
-                  type: string
-                  enum: [toggle, on, off]
-                  description: 凍結操作（toggle=切り替え、on=凍結、off=解除）
-                  default: toggle
+                freeze:
+                  type: boolean
+                  description: |
+                    凍結状態の指定（省略時はトグル）
+                    - true: 凍結する
+                    - false: 凍結を解除する
+                  example: true
       responses:
         '200':
           description: 成功
@@ -319,9 +746,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                data:
+                  ids: ["1", "2"]
+                  count: 2
+                message: "Novels frozen"
+                timestamp: 1699999999
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
   /api/v2/novels/remove:
     post:
       tags:
@@ -359,11 +793,11 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
   # ========================================
   # Tags API
   # ========================================
-  
+
   /api/v2/tags:
     get:
       tags:
@@ -378,7 +812,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TagsListResponse'
-  
+
   /api/v2/tags/info:
     post:
       tags:
@@ -407,7 +841,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TagInfoResponse'
-  
+
   /api/v2/tags/edit:
     post:
       tags:
@@ -430,7 +864,7 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-  
+
   /api/v2/tags/color:
     post:
       tags:
@@ -462,11 +896,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
-  
+
   # ========================================
   # Settings API
   # ========================================
-  
+
   /api/v2/settings:
     get:
       tags:
@@ -481,7 +915,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SettingsResponse'
-    
+
     put:
       tags:
         - settings
@@ -503,7 +937,7 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '422':
           $ref: '#/components/responses/ValidationError'
-    
+
     patch:
       tags:
         - settings
@@ -525,7 +959,7 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '422':
           $ref: '#/components/responses/ValidationError'
-  
+
   /api/v2/settings/variables:
     get:
       tags:
@@ -540,11 +974,129 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SettingsVariablesResponse'
-  
+
+  /api/v2/settings/export:
+    get:
+      tags:
+        - settings
+      summary: 設定エクスポート
+      description: |
+        アプリケーションの設定ファイルをZIP形式でエクスポートします。
+
+        エクスポートされるファイル:
+        - `.narou/` ディレクトリ内の設定ファイル（local_setting.yaml, replace.txt, parsers/ など）
+        - `.narousetting/` ディレクトリ内のグローバル設定ファイル
+
+        対象ファイル拡張子: .yaml, .yml, .json, .txt
+      operationId: exportSettings
+      responses:
+        '200':
+          description: 成功（ZIPファイル）
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: "attachment; filename=\"narou-settings-YYYYMMDD-HHMMSS.zip\""
+        '400':
+          description: Narou未初期化エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: NOT_INITIALIZED
+                  message: Narou is not initialized
+
+  /api/v2/settings/import:
+    post:
+      tags:
+        - settings
+      summary: 設定インポート
+      description: |
+        ZIPファイルから設定をインポート（復元）します。
+
+        インポート可能なファイル:
+        - `.narou/` プレフィックスを持つファイル → ローカル設定ディレクトリに展開
+        - `.narousetting/` プレフィックスを持つファイル → グローバル設定ディレクトリに展開
+
+        セキュリティ制限:
+        - 許可された拡張子のみ（.yaml, .yml, .json, .txt）
+        - パストラバーサル攻撃は自動的にブロックされます
+        - 許可されていないファイルはスキップされます
+      operationId: importSettings
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: インポートするZIPファイル
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsImportResponse'
+              example:
+                success: true
+                data:
+                  imported_count: 5
+                  skipped_count: 1
+                  imported_files:
+                    - ".narou/local_setting.yaml"
+                    - ".narou/replace.txt"
+                    - ".narousetting/global_setting.yaml"
+                  skipped_files:
+                    - ".narou/script.rb"
+                meta:
+                  timestamp: "2025-11-27T12:00:00Z"
+        '400':
+          description: エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                no_file:
+                  summary: ファイル未指定
+                  value:
+                    success: false
+                    error:
+                      code: NO_FILE
+                      message: No file uploaded
+                not_initialized:
+                  summary: Narou未初期化
+                  value:
+                    success: false
+                    error:
+                      code: NOT_INITIALIZED
+                      message: Narou is not initialized
+                invalid_zip:
+                  summary: 無効なZIPファイル
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_ZIP
+                      message: Invalid ZIP file
+
   # ========================================
   # Novel Settings API
   # ========================================
-  
+
   /api/v2/novels/{id}/settings:
     get:
       tags:
@@ -563,7 +1115,7 @@ paths:
                 $ref: '#/components/schemas/NovelSettingsResponse'
         '404':
           $ref: '#/components/responses/NotFound'
-    
+
     put:
       tags:
         - novel-settings
@@ -604,7 +1156,7 @@ components:
       schema:
         type: string
       example: "1"
-  
+
   schemas:
     # Base Response Schemas
     BaseResponse:
@@ -630,7 +1182,7 @@ components:
               type: string
               format: uuid
               description: リクエストID（デバッグ用）
-    
+
     SuccessResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -644,7 +1196,7 @@ components:
                 message:
                   type: string
                   description: 成功メッセージ
-    
+
     ErrorResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -667,7 +1219,7 @@ components:
                 details:
                   type: object
                   description: エラー詳細
-    
+
     # System Schemas
     VersionResponse:
       allOf:
@@ -683,7 +1235,7 @@ components:
                 ruby_version:
                   type: string
                   description: Ruby バージョン
-    
+
     QueueResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -702,7 +1254,7 @@ components:
                   type: array
                   items:
                     $ref: '#/components/schemas/Task'
-    
+
     StatusResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -719,7 +1271,7 @@ components:
                   type: boolean
                 uptime_seconds:
                   type: integer
-    
+
     Task:
       type: object
       properties:
@@ -731,7 +1283,124 @@ components:
         status:
           type: string
           enum: [queued, running, completed, failed]
-    
+
+    # Task Schemas
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: タスクID
+        type:
+          type: string
+          enum: [download, convert, update, remove]
+          description: タスクタイプ
+        novel_id:
+          type: integer
+          description: 小説ID（該当する場合）
+        novel_title:
+          type: string
+          description: 小説タイトル（該当する場合）
+        novel_author:
+          type: string
+          description: 小説著者（該当する場合）
+        status:
+          type: string
+          enum: [queued, running, paused, completed, failed, canceled]
+          description: タスクステータス
+        message:
+          type: string
+          description: タスクのメッセージ
+        created_at:
+          type: string
+          format: date-time
+          description: タスク作成日時
+        started_at:
+          type: string
+          format: date-time
+          description: タスク開始日時
+        paused_at:
+          type: string
+          format: date-time
+          description: タスク一時停止日時
+        completed_at:
+          type: string
+          format: date-time
+          description: タスク完了日時
+        elapsed_time:
+          type: number
+          format: float
+          description: 経過時間（秒）
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            class:
+              type: string
+            backtrace:
+              type: array
+              items:
+                type: string
+          description: エラー情報（失敗時）
+        retry_count:
+          type: integer
+          description: 再試行回数
+        max_retries:
+          type: integer
+          description: 最大再試行回数
+        progress:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          description: 進捗率（0-100%）
+        total_steps:
+          type: integer
+          description: 総ステップ数
+        current_step:
+          type: integer
+          description: 現在のステップ数
+      example:
+        id: "550e8400-e29b-41d4-a716-446655440000"
+        type: download
+        novel_id: 1
+        novel_title: "サンプル小説"
+        novel_author: "サンプル作者"
+        status: running
+        message: "ダウンロード中..."
+        created_at: "2025-11-18T10:00:00Z"
+        started_at: "2025-11-18T10:00:05Z"
+        elapsed_time: 15.5
+        retry_count: 0
+        max_retries: 3
+        progress: 45.5
+        total_steps: 100
+        current_step: 45
+
+    TaskSummary:
+      type: object
+      properties:
+        current:
+          $ref: '#/components/schemas/Task'
+          description: 現在実行中のタスク
+        queued:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: キュー待ちタスク一覧
+        recent_completed:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: 最近完了したタスク一覧（最大10件）
+        recent_failed:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: 最近失敗したタスク一覧（最大10件）
+
     # Novel Schemas
     Novel:
       type: object
@@ -748,6 +1417,21 @@ components:
         author:
           type: string
           description: 作者名
+        author_url:
+          type: string
+          format: uri
+          description: 作者ページのURL（存在する場合）
+        site_name:
+          type: string
+          description: 小説掲載サイト名
+        site_top_url:
+          type: string
+          format: uri
+          description: 小説掲載サイトのトップページURL
+        toc_url:
+          type: string
+          format: uri
+          description: 小説の目次ページURL
         tags:
           type: array
           items:
@@ -764,32 +1448,26 @@ components:
           type: string
           format: date-time
           description: 作成日時
-    
+
     NovelsListResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
         - type: object
           properties:
             data:
-              type: array
-              items:
-                $ref: '#/components/schemas/Novel'
-            meta:
               type: object
+              description: |
+                YAMLベースのデータストアのため、サーバー側ではページネーションせず全データを返します。
+                クライアント側でSvelte 5 Runesを使って処理する設計です。
               properties:
+                novels:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Novel'
                 total:
                   type: integer
                   description: 全件数
-                count:
-                  type: integer
-                  description: 取得件数
-                page:
-                  type: integer
-                  description: 現在のページ
-                per_page:
-                  type: integer
-                  description: 1ページあたりの件数
-    
+
     NovelResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -797,7 +1475,7 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/Novel'
-    
+
     AsyncTaskResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -814,7 +1492,7 @@ components:
                   enum: [queued, running]
                 message:
                   type: string
-    
+
     # Tag Schemas
     Tag:
       type: object
@@ -828,7 +1506,7 @@ components:
         color:
           type: string
           description: 表示色クラス
-    
+
     TagsListResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -838,7 +1516,7 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Tag'
-    
+
     TagInfoResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -858,7 +1536,7 @@ components:
                   state:
                     type: integer
                     description: 0=なし, 1=全て, 2=一部
-    
+
     TagEditRequest:
       type: object
       required:
@@ -876,7 +1554,7 @@ components:
             type: integer
             enum: [0, 1]
           description: タグ名とその状態（0=削除、1=追加）
-    
+
     # Settings Schemas
     SettingsResponse:
       allOf:
@@ -887,17 +1565,17 @@ components:
               type: object
               additionalProperties: true
               description: 設定値（キー・バリュー）
-    
+
     SettingsUpdateRequest:
       type: object
       additionalProperties: true
       description: 更新する設定値
-    
+
     SettingsPatchRequest:
       type: object
       additionalProperties: true
       description: 部分更新する設定値
-    
+
     SettingsVariablesResponse:
       allOf:
         - $ref: '#/components/schemas/BaseResponse'
@@ -922,7 +1600,32 @@ components:
                     items:
                       type: string
                     description: select型の場合の選択肢
-    
+
+    SettingsImportResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                imported_count:
+                  type: integer
+                  description: インポートされたファイル数
+                skipped_count:
+                  type: integer
+                  description: スキップされたファイル数
+                imported_files:
+                  type: array
+                  items:
+                    type: string
+                  description: インポートされたファイルのパス一覧
+                skipped_files:
+                  type: array
+                  items:
+                    type: string
+                  description: スキップされたファイルのパス一覧（許可されていない拡張子など）
+
     # Novel Settings Schemas
     NovelSettingsResponse:
       allOf:
@@ -933,12 +1636,12 @@ components:
               type: object
               additionalProperties: true
               description: 小説個別設定
-    
+
     NovelSettingsUpdateRequest:
       type: object
       additionalProperties: true
       description: 更新する設定値
-  
+
   responses:
     BadRequest:
       description: リクエストパラメータ不正
@@ -953,7 +1656,7 @@ components:
               message: リクエストパラメータが不正です
             meta:
               timestamp: "2025-11-11T00:00:00Z"
-    
+
     NotFound:
       description: リソースが存在しない
       content:
@@ -967,7 +1670,7 @@ components:
               message: 指定されたリソースが見つかりません
             meta:
               timestamp: "2025-11-11T00:00:00Z"
-    
+
     ValidationError:
       description: バリデーションエラー
       content:
@@ -984,7 +1687,7 @@ components:
                 reason: 必須項目です
             meta:
               timestamp: "2025-11-11T00:00:00Z"
-    
+
     AsyncTaskAccepted:
       description: 受付成功（非同期処理開始）
       content:

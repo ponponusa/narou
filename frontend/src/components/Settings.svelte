@@ -1,48 +1,71 @@
 <script lang="ts">
   /**
    * 設定画面コンポーネント
-   * 
+   *
    * ローカル設定とグローバル設定を表示・編集
    */
-  import { onMount, onDestroy } from 'svelte';
-  import { 
-    getSettings, 
-    getSettingVariables, 
+  import { onMount, onDestroy } from "svelte";
+  import {
+    getSettings,
+    getSettingVariables,
     updateSettings,
+    API_BASE_URL,
     type SettingsData,
     type SettingVariablesData,
-    type SettingVariable
-  } from '../lib/api';
+    type SettingVariable,
+  } from "../lib/api";
+  import ParserSettings from "./ParserSettings.svelte";
 
   // 状態管理
   let loading = $state(true);
   let saving = $state(false);
+  let resetting = $state(false);
   let error = $state<string | null>(null);
   let successMessage = $state<string | null>(null);
-  
+
   let settingsData = $state<SettingsData | null>(null);
   let variablesData = $state<SettingVariablesData | null>(null);
-  
-  let currentTab = $state<string>('general');
-  
+
+  let currentTab = $state<string>("general");
+
   // 編集中の設定値を保持（local/global両方）
-  let editedValues = $state<{ local: Record<string, string | boolean | number | null>, global: Record<string, string | boolean | number | null> }>({ local: {}, global: {} });
+  let editedValues = $state<{
+    local: Record<string, string | boolean | number | null>;
+    global: Record<string, string | boolean | number | null>;
+  }>({ local: {}, global: {} });
   let hasChanges = $state(false);
-  
+
   // トップに戻るボタンの表示制御
   let showScrollTopButton = $state(false);
+  let consolePanelOpen = $state(false);
+
+  // フィルタ機能
+  let filterKeyword = $state("");
+
+  // デフォルトリセット確認モーダル
+  let showResetConfirmModal = $state(false);
+
+  // エクスポート・インポート機能（ZIPファイル形式）
+  let exporting = $state(false);
+  let importing = $state(false);
+  let showImportConfirmModal = $state(false);
+  let pendingImportFile = $state<File | null>(null);
+  let fileInputRef = $state<HTMLInputElement | null>(null);
 
   // 利用可能なタブ一覧（リアクティブ）
   let availableTabs = $derived.by(() => {
-    if (!variablesData) return [];
-    
+    if (!variablesData) return ["parser"]; // variablesData がない間も parser タブは表示
+
     const tabSet = new Set<string>();
-    
+
+    // parser タブを追加（常に表示）
+    tabSet.add("parser");
+
     // local と global 両方のvariablesからタブを収集
-    ['local', 'global'].forEach(scope => {
-      const variables = variablesData?.variables[scope as 'local' | 'global'];
+    ["local", "global"].forEach((scope) => {
+      const variables = variablesData?.variables[scope as "local" | "global"];
       if (variables) {
-        Object.values(variables).forEach(variable => {
+        Object.values(variables).forEach((variable) => {
           // invisibleチェックを削除 - すべてのタブを表示
           if (variable.tab) {
             tabSet.add(variable.tab);
@@ -50,11 +73,20 @@
         });
       }
     });
-    
-    console.log('Available tabs:', Array.from(tabSet).sort());
-    
+
+    console.log("Available tabs:", Array.from(tabSet).sort());
+
     // タブを指定の順番でソート
-    const tabOrder = ['general', 'detail', 'webui', 'global', 'default', 'force', 'command'];
+    const tabOrder = [
+      "general",
+      "detail",
+      "webui",
+      "global",
+      "default",
+      "force",
+      "command",
+      "parser",
+    ];
     return Array.from(tabSet).sort((a, b) => {
       const indexA = tabOrder.indexOf(a);
       const indexB = tabOrder.indexOf(b);
@@ -68,30 +100,51 @@
   // 現在のタブで表示する設定項目（リアクティブ）
   let settingsForCurrentTab = $derived.by(() => {
     if (!variablesData || !settingsData) return [];
-    
-    const result: Array<[string, SettingVariable, 'local' | 'global']> = [];
-    
+
+    const result: Array<[string, SettingVariable, "local" | "global"]> = [];
+
     // localとglobal両方のスコープから、現在のタブに該当する設定を収集
-    (['local', 'global'] as const).forEach(scope => {
+    (["local", "global"] as const).forEach((scope) => {
       const variables = variablesData?.variables[scope];
       if (!variables) return;
-      
+
       Object.entries(variables).forEach(([key, variable]) => {
         // invisibleチェックを削除 - タブがあれば表示
         // タブが指定されていない場合は general に表示
-        const tab = variable.tab || 'general';
-        if (tab === currentTab) {
-          result.push([key, variable, scope]);
+        const tab = variable.tab || "general";
+
+        // フィルタキーワードが指定されている場合は、全タブから検索
+        // それ以外は現在のタブのみ
+        const shouldInclude = filterKeyword.trim() ? true : tab === currentTab;
+
+        if (shouldInclude) {
+          // フィルタキーワードが指定されている場合、該当するものだけを追加
+          if (filterKeyword.trim()) {
+            const keyword = filterKeyword.toLowerCase();
+            const matchesKey = key.toLowerCase().includes(keyword);
+            const matchesHelp =
+              variable.help?.toLowerCase().includes(keyword) || false;
+
+            if (matchesKey || matchesHelp) {
+              result.push([key, variable, scope]);
+            }
+          } else {
+            result.push([key, variable, scope]);
+          }
         }
       });
     });
-    
+
     // アルファベット順にソート
     result.sort((a, b) => a[0].localeCompare(b[0]));
-    
-    console.log(`Settings for tab "${currentTab}":`, result.length, 'items', 
-      `(local: ${result.filter(r => r[2] === 'local').length}, global: ${result.filter(r => r[2] === 'global').length})`);
-    
+
+    console.log(
+      `Settings for tab "${currentTab}":`,
+      result.length,
+      "items",
+      `(local: ${result.filter((r) => r[2] === "local").length}, global: ${result.filter((r) => r[2] === "global").length})`
+    );
+
     return result;
   });
 
@@ -101,60 +154,77 @@
   async function loadSettings() {
     loading = true;
     error = null;
-    
+
     try {
       const [settings, variables] = await Promise.all([
         getSettings(),
-        getSettingVariables()
+        getSettingVariables(),
       ]);
-      
+
       settingsData = settings;
       variablesData = variables;
-      
-      console.log('=== Settings loaded ===');
-      console.log('Local settings count:', Object.keys(settings.local).length);
-      console.log('Global settings count:', Object.keys(settings.global).length);
-      console.log('Local variables count:', Object.keys(variables.variables.local).length);
-      console.log('Global variables count:', Object.keys(variables.variables.global).length);
-      console.log('Tab names:', variables.tab_names);
-      
+
+      console.log("=== Settings loaded ===");
+      console.log("Local settings count:", Object.keys(settings.local).length);
+      console.log(
+        "Global settings count:",
+        Object.keys(settings.global).length
+      );
+      console.log(
+        "Local variables count:",
+        Object.keys(variables.variables.local).length
+      );
+      console.log(
+        "Global variables count:",
+        Object.keys(variables.variables.global).length
+      );
+      console.log("Tab names:", variables.tab_names);
+
       // タブの集計をデバッグ（invisibleも含める）
-      const tabDebug: { local: Record<string, number>, global: Record<string, number> } = { local: {}, global: {} };
+      const tabDebug: {
+        local: Record<string, number>;
+        global: Record<string, number>;
+      } = { local: {}, global: {} };
       Object.entries(variables.variables.local).forEach(([key, variable]) => {
         if (variable.tab) {
-          tabDebug.local[variable.tab] = (tabDebug.local[variable.tab] || 0) + 1;
+          tabDebug.local[variable.tab] =
+            (tabDebug.local[variable.tab] || 0) + 1;
         }
       });
       Object.entries(variables.variables.global).forEach(([key, variable]) => {
         if (variable.tab) {
-          tabDebug.global[variable.tab] = (tabDebug.global[variable.tab] || 0) + 1;
+          tabDebug.global[variable.tab] =
+            (tabDebug.global[variable.tab] || 0) + 1;
         }
       });
-      console.log('Tab distribution (local):', tabDebug.local);
-      console.log('Tab distribution (global):', tabDebug.global);
-      
+      console.log("Tab distribution (local):", tabDebug.local);
+      console.log("Tab distribution (global):", tabDebug.global);
+
       // 初期タブを general に設定
-      currentTab = 'general';
-      
-      console.log('Current tab set to:', currentTab);
-      console.log('=== End Settings loaded ===');
-      
+      currentTab = "general";
+
+      console.log("Current tab set to:", currentTab);
+      console.log("=== End Settings loaded ===");
+
       // 編集中の値を初期化
       initEditedValues();
-      
-      console.log('Edited values initialized:', {
-        local: Object.keys(editedValues.local).length,
-        global: Object.keys(editedValues.global).length
-      }, 'items');
-      
+
+      console.log(
+        "Edited values initialized:",
+        {
+          local: Object.keys(editedValues.local).length,
+          global: Object.keys(editedValues.global).length,
+        },
+        "items"
+      );
+
       // availableTabsを確認するために少し待つ
       setTimeout(() => {
-        console.log('Available tabs after mount:', availableTabs);
+        console.log("Available tabs after mount:", availableTabs);
       }, 100);
-      
     } catch (e) {
-      error = e instanceof Error ? e.message : '設定の読み込みに失敗しました';
-      console.error('Failed to load settings:', e);
+      error = e instanceof Error ? e.message : "設定の読み込みに失敗しました";
+      console.error("Failed to load settings:", e);
     } finally {
       loading = false;
     }
@@ -165,29 +235,34 @@
    */
   function initEditedValues() {
     if (!settingsData || !variablesData) return;
-    
+
     editedValues = { local: {}, global: {} };
-    
+
     // local と global 両方の設定を初期化
-    ['local', 'global'].forEach(scope => {
-      const variables = variablesData?.variables[scope as 'local' | 'global'];
-      const scopeSettings = settingsData?.[scope as 'local' | 'global'];
-      
+    ["local", "global"].forEach((scope) => {
+      const variables = variablesData?.variables[scope as "local" | "global"];
+      const scopeSettings = settingsData?.[scope as "local" | "global"];
+
       if (!variables || !scopeSettings) return;
-      
+
       Object.keys(variables).forEach((key) => {
         // 設定値があればそれを使用、なければnull
-        editedValues[scope as 'local' | 'global'][key] = scopeSettings[key]?.value ?? null;
+        editedValues[scope as "local" | "global"][key] =
+          scopeSettings[key]?.value ?? null;
       });
     });
-    
+
     hasChanges = false;
   }
 
   /**
    * 値の変更を追跡
    */
-  function handleValueChange(key: string, value: string | boolean | number | null, scope: 'local' | 'global') {
+  function handleValueChange(
+    key: string,
+    value: string | boolean | number | null,
+    scope: "local" | "global"
+  ) {
     editedValues[scope][key] = value;
     checkChanges();
   }
@@ -200,16 +275,20 @@
       hasChanges = false;
       return;
     }
-    
+
     // local と global 両方をチェック
-    hasChanges = ['local', 'global'].some(scope => {
-      const scopeSettings = settingsData?.[scope as 'local' | 'global'];
+    hasChanges = ["local", "global"].some((scope) => {
+      const scopeSettings = settingsData?.[scope as "local" | "global"];
       if (!scopeSettings) return false;
-      
-      return Object.keys(editedValues[scope as 'local' | 'global']).some(key => {
-        const originalValue = scopeSettings[key]?.value ?? null;
-        return editedValues[scope as 'local' | 'global'][key] !== originalValue;
-      });
+
+      return Object.keys(editedValues[scope as "local" | "global"]).some(
+        (key) => {
+          const originalValue = scopeSettings[key]?.value ?? null;
+          return (
+            editedValues[scope as "local" | "global"][key] !== originalValue
+          );
+        }
+      );
     });
   }
 
@@ -218,42 +297,44 @@
    */
   async function saveSettings() {
     if (!hasChanges || !settingsData || !variablesData) return;
-    
+
     saving = true;
     error = null;
     successMessage = null;
-    
+
     try {
       // 変更された値のみを抽出（local/global両方）
-      const changedSettings: Record<string, string | boolean | number | null> = {};
-      
-      ['local', 'global'].forEach(scope => {
-        const scopeSettings = settingsData?.[scope as 'local' | 'global'];
+      const changedSettings: Record<string, string | boolean | number | null> =
+        {};
+
+      ["local", "global"].forEach((scope) => {
+        const scopeSettings = settingsData?.[scope as "local" | "global"];
         if (!scopeSettings) return;
-        
-        Object.entries(editedValues[scope as 'local' | 'global']).forEach(([key, value]) => {
-          const originalValue = scopeSettings[key]?.value ?? null;
-          if (value !== originalValue) {
-            changedSettings[key] = value;
+
+        Object.entries(editedValues[scope as "local" | "global"]).forEach(
+          ([key, value]) => {
+            const originalValue = scopeSettings[key]?.value ?? null;
+            if (value !== originalValue) {
+              changedSettings[key] = value;
+            }
           }
-        });
+        );
       });
-      
+
       const result = await updateSettings(changedSettings);
-      
+
       successMessage = `${result.updated_count}件の設定を更新しました`;
-      
+
       // データを再読み込み
       await loadSettings();
-      
+
       // 3秒後にメッセージを消す
       setTimeout(() => {
         successMessage = null;
       }, 3000);
-      
     } catch (e) {
-      error = e instanceof Error ? e.message : '設定の保存に失敗しました';
-      console.error('Failed to save settings:', e);
+      error = e instanceof Error ? e.message : "設定の保存に失敗しました";
+      console.error("Failed to save settings:", e);
     } finally {
       saving = false;
     }
@@ -274,9 +355,203 @@
   }
 
   /**
+   * 設定をデフォルトにリセット
+   * AozoraEpub3のパスはリセット対象外
+   */
+  async function resetToDefaults() {
+    if (!settingsData || !variablesData) return;
+
+    resetting = true;
+    error = null;
+    successMessage = null;
+    showResetConfirmModal = false;
+
+    try {
+      // AozoraEpub3パス以外のすべての設定をnullに設定
+      const resetSettings: Record<string, null> = {};
+
+      ["local", "global"].forEach((scope) => {
+        const scopeSettings = settingsData?.[scope as "local" | "global"];
+        if (!scopeSettings) return;
+
+        Object.keys(scopeSettings).forEach((key) => {
+          // AozoraEpub3関連の設定はスキップ
+          if (
+            key.toLowerCase().includes("aozoraepub3") ||
+            key.toLowerCase().includes("aozora_epub3")
+          ) {
+            return;
+          }
+          resetSettings[key] = null;
+        });
+      });
+
+      const result = await updateSettings(resetSettings);
+
+      successMessage = `${result.updated_count}件の設定をデフォルトに戻しました`;
+
+      // データを再読み込み
+      await loadSettings();
+
+      // 3秒後にメッセージを消す
+      setTimeout(() => {
+        successMessage = null;
+      }, 3000);
+    } catch (e) {
+      error = e instanceof Error ? e.message : "設定のリセットに失敗しました";
+      console.error("Failed to reset settings:", e);
+    } finally {
+      resetting = false;
+    }
+  }
+
+  /**
+   * 設定ファイルをZIPとしてエクスポート
+   */
+  async function exportSettings() {
+    exporting = true;
+    error = null;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v2/settings/export`);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message || "エクスポートに失敗しました"
+        );
+      }
+
+      // ZIPファイルをダウンロード
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `narou-settings-${new Date().toISOString().split("T")[0]}.zip`;
+
+      // Content-Dispositionからファイル名を取得
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match) {
+          filename = match[1];
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      successMessage = "設定ファイルをエクスポートしました";
+      setTimeout(() => {
+        successMessage = null;
+      }, 3000);
+    } catch (e) {
+      error = e instanceof Error ? e.message : "エクスポートに失敗しました";
+      console.error("Failed to export settings:", e);
+    } finally {
+      exporting = false;
+    }
+  }
+
+  /**
+   * ファイル選択ダイアログを開く
+   */
+  function openImportDialog() {
+    fileInputRef?.click();
+  }
+
+  /**
+   * インポートファイルを処理
+   */
+  function handleImportFile(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // ZIPファイルかどうかを確認
+    if (!file.name.endsWith(".zip")) {
+      error = "ZIPファイルを選択してください";
+      input.value = "";
+      return;
+    }
+
+    // ファイルを一時保存して確認モーダルを表示
+    pendingImportFile = file;
+    showImportConfirmModal = true;
+
+    // 同じファイルを再選択できるようにリセット
+    input.value = "";
+  }
+
+  /**
+   * インポートを実行
+   */
+  async function executeImport() {
+    if (!pendingImportFile) return;
+
+    importing = true;
+    error = null;
+    successMessage = null;
+    showImportConfirmModal = false;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", pendingImportFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/v2/settings/import`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error?.message || "設定のインポートに失敗しました"
+        );
+      }
+
+      const data = result.data;
+      successMessage = `${data.imported_count}件の設定ファイルをインポートしました`;
+
+      if (data.skipped_count > 0) {
+        successMessage += `（${data.skipped_count}件スキップ）`;
+      }
+
+      // データを再読み込み
+      await loadSettings();
+
+      // 3秒後にメッセージを消す
+      setTimeout(() => {
+        successMessage = null;
+      }, 3000);
+    } catch (e) {
+      error = e instanceof Error ? e.message : "設定のインポートに失敗しました";
+      console.error("Failed to import settings:", e);
+    } finally {
+      importing = false;
+      pendingImportFile = null;
+    }
+  }
+
+  /**
+   * インポートをキャンセル
+   */
+  function cancelImport() {
+    showImportConfirmModal = false;
+    pendingImportFile = null;
+  }
+
+  /**
    * タブ名を取得
    */
   function getTabLabel(tab: string): string {
+    // parser タブは専用ラベル
+    if (tab === "parser") return "HTML パーサー";
+
     if (!variablesData?.tab_names) return tab;
     return variablesData.tab_names[tab] || tab;
   }
@@ -286,29 +561,32 @@
    */
   function extractDefaultFromHelp(help: string | undefined): string | null {
     if (!help) return null;
-    
+
     // "デフォルト○○" または "デフォルトは○○" のパターンを探す
     const patterns = [
       /デフォルト(?:は)?([0-9.]+)/,
       /デフォルト(?:は)?"([^"]+)"/,
       /初期値(?:は)?([0-9.]+)/,
     ];
-    
+
     for (const pattern of patterns) {
       const match = help.match(pattern);
       if (match) {
         return match[1];
       }
     }
-    
+
     return null;
   }
 
   /**
    * 数値入力のmin値を取得
    */
-  function getMinValue(key: string, variable: SettingVariable): number | undefined {
-    if (key === 'update.interval') {
+  function getMinValue(
+    key: string,
+    variable: SettingVariable
+  ): number | undefined {
+    if (key === "update.interval") {
       return 2.5; // Update::Interval::MIN
     }
     return undefined;
@@ -319,7 +597,7 @@
    */
   function getNumberPlaceholder(variable: SettingVariable): string {
     const defaultValue = extractDefaultFromHelp(variable.help);
-    return defaultValue || '0';
+    return defaultValue || "0";
   }
 
   /**
@@ -332,31 +610,35 @@
 
   // スクロールイベントハンドラー
   function handleScroll() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       showScrollTopButton = window.scrollY > 300;
+      // コンソールパネルの状態を確認
+      const consoleElement = document.querySelector("[data-console-panel]");
+      consolePanelOpen =
+        consoleElement?.getAttribute("data-is-open") === "true";
     }
   }
 
   // トップに戻る
   function scrollToTop() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       window.scrollTo({
         top: 0,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
   }
 
   onMount(() => {
     loadSettings();
-    if (typeof window !== 'undefined') {
-      window.addEventListener('scroll', handleScroll);
+    if (typeof window !== "undefined") {
+      window.addEventListener("scroll", handleScroll);
     }
   });
 
   onDestroy(() => {
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('scroll', handleScroll);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("scroll", handleScroll);
     }
   });
 </script>
@@ -364,14 +646,16 @@
 <div class="settings-container">
   {#if loading}
     <div class="text-center py-12">
-      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div
+        class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"
+      ></div>
       <p class="mt-4 text-gray-600">設定を読み込み中...</p>
     </div>
   {:else if error}
     <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
       <p class="text-red-800">{error}</p>
-      <button 
-        onclick={() => loadSettings()} 
+      <button
+        onclick={() => loadSettings()}
         class="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
       >
         再試行
@@ -379,9 +663,11 @@
     </div>
   {:else if settingsData && variablesData}
     <!-- ヘッダー -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">設定</h1>
-      <p class="text-gray-600 dark:text-gray-400">Narouの動作設定を変更できます</p>
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:gap-4">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">設定</h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-1 sm:mt-0">
+        Narouの動作設定を変更できます
+      </p>
     </div>
 
     <!-- タブ切り替え -->
@@ -391,7 +677,10 @@
           {#each availableTabs as tab}
             <button
               onclick={() => switchTab(tab)}
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {currentTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}"
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {currentTab ===
+              tab
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}"
             >
               {getTabLabel(tab)}
             </button>
@@ -400,193 +689,471 @@
       </div>
     {/if}
 
+    <!-- フィルタ入力欄 -->
+    <div class="mb-6">
+      <div class="relative">
+        <input
+          type="text"
+          bind:value={filterKeyword}
+          placeholder="設定項目を検索（キーまたは説明文で絞り込み）"
+          class="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <div
+          class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+        >
+          <i class="fas fa-search"></i>
+        </div>
+        {#if filterKeyword.trim()}
+          <button
+            onclick={() => (filterKeyword = "")}
+            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            title="クリア"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        {/if}
+      </div>
+      {#if filterKeyword.trim()}
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          {settingsForCurrentTab.length} 件の設定項目が見つかりました
+        </p>
+      {/if}
+    </div>
+
     <!-- 成功メッセージ -->
     {#if successMessage}
-      <div class="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+      <div
+        class="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4"
+      >
         <p class="text-green-800 dark:text-green-200">{successMessage}</p>
       </div>
     {/if}
 
-    <!-- 設定フォーム -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <div class="space-y-6">
-        {#each settingsForCurrentTab as [key, variable, scope]}
-          {@const currentValue = editedValues[scope][key]}
-          
-          <div class="setting-item">
-            <div class="setting-row">
-              <div class="setting-label">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{key}</span>
-                {#if scope === 'global'}
-                  <span class="ml-2 px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded">Global</span>
-                {/if}
-                {#if variable.help}
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{variable.help}</p>
-                {/if}
-              </div>
-              <div class="setting-value">
+    <!-- アクションボタン（上部） -->
+    {#snippet actionButtons()}
+      <div class="flex gap-3 justify-between flex-wrap">
+        <!-- 左側: エクスポート・インポート -->
+        <div class="flex gap-2">
+          <button
+            onclick={exportSettings}
+            disabled={saving || resetting || importing || exporting}
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {#if exporting}
+              <div
+                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 dark:border-gray-300 mr-1"
+              ></div>
+              エクスポート中...
+            {:else}
+              <i class="fas fa-download mr-1"></i>
+              バックアップ
+            {/if}
+          </button>
+          <button
+            onclick={openImportDialog}
+            disabled={saving || resetting || importing || exporting}
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {#if importing}
+              <div
+                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 dark:border-gray-300 mr-1"
+              ></div>
+              復元中...
+            {:else}
+              <i class="fas fa-upload mr-1"></i>
+              復元
+            {/if}
+          </button>
+        </div>
 
-              {#if variable.type === 'boolean'}
-                <!-- boolean型: force.*/default.*は3択トグル、それ以外は2択トグル -->
-                {#if key.startsWith('force.') || key.startsWith('default.')}
-                  <!-- 3択トグルスイッチ（未設定/いいえ/はい） -->
-                  <div class="toggle-3way">
-                    <input
-                      type="radio"
-                      id="{key}-null"
-                      name={key}
-                      checked={currentValue === null}
-                      onchange={() => handleValueChange(key, null, scope)}
-                    />
-                    <label for="{key}-null">未設定</label>
-                    
-                    <input
-                      type="radio"
-                      id="{key}-false"
-                      name={key}
-                      checked={currentValue === false}
-                      onchange={() => handleValueChange(key, false, scope)}
-                    />
-                    <label for="{key}-false">いいえ</label>
-                    
-                    <input
-                      type="radio"
-                      id="{key}-true"
-                      name={key}
-                      checked={currentValue === true}
-                      onchange={() => handleValueChange(key, true, scope)}
-                    />
-                    <label for="{key}-true">はい</label>
-                  </div>
-                {:else}
-                  <!-- 2択トグルスイッチ（セグメント型） -->
-                  <div class="toggle-2way">
-                    <input
-                      type="radio"
-                      id="{key}-false"
-                      name={key}
-                      checked={currentValue === false || currentValue === null}
-                      onchange={() => handleValueChange(key, false, scope)}
-                    />
-                    <label for="{key}-false">いいえ</label>
-                    
-                    <input
-                      type="radio"
-                      id="{key}-true"
-                      name={key}
-                      checked={currentValue === true}
-                      onchange={() => handleValueChange(key, true, scope)}
-                    />
-                    <label for="{key}-true">はい</label>
-                  </div>
-                {/if}
-              {:else if variable.type === 'select'}
-                <!-- セレクトボックス -->
-                <select
-                  value={currentValue?.toString() || ''}
-                  onchange={(e) => handleValueChange(key, e.currentTarget.value, scope)}
-                  class="select-field"
-                >
-                  <option value="">未設定</option>
-                  {#if variable.select_keys && variable.select_summaries}
-                    {#each variable.select_keys as selectKey, i}
-                      <option value={selectKey}>
-                        {variable.select_summaries[i] || selectKey}
-                      </option>
-                    {/each}
-                  {/if}
-                </select>
-              {:else if variable.type === 'multiple'}
-                <!-- 複数選択セレクトボックス -->
-                <select
-                  multiple
-                  value={currentValue ? currentValue.toString().split(',') : []}
-                  onchange={(e) => {
-                    const selected = Array.from(e.currentTarget.selectedOptions).map(o => o.value);
-                    handleValueChange(key, selected.length > 0 ? selected.join(',') : null, scope);
-                  }}
-                  class="select-field-multiple"
-                  size={getMultipleSelectSize(variable)}
-                >
-                  {#if variable.select_keys && variable.select_summaries}
-                    {#each variable.select_keys as selectKey, i}
-                      <option value={selectKey}>
-                        {variable.select_summaries[i] || selectKey}
-                      </option>
-                    {/each}
-                  {/if}
-                </select>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Ctrl/Cmdキーを押しながらクリックで複数選択</p>
-              {:else if variable.type === 'float' || variable.type === 'integer'}
-                <!-- 数値入力 -->
-                <input
-                  type="number"
-                  value={currentValue?.toString() || ''}
-                  placeholder={getNumberPlaceholder(variable)}
-                  min={getMinValue(key, variable)}
-                  step={variable.type === 'float' ? '0.1' : '1'}
-                  oninput={(e) => {
-                    const val = e.currentTarget.value;
-                    const numVal = val === '' ? null : (variable.type === 'float' ? parseFloat(val) : parseInt(val));
-                    
-                    // update.intervalの最小値チェック
-                    if (key === 'update.interval' && numVal !== null && numVal < 2.5) {
-                      e.currentTarget.value = '2.5';
-                      handleValueChange(key, 2.5, scope);
-                      return;
-                    }
-                    
-                    handleValueChange(key, numVal, scope);
-                  }}
-                  class="input-field"
-                />
-              {:else}
-                <!-- テキスト入力 -->
-                <input
-                  type="text"
-                  value={currentValue?.toString() || ''}
-                  placeholder={currentValue === null ? 'null' : currentValue === '' ? '未入力' : ''}
-                  oninput={(e) => handleValueChange(key, e.currentTarget.value || null, scope)}
-                  class="input-field"
-                />
-              {/if}
-              </div>
-            </div>
-          </div>
-        {/each}
-
-        {#if settingsForCurrentTab.length === 0}
-          <p class="text-center text-gray-500 py-8">このタブに設定項目はありません</p>
-        {/if}
+        <!-- 右側: 既存のボタン -->
+        <div class="flex gap-2">
+          <button
+            onclick={() => (showResetConfirmModal = true)}
+            disabled={saving || resetting || importing}
+            class="px-4 py-2 border border-orange-300 dark:border-orange-600 rounded-lg text-sm font-medium text-orange-700 dark:text-orange-300 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <i class="fas fa-undo mr-1"></i>
+            デフォルトに戻す
+          </button>
+          <button
+            onclick={discardChanges}
+            disabled={!hasChanges || saving || resetting || importing}
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            変更を破棄
+          </button>
+          <button
+            onclick={saveSettings}
+            disabled={!hasChanges || saving || resetting || importing}
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+          >
+            {#if saving}
+              <div
+                class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+              ></div>
+              保存中...
+            {:else}
+              変更を保存
+            {/if}
+          </button>
+        </div>
       </div>
+    {/snippet}
+
+    <div class="mb-6">
+      {@render actionButtons()}
     </div>
 
-    <!-- 保存ボタン -->
-    {#if hasChanges}
-      <div class="mt-6 flex gap-4 justify-end">
-        <button
-          onclick={discardChanges}
-          disabled={saving}
-          class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          変更を破棄
-        </button>
-        <button
-          onclick={saveSettings}
-          disabled={saving}
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {#if saving}
-            <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            保存中...
-          {:else}
-            変更を保存
+    {#if currentTab === "parser"}
+      <!-- HTML パーサー設定 -->
+      <ParserSettings />
+    {:else}
+      <!-- 設定フォーム -->
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+      >
+        <div class="space-y-6">
+          {#each settingsForCurrentTab as [key, variable, scope]}
+            {@const currentValue = editedValues[scope][key]}
+
+            <div class="setting-item">
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span
+                    class="text-sm font-medium text-gray-900 dark:text-gray-100"
+                    >{key}</span
+                  >
+                  {#if scope === "global"}
+                    <span
+                      class="ml-2 px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded"
+                      >Global</span
+                    >
+                  {/if}
+                  {#if variable.help}
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {variable.help}
+                    </p>
+                  {/if}
+                </div>
+                <div class="setting-value">
+                  {#if variable.type === "boolean"}
+                    <!-- boolean型: force.*/default.*は3択トグル、それ以外は2択トグル -->
+                    {#if key.startsWith("force.") || key.startsWith("default.")}
+                      <!-- 3択トグルスイッチ（未設定/いいえ/はい） -->
+                      <div class="toggle-3way">
+                        <input
+                          type="radio"
+                          id="{key}-null"
+                          name={key}
+                          checked={currentValue === null}
+                          onchange={() => handleValueChange(key, null, scope)}
+                        />
+                        <label for="{key}-null">未設定</label>
+
+                        <input
+                          type="radio"
+                          id="{key}-false"
+                          name={key}
+                          checked={currentValue === false}
+                          onchange={() => handleValueChange(key, false, scope)}
+                        />
+                        <label for="{key}-false">いいえ</label>
+
+                        <input
+                          type="radio"
+                          id="{key}-true"
+                          name={key}
+                          checked={currentValue === true}
+                          onchange={() => handleValueChange(key, true, scope)}
+                        />
+                        <label for="{key}-true">はい</label>
+                      </div>
+                    {:else}
+                      <!-- 2択トグルスイッチ（セグメント型） -->
+                      <div class="toggle-2way">
+                        <input
+                          type="radio"
+                          id="{key}-false"
+                          name={key}
+                          checked={currentValue === false ||
+                            currentValue === null}
+                          onchange={() => handleValueChange(key, false, scope)}
+                        />
+                        <label for="{key}-false">いいえ</label>
+
+                        <input
+                          type="radio"
+                          id="{key}-true"
+                          name={key}
+                          checked={currentValue === true}
+                          onchange={() => handleValueChange(key, true, scope)}
+                        />
+                        <label for="{key}-true">はい</label>
+                      </div>
+                    {/if}
+                  {:else if variable.type === "select"}
+                    <!-- セレクトボックス -->
+                    <select
+                      value={currentValue?.toString() || ""}
+                      onchange={(e) =>
+                        handleValueChange(key, e.currentTarget.value, scope)}
+                      class="select-field"
+                    >
+                      <option value="">未設定</option>
+                      {#if variable.select_keys && variable.select_summaries}
+                        {#each variable.select_keys as selectKey, i}
+                          <option value={selectKey}>
+                            {variable.select_summaries[i] || selectKey}
+                          </option>
+                        {/each}
+                      {/if}
+                    </select>
+                  {:else if variable.type === "multiple"}
+                    <!-- 複数選択セレクトボックス -->
+                    <select
+                      multiple
+                      value={currentValue
+                        ? currentValue.toString().split(",")
+                        : []}
+                      onchange={(e) => {
+                        const selected = Array.from(
+                          e.currentTarget.selectedOptions
+                        ).map((o) => o.value);
+                        handleValueChange(
+                          key,
+                          selected.length > 0 ? selected.join(",") : null,
+                          scope
+                        );
+                      }}
+                      class="select-field-multiple"
+                      size={getMultipleSelectSize(variable)}
+                    >
+                      {#if variable.select_keys && variable.select_summaries}
+                        {#each variable.select_keys as selectKey, i}
+                          <option value={selectKey}>
+                            {variable.select_summaries[i] || selectKey}
+                          </option>
+                        {/each}
+                      {/if}
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Ctrl/Cmdキーを押しながらクリックで複数選択
+                    </p>
+                  {:else if variable.type === "float" || variable.type === "integer"}
+                    <!-- 数値入力 -->
+                    <input
+                      type="number"
+                      value={currentValue?.toString() || ""}
+                      placeholder={getNumberPlaceholder(variable)}
+                      min={getMinValue(key, variable)}
+                      step={variable.type === "float" ? "0.1" : "1"}
+                      oninput={(e) => {
+                        const val = e.currentTarget.value;
+                        const numVal =
+                          val === ""
+                            ? null
+                            : variable.type === "float"
+                              ? parseFloat(val)
+                              : parseInt(val);
+
+                        // update.intervalの最小値チェック
+                        if (
+                          key === "update.interval" &&
+                          numVal !== null &&
+                          numVal < 2.5
+                        ) {
+                          e.currentTarget.value = "2.5";
+                          handleValueChange(key, 2.5, scope);
+                          return;
+                        }
+
+                        handleValueChange(key, numVal, scope);
+                      }}
+                      class="input-field"
+                    />
+                  {:else}
+                    <!-- テキスト入力 -->
+                    <input
+                      type="text"
+                      value={currentValue?.toString() || ""}
+                      placeholder={currentValue === null
+                        ? "null"
+                        : currentValue === ""
+                          ? "未入力"
+                          : ""}
+                      oninput={(e) =>
+                        handleValueChange(
+                          key,
+                          e.currentTarget.value || null,
+                          scope
+                        )}
+                      class="input-field"
+                    />
+                  {/if}
+                </div>
+              </div>
+            </div>
+          {/each}
+
+          {#if settingsForCurrentTab.length === 0}
+            <p class="text-center text-gray-500 py-8">
+              {#if filterKeyword.trim()}
+                「{filterKeyword}」に一致する設定項目が見つかりませんでした
+              {:else}
+                このタブに設定項目はありません
+              {/if}
+            </p>
           {/if}
-        </button>
+        </div>
+      </div>
+
+      <!-- アクションボタン（下部） -->
+      <div class="mt-6">
+        {@render actionButtons()}
       </div>
     {/if}
   {/if}
 </div>
+
+<!-- デフォルトリセット確認モーダル -->
+{#if showResetConfirmModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    onclick={() => (showResetConfirmModal = false)}
+  >
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+        <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i>
+        設定をデフォルトに戻す
+      </h3>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">
+        すべての設定をデフォルト値に戻します。この操作は元に戻せません。
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-500 mb-6">
+        ※ AozoraEpub3のパス設定はリセット対象外です
+      </p>
+      <div class="flex gap-3 justify-end">
+        <button
+          onclick={() => (showResetConfirmModal = false)}
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          キャンセル
+        </button>
+        <button
+          onclick={resetToDefaults}
+          disabled={resetting}
+          class="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+        >
+          {#if resetting}
+            <div
+              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+            ></div>
+            リセット中...
+          {:else}
+            <i class="fas fa-undo"></i>
+            リセットする
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- インポート確認モーダル -->
+{#if showImportConfirmModal}
+  <div
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    onclick={cancelImport}
+    onkeydown={(e) => e.key === "Escape" && cancelImport()}
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+  >
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl"
+      onclick={(e) => e.stopPropagation()}
+      onkeydown={() => {}}
+      role="document"
+    >
+      <h3
+        class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center"
+      >
+        <i class="fas fa-upload text-blue-500 mr-2"></i>
+        設定をインポート
+      </h3>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">
+        バックアップファイルから設定を復元します。現在の設定は上書きされます。
+      </p>
+      {#if pendingImportFile}
+        <div
+          class="text-sm text-gray-500 dark:text-gray-500 mb-6 bg-gray-50 dark:bg-gray-700 p-3 rounded"
+        >
+          <p>
+            <i class="fas fa-file-archive mr-1"></i>
+            <strong>ファイル:</strong>
+            {pendingImportFile.name}
+          </p>
+          <p class="text-xs mt-1">
+            サイズ: {(pendingImportFile.size / 1024).toFixed(1)} KB
+          </p>
+        </div>
+      {/if}
+      <div class="flex gap-3 justify-end">
+        <button
+          onclick={cancelImport}
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          キャンセル
+        </button>
+        <button
+          onclick={executeImport}
+          disabled={importing}
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+        >
+          {#if importing}
+            <div
+              class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+            ></div>
+            インポート中...
+          {:else}
+            <i class="fas fa-upload"></i>
+            復元する
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Hidden file input for import -->
+<input
+  type="file"
+  accept=".zip"
+  class="hidden"
+  bind:this={fileInputRef}
+  onchange={handleImportFile}
+/>
+
+<!-- トップに戻るボタン -->
+{#if showScrollTopButton}
+  <button
+    onclick={scrollToTop}
+    class="fixed z-40 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
+    style={consolePanelOpen
+      ? "bottom: calc(1px + 38vh); right: 1rem;"
+      : "bottom: 62px; right: 1rem;"}
+    title="トップに戻る"
+    aria-label="トップに戻る"
+  >
+    <i class="fas fa-arrow-up text-lg"></i>
+  </button>
+{/if}
 
 <style>
   .settings-container {
@@ -644,7 +1211,9 @@
     font-size: 0.875rem;
     background-color: white;
     color: #111827;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
   }
 
   .input-field::placeholder {
@@ -864,15 +1433,3 @@
     background-color: #4b5563;
   }
 </style>
-
-<!-- トップに戻るボタン -->
-{#if showScrollTopButton}
-  <button
-    onclick={scrollToTop}
-    class="fixed bottom-4 right-4 z-40 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
-    title="トップに戻る"
-    aria-label="トップに戻る"
-  >
-    <i class="fas fa-arrow-up text-lg"></i>
-  </button>
-{/if}

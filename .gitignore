@@ -3,7 +3,6 @@
 #
 .backup/
 小説データ/
-小説データ/
 kindlestrip.py
 kindlegen.exe
 t.rb
@@ -37,9 +36,20 @@ archive
 mail_setting.yaml
 .byebug_history
 *.log
+*.log.err
 .agent/
+.claude/
+
+# Performance test data
+.narou_perf_test/
+小説データ_perf_test/
+performance_report.txt
+
+# Rsync configuration
+rsync.env
 commitversion
 frontend/public/backend-port.json
+rsync.env
 
 #
 # for gem
@@ -47,6 +57,7 @@ frontend/public/backend-port.json
 *.gem
 *.rbc
 .bundle
+Gemfile.lock
 .config
 .yardoc
 InstalledFiles
@@ -66,3 +77,5 @@ document
 # Temporary files
 tmp/pids/
 tmp/logs/
+rsync.env
+frontend/dist/.build-commit

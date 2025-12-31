@@ -1,0 +1,11 @@
+# ✅ サーバーが起動しました
+
+<% if defined?(frontend_enabled) && frontend_enabled %>
+**バックエンドAPI**: http://<%= host %>:<%= port %>
+
+**Web UI**: http://<%= host %>:4321
+<% else %>
+**Web UI**: http://<%= host %>:<%= port %>
+<% end %>
+
+停止するには `Ctrl+C` を押してください。

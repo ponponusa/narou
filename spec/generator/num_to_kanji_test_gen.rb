@@ -3,9 +3,9 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-#require "pry"
+# require "pry"
 
-require_relative "../../lib/converterbase"
+require "lib/novel/converterbase"
 
 converter = ConverterBase.new(nil, nil, nil)
 

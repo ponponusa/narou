@@ -6,7 +6,7 @@
 <script lang="ts">
   interface ToastMessage {
     id: number;
-    type: 'success' | 'error' | 'info' | 'warning';
+    type: "success" | "error" | "info" | "warning";
     message: string;
     duration?: number;
   }
@@ -19,14 +19,14 @@
    */
   export function show(
     message: string,
-    type: 'success' | 'error' | 'info' | 'warning' = 'info',
+    type: "success" | "error" | "info" | "warning" = "info",
     duration: number = 5000
   ) {
     const id = nextId++;
     const toast: ToastMessage = { id, type, message, duration };
-    
+
     toasts = [...toasts, toast];
-    
+
     if (duration > 0) {
       setTimeout(() => {
         remove(id);
@@ -38,18 +38,18 @@
    * トースト通知を削除
    */
   function remove(id: number) {
-    toasts = toasts.filter(t => t.id !== id);
+    toasts = toasts.filter((t) => t.id !== id);
   }
 
   /**
    * タイプに応じたスタイルクラスを取得
    */
-  function getTypeClass(type: ToastMessage['type']): string {
+  function getTypeClass(type: ToastMessage["type"]): string {
     const classes = {
-      success: 'bg-green-500 text-white',
-      error: 'bg-red-500 text-white',
-      warning: 'bg-yellow-500 text-white',
-      info: 'bg-blue-500 text-white',
+      success: "bg-green-500 text-white",
+      error: "bg-red-500 text-white",
+      warning: "bg-yellow-500 text-white",
+      info: "bg-blue-500 text-white",
     };
     return classes[type];
   }
@@ -57,12 +57,12 @@
   /**
    * タイプに応じたアイコンを取得
    */
-  function getIcon(type: ToastMessage['type']): string {
+  function getIcon(type: ToastMessage["type"]): string {
     const icons = {
-      success: '✓',
-      error: '✕',
-      warning: '⚠',
-      info: 'ℹ',
+      success: "✓",
+      error: "✕",
+      warning: "⚠",
+      info: "ℹ",
     };
     return icons[type];
   }
@@ -72,7 +72,9 @@
 <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
   {#each toasts as toast (toast.id)}
     <div
-      class="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg {getTypeClass(toast.type)} min-w-[300px] max-w-md animate-slide-in"
+      class="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg {getTypeClass(
+        toast.type
+      )} min-w-[300px] max-w-md animate-slide-in"
       role="alert"
     >
       <span class="text-xl font-bold">{getIcon(toast.type)}</span>

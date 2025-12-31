@@ -4,6 +4,9 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+# Windows専用モジュール - 他のプラットフォームでは読み込まない
+return unless Gem.win_platform?
+
 module WinAPI
   begin
     require "fiddle/import"
@@ -38,6 +41,6 @@ require "tmpdir"
 # テンポラリディレクトリをユーザーディレクトリからシステムに切り替える
 if Dir.tmpdir !~ /\A[ -~]+\z/
   def Dir.tmpdir
-    File.expand_path(File.join(ENV["SystemRoot"], "Temp"))
+    File.expand_path(File.join(ENV.fetch("SystemRoot", nil), "Temp"))
   end
 end

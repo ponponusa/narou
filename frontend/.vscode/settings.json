@@ -1,0 +1,23 @@
+{
+  // Astro / Svelte / TS 固有の設定
+  "[astro]": {
+    "editor.defaultFormatter": "astro-build.astro-vscode"
+  },
+  "[svelte]": {
+    "editor.defaultFormatter": "svelte.svelte-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // --- 保存時の挙動 ---
+  // Ruby側で設定していても、フロントエンドでは無効化したいものがあれば上書き
+  "editor.formatOnSave": true,
+
+  // --- 除外設定の強化 ---
+  // Frontend作業中、親ディレクトリのRuby関連ファイルはノイズなので検索から消す
+  "search.exclude": {
+    "**/vendor/bundle": true,
+    "**/coverage": true
+  }
+}

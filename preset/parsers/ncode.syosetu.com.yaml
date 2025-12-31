@@ -1,0 +1,80 @@
+# サイト基本情報
+name: 小説家になろう
+domain: ncode.syosetu.com
+encoding: UTF-8
+top_url: https://ncode.syosetu.com
+sitename: 小説家になろう
+
+# 目次ページ設定
+toc_url_pattern: "https://ncode.syosetu.com/{ncode}/"
+toc_selectors:
+  - selector: "div.p-eplist__sublist"
+    priority: 10
+    extract: "list"
+    description: "エピソードリスト（2024年現在）"
+    item_selectors:
+      chapter: "div.p-eplist__chapter-title"
+      subtitle: "a.p-eplist__subtitle"
+      href: "a.p-eplist__subtitle::attr(href)"
+      subdate: "div.p-eplist__update"
+  - selector: "div.novel_sublist2"
+    priority: 5
+    extract: "list"
+    description: "旧デザイン（2020年以前）"
+    item_selectors:
+      subtitle: "dd.subtitle a"
+      href: "dd.subtitle a::attr(href)"
+      subdate: "dt.long_update"
+
+# 本文ページ設定
+body_selectors:
+  - selector: "div.js-novel-text.p-novel__text:not(.p-novel__text--preface):not(.p-novel__text--afterword)"
+    priority: 10
+    extract: "inner_html"
+    description: "本文のみ（前書き・後書きを除外）"
+  - selector: "div.p-novel__text:not(.p-novel__text--preface):not(.p-novel__text--afterword)"
+    priority: 8
+    extract: "inner_html"
+    description: "BEMクラスのみ（前書き・後書きを除外）"
+  - selector: "div#novel_honbun"
+    priority: 5
+    extract: "inner_html"
+    description: "旧ID（2020年以前）"
+  - selector: "div#novel_color"
+    priority: 3
+    extract: "inner_html"
+    description: "最古のデザイン"
+
+introduction_selectors:
+  - selector: "div.js-novel-text.p-novel__text--preface"
+    priority: 10
+    extract: "inner_html"
+  - selector: "div.p-novel__text--preface"
+    priority: 8
+    extract: "inner_html"
+  - selector: "div#novel_p"
+    priority: 5
+    extract: "inner_html"
+
+postscript_selectors:
+  - selector: "div.js-novel-text.p-novel__text--afterword"
+    priority: 10
+    extract: "inner_html"
+  - selector: "div.p-novel__text--afterword"
+    priority: 8
+    extract: "inner_html"
+  - selector: "div#novel_a"
+    priority: 5
+    extract: "inner_html"
+
+# 小説情報ページ設定
+novel_info_url_pattern: "https://ncode.syosetu.com/novelview/infotop/ncode/{ncode}/"
+novel_info_selectors:
+  title: "h1.p-infotop-title a"
+  author: "dd.p-infotop-data__value a"
+  story: "dd.p-infotop-data__value"
+  novel_type: "span.p-infotop-type__type"
+  general_all_no: "span.p-infotop-type__allep"
+
+# 成功履歴（自動更新、ユーザーは編集不要）
+last_successful_selectors: {}

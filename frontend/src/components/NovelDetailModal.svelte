@@ -15,7 +15,7 @@
     show: (
       message: string,
       type: "success" | "error" | "info" | "warning",
-      duration?: number,
+      duration?: number
     ) => void;
   } | null = null;
 
@@ -56,7 +56,7 @@
       onDelete?: () => void;
       onTagEdit?: (novelId: number) => void;
       onConversionSettings?: (novelId: number, title: string) => void;
-    },
+    }
   ) {
     novel = novelData;
     showModal = true;
@@ -97,19 +97,52 @@
   /**
    * EPUBダウンロード
    */
-  function handleDownloadEpub() {
+  async function handleDownloadEpub() {
     if (!novel) return;
 
-    const filename = `${novel.title}.epub`;
-    const downloadUrl = `http://localhost:5678/novels/${novel.id}/download`;
+    try {
+      const downloadUrl = `http://localhost:5678/api/v2/novels/${novel.id}/epub`;
+      const response = await fetch(downloadUrl);
 
-    // ダウンロード用のリンクを生成してクリック
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.download = filename;
-    link.click();
+      if (!response.ok) {
+        toast?.show(`EPUBダウンロードに失敗しました`, "error");
+        return;
+      }
 
-    toast?.show(`${novel.title} のEPUBダウンロードを開始しました`, "info");
+      // Content-Dispositionヘッダーからファイル名を取得
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `${novel.title}.epub`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(
+          /filename\*=UTF-8''(.+)/
+        );
+        if (filenameMatch) {
+          // RFC 5987形式のデコード
+          filename = decodeURIComponent(filenameMatch[1]);
+        } else {
+          // 通常のfilename形式も試す
+          const normalMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+          if (normalMatch) {
+            filename = normalMatch[1];
+          }
+        }
+      }
+
+      // Blobとしてダウンロード
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      toast?.show(`${novel.title} のEPUBダウンロードを開始しました`, "info");
+    } catch (error) {
+      console.error("EPUB download error:", error);
+      toast?.show(`EPUBダウンロードに失敗しました`, "error");
+    }
   }
 
   /**
@@ -210,7 +243,7 @@
 
     if (
       !confirm(
-        `「${novel.title}」を削除しますか？\n\nこの操作は取り消せません。`,
+        `「${novel.title}」を削除しますか？\n\nこの操作は取り消せません。`
       )
     )
       return;
@@ -276,7 +309,7 @@
   <div
     class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto"
     onclick={(e) => e.target === e.currentTarget && closeModal()}
-    onkeydown={(e) => e.key === 'Escape' && closeModal()}
+    onkeydown={(e) => e.key === "Escape" && closeModal()}
     role="button"
     tabindex="-1"
     aria-label="モーダルを閉じる"
@@ -340,9 +373,9 @@
           <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {novel.title}
           </h3>
-          {#if novel.promo_tags_title}
+          {#if novel.title_original && novel.title_original !== novel.title}
             <p class="text-sm text-gray-600 dark:text-gray-400">
-              元タイトル: {novel.promo_tags_title}
+              元タイトル: {novel.title_original}
             </p>
           {/if}
 
@@ -384,10 +417,21 @@
               著者
             </dt>
             <dd class="mt-1 text-base text-gray-900 dark:text-white">
-              {novel.author}
-              {#if novel.promo_tags_author}
+              {#if novel.author_url}
+                <a
+                  href={novel.author_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {novel.author}
+                </a>
+              {:else}
+                {novel.author}
+              {/if}
+              {#if novel.author_original && novel.author_original !== novel.author}
                 <span class="text-sm text-gray-600 dark:text-gray-400">
-                  (元: {novel.promo_tags_author})
+                  (元: {novel.author_original})
                 </span>
               {/if}
             </dd>
@@ -398,7 +442,18 @@
               掲載サイト
             </dt>
             <dd class="mt-1 text-base text-gray-900 dark:text-white">
-              {novel.sitename}
+              {#if novel.site_top_url}
+                <a
+                  href={novel.site_top_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {novel.sitename}
+                </a>
+              {:else}
+                {novel.sitename}
+              {/if}
             </dd>
           </div>
 

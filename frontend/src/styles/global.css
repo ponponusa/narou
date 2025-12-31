@@ -1,3 +1,41 @@
 @import "tailwindcss";
 
+/* stylelint-disable-next-line at-rule-no-unknown */
 @variant dark (&:where(.dark, .dark *));
+
+/* Base font size */
+body {
+  font-size: 14px;
+  overflow-y: scroll; /* 縦スクロールバーを常に表示（レイアウトシフト防止） */
+}
+
+/* Heading styles with relative sizes */
+h1 {
+  font-size: 1.4rem; /* 19.6px */
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 1.3rem; /* 18.2px */
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 1.2rem; /* 16.8px */
+  line-height: 1.4;
+}
+
+h4 {
+  font-size: 1.1rem; /* 15.4px */
+  line-height: 1.4;
+}
+
+h5 {
+  font-size: 1rem; /* 14px */
+  line-height: 1.5;
+}
+
+h6 {
+  font-size: 1rem; /* 14px */
+  line-height: 1.5;
+}

@@ -2,24 +2,43 @@
 /**
  * デバッグ用テストページ
  */
-import BaseLayout from '../layouts/BaseLayout.astro';
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ConsolePanel from "../components/ConsolePanel.svelte";
 ---
 
 <BaseLayout title="設定デバッグ - Narou">
   <main class="container mx-auto px-4 py-6">
-    <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">設定画面デバッグ</h1>
-    
-    <div id="debug-output" class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-4 rounded mb-6">
-      <h2 class="font-bold mb-2 text-gray-900 dark:text-gray-100">API Response:</h2>
-      <pre id="api-output" class="text-xs overflow-auto max-h-96 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded"></pre>
-    </div>
-    
-    <div id="tab-debug" class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-4 rounded mb-6">
-      <h2 class="font-bold mb-2 text-gray-900 dark:text-gray-100">Tab Analysis:</h2>
-      <pre id="tab-output" class="text-xs overflow-auto max-h-96 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded"></pre>
+    <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">
+      設定画面デバッグ
+    </h1>
+
+    <div
+      id="debug-output"
+      class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-4 rounded mb-6"
+    >
+      <h2 class="font-bold mb-2 text-gray-900 dark:text-gray-100">
+        API Response:
+      </h2>
+      <pre
+        id="api-output"
+        class="text-xs overflow-auto max-h-96 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded">
+      </pre>
     </div>
 
-    <button 
+    <div
+      id="tab-debug"
+      class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-4 rounded mb-6"
+    >
+      <h2 class="font-bold mb-2 text-gray-900 dark:text-gray-100">
+        Tab Analysis:
+      </h2>
+      <pre
+        id="tab-output"
+        class="text-xs overflow-auto max-h-96 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded">
+      </pre>
+    </div>
+
+    <button
       id="reload-btn"
       class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
     >
@@ -29,72 +48,78 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
   <script is:inline>
     // DOMが読み込まれてから実行
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initDebug);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initDebug);
     } else {
       initDebug();
     }
-    
+
     function initDebug() {
-      console.log('Initializing debug page...');
+      console.log("Initializing debug page...");
       debugSettings();
-      
-      const reloadBtn = document.getElementById('reload-btn');
+
+      const reloadBtn = document.getElementById("reload-btn");
       if (reloadBtn) {
-        reloadBtn.addEventListener('click', debugSettings);
-        console.log('Reload button attached');
+        reloadBtn.addEventListener("click", debugSettings);
+        console.log("Reload button attached");
       } else {
-        console.error('Reload button not found');
+        console.error("Reload button not found");
       }
     }
-    
+
     async function debugSettings() {
-      console.log('debugSettings() called');
-      const apiOutput = document.getElementById('api-output');
-      const tabOutput = document.getElementById('tab-output');
-      
+      console.log("debugSettings() called");
+      const apiOutput = document.getElementById("api-output");
+      const tabOutput = document.getElementById("tab-output");
+
       if (!apiOutput || !tabOutput) {
-        console.error('Output elements not found', { apiOutput, tabOutput });
+        console.error("Output elements not found", { apiOutput, tabOutput });
         return;
       }
-      
-      console.log('Output elements found');
-      apiOutput.textContent = 'Loading...';
-      tabOutput.textContent = 'Loading...';
-      
+
+      console.log("Output elements found");
+      apiOutput.textContent = "Loading...";
+      tabOutput.textContent = "Loading...";
+
       try {
-        console.log('Fetching settings variables...');
-        const url = 'http://172.26.39.220:33000/api/v2/settings/variables';
-        console.log('Fetch URL:', url);
-        
+        console.log("Fetching settings variables...");
+        const url = "http://172.26.39.220:33000/api/v2/settings/variables";
+        console.log("Fetch URL:", url);
+
         const response = await fetch(url);
-        console.log('Response status:', response.status, response.statusText);
-        
+        console.log("Response status:", response.status, response.statusText);
+
         const data = await response.json();
-        console.log('API Response:', data);
-        
+        console.log("API Response:", data);
+
         if (!data.success) {
-          throw new Error(data.message || 'API request failed');
+          throw new Error(data.message || "API request failed");
         }
-        
+
         const variables = data.data.variables;
         const tabNames = data.data.tab_names;
-        
-        console.log('Variables:', variables);
-        console.log('Tab names:', tabNames);
-        
+
+        console.log("Variables:", variables);
+        console.log("Tab names:", tabNames);
+
         // APIレスポンスを表示
         apiOutput.textContent = JSON.stringify(data.data, null, 2);
-        
+
         // タブの集計（invisibleも含める）
         const tabCounts = {};
-        
+
         // localスコープ
         Object.entries(variables.local).forEach(([key, variable]) => {
           // invisibleチェックを削除 - タブがあれば全て集計
           if (variable.tab) {
             if (!tabCounts[variable.tab]) {
-              tabCounts[variable.tab] = { local: 0, global: 0, localKeys: [], globalKeys: [], invisibleCount: 0 };
+              tabCounts[variable.tab] = {
+                local: 0,
+                global: 0,
+                localKeys: [],
+                globalKeys: [],
+                invisibleCount: 0,
+              };
             }
             tabCounts[variable.tab].local++;
             if (variable.invisible) {
@@ -105,13 +130,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             }
           }
         });
-        
+
         // globalスコープ
         Object.entries(variables.global).forEach(([key, variable]) => {
           // invisibleチェックを削除 - タブがあれば全て集計
           if (variable.tab) {
             if (!tabCounts[variable.tab]) {
-              tabCounts[variable.tab] = { local: 0, global: 0, localKeys: [], globalKeys: [], invisibleCount: 0 };
+              tabCounts[variable.tab] = {
+                local: 0,
+                global: 0,
+                localKeys: [],
+                globalKeys: [],
+                invisibleCount: 0,
+              };
             }
             tabCounts[variable.tab].global++;
             if (variable.invisible) {
@@ -122,14 +153,22 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             }
           }
         });
-        
-        console.log('Tab counts:', tabCounts);
-        
+
+        console.log("Tab counts:", tabCounts);
+
         // タブ分析を表示
-        let output = 'Tab Distribution:\n\n';
-        const tabOrder = ['general', 'detail', 'webui', 'global', 'default', 'force', 'command'];
-        
-        tabOrder.forEach(tab => {
+        let output = "Tab Distribution:\n\n";
+        const tabOrder = [
+          "general",
+          "detail",
+          "webui",
+          "global",
+          "default",
+          "force",
+          "command",
+        ];
+
+        tabOrder.forEach((tab) => {
           if (tabCounts[tab]) {
             const total = tabCounts[tab].local + tabCounts[tab].global;
             const displayName = tabNames[tab] || tab;
@@ -142,27 +181,28 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             output += `  Global: ${tabCounts[tab].global} items\n`;
             output += `  Total: ${total} items\n`;
             if (tabCounts[tab].localKeys.length > 0) {
-              output += `  Sample local keys: ${tabCounts[tab].localKeys.join(', ')}\n`;
+              output += `  Sample local keys: ${tabCounts[tab].localKeys.join(", ")}\n`;
             }
             if (tabCounts[tab].globalKeys.length > 0) {
-              output += `  Sample global keys: ${tabCounts[tab].globalKeys.join(', ')}\n`;
+              output += `  Sample global keys: ${tabCounts[tab].globalKeys.join(", ")}\n`;
             }
-            output += '\n';
+            output += "\n";
           }
         });
-        
-        output += '\nTab Names:\n';
+
+        output += "\nTab Names:\n";
         output += JSON.stringify(tabNames, null, 2);
-        
+
         tabOutput.textContent = output;
-        
-        console.log('Debug page updated successfully');
-        
+
+        console.log("Debug page updated successfully");
       } catch (error) {
-        console.error('Error in debugSettings:', error);
+        console.error("Error in debugSettings:", error);
         apiOutput.textContent = `Error: ${error.message}\n${error.stack}`;
         tabOutput.textContent = `Error: ${error.message}`;
       }
     }
   </script>
+
+  <ConsolePanel client:only="svelte" />
 </BaseLayout>

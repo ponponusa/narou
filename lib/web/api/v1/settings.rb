@@ -6,7 +6,7 @@
 
 #
 # Legacy API v1 - 設定関連エンドポイント
-# 
+#
 # 小説設定の一括適用や更新設定等
 #
 
@@ -23,13 +23,13 @@ module Narou
             is_update_modified = params["is_update_modified"] == "true"
             Narou::WebWorker.push do
               CommandLine.run!(["update", "--gl", option].compact)
-              Narou::AppServer.clear_all_cache # 全キャッシュ無効化
+              NovelListProcessor.clear_all_cache # 全キャッシュ無効化
               Narou::AppServer.push_server.send_all(:"table.reload")
               Narou::AppServer.push_server.send_all(:"tag.updateCanvas")
               if is_update_modified
                 puts "<yellow>#{Narou::MODIFIED_TAG} タグの付いた小説を更新します</yellow>".termcolor
                 CommandLine.run!("update", "tag:#{Narou::MODIFIED_TAG}")
-                Narou::AppServer.clear_all_cache # 全キャッシュ無効化
+                NovelListProcessor.clear_all_cache # 全キャッシュ無効化
                 Narou::AppServer.push_server.send_all(:"table.reload")
                 Narou::AppServer.push_server.send_all(:"tag.updateCanvas")
               end

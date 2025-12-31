@@ -6,7 +6,7 @@
 
 #
 # Legacy API v1 - ユーティリティエンドポイント
-# 
+#
 # ノートパッド、バックアップ、デバイス操作等の補助機能
 #
 
@@ -113,43 +113,39 @@ module Narou
 
           # CSV ダウンロード
           get "/api/csv/download" do
-            begin
-              content_type "application/csv"
-              attachment "novels.csv"
+            content_type "application/csv"
+            attachment "novels.csv"
 
-              csv_command = Command::Csv.new
-              result = csv_command.generate
-              puts "CSVファイルをエクスポートしました (#{result.bytesize} bytes)"
-              result
-            rescue StandardError => e
-              puts "[ERROR] CSVエクスポートに失敗しました: #{e.message}"
-              status 500
-              content_type "text/plain"
-              "CSVエクスポートエラー: #{e.message}"
-            end
+            csv_command = Command::Csv.new
+            result = csv_command.generate
+            puts "CSVファイルをエクスポートしました (#{result.bytesize} bytes)"
+            result
+          rescue StandardError => e
+            puts "[ERROR] CSVエクスポートに失敗しました: #{e.message}"
+            status 500
+            content_type "text/plain"
+            "CSVエクスポートエラー: #{e.message}"
           end
 
           # CSV インポート
           post "/api/csv/import" do
-            begin
-              raw_files = params["files"]
-              bad_request!("CSVファイルが指定されていません") if raw_files.nil?
-              files = raw_files.is_a?(Array) ? raw_files.compact : [raw_files].compact
-              bad_request!("CSVファイルが指定されていません") if files.empty?
-              csv = Command::Csv.new
-              imported_count = 0
-              files.each do |file|
-                csv.import(file[:tempfile])
-                imported_count += 1
-              end
-              bad_request!("CSVファイルが指定されていません") if imported_count.zero?
-              puts "CSVファイルをインポートしました (#{imported_count}件)"
-              ""
-            rescue StandardError => e
-              puts "[ERROR] CSVインポートに失敗しました: #{e.message}"
-              status 500
-              "CSVインポートエラー: #{e.message}"
+            raw_files = params["files"]
+            bad_request!("CSVファイルが指定されていません") if raw_files.nil?
+            files = raw_files.is_a?(Array) ? raw_files.compact : [raw_files].compact
+            bad_request!("CSVファイルが指定されていません") if files.empty?
+            csv = Command::Csv.new
+            imported_count = 0
+            files.each do |file|
+              csv.import(file[:tempfile])
+              imported_count += 1
             end
+            bad_request!("CSVファイルが指定されていません") if imported_count.zero?
+            puts "CSVファイルをインポートしました (#{imported_count}件)"
+            ""
+          rescue StandardError => e
+            puts "[ERROR] CSVインポートに失敗しました: #{e.message}"
+            status 500
+            "CSVインポートエラー: #{e.message}"
           end
 
           # ダウンロード登録すると同時にグレーのボタン画像を返す

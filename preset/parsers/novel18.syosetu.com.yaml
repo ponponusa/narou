@@ -1,0 +1,57 @@
+# サイト基本情報
+name: 小説家になろう（18禁）
+domain: novel18.syosetu.com
+encoding: UTF-8
+top_url: https://novel18.syosetu.com
+sitename: 小説家になろう（18禁）
+
+# 目次ページ設定（ncode.syosetu.com と同一構造）
+toc_url_pattern: "https://novel18.syosetu.com/{ncode}/"
+toc_selectors:
+  - selector: "div.p-eplist__sublist"
+    priority: 10
+    extract: "list"
+    description: "エピソードリスト（2024年現在）"
+    item_selectors:
+      chapter: "div.p-eplist__chapter-title"
+      subtitle: "a.p-eplist__subtitle"
+      href: "a.p-eplist__subtitle::attr(href)"
+      subdate: "div.p-eplist__update"
+
+# 本文ページ設定
+body_selectors:
+  - selector: "div.js-novel-text.p-novel__text"
+    priority: 10
+    extract: "inner_html"
+  - selector: "div.p-novel__text"
+    priority: 8
+    extract: "inner_html"
+  - selector: "div#novel_honbun"
+    priority: 5
+    extract: "inner_html"
+
+introduction_selectors:
+  - selector: "div.js-novel-text.p-novel__text--preface"
+    priority: 10
+    extract: "inner_html"
+  - selector: "div.p-novel__text--preface"
+    priority: 8
+    extract: "inner_html"
+
+postscript_selectors:
+  - selector: "div.js-novel-text.p-novel__text--afterword"
+    priority: 10
+    extract: "inner_html"
+  - selector: "div.p-novel__text--afterword"
+    priority: 8
+    extract: "inner_html"
+
+# 小説情報ページ設定
+novel_info_url_pattern: "https://novel18.syosetu.com/novelview/infotop/ncode/{ncode}/"
+novel_info_selectors:
+  title: "h1.p-infotop-title a"
+  author: "dd.p-infotop-data__value a"
+  story: "dd.p-infotop-data__value"
+
+# 成功履歴
+last_successful_selectors: {}

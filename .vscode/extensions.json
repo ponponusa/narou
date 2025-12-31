@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "shopify.ruby-lsp",
+        "misogi.ruby-rubocop",
+        "koichisasada.vscode-rdbg"
+    ]
+}
