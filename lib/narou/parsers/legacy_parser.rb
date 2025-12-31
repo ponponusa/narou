@@ -94,10 +94,13 @@ module Narou
       end
 
       #
-      # Legacy パーサーではセレクタ更新は行わない
+      # Legacy パーサーでバージョン情報を記録
       #
       def update_successful_selector(_selector_key, _selector)
-        # noop
+        # Legacyパーサーではセレクタではなくバージョン情報を記録
+        # BaseParserのrecord_selector_historyが呼ばれるが、
+        # Legacyの場合は実際にはバージョン番号をセクションファイルに記録する方が重要
+        # ここでは何もしない（バージョン記録はSectionDownloaderで行う）
       end
     end
   end

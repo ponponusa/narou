@@ -94,6 +94,122 @@ module Narou
           save_parser_config(domain, user_config, engine)
         end
 
+        # セレクタ履歴を記録（Nokogiri用）
+        def record_selector_history(domain, selector_key, selector, engine = "nokogiri")
+          user_config = load_user_config(domain, engine) || {}
+          user_config["selector_history"] ||= {}
+          user_config["selector_history"][selector_key] ||= []
+
+          # 既存のエントリを探す
+          history_entry = user_config["selector_history"][selector_key].find { |h| h["selector"] == selector }
+
+          if history_entry
+            # 既存エントリを更新
+            history_entry["last_success"] = Time.now.strftime("%Y-%m-%d %H:%M:%S")
+            history_entry["success_count"] = (history_entry["success_count"] || 0) + 1
+          else
+            # 新規エントリを追加
+            new_entry = {
+              "selector" => selector,
+              "first_success" => Time.now.strftime("%Y-%m-%d %H:%M:%S"),
+              "last_success" => Time.now.strftime("%Y-%m-%d %H:%M:%S"),
+              "success_count" => 1
+            }
+
+            # セレクタ変更を検出（現在のlast_successful_selectorsと異なる場合）
+            last_successful = user_config.dig("last_successful_selectors", selector_key, "selector")
+            if last_successful && last_successful != selector
+              new_entry["detected_change"] = Time.now.strftime("%Y-%m-%d %H:%M:%S")
+              new_entry["replaced_selector"] = last_successful
+
+              # 変更ログに記録
+              record_selector_change(domain, selector_key, last_successful, selector, engine)
+            end
+
+            user_config["selector_history"][selector_key] << new_entry
+          end
+
+          # 後方互換のため last_successful_selectors も更新
+          user_config["last_successful_selectors"] ||= {}
+          user_config["last_successful_selectors"][selector_key] = {
+            "selector" => selector,
+            "date" => Time.now.strftime("%Y-%m-%d %H:%M:%S")
+          }
+
+          save_parser_config(domain, user_config, engine)
+        rescue => e
+          warn "[ConfigManager] セレクタ履歴の記録に失敗: #{e.message}"
+        end
+
+        # セレクタ変更を変更ログに記録
+        def record_selector_change(domain, selector_key, old_selector, new_selector, engine)
+          change_log_path = File.join(Narou.root_dir, ".narou/parsers/change_log.yaml")
+          change_log = File.exist?(change_log_path) ? YAML.load_file(change_log_path) : {}
+
+          change_log[domain] ||= []
+          change_log[domain] << {
+            "timestamp" => Time.now.strftime("%Y-%m-%d %H:%M:%S"),
+            "selector_key" => selector_key,
+            "old_selector" => old_selector,
+            "new_selector" => new_selector,
+            "detection_type" => "auto",
+            "engine" => engine
+          }
+
+          FileUtils.mkdir_p(File.dirname(change_log_path))
+          File.write(change_log_path, YAML.dump(change_log))
+        rescue => e
+          warn "[ConfigManager] 変更ログの記録に失敗: #{e.message}"
+        end
+
+        # セレクタ履歴を取得
+        def get_selector_history(domain, engine = "nokogiri")
+          user_config = load_user_config(domain, engine)
+          return {} unless user_config
+
+          user_config["selector_history"] || {}
+        end
+
+        # 変更ログを取得
+        def get_change_log(domain = nil)
+          change_log_path = File.join(Narou.root_dir, ".narou/parsers/change_log.yaml")
+          return {} unless File.exist?(change_log_path)
+
+          change_log = YAML.load_file(change_log_path)
+          domain ? change_log[domain] || [] : change_log
+        rescue => e
+          warn "[ConfigManager] 変更ログの読み込みに失敗: #{e.message}"
+          {}
+        end
+
+        # アーカイブされたレガシーパーサーを取得
+        def load_archived_legacy_parser(domain, version)
+          archive_path = File.join(Narou.script_dir, "preset/parsers/legacy_archive/#{domain}/v#{version}.yaml")
+          return nil unless File.exist?(archive_path)
+
+          YAML.load_file(archive_path)
+        rescue => e
+          warn "[ConfigManager] アーカイブの読み込みに失敗: #{domain} v#{version} - #{e.message}"
+          nil
+        end
+
+        # レガシーパーサーのバージョン履歴を取得
+        def get_legacy_version_history(domain)
+          archive_dir = File.join(Narou.script_dir, "preset/parsers/legacy_archive/#{domain}")
+          return [] unless Dir.exist?(archive_dir)
+
+          versions = []
+          Dir.glob(File.join(archive_dir, "v*.yaml")).each do |path|
+            version = File.basename(path, ".yaml").sub(/^v/, "")
+            versions << version
+          end
+
+          versions.sort
+        rescue => e
+          warn "[ConfigManager] バージョン履歴の取得に失敗: #{domain} - #{e.message}"
+          []
+        end
+
         # 全てのサイト設定を取得（Web UI 用）
         def list_all_parser_configs(engine)
           configs = {}

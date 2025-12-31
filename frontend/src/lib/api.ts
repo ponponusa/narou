@@ -901,3 +901,17 @@ export async function updateParserSettings(settings: {
     body: JSON.stringify(settings),
   });
 }
+
+/**
+ * パーサー診断情報を取得
+ * @param domain - ドメイン名
+ * @param engine - パーサーエンジン (nokogiri | legacy)
+ */
+export async function getParserDiagnostics(
+  domain: string,
+  engine: string = "nokogiri"
+): Promise<any> {
+  return await fetchApiV2(
+    `/api/v2/settings/parser/diagnostics/${encodeURIComponent(domain)}?engine=${engine}`
+  );
+}

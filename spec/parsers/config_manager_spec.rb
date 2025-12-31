@@ -161,4 +161,227 @@ RSpec.describe Narou::Parsers::ConfigManager do
       expect(last_successful["date"]).to match(/\d{4}-\d{2}-\d{2}/)
     end
   end
+
+  describe ".record_selector_history" do
+    before do
+      # ユーザー設定ファイルを作成
+      config = described_class.load_parser_config("test.example.com", "nokogiri")
+      described_class.save_parser_config("test.example.com", config, "nokogiri")
+    end
+
+    it "セレクタ履歴を記録する（初回）" do
+      described_class.record_selector_history(
+        "test.example.com",
+        "body_selectors",
+        "div.body-v1",
+        "nokogiri"
+      )
+
+      config = described_class.load_parser_config("test.example.com", "nokogiri")
+      history = config.dig("selector_history", "body_selectors")
+
+      expect(history).to be_a(Array)
+      expect(history.size).to eq(1)
+      expect(history[0]["selector"]).to eq("div.body-v1")
+      expect(history[0]["success_count"]).to eq(1)
+      expect(history[0]["first_success"]).to match(/\d{4}-\d{2}-\d{2}/)
+    end
+
+    it "同じセレクタの成功回数をインクリメントする" do
+      # 1回目
+      described_class.record_selector_history(
+        "test.example.com",
+        "body_selectors",
+        "div.body-v1",
+        "nokogiri"
+      )
+
+      # 2回目（同じセレクタ）
+      described_class.record_selector_history(
+        "test.example.com",
+        "body_selectors",
+        "div.body-v1",
+        "nokogiri"
+      )
+
+      config = described_class.load_parser_config("test.example.com", "nokogiri")
+      history = config.dig("selector_history", "body_selectors")
+
+      expect(history.size).to eq(1)
+      expect(history[0]["success_count"]).to eq(2)
+    end
+
+    it "セレクタ変更を検出して記録する" do
+      # 古いセレクタを記録
+      described_class.record_selector_history(
+        "test.example.com",
+        "body_selectors",
+        "div.old-selector",
+        "nokogiri"
+      )
+
+      # 新しいセレクタを記録（変更検出）
+      described_class.record_selector_history(
+        "test.example.com",
+        "body_selectors",
+        "div.new-selector",
+        "nokogiri"
+      )
+
+      config = described_class.load_parser_config("test.example.com", "nokogiri")
+      history = config.dig("selector_history", "body_selectors")
+
+      expect(history.size).to eq(2)
+
+      new_entry = history.find { |h| h["selector"] == "div.new-selector" }
+      expect(new_entry["detected_change"]).to match(/\d{4}-\d{2}-\d{2}/)
+      expect(new_entry["replaced_selector"]).to eq("div.old-selector")
+    end
+  end
+
+  describe ".record_selector_change" do
+    it "変更ログに記録する" do
+      described_class.record_selector_change(
+        "test.example.com",
+        "body_selectors",
+        "div.old",
+        "div.new",
+        "nokogiri"
+      )
+
+      change_log = described_class.get_change_log("test.example.com")
+
+      expect(change_log).to be_a(Array)
+      expect(change_log.size).to eq(1)
+      expect(change_log[0]["selector_key"]).to eq("body_selectors")
+      expect(change_log[0]["old_selector"]).to eq("div.old")
+      expect(change_log[0]["new_selector"]).to eq("div.new")
+      expect(change_log[0]["engine"]).to eq("nokogiri")
+    end
+  end
+
+  describe ".get_selector_history" do
+    it "セレクタ履歴を取得する" do
+      # まず履歴を記録
+      config = described_class.load_parser_config("test.example.com", "nokogiri")
+      described_class.save_parser_config("test.example.com", config, "nokogiri")
+
+      described_class.record_selector_history(
+        "test.example.com",
+        "body_selectors",
+        "div.test",
+        "nokogiri"
+      )
+
+      history = described_class.get_selector_history("test.example.com", "nokogiri")
+
+      expect(history).to be_a(Hash)
+      expect(history["body_selectors"]).to be_a(Array)
+      expect(history["body_selectors"].size).to eq(1)
+    end
+
+    it "ユーザー設定がない場合は空のハッシュを返す" do
+      history = described_class.get_selector_history("nonexistent.example.com", "nokogiri")
+      expect(history).to eq({})
+    end
+  end
+
+  describe ".get_change_log" do
+    it "全ドメインの変更ログを取得する" do
+      described_class.record_selector_change(
+        "test1.example.com",
+        "body_selectors",
+        "div.old1",
+        "div.new1",
+        "nokogiri"
+      )
+
+      described_class.record_selector_change(
+        "test2.example.com",
+        "body_selectors",
+        "div.old2",
+        "div.new2",
+        "nokogiri"
+      )
+
+      change_log = described_class.get_change_log
+
+      expect(change_log).to be_a(Hash)
+      expect(change_log.keys).to include("test1.example.com", "test2.example.com")
+    end
+
+    it "特定ドメインの変更ログを取得する" do
+      described_class.record_selector_change(
+        "test.example.com",
+        "body_selectors",
+        "div.old",
+        "div.new",
+        "nokogiri"
+      )
+
+      change_log = described_class.get_change_log("test.example.com")
+
+      expect(change_log).to be_a(Array)
+      expect(change_log.size).to eq(1)
+      expect(change_log[0]["old_selector"]).to eq("div.old")
+    end
+  end
+
+  describe "Legacy parser archive functions" do
+    before do
+      # アーカイブディレクトリとファイルを作成
+      archive_dir = File.join(test_script_dir, "preset/parsers/legacy_archive/test.example.com")
+      FileUtils.mkdir_p(archive_dir)
+
+      File.write(
+        File.join(archive_dir, "v1.0.yaml"),
+        YAML.dump({
+          "name" => "Test Site",
+          "domain" => "test.example.com",
+          "version" => "1.0",
+          "body_pattern" => "<div>(?<body>.+?)</div>"
+        })
+      )
+
+      File.write(
+        File.join(archive_dir, "v2.0.yaml"),
+        YAML.dump({
+          "name" => "Test Site",
+          "domain" => "test.example.com",
+          "version" => "2.0",
+          "body_pattern" => "<div class=\"new\">(?<body>.+?)</div>"
+        })
+      )
+    end
+
+    describe ".get_legacy_version_history" do
+      it "利用可能なバージョンのリストを取得する" do
+        versions = described_class.get_legacy_version_history("test.example.com")
+
+        expect(versions).to be_a(Array)
+        expect(versions).to include("1.0", "2.0")
+        expect(versions).to eq(versions.sort)
+      end
+
+      it "アーカイブがない場合は空の配列を返す" do
+        versions = described_class.get_legacy_version_history("nonexistent.example.com")
+        expect(versions).to eq([])
+      end
+    end
+
+    describe ".load_archived_legacy_parser" do
+      it "指定バージョンのアーカイブを読み込む" do
+        parser = described_class.load_archived_legacy_parser("test.example.com", "1.0")
+
+        expect(parser).to be_a(Hash)
+        expect(parser["version"]).to eq("1.0")
+        expect(parser["body_pattern"]).to include("<div>")
+      end
+
+      it "存在しないバージョンの場合はnilを返す" do
+        parser = described_class.load_archived_legacy_parser("test.example.com", "99.0")
+        expect(parser).to be_nil
+      end
+    end
+  end
 end

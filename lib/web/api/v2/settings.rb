@@ -263,10 +263,22 @@ module Narou
                 end
               end
 
+              # セレクタ履歴を取得（新規）
+              selector_histories = {}
+              domains.each do |domain|
+                history = Narou::Parsers::ConfigManager.get_selector_history(domain, "nokogiri")
+                selector_histories[domain] = history if history.any?
+              end
+
+              # 変更ログを取得（新規）
+              change_log = Narou::Parsers::ConfigManager.get_change_log
+
               result = {
                 global_config: global_config,
                 domains: domains.sort,
-                user_configs: user_configs
+                user_configs: user_configs,
+                selector_histories: selector_histories,
+                change_log: change_log
               }
 
               json success_response(result)
@@ -323,6 +335,93 @@ module Narou
             rescue StandardError => e
               status 500
               json error_response("PARSER_CONFIG_UPDATE_ERROR", e.message)
+            end
+          end
+
+          # GET /api/v2/settings/parser/diagnostics/:domain
+          # 特定ドメインの診断情報を取得
+          get "/api/v2/settings/parser/diagnostics/:domain" do
+            set_cors_headers
+
+            domain = params[:domain]
+            engine = params[:engine] || "nokogiri"
+
+            begin
+              require "lib/narou/parsers/config_manager"
+              require "lib/core/database"
+
+              result = {
+                domain: domain,
+                engine: engine
+              }
+
+              if engine == "nokogiri"
+                # Nokogiriの場合: セレクタ履歴を取得
+                selector_history = Narou::Parsers::ConfigManager.get_selector_history(domain, "nokogiri")
+                result[:selector_history] = selector_history
+
+                # セレクタの適用範囲を計算（簡易版）
+                selector_coverage = {}
+                selector_history.each do |selector_key, history_entries|
+                  selector_coverage[selector_key] = history_entries.map do |entry|
+                    {
+                      selector: entry["selector"],
+                      first_success: entry["first_success"],
+                      last_success: entry["last_success"],
+                      success_count: entry["success_count"],
+                      detected_change: entry["detected_change"],
+                      replaced_selector: entry["replaced_selector"]
+                    }
+                  end
+                end
+                result[:selector_coverage] = selector_coverage
+              else
+                # Legacyの場合: バージョン履歴を取得
+                version_history = Narou::Parsers::ConfigManager.get_legacy_version_history(domain)
+                result[:version_history] = version_history
+
+                # 各バージョンのパーサー定義を取得
+                version_details = {}
+                version_history.each do |version|
+                  archived_parser = Narou::Parsers::ConfigManager.load_archived_legacy_parser(domain, version)
+                  if archived_parser
+                    version_details[version] = {
+                      version: archived_parser["version"],
+                      name: archived_parser["name"],
+                      patterns: {
+                        body_pattern: archived_parser["body_pattern"]&.to_s,
+                        introduction_pattern: archived_parser["introduction_pattern"]&.to_s,
+                        postscript_pattern: archived_parser["postscript_pattern"]&.to_s
+                      }
+                    }
+                  end
+                end
+                result[:version_details] = version_details
+              end
+
+              # このドメインの小説を取得
+              novels = []
+              Database.instance.each_key do |id|
+                novel_data = Database.instance[id]
+                if novel_data && novel_data["toc_url"]&.include?(domain)
+                  novels << {
+                    id: id,
+                    title: novel_data["title"],
+                    last_update: novel_data["last_update"]&.to_i,
+                    parser_engine: Narou::Parsers::ConfigManager.get_engine_for_novel(id)
+                  }
+                end
+              end
+              result[:novels] = novels
+
+              # 変更ログを取得
+              change_log = Narou::Parsers::ConfigManager.get_change_log(domain)
+              result[:change_log] = change_log
+
+              json success_response(result)
+            rescue StandardError => e
+              status 500
+              json error_response("DIAGNOSTICS_ERROR", e.message)
             end
           end
 

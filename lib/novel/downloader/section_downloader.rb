@@ -128,6 +128,13 @@ class Downloader
           "postscript" => result["postscript"].to_s,
           "body" => result["body"].to_s
         }
+
+        # パーサー情報を記録（新規追加 - Nokogiriの場合）
+        subtitle_info["parser_info"] = {
+          "engine" => "nokogiri",
+          "domain" => @setting["domain"],
+          "selectors_used" => extract_used_selectors(@parser)
+        }
       else
         # パーサーが初期化されていない場合は既存の multi_match を使用
         %w(introduction postscript body).each { |type| @setting[type] = nil }
@@ -135,6 +142,14 @@ class Downloader
         element = { "data_type" => @setting["data_type"] || "html" }
         %w(introduction postscript body).each { |type|
           element[type] = @setting[type].to_s
+        }
+
+        # パーサー情報を記録（新規追加 - Legacyの場合）
+        subtitle_info["parser_info"] = {
+          "engine" => "legacy",
+          "domain" => @setting["domain"],
+          "version" => @setting["version"],
+          "patterns_used" => extract_used_patterns(@setting)
         }
       end
 
@@ -223,6 +238,35 @@ SocketError => e
         end
       end
       raw
+    end
+
+    #
+    # 使用されたセレクタを抽出（新規メソッド - Nokogiri用）
+    #
+    def extract_used_selectors(parser)
+      selectors = {}
+      config = parser.user_config
+
+      %w(body_selectors introduction_selectors postscript_selectors).each do |key|
+        last_success = config.dig("last_successful_selectors", key, "selector")
+        selectors[key] = last_success if last_success
+      end
+
+      selectors
+    end
+
+    #
+    # 使用された正規表現パターンを抽出（新規メソッド - Legacy用）
+    #
+    def extract_used_patterns(setting)
+      patterns = {}
+
+      %w(body_pattern introduction_pattern postscript_pattern).each do |key|
+        pattern = setting[key]
+        patterns[key] = pattern.to_s if pattern
+      end
+
+      patterns
     end
   end
 end

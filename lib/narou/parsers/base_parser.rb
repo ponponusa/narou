@@ -141,9 +141,10 @@ module Narou
         domain = @config["domain"]
         engine = self.class.name.include?("Legacy") ? "legacy" : "nokogiri"
 
-        ConfigManager.update_successful_selector(domain, selector_key, selector, engine)
+        # 履歴を記録（新規）
+        ConfigManager.record_selector_history(domain, selector_key, selector, engine)
       rescue => e
-        @logger.warn "Failed to update successful selector: #{e.message}"
+        @logger.warn "Failed to update selector history: #{e.message}"
       end
 
       # サイト構造変更を検出

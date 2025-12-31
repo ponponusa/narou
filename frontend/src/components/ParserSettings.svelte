@@ -6,6 +6,7 @@
    */
   import { onMount } from "svelte";
   import { getParserSettings, updateParserSettings } from "../lib/api";
+  import ParserDiagnostics from "./ParserDiagnostics.svelte";
 
   interface SuccessfulSelector {
     selector: string;
@@ -25,6 +26,10 @@
   let domains = $state<string[]>([]);
   let selectedDomain = $state<string>("");
   let userConfigs = $state<Record<string, UserConfig>>({});
+
+  // 診断画面の表示状態
+  let showDiagnostics = $state(false);
+  let diagnosticsDomain = $state<string>("");
 
   // メッセージの自動クリア
   $effect(() => {
@@ -78,6 +83,15 @@
     } finally {
       saving = false;
     }
+  }
+
+  function openDiagnostics(domain: string) {
+    diagnosticsDomain = domain;
+    showDiagnostics = true;
+  }
+
+  function closeDiagnostics() {
+    showDiagnostics = false;
   }
 
   onMount(() => {
@@ -192,6 +206,18 @@
             {/each}
           </select>
 
+          {#if selectedDomain}
+            <div class="domain-actions">
+              <button
+                onclick={() => openDiagnostics(selectedDomain)}
+                class="btn-diagnostics"
+                title="このドメインの診断情報を表示"
+              >
+                🔍 診断ツールを開く
+              </button>
+            </div>
+          {/if}
+
           {#if selectedDomain && userConfigs[selectedDomain]}
             <div class="config-info">
               <h4 class="config-title">{selectedDomain}</h4>
@@ -251,6 +277,21 @@
           設定ファイルは <code>.narou/parsers/</code> 配下にあり、手動編集も可能です
         </li>
       </ul>
+    </div>
+  {/if}
+
+  <!-- 診断ツールモーダル -->
+  {#if showDiagnostics}
+    <div class="modal-overlay" onclick={closeDiagnostics}>
+      <div class="modal-content" onclick={(e) => e.stopPropagation()}>
+        <div class="modal-header">
+          <h3>パーサー診断ツール</h3>
+          <button class="modal-close" onclick={closeDiagnostics}> ✕ </button>
+        </div>
+        <div class="modal-body">
+          <ParserDiagnostics />
+        </div>
+      </div>
     </div>
   {/if}
 </div>
@@ -507,5 +548,105 @@
 
   :global(.dark) .hint-list code {
     background-color: #1e40af;
+  }
+
+  .domain-actions {
+    margin-top: 0.75rem;
+  }
+
+  .btn-diagnostics {
+    padding: 0.5rem 1rem;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .btn-diagnostics:hover {
+    background-color: #2563eb;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+
+  .modal-content {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    max-width: 1400px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :global(.dark) .modal-content {
+    background-color: #1f2937;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  :global(.dark) .modal-header {
+    border-bottom-color: #374151;
+  }
+
+  .modal-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+  }
+
+  :global(.dark) .modal-header h3 {
+    color: #f9fafb;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+  }
+
+  .modal-close:hover {
+    background-color: #f3f4f6;
+  }
+
+  :global(.dark) .modal-close {
+    color: #9ca3af;
+  }
+
+  :global(.dark) .modal-close:hover {
+    background-color: #374151;
+  }
+
+  .modal-body {
+    overflow-y: auto;
+    padding: 1.5rem;
   }
 </style>
