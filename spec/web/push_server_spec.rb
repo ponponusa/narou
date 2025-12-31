@@ -179,7 +179,11 @@ RSpec.describe Narou::PushServer do
       push_server.send_all(echo: { body: "test message", target_console: "#console" })
 
       history = push_server.instance_variable_get(:@history)
-      expect(history.compact.last).to eq({ body: "test message", target_console: "#console" })
+      last_message = history.compact.last
+      expect(last_message[:body]).to eq("test message")
+      expect(last_message[:target_console]).to eq("#console")
+      expect(last_message[:timestamp]).to be_a(String)
+      expect(last_message[:timestamp]).to match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}/)
     end
 
     it "does not store non-echo messages in history" do
@@ -221,7 +225,11 @@ RSpec.describe Narou::PushServer do
       push_server.stack_to_history({ body: "test", target_console: "#console" })
 
       history = push_server.instance_variable_get(:@history)
-      expect(history.compact.last).to eq({ body: "test", target_console: "#console" })
+      last_message = history.compact.last
+      expect(last_message[:body]).to eq("test")
+      expect(last_message[:target_console]).to eq("#console")
+      expect(last_message[:timestamp]).to be_a(String)
+      expect(last_message[:timestamp]).to match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}/)
     end
 
     it "does not store messages with no_history flag" do

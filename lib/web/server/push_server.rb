@@ -50,7 +50,9 @@ module Narou
             que = Queue.new
             @connections.push(que)
 
-            # 接続時に履歴を送信
+            # 接続時に履歴を送信（タイムスタンプ付き）
+            history_count = @history.compact.size
+            $stderr.puts "[PushServer] Sending #{history_count} history messages to new connection" if $DEBUG
             @history.compact.each do |message|
               ws.send(JSON.generate(echo: message))
             end
@@ -110,7 +112,14 @@ module Narou
     end
 
     def clear_history
+      history_count = @history ? @history.compact.size : 0
+      $stderr.puts "[PushServer] Clearing history (#{history_count} messages)" if $DEBUG
       @history = [nil] * HISTORY_SAVED_COUNT
+      # 接続中のクライアントにクリアイベントを送信
+      if @connections && @connections.size > 0
+        $stderr.puts "[PushServer] Sending console.clear to #{@connections.size} connections" if $DEBUG
+        send_all(:"console.clear")
+      end
       # Sinatra で get "/" { clear_history } とかやった場合に [nil,nil...] な配列データが
       # 渡されないようにするため（配列は Sinatra にとって特別なデータ）
       true
@@ -125,6 +134,7 @@ module Narou
         data = { data => true }
       end
       json = JSON.generate(data)
+      $stderr.puts "[PushServer] send_all: #{data.keys.first} to #{@connections.size} connections" if $DEBUG && !data[:echo]
       @connections.each do |queue_of_connection|
         queue_of_connection.push(json)
       end
@@ -139,12 +149,15 @@ module Narou
 
     def stack_to_history(message)
       return if message[:no_history]
-      if message[:body] == "." && (last = @history[-1])[:body] =~ /\A\.+\z/
+      # タイムスタンプを追加（ISO8601形式）
+      message_with_timestamp = message.merge(timestamp: Time.now.iso8601(3))
+      if message[:body] == "." && (last = @history[-1]) && last[:body] =~ /\A\.+\z/
         # 進行中を表す .... の出力でヒストリーが消費されるのを防ぐため、
         # 連続した . は一つにまとめる
         last[:body] = "#{last[:body]}."
+        last[:timestamp] = Time.now.iso8601(3) # タイムスタンプも更新
       else
-        @history.push(message)
+        @history.push(message_with_timestamp)
         @history.shift
       end
     end

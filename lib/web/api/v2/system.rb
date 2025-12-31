@@ -119,27 +119,6 @@ module Narou
             end
           end
 
-          # POST /api/v2/cancel/:id
-          # 特定のタスクをキャンセル（現在は全キャンセルと同じ動作）
-          post "/api/v2/cancel/:id" do
-            set_cors_headers
-
-            begin
-              # 現在の実装では個別キャンセルはサポートされていないため、
-              # 全タスクをキャンセルする
-              Narou::WebWorker.cancel
-              Narou::Worker.cancel if defined?(Narou::Worker)
-
-              json success_response(
-                { cancelled: true, id: params[:id] },
-                message: "Task cancelled"
-              )
-            rescue StandardError => e
-              status 500
-              json error_response("CANCEL_ERROR", e.message)
-            end
-          end
-
           # POST /api/v2/console/clear
           # コンソール履歴をクリア
           post "/api/v2/console/clear" do
