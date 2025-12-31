@@ -17,7 +17,8 @@ class ConverterBase
     # すべての行の行末空白を削除
     #
     def rstrip_all_lines(data)
-      data.gsub(/[ 　\t]+\z/m, "")
+      # 各行ごとに処理することで、正規表現DoSを回避しつつ全行の末尾空白を削除
+      data.lines.map { |line| line.sub(/[ 　\t]+\z/, "") }.join
     end
   end
 end
