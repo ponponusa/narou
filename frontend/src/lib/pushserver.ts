@@ -20,7 +20,8 @@ export type PushServerEvent =
   | "ping.modal"
   | "progressbar.init"
   | "progressbar.step"
-  | "progressbar.clear";
+  | "progressbar.clear"
+  | "console.clear";
 
 export interface EchoMessage {
   target_console: "stdout" | "stdout2" | "convert";

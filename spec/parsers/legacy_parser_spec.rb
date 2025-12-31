@@ -125,4 +125,67 @@ RSpec.describe Narou::Parsers::LegacyParser do
       }.not_to raise_error
     end
   end
+
+  describe "統合テスト: SiteSettingとの連携" do
+    context "実際のSiteSettingを使用する場合" do
+      let(:html) do
+        <<~HTML
+          <div id="novel_honbun">これは本文です。</div>
+          <div id="novel_p">これは前書きです。</div>
+          <div id="novel_a">これは後書きです。</div>
+        HTML
+      end
+
+      before do
+        # multi_matchが正しく呼び出されるかモック
+        allow(site_setting).to receive(:multi_match).with(html, "body_pattern", "introduction_pattern", "postscript_pattern") do
+          setting_values["body_pattern"] = "これは本文です。"
+          setting_values["introduction_pattern"] = "これは前書きです。"
+          setting_values["postscript_pattern"] = "これは後書きです。"
+          true
+        end
+      end
+
+      it "SiteSettingのmulti_matchを使用してパースする" do
+        result = parser.parse_section(html)
+
+        # multi_matchが呼び出されたことを確認
+        expect(site_setting).to have_received(:multi_match).with(html, "body_pattern", "introduction_pattern", "postscript_pattern")
+
+        # パース結果が正しいことを確認
+        expect(result["body"]).to eq("これは本文です。")
+        expect(result["introduction"]).to eq("これは前書きです。")
+        expect(result["postscript"]).to eq("これは後書きです。")
+        expect(result["data_type"]).to eq("html")
+      end
+
+      it "SiteSettingの値が正しく取得される" do
+        result = parser.parse_section(html)
+
+        # SiteSettingから値を取得している
+        expect(result["body"]).to eq(site_setting["body_pattern"])
+        expect(result["introduction"]).to eq(site_setting["introduction_pattern"])
+        expect(result["postscript"]).to eq(site_setting["postscript_pattern"])
+      end
+    end
+
+    context "multi_matchが失敗する場合" do
+      let(:html) { "<div>パターンにマッチしないHTML</div>" }
+
+      before do
+        allow(site_setting).to receive(:multi_match).with(html, "body_pattern", "introduction_pattern", "postscript_pattern") do
+          setting_values["body_pattern"] = ""
+          setting_values["introduction_pattern"] = ""
+          setting_values["postscript_pattern"] = ""
+          false
+        end
+      end
+
+      it "本文が空の場合はAllSelectorsFailedErrorを発生させる" do
+        expect {
+          parser.parse_section(html)
+        }.to raise_error(Narou::Parsers::AllSelectorsFailedError)
+      end
+    end
+  end
 end

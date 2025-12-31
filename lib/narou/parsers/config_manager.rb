@@ -22,7 +22,7 @@ module Narou
         def load_global_config
           path = File.join(Narou.root_dir, GLOBAL_CONFIG_PATH)
           if File.exist?(path)
-            YAML.load_file(path)
+            YAML.load_file(path, aliases: true)
           else
             # デフォルト設定
             default_config = {
@@ -46,13 +46,19 @@ module Narou
           user_config = load_user_config(domain, engine)
           default_config = load_default_config(domain, engine)
 
-          # ユーザー設定が存在すればそれを使用、なければデフォルト設定を直接使用
+          unless default_config
+            raise ConfigLoadError, "デフォルト設定ファイルが見つかりません: #{domain} (engine: #{engine})"
+          end
+
+          # ユーザー設定が存在する場合はデフォルト設定とマージ
           if user_config
-            user_config
-          elsif default_config
-            default_config
+            merged = default_config.dup
+            user_config.each do |key, value|
+              merged[key] = value unless value.nil?
+            end
+            merged
           else
-            raise ConfigLoadError, "設定ファイルが見つかりません: #{domain} (engine: #{engine})"
+            default_config
           end
         end
 
@@ -144,7 +150,7 @@ module Narou
         # セレクタ変更を変更ログに記録
         def record_selector_change(domain, selector_key, old_selector, new_selector, engine)
           change_log_path = File.join(Narou.root_dir, ".narou/parsers/change_log.yaml")
-          change_log = File.exist?(change_log_path) ? YAML.load_file(change_log_path) : {}
+          change_log = File.exist?(change_log_path) ? YAML.load_file(change_log_path, aliases: true) : {}
 
           change_log[domain] ||= []
           change_log[domain] << {
@@ -175,7 +181,7 @@ module Narou
           change_log_path = File.join(Narou.root_dir, ".narou/parsers/change_log.yaml")
           return {} unless File.exist?(change_log_path)
 
-          change_log = YAML.load_file(change_log_path)
+          change_log = YAML.load_file(change_log_path, aliases: true)
           domain ? change_log[domain] || [] : change_log
         rescue => e
           warn "[ConfigManager] 変更ログの読み込みに失敗: #{e.message}"
@@ -187,7 +193,7 @@ module Narou
           archive_path = File.join(Narou.script_dir, "preset/parsers/legacy_archive/#{domain}/v#{version}.yaml")
           return nil unless File.exist?(archive_path)
 
-          YAML.load_file(archive_path)
+          YAML.load_file(archive_path, aliases: true)
         rescue => e
           warn "[ConfigManager] アーカイブの読み込みに失敗: #{domain} v#{version} - #{e.message}"
           nil
@@ -227,7 +233,7 @@ module Narou
 
         def load_user_config(domain, engine)
           path = user_config_path(domain, engine)
-          File.exist?(path) ? YAML.load_file(path) : nil
+          File.exist?(path) ? YAML.load_file(path, aliases: true) : nil
         rescue => e
           warn "[ConfigManager] ユーザー設定読み込みエラー: #{path} - #{e.message}"
           nil
@@ -235,7 +241,8 @@ module Narou
 
         def load_default_config(domain, engine)
           path = default_config_path(domain, engine)
-          File.exist?(path) ? YAML.load_file(path) : nil
+          # レガシーエンジンの場合はaliasesを許可（webnovel/*.yamlはエイリアスを使用）
+          File.exist?(path) ? YAML.load_file(path, aliases: true) : nil
         rescue => e
           warn "[ConfigManager] デフォルト設定読み込みエラー: #{path} - #{e.message}"
           nil

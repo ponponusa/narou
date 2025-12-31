@@ -84,6 +84,7 @@
   let pendingLogs: Array<{
     console: "stdout" | "stdout2" | "convert";
     message: string;
+    timestamp?: string;
   }> = [];
 
   // プログレスバーの状態
@@ -208,23 +209,26 @@
    */
   function addLog(
     consoleType: "stdout" | "stdout2" | "convert",
-    message: string
+    message: string,
+    timestamp?: string
   ) {
     const now = Date.now();
 
     // スロットリング: 指定間隔内は追加をペンディング
     if (now - lastUpdateTime < updateThrottle && pendingLogs.length > 0) {
-      pendingLogs.push({ console: consoleType, message });
+      pendingLogs.push({ console: consoleType, message, timestamp });
       return;
     }
 
     // ペンディングされたログがあれば処理
     if (pendingLogs.length > 0) {
-      pendingLogs.forEach((log) => processLog(log.console, log.message));
+      pendingLogs.forEach((log) =>
+        processLog(log.console, log.message, log.timestamp)
+      );
       pendingLogs = [];
     }
 
-    processLog(consoleType, message);
+    processLog(consoleType, message, timestamp);
     lastUpdateTime = now;
   }
 
@@ -233,8 +237,11 @@
    */
   function processLog(
     consoleType: "stdout" | "stdout2" | "convert",
-    message: string
+    message: string,
+    timestamp?: string
   ) {
+    // タイムスタンプが提供されている場合はそれを使用、なければ現在時刻
+    const logTimestamp = timestamp ? new Date(timestamp) : new Date();
     let cleanMessage = message.replace(/\n$/, ""); // 末尾の改行を削除
 
     // ANSI escape sequence（プログレスバーのclear()）を無視
@@ -269,14 +276,14 @@
         logs[logs.length - 1] = {
           ...lastLog,
           message: lastLog.message + cleanMessage,
-          timestamp: new Date(),
+          timestamp: logTimestamp,
         };
       } else {
         // その他の追加メッセージは末尾に追加
         logs[logs.length - 1] = {
           ...lastLog,
           message: lastLog.message + " " + cleanMessage,
-          timestamp: new Date(),
+          timestamp: logTimestamp,
         };
       }
       logs = [...logs]; // リアクティビティをトリガー
@@ -314,7 +321,7 @@
         logs[existingIndex] = {
           ...logs[existingIndex],
           message: cleanMessage,
-          timestamp: new Date(),
+          timestamp: logTimestamp,
           processType,
           novelId,
         };
@@ -329,7 +336,7 @@
       ...logs,
       {
         id: nextId++,
-        timestamp: new Date(),
+        timestamp: logTimestamp,
         console: consoleType,
         message: cleanMessage,
         isProgress,
@@ -678,6 +685,7 @@
   let handleProgressBarInit: ((data: any) => void) | null = null;
   let handleProgressBarStep: ((data: any) => void) | null = null;
   let handleProgressBarClear: ((data: any) => void) | null = null;
+  let handleConsoleClear: ((data: any) => void) | null = null;
   let pushServerInstance: PushServerClient | null = null;
 
   onMount(() => {
@@ -717,7 +725,7 @@
         data.body
       );
       if (!data.no_history) {
-        addLog(data.target_console, data.body);
+        addLog(data.target_console, data.body, data.timestamp);
       }
     };
     pushServer.on("echo", handleEcho);
@@ -815,6 +823,14 @@
     };
     pushServer.on("progressbar.clear", handleProgressBarClear);
 
+    // コンソールクリアイベント
+    handleConsoleClear = () => {
+      console.log(`[ConsolePanel ${instanceId}] Received console.clear event`);
+      logs = [];
+      currentProgressBar = null;
+    };
+    pushServer.on("console.clear", handleConsoleClear);
+
     // getPushServer()が自動的に接続を管理するため、ここでは何もしない
     // 既に接続されている場合は再接続しない
   });
@@ -845,6 +861,10 @@
     }
     if (handleProgressBarClear) {
       pushServer.off("progressbar.clear", handleProgressBarClear);
+    }
+    if (handleConsoleClear) {
+      pushServer.off("console.clear", handleConsoleClear);
+      console.log(`[ConsolePanel] Removed console.clear handler`);
     }
 
     // 共有インスタンスなので切断しない（他のページで使用される可能性がある）

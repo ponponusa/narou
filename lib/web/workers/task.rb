@@ -22,11 +22,10 @@ module Narou
     # タスク状態
     STATUS_QUEUED = :queued       # キュー待ち
     STATUS_RUNNING = :running     # 実行中
-    STATUS_PAUSED = :paused       # 一時停止
     STATUS_COMPLETED = :completed # 完了
     STATUS_FAILED = :failed       # 失敗
     STATUS_CANCELED = :canceled   # キャンセル
-    STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_PAUSED, STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELED].freeze
+    STATUSES = [STATUS_QUEUED, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELED].freeze
 
     def initialize(type:, novel_id: nil, novel_title: nil, novel_author: nil, max_retries: 0)
       unless TYPES.include?(type.to_sym)
@@ -46,8 +45,6 @@ module Narou
       @error = nil
       @retry_count = 0
       @max_retries = max_retries
-      @pause_requested = false
-      @paused_at = nil
       @progress = 0.0          # 0.0 ~ 100.0
       @total_steps = nil       # 全ステップ数
       @current_step = 0        # 現在のステップ
@@ -103,39 +100,6 @@ module Narou
         @completed_at = Time.now
         @message = message
       end
-    end
-
-    #
-    # タスクを一時停止状態にする
-    #
-    def pause!(message = "一時停止中")
-      @mutex.synchronize do
-        return if @status != STATUS_RUNNING && @status != STATUS_QUEUED
-        @status = STATUS_PAUSED
-        @paused_at = Time.now
-        @message = message
-        @pause_requested = true
-      end
-    end
-
-    #
-    # タスクを再開する
-    #
-    def resume!(message = "再開しました")
-      @mutex.synchronize do
-        return unless @status == STATUS_PAUSED
-        @status = @started_at ? STATUS_RUNNING : STATUS_QUEUED
-        @paused_at = nil
-        @message = message
-        @pause_requested = false
-      end
-    end
-
-    #
-    # 一時停止がリクエストされているか
-    #
-    def pause_requested?
-      @pause_requested
     end
 
     #
@@ -225,13 +189,6 @@ module Narou
     end
 
     #
-    # タスクが一時停止中か
-    #
-    def paused?
-      @status == STATUS_PAUSED
-    end
-
-    #
     # 経過時間を取得（秒）
     #
     def elapsed_time
@@ -255,7 +212,6 @@ module Narou
           message: @message,
           created_at: @created_at.iso8601,
           started_at: @started_at&.iso8601,
-          paused_at: @paused_at&.iso8601,
           completed_at: @completed_at&.iso8601,
           elapsed_time: elapsed_time.round(2),
           error: @error,

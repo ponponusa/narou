@@ -58,6 +58,15 @@ module Narou
               end
             end
           else
+            # タスクが既にキャンセルされているかチェック
+            if task && task.status == :canceled
+              @mutex.synchronize do
+                # 既にキャンセル済みのタスクはスキップ
+                @current_task = nil
+              end
+              next
+            end
+
             # タスクを実行中状態にする
             @mutex.synchronize do
               @current_task = task
@@ -287,70 +296,8 @@ module Narou
           @thread_of_block_executing&.raise(Interrupt)
           should_notify = true
           result = { success: true, message: "Task cancellation requested" }
-        elsif task.paused?
-          # 一時停止中の場合はキャンセル
-          task.cancel!("ユーザーによりキャンセルされました")
-          move_to_history(task)
-          should_notify = true
-          result = { success: true, message: "Task canceled" }
         else
           result = { success: false, message: "Task cannot be canceled in current state" }
-        end
-      end
-
-      notification_task_updated if should_notify
-      result
-    end
-
-    #
-    # 特定のタスクを一時停止
-    #
-    def self.pause_task(task_id)
-      instance.pause_task_impl(task_id)
-    end
-
-    def pause_task_impl(task_id)
-      result = nil
-      should_notify = false
-
-      @mutex.synchronize do
-        task = @tasks[task_id]
-        return { success: false, message: "Task not found" } unless task
-
-        if task.running? || task.queued?
-          task.pause!("ユーザーにより一時停止されました")
-          should_notify = true
-          result = { success: true, message: "Task paused" }
-        else
-          result = { success: false, message: "Task cannot be paused in current state" }
-        end
-      end
-
-      notification_task_updated if should_notify
-      result
-    end
-
-    #
-    # 特定のタスクを再開
-    #
-    def self.resume_task(task_id)
-      instance.resume_task_impl(task_id)
-    end
-
-    def resume_task_impl(task_id)
-      result = nil
-      should_notify = false
-
-      @mutex.synchronize do
-        task = @tasks[task_id]
-        return { success: false, message: "Task not found" } unless task
-
-        if task.paused?
-          task.resume!("ユーザーにより再開されました")
-          should_notify = true
-          result = { success: true, message: "Task resumed" }
-        else
-          result = { success: false, message: "Task is not paused" }
         end
       end
 

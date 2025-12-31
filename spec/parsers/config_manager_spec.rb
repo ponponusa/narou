@@ -81,32 +81,42 @@ RSpec.describe Narou::Parsers::ConfigManager do
 
   describe ".load_parser_config" do
     context "Nokogiri エンジンの場合" do
-      it "デフォルト設定を読み込む" do
-        config = described_class.load_parser_config("test.example.com", "nokogiri")
-
-        expect(config["name"]).to eq("Test Site")
-        expect(config["body_selectors"]).to be_a(Array)
-
-        # ユーザー設定ファイルは自動作成されない
-        user_path = File.join(test_root, ".narou/parsers/test.example.com.yaml")
-        expect(File.exist?(user_path)).to be false
-      end
-
-      it "既存のユーザー設定を読み込む" do
-        # 事前にユーザー設定を作成
+      it "ユーザー設定とデフォルト設定をマージする" do
+        # 事前にユーザー設定を作成（一部の設定のみオーバーライド）
         user_path = File.join(test_root, ".narou/parsers/test.example.com.yaml")
         FileUtils.mkdir_p(File.dirname(user_path))
         File.write(user_path, YAML.dump({
           "name" => "Custom Config",
-          "body_selectors" => [
-            { "selector" => "div.custom", "priority" => 20 }
-          ]
+          "last_successful_selectors" => {
+            "body_selectors" => {
+              "selector" => "div.custom",
+              "date" => "2024-01-01"
+            }
+          }
         }))
 
         config = described_class.load_parser_config("test.example.com", "nokogiri")
 
+        # ユーザー設定が優先される
         expect(config["name"]).to eq("Custom Config")
-        expect(config["body_selectors"].first["selector"]).to eq("div.custom")
+        expect(config["last_successful_selectors"]["body_selectors"]["selector"]).to eq("div.custom")
+
+        # デフォルト設定も含まれる（重要！）
+        expect(config["domain"]).to eq("test.example.com")
+        expect(config["body_selectors"]).to be_a(Array)
+        expect(config["body_selectors"].first["selector"]).to eq("div.body")
+      end
+
+      it "ユーザー設定が存在しない場合はデフォルト設定のみを返す" do
+        config = described_class.load_parser_config("test.example.com", "nokogiri")
+
+        expect(config["name"]).to eq("Test Site")
+        expect(config["domain"]).to eq("test.example.com")
+        expect(config["body_selectors"]).to be_a(Array)
+
+        # ユーザー設定ファイルは作成されない
+        user_path = File.join(test_root, ".narou/parsers/test.example.com.yaml")
+        expect(File.exist?(user_path)).to be false
       end
     end
 
@@ -118,6 +128,38 @@ RSpec.describe Narou::Parsers::ConfigManager do
         expect(config["body_pattern"]).to include("<div>")
 
         # ユーザー設定ファイルは自動作成されない
+        user_path = File.join(test_root, ".narou/legacy_parsers/test.example.com.yaml")
+        expect(File.exist?(user_path)).to be false
+      end
+
+      it "ユーザー設定とデフォルト設定をマージする" do
+        # 事前にユーザー設定を作成（バージョン情報をオーバーライド）
+        user_path = File.join(test_root, ".narou/legacy_parsers/test.example.com.yaml")
+        FileUtils.mkdir_p(File.dirname(user_path))
+        File.write(user_path, YAML.dump({
+          "version" => "2.0",
+          "body_pattern" => "<div class=\"new\">(?<body>.+?)</div>"
+        }))
+
+        config = described_class.load_parser_config("test.example.com", "legacy")
+
+        # ユーザー設定が優先される
+        expect(config["version"]).to eq("2.0")
+        expect(config["body_pattern"]).to include("class=\"new\"")
+
+        # デフォルト設定も含まれる
+        expect(config["name"]).to eq("Test Site")
+        expect(config["domain"]).to eq("test.example.com")
+      end
+
+      it "ユーザー設定が存在しない場合はデフォルト設定のみを返す" do
+        config = described_class.load_parser_config("test.example.com", "legacy")
+
+        expect(config["name"]).to eq("Test Site")
+        expect(config["domain"]).to eq("test.example.com")
+        expect(config["body_pattern"]).to be_a(String)
+
+        # ユーザー設定ファイルは作成されない
         user_path = File.join(test_root, ".narou/legacy_parsers/test.example.com.yaml")
         expect(File.exist?(user_path)).to be false
       end

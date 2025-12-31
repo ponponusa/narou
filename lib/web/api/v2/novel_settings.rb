@@ -5,6 +5,7 @@
 #
 
 require "lib/web/api/v2/base"
+require "lib/novel/novelsetting"
 
 module Narou
   module ApiV2

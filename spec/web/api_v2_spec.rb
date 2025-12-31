@@ -1009,18 +1009,6 @@ RSpec.describe "Narou::AppServer API v2" do
     end
   end
 
-  describe "POST /api/v2/cancel/:id" do
-    it "cancels specific task" do
-      allow(Narou::WebWorker).to receive(:cancel)
-      allow(Narou::Worker).to receive(:cancel)
-
-      post "/api/v2/cancel/1"
-
-      expect(last_response).to be_ok
-      expect(json_response["success"]).to be true
-    end
-  end
-
   describe "POST /api/v2/console/clear" do
     it "clears console history when PushServer is available" do
       allow(push_server).to receive(:clear_history)

@@ -19,9 +19,10 @@ import type {
   Task,
   TaskSummary,
   TaskStatus,
+  TaskType,
 } from "../types/api";
 
-export type { TagInfo, Task, TaskSummary, TaskStatus };
+export type { TagInfo, Task, TaskSummary, TaskStatus, TaskType };
 
 // 開発時はViteのプロキシを使用するため空文字列
 // 本番時は環境変数で指定されたURLを使用
@@ -405,10 +406,9 @@ export async function cancelAllTasks(): Promise<void> {
 
 /**
  * 指定されたIDのタスクをキャンセル（API v2）
- * 注意: 現在のバックエンド実装では全タスクキャンセルと同じ動作
  */
-export async function cancelTask(novelId: number): Promise<void> {
-  await fetchApiV2<null>(`/api/v2/cancel/${novelId}`, {
+export async function cancelTask(taskId: string): Promise<void> {
+  await fetchApiV2<null>(`/api/v2/tasks/${taskId}/cancel`, {
     method: "POST",
   });
 }
@@ -835,32 +835,6 @@ export async function cancelTaskById(
 ): Promise<{ message: string }> {
   return await fetchApiV2<{ message: string }>(
     `/api/v2/tasks/${taskId}/cancel`,
-    {
-      method: "POST",
-    }
-  );
-}
-
-/**
- * タスクを一時停止
- * @param taskId - タスクID
- */
-export async function pauseTask(taskId: string): Promise<{ message: string }> {
-  return await fetchApiV2<{ message: string }>(
-    `/api/v2/tasks/${taskId}/pause`,
-    {
-      method: "POST",
-    }
-  );
-}
-
-/**
- * タスクを再開
- * @param taskId - タスクID
- */
-export async function resumeTask(taskId: string): Promise<{ message: string }> {
-  return await fetchApiV2<{ message: string }>(
-    `/api/v2/tasks/${taskId}/resume`,
     {
       method: "POST",
     }

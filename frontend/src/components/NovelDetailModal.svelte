@@ -8,6 +8,7 @@
     freezeNovel,
     unfreezeNovel,
     getNovelStory,
+    updateNovels,
   } from "../lib/api";
 
   // Props
@@ -146,16 +147,49 @@
   }
 
   /**
-   * 再取得
+   * 更新チェック（新着話数のみ）
+   */
+  async function handleUpdate() {
+    if (!novel || downloading) return;
+
+    if (!confirm(`「${novel.title}」の更新チェックを実行しますか？`)) return;
+
+    downloading = true;
+    try {
+      await updateNovels([novel.id], {
+        forceRedownload: false,
+        convertAfterUpdate: true,
+      });
+      toast?.show(`${novel.title} の更新チェックを開始しました`, "success");
+      onUpdateCallback?.();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "更新チェックに失敗しました";
+      toast?.show(message, "error");
+    } finally {
+      downloading = false;
+    }
+  }
+
+  /**
+   * 再取得（全話ダウンロード）
    */
   async function handleRedownload() {
     if (!novel || downloading) return;
 
-    if (!confirm(`「${novel.title}」を再取得しますか？`)) return;
+    if (
+      !confirm(
+        `「${novel.title}」を再取得しますか？\n全話を再ダウンロードします。`
+      )
+    )
+      return;
 
     downloading = true;
     try {
-      await downloadNovel(novel.id);
+      await updateNovels([novel.id], {
+        forceRedownload: true,
+        convertAfterUpdate: true,
+      });
       toast?.show(`${novel.title} の再取得を開始しました`, "success");
       onUpdateCallback?.();
     } catch (err) {
@@ -576,15 +610,29 @@
         </button>
 
         <button
-          onclick={handleRedownload}
+          onclick={handleUpdate}
           disabled={downloading}
           class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          title="再取得"
+          title="更新チェック（新着話数のみ）"
         >
           {#if downloading}
             <i class="fas fa-spinner fa-spin"></i>
           {:else}
-            <i class="fas fa-sync-alt"></i>
+            <i class="fas fa-sync"></i>
+          {/if}
+          更新チェック
+        </button>
+
+        <button
+          onclick={handleRedownload}
+          disabled={downloading}
+          class="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          title="再取得（全話ダウンロード）"
+        >
+          {#if downloading}
+            <i class="fas fa-spinner fa-spin"></i>
+          {:else}
+            <i class="fas fa-cloud-download-alt"></i>
           {/if}
           再取得
         </button>
@@ -598,58 +646,61 @@
           {#if converting}
             <i class="fas fa-spinner fa-spin"></i>
           {:else}
-            <i class="fas fa-sync"></i>
+            <i class="fas fa-file-export"></i>
           {/if}
           変換
         </button>
 
-        <button
-          onclick={handleEditTags}
-          class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2"
-          title="タグ編集"
-        >
-          <i class="fas fa-tags"></i>
-          タグ編集
-        </button>
+        <!-- 連結ボタングループ -->
+        <div class="inline-flex rounded-md shadow-sm" role="group">
+          <button
+            onclick={handleEditTags}
+            class="px-3 py-2 bg-indigo-600 text-white hover:bg-indigo-700 transition-colors rounded-l-md border-r border-indigo-500"
+            title="タグ編集"
+            aria-label="タグ編集"
+          >
+            <i class="fas fa-tags"></i>
+          </button>
 
-        <button
-          onclick={handleConversionSettings}
-          class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors flex items-center gap-2"
-          title="個別設定"
-        >
-          <i class="fas fa-cog"></i>
-          個別設定
-        </button>
+          <button
+            onclick={handleConversionSettings}
+            class="px-3 py-2 bg-gray-600 text-white hover:bg-gray-700 transition-colors border-r border-gray-500"
+            title="個別設定"
+            aria-label="個別設定"
+          >
+            <i class="fas fa-cog"></i>
+          </button>
 
-        <button
-          onclick={handleFreeze}
-          disabled={freezing}
-          class="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          title={novel.frozen ? "凍結解除" : "凍結"}
-        >
-          {#if freezing}
-            <i class="fas fa-spinner fa-spin"></i>
-          {:else if novel.frozen}
-            <i class="fas fa-unlock"></i>
-          {:else}
-            <i class="fas fa-lock"></i>
-          {/if}
-          {novel.frozen ? "凍結解除" : "凍結"}
-        </button>
+          <button
+            onclick={handleFreeze}
+            disabled={freezing}
+            class="px-3 py-2 bg-yellow-600 text-white hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-r border-yellow-500"
+            title={novel.frozen ? "凍結解除" : "凍結"}
+            aria-label={novel.frozen ? "凍結解除" : "凍結"}
+          >
+            {#if freezing}
+              <i class="fas fa-spinner fa-spin"></i>
+            {:else if novel.frozen}
+              <i class="fas fa-unlock"></i>
+            {:else}
+              <i class="fas fa-lock"></i>
+            {/if}
+          </button>
 
-        <button
-          onclick={handleDelete}
-          disabled={deleting}
-          class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          title="削除"
-        >
-          {#if deleting}
-            <i class="fas fa-spinner fa-spin"></i>
-          {:else}
-            <i class="fas fa-trash"></i>
-          {/if}
-          削除
-        </button>
+          <button
+            onclick={handleDelete}
+            disabled={deleting}
+            class="px-3 py-2 bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-r-md"
+            title="削除"
+            aria-label="削除"
+          >
+            {#if deleting}
+              <i class="fas fa-spinner fa-spin"></i>
+            {:else}
+              <i class="fas fa-trash"></i>
+            {/if}
+          </button>
+        </div>
 
         <button
           onclick={closeModal}

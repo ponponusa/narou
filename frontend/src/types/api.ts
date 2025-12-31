@@ -22,7 +22,6 @@ export type TaskType = "download" | "convert" | "update" | "remove";
 export type TaskStatus =
   | "queued"
   | "running"
-  | "paused"
   | "completed"
   | "failed"
   | "canceled";
@@ -43,7 +42,6 @@ export interface Task {
   message?: string;
   created_at: string;
   started_at?: string;
-  paused_at?: string;
   completed_at?: string;
   elapsed_time: number;
   error?: TaskError;

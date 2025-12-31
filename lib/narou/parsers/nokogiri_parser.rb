@@ -36,9 +36,15 @@ module Narou
         }
       rescue AllSelectorsFailedError => e
         if detect_structure_change?(html, "body_selectors")
+          last_successful_selectors = @config["last_successful_selectors"]
+          last_selector = if last_successful_selectors.is_a?(Hash)
+                            body_info = last_successful_selectors["body_selectors"]
+                            body_info["selector"] if body_info.is_a?(Hash)
+                          end
+
           raise StructureChangedError.new(
             subtitle_info["href"] || "unknown",
-            @config.dig("last_successful_selectors", "body_selectors", "selector")
+            last_selector
           )
         end
 
@@ -84,7 +90,10 @@ module Narou
       end
 
       def extract_simple_selector(doc, selector_group, key, type: "text")
-        selector = @config.dig(selector_group, key)
+        group = @config[selector_group]
+        return nil unless group.is_a?(Hash)
+
+        selector = group[key]
         return nil unless selector
 
         result = doc.css(selector).first

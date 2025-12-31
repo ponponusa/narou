@@ -58,6 +58,15 @@ module Narou
               end
             end
           else
+            # タスクが既にキャンセルされているかチェック
+            if task && task.status == :canceled
+              @mutex.synchronize do
+                # 既にキャンセル済みのタスクはスキップ
+                @current_task = nil
+              end
+              next
+            end
+
             # タスクを実行中状態にする
             @mutex.synchronize do
               @current_task = task

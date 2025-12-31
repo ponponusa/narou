@@ -243,24 +243,6 @@ RSpec.describe Narou::WebWorker do
     end
   end
 
-  describe "#pause_task_impl" do
-    it "returns error for non-existent task" do
-      result = worker.pause_task_impl("non-existent-id")
-
-      expect(result[:success]).to be false
-      expect(result[:message]).to eq("Task not found")
-    end
-  end
-
-  describe "#resume_task_impl" do
-    it "returns error for non-existent task" do
-      result = worker.resume_task_impl("non-existent-id")
-
-      expect(result[:success]).to be false
-      expect(result[:message]).to eq("Task not found")
-    end
-  end
-
   describe "class methods" do
     describe ".run" do
       it "starts the worker" do
@@ -335,18 +317,5 @@ RSpec.describe Narou::WebWorker do
       end
     end
 
-    describe ".pause_task" do
-      it "returns failure for non-existent task" do
-        result = Narou::WebWorker.pause_task("test-id")
-        expect(result[:success]).to be false
-      end
-    end
-
-    describe ".resume_task" do
-      it "returns failure for non-existent task" do
-        result = Narou::WebWorker.resume_task("test-id")
-        expect(result[:success]).to be false
-      end
-    end
   end
 end
