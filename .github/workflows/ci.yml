@@ -6,15 +6,16 @@ permissions:
 
 on:
   pull_request:
-    branches: [ "develop", "release", "test-develop", "test-release" ]
+    branches: [ "develop", "release", "draft" ]
   push:
-    branches: [ "release", "test-release" ]
+    branches: [ "release", "draft" ]
 
 jobs:
   #
   # 1) PR用ビルド・テストジョブ
-  #    - develop / release / test-develop / test-release 向け PR で走る
+  #    - develop / release  draft 向け PR で走る
   #    - RSpec を実行
+  #    - Astro UI のビルドとテスト
   #
   build-test:
     if: github.event_name == 'pull_request'
@@ -55,6 +56,25 @@ jobs:
           bundle _${BUNDLER_VERSION}_ config set path "${BUNDLE_PATH}"
           bundle _${BUNDLER_VERSION}_ check || bundle _${BUNDLER_VERSION}_ install
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Astro UI
+        working-directory: frontend
+        run: npm run build
+
+      - name: Check TypeScript types
+        working-directory: frontend
+        run: npm run check
+
       - name: Run RSpec
         run: |
           mkdir -p test_results/rspec
@@ -77,13 +97,22 @@ jobs:
           name: coverage
           path: coverage
 
+      - name: Upload Astro build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: astro-dist
+          path: frontend/dist
+
   #
-  # 2) Linux/macOS 向けの汎用 gem をビルド
-  #    - release / test-release ブランチへの push で実行
+  # 2) Linux/macOS 向け gem をビルド
+  #    - release / draft ブランチへの push で実行
+  #    - Astro UI をビルドして含める
+  #    - bootsnap を依存関係に含む
   #
   build-gem-linux:
-    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
-    name: Build gem (generic)
+    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'draft')
+    name: Build gem (Linux/macOS)
     runs-on: ubuntu-latest
 
     env:
@@ -110,33 +139,49 @@ jobs:
         run: |
           bundle _${BUNDLER_VERSION}_ install --path vendor/bundle
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Astro UI
+        working-directory: frontend
+        run: npm run build
+
       - name: Get version
         id: get_version
         run: |
           VERSION=$(ruby -r ./lib/version.rb -e 'print Narou::VERSION + (Narou::COMMIT ? "-#{Narou::COMMIT}" : "")')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Build gem (generic)
+      - name: Build gem (Linux/macOS)
         id: build
         run: |
           gem build narou-mod.gemspec
-          # 「mingw-ucrt」を含まないほうを汎用ビルド扱いにする
+          # mingw を含まない gem ファイルを取得
           GEMFILE=$(ls narou-mod-*.gem | grep -v mingw || true)
           echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
 
-      - name: Upload generic gem artifact
+      - name: Upload gem artifact
         uses: actions/upload-artifact@v4
         with:
-          name: narou-gem-generic
+          name: narou-gem-linux
           path: ${{ steps.build.outputs.gemfile }}
 
   #
   # 3) Windows (mingw-ucrt) 向け gem をビルド
-  #    - release / test-release ブランチへの push で実行
+  #    - release / draft ブランチへの push で実行
+  #    - win32ole を依存関係に含む
   #
   build-gem-windows:
-    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
-    name: Build gem (Windows mingw-ucrt)
+    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'draft')
+    name: Build gem (Windows)
     runs-on: windows-latest
 
     outputs:
@@ -152,31 +197,42 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: false
 
-      # Windows側では bundler/bundle install は実行しない
-      # 依存を揃える必要はなく、gem build だけでよい
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Build gem (mingw)
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Astro UI
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build gem (Windows)
         id: build
         shell: bash
         run: |
           gem build narou-mod.gemspec
-          # Windows向け: Gem::Platform::CURRENT が mingw-ucrt の .gem をpick
-          GEMFILE=$(ls narou-mod-*-mingw-ucrt.gem)
+          # Windows向け: mingw を含む gem ファイルを取得
+          GEMFILE=$(ls narou-mod-*-mingw*.gem || ls narou-mod-*-x64-mingw*.gem || true)
           echo "gemfile=${GEMFILE}" >> $GITHUB_OUTPUT
 
-      - name: Upload mingw gem artifact
+      - name: Upload gem artifact
         uses: actions/upload-artifact@v4
         with:
           name: narou-gem-windows
           path: ${{ steps.build.outputs.gemfile }}
 
   #
-  # 4) GitHub Release の作成/更新
-  #    - 本番 release ブランチへの push のときだけ実行する
-  #    - narou-mod-{version}.gem と narou-mod-{version}-x64-mingw-ucrt.gem を添付
+  # 4) GitHub Release の作成/更新 (draft)
+  #    - draft ブランチへの push で実行
   #
   release-draft:
-    if: github.event_name == 'push' && github.ref_name == 'test-release'
+    if: github.event_name == 'push' && github.ref_name == 'draft'
     name: Create/Update Draft Release (staging)
     runs-on: ubuntu-latest
     needs: [ build-gem-linux, build-gem-windows ]
@@ -190,13 +246,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download generic gem artifact
+      - name: Download Linux gem artifact
         uses: actions/download-artifact@v4
         with:
-          name: narou-gem-generic
+          name: narou-gem-linux
           path: dist
 
-      - name: Download mingw gem artifact
+      - name: Download Windows gem artifact
         uses: actions/download-artifact@v4
         with:
           name: narou-gem-windows
@@ -220,15 +276,16 @@ jobs:
           {
             echo "## 📦 インストール案内"
             echo ""
-            echo "- **Windows (mingw / MSYS2 など)** の場合:"
-            echo "  → `narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem` を使用してください。"
+            echo "### Linux / macOS"
             echo ""
-            echo "- **macOS / Linux** の場合:"
-            echo "  → `narou-mod-${CURRENT_TAG}.gem` を使用してください。"
-            echo ""
-            echo "インストール方法:"
             echo "\`\`\`bash"
-            echo "gem install ./ダウンロードしたファイル名.gem"
+            echo "gem install ./narou-mod-${CURRENT_TAG}-x86_64-linux.gem"
+            echo "\`\`\`"
+            echo ""
+            echo "### Windows"
+            echo ""
+            echo "\`\`\`powershell"
+            echo "gem install ./narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem"
             echo "\`\`\`"
             echo ""
             echo "---"
@@ -272,13 +329,17 @@ jobs:
         with:
           tag_name: ${{ needs.build-gem-linux.outputs.version }}
           name: "${{ needs.build-gem-linux.outputs.version }} (draft)"
-          draft: true         # 👈 ドラフトにする！
+          draft: true
           prerelease: false
           files: dist/*.gem
           body_path: ${{ steps.gen_body.outputs.body_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  #
+  # 5) GitHub Release の作成/更新 (public)
+  #    - release ブランチへの push で実行
+  #
   release-final:
     if: github.event_name == 'push' && github.ref_name == 'release'
     name: Create/Update Public Release
@@ -294,13 +355,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download generic gem artifact
+      - name: Download Linux gem artifact
         uses: actions/download-artifact@v4
         with:
-          name: narou-gem-generic
+          name: narou-gem-linux
           path: dist
 
-      - name: Download mingw gem artifact
+      - name: Download Windows gem artifact
         uses: actions/download-artifact@v4
         with:
           name: narou-gem-windows
@@ -321,15 +382,16 @@ jobs:
           {
             echo "## 📦 インストール案内"
             echo ""
-            echo "- **Windows (mingw / MSYS2 など)** の場合:"
-            echo "  → `narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem` を使用してください。"
+            echo "### Linux / macOS"
             echo ""
-            echo "- **macOS / Linux** の場合:"
-            echo "  → `narou-mod-${CURRENT_TAG}.gem` を使用してください。"
-            echo ""
-            echo "インストール方法:"
             echo "\`\`\`bash"
-            echo "gem install ./ダウンロードしたファイル名.gem"
+            echo "gem install ./narou-mod-${CURRENT_TAG}-x86_64-linux.gem"
+            echo "\`\`\`"
+            echo ""
+            echo "### Windows"
+            echo ""
+            echo "\`\`\`powershell"
+            echo "gem install ./narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem"
             echo "\`\`\`"
             echo ""
             echo "---"
@@ -369,7 +431,7 @@ jobs:
         with:
           tag_name: ${{ needs.build-gem-linux.outputs.version }}
           name: ${{ needs.build-gem-linux.outputs.version }}
-          draft: false        # 👈 本番なので公開
+          draft: false
           prerelease: false
           files: dist/*.gem
           body_path: ${{ steps.gen_body.outputs.body_path }}

@@ -20,9 +20,9 @@ converter "n4259s 異世界迷宮で奴隷ハーレムを" do
 
   def is_parameter_block?(line)
     if line =~ /^[^「『\(（【〈《≪［ 　―]/
-      return true
+      true
     else
-      return false
+      false
     end
   end
 
@@ -33,7 +33,7 @@ converter "n4259s 異世界迷宮で奴隷ハーレムを" do
         return true
       end
     end
-    return false
+    false
   end
 
   def out_parameter_block?(line)
@@ -43,7 +43,7 @@ converter "n4259s 異世界迷宮で奴隷ハーレムを" do
         return true
       end
     end
-    return false
+    false
   end
 
   def after(io, text_type)

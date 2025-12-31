@@ -1,1 +1,2 @@
- -cr spec_helper
+--require spec_helper
+--default-path spec

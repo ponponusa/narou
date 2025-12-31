@@ -1,0 +1,28 @@
+{
+  "[powershell]": {
+    "files.encoding": "utf8bom"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/CVS": true,
+    "**/frontend/**": true
+  },
+  "files.watcherExclude": {
+    "**/frontend/**": true,
+    "**/node_modules/**": true,
+    "**/tmp/**": true,
+    "**/vendor/bundle/**": true,
+    "**/.git/objects/**": true,
+    "**/.narou/**": true,
+    "**/.narousetting/**": true,
+    "**/.test_dot_narou/**": true,
+    "**/.test_novel_data/**": true,
+    "**/小説データ/**": true,
+    "**/.narou_perf_test/**": true,
+    "**/小説データ_perf_test/**": true
+  }
+}

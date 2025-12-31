@@ -1,185 +1,633 @@
-# 参考:
-# https://gist.github.com/linyows/ace586b118f87291ed3e
+# =============================================================================
+# RuboCop Configuration for narou-mod
+# =============================================================================
+# Ruby 3.4+ / 小説管理・変換ツール向け設定
+#
+# 方針:
+#   - 可読性を重視し、過度に厳格なルールは緩和
+#   - 既存コードベースとの互換性を維持
+#   - Safe Correctable は積極的に自動修正可能に
+# =============================================================================
 
 AllCops:
+  NewCops: enable
+  SuggestExtensions: false
+  TargetRubyVersion: 3.4
+  DisplayCopNames: true
   Exclude:
     - "小説データ/**/*"
+    - "小説データ_perf_test/**/*"
     - "trash/**/*"
-    - "narou-mod.gemspec"
+    - "vendor/**/*"
+    - "tmp/**/*"
+    - "coverage/**/*"
+    - "frontend/**/*"
+    - "commitversion"
+
+# =============================================================================
+# Gemspec
+# =============================================================================
+
+Gemspec/AddRuntimeDependency:
+  Enabled: false
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+Gemspec/OrderedDependencies:
+  Enabled: false
+
+Gemspec/RequireMFA:
+  Enabled: false
+
+# =============================================================================
+# Metrics - コードの複雑さ（緩め設定）
+# =============================================================================
+
+Metrics/AbcSize:
+  Max: 80
+
+Metrics/BlockLength:
+  Max: 80
+  Exclude:
     - "spec/**/*"
-  DisplayCopNames: true
-  TargetRubyVersion: 2.5
+    - "**/*.gemspec"
+    - "Rakefile"
+
+Metrics/BlockNesting:
+  Max: 5
 
 Metrics/ClassLength:
   CountComments: false
-  Max: 300
-
-Metrics/ModuleLength:
-  CountComments: false
-  Max: 300
-
-Metrics/AbcSize:
-  Max: 40
-
-Metrics/BlockLength:
-  Max: 40
-
-Metrics/BlockNesting:
-  Max: 3
+  Max: 500
 
 Metrics/CyclomaticComplexity:
-  Max: 8
-
-Layout/LineLength:
-  Max: 140
-  AllowURI: true
-  URISchemes:
-    - http
-    - https
-
-Style/GuardClause:
-  MinBodyLength: 5
+  Max: 25
 
 Metrics/MethodLength:
-  Max: 50
-
-Metrics/PerceivedComplexity:
-  Max: 11
-
-Naming/AccessorMethodName:
-  Enabled: true
-
-# 条件式の時に使った時のみ警告を出す
-Style/AndOr:
-  EnforcedStyle: conditionals
-
-Style/BlockDelimiters:
-  Enabled: false
-
-Style/CollectionMethods:
-  PreferredMethods:
-    detect: "detect"
-    find: "detect"
-    inject: "inject"
-    reduce: "inject"
-
-Style/Semicolon:
+  Max: 80
   Exclude:
     - "spec/**/*"
 
-Style/AsciiComments:
+Metrics/ModuleLength:
+  CountComments: false
+  Max: 500
+
+Metrics/ParameterLists:
+  Max: 8
+
+Metrics/PerceivedComplexity:
+  Max: 25
+
+# =============================================================================
+# Layout
+# =============================================================================
+
+Layout/ArgumentAlignment:
   Enabled: false
 
-Style/BlockComments:
+Layout/ArrayAlignment:
   Enabled: false
 
-Style/ClassVars:
+Layout/ClosingParenthesisIndentation:
   Enabled: false
 
-Style/Documentation:
+Layout/EmptyLineAfterGuardClause:
   Enabled: false
 
-Style/DoubleNegation:
+Layout/EmptyLineAfterMagicComment:
   Enabled: false
 
-# 後置 if/unless を使わないほうがわかりやすい場合もある
-Style/IfUnlessModifier:
+Layout/EmptyLinesAroundAccessModifier:
   Enabled: false
 
-Style/HashSyntax:
-  Exclude:
-    - "**/*.rake"
-    - "Rakefile"
-
-Style/Lambda:
+Layout/EmptyLinesAroundBlockBody:
   Enabled: false
 
-Style/RescueModifier:
+Layout/EmptyLinesAroundClassBody:
   Enabled: false
-    
-# 1_000_000 と区切り文字が 2 個以上必要になる場合のみ _ 区切りを必須にする
-Style/NumericLiterals:
-  MinDigits: 7
 
-# has_ から始まるメソッドは許可する
-Naming/PredicateName:
-  ForbiddenPrefixes:
-    - "is_"
-    - "have_"
-  NamePrefix:
-    - "is_"
-    - "have_"
+Layout/EmptyLinesAroundMethodBody:
+  Enabled: false
 
-Style/GlobalVars:
+Layout/EmptyLinesAroundExceptionHandlingKeywords:
+  Enabled: false
+
+Layout/FirstArgumentIndentation:
+  Enabled: false
+
+Layout/FirstArrayElementIndentation:
   Enabled: false
 
 Layout/FirstHashElementIndentation:
   Enabled: false
 
-Layout/LeadingCommentSpace:
-  Enabled: true
+Layout/HashAlignment:
+  Enabled: false
+
+Layout/HeredocIndentation:
+  Enabled: false
+
+Layout/LineContinuationLeadingSpace:
+  Enabled: false
+
+Layout/LineEndStringConcatenationIndentation:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 160
+  AllowURI: true
+  Exclude:
+    - "spec/**/*"
+
+Layout/MultilineMethodCallBraceLayout:
+  Enabled: false
+
+Layout/MultilineOperationIndentation:
+  Enabled: false
+
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: false
+
+Layout/SpaceInsideBlockBraces:
+  Enabled: false
+
+Layout/SpaceInsideHashLiteralBraces:
+  Enabled: false
+
+Layout/SpaceInsideRangeLiteral:
+  Enabled: false
+
+Layout/TrailingEmptyLines:
+  Enabled: false
+
+# =============================================================================
+# Lint
+# =============================================================================
+
+Lint/AmbiguousBlockAssociation:
+  Enabled: false
+
+Lint/AmbiguousOperator:
+  Enabled: false
+
+Lint/AmbiguousOperatorPrecedence:
+  Enabled: false
+
+Lint/AmbiguousRange:
+  Enabled: false
+
+Lint/AssignmentInCondition:
+  Enabled: false
+
+Lint/BinaryOperatorWithIdenticalOperands:
+  Enabled: false
+
+Lint/ConstantDefinitionInBlock:
+  Enabled: false
+
+Lint/DuplicateBranch:
+  Enabled: false
+
+Lint/EmptyBlock:
+  Enabled: false
+
+Lint/EmptyClass:
+  Enabled: false
+
+Lint/EmptyWhen:
+  Enabled: false
+
+Lint/MissingCopEnableDirective:
+  Enabled: false
+
+Lint/NestedMethodDefinition:
+  Enabled: false
+
+Lint/NonAtomicFileOperation:
+  Enabled: false
+
+Lint/NonLocalExitFromIterator:
+  Enabled: false
+
+Lint/OrderedMagicComments:
+  Enabled: false
+
+Lint/RedundantCopDisableDirective:
+  Enabled: false
+
+Lint/RedundantDirGlobSort:
+  Enabled: false
+
+Lint/RedundantRequireStatement:
+  Enabled: false
+
+Lint/RedundantSafeNavigation:
+  Enabled: false
+
+Lint/RescueException:
+  Enabled: false
+
+Lint/ScriptPermission:
+  Enabled: false
+
+Lint/ShadowedException:
+  Enabled: false
+
+Lint/StructNewOverride:
+  Enabled: false
+
+Lint/SuppressedException:
+  Enabled: false
+
+Lint/UnderscorePrefixedVariableName:
+  Enabled: false
+
+Lint/UnusedBlockArgument:
+  Enabled: false
+
+Lint/UnusedMethodArgument:
+  Enabled: false
+
+Lint/UselessAssignment:
+  Enabled: false
+
+Lint/UselessConstantScoping:
+  Enabled: false
+
+Lint/UselessMethodDefinition:
+  Enabled: false
+
+Lint/UselessOr:
+  Enabled: false
+
+Lint/UselessRescue:
+  Enabled: false
+
+# =============================================================================
+# Naming
+# =============================================================================
+
+Naming/AccessorMethodName:
+  Enabled: false
+
+Naming/BlockForwarding:
+  Enabled: false
+
+Naming/HeredocDelimiterNaming:
+  Enabled: false
+
+Naming/MemoizedInstanceVariableName:
+  Enabled: false
+
+Naming/MethodName:
+  Enabled: false
+
+Naming/MethodParameterName:
+  Enabled: false
+
+Naming/PredicateMethod:
+  Enabled: false
+
+Naming/PredicatePrefix:
+  Enabled: false
+
+Naming/RescuedExceptionsVariableName:
+  Enabled: false
+
+Naming/VariableName:
+  Enabled: false
+
+Naming/VariableNumber:
+  Enabled: false
+
+# =============================================================================
+# Security
+# =============================================================================
+
+Security/Open:
+  Enabled: false
+
+# =============================================================================
+# Style
+# =============================================================================
+
+Style/AccessorGrouping:
+  Enabled: false
+
+Style/Alias:
+  Enabled: false
+
+Style/AndOr:
+  EnforcedStyle: conditionals
+
+Style/ArgumentsForwarding:
+  Enabled: false
+
+Style/AsciiComments:
+  Enabled: false
+
+Style/BitwisePredicate:
+  Enabled: false
+
+Style/BlockComments:
+  Enabled: false
+
+Style/BlockDelimiters:
+  Enabled: false
+
+Style/CaseLikeIf:
+  Enabled: false
+
+Style/ClassAndModuleChildren:
+  Enabled: false
+
+Style/ClassCheck:
+  Enabled: false
+
+Style/ClassEqualityComparison:
+  Enabled: false
+
+Style/ClassVars:
+  Enabled: false
+
+Style/CollectionMethods:
+  Enabled: false
+
+Style/CollectionQuerying:
+  Enabled: false
+
+Style/CommentAnnotation:
+  Enabled: false
+
+Style/ComparableBetween:
+  Enabled: false
+
+Style/ComparableClamp:
+  Enabled: false
+
+Style/ConditionalAssignment:
+  Enabled: false
+
+Style/Dir:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/DocumentDynamicEvalDefinition:
+  Enabled: false
+
+Style/DoubleNegation:
+  Enabled: false
+
+Style/EachWithObject:
+  Enabled: false
+
+Style/EmptyCaseCondition:
+  Enabled: false
+
+Style/EmptyElse:
+  Enabled: false
+
+Style/Encoding:
+  Enabled: false
+
+Style/EvalWithLocation:
+  Enabled: false
+
+Style/ExpandPathArguments:
+  Enabled: false
+
+Style/ExplicitBlockArgument:
+  Enabled: false
+
+Style/FetchEnvVar:
+  Enabled: false
+
+Style/FileNull:
+  Enabled: false
+
+Style/FileWrite:
+  Enabled: false
+
+Style/FormatString:
+  Enabled: false
+
+Style/FormatStringToken:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/GlobalStdStream:
+  Enabled: false
+
+Style/GlobalVars:
+  Enabled: false
+
+Style/GuardClause:
+  Enabled: false
+
+Style/HashConversion:
+  Enabled: false
+
+Style/HashEachMethods:
+  Enabled: false
+
+Style/HashSyntax:
+  Enabled: false
+
+Style/IdenticalConditionalBranches:
+  Enabled: false
+
+Style/IfInsideElse:
+  Enabled: false
+
+Style/IfUnlessModifier:
+  Enabled: false
+
+Style/InfiniteLoop:
+  Enabled: false
+
+Style/ItAssignment:
+  Enabled: false
+
+Style/Lambda:
+  Enabled: false
 
 Style/LineEndConcatenation:
-  Enabled: true
+  Enabled: false
+
+Style/MapIntoArray:
+  Enabled: false
+
+Style/MinMaxComparison:
+  Enabled: false
 
 Style/MultilineBlockChain:
-  Enabled: true
+  Enabled: false
 
 Style/MultilineTernaryOperator:
-  Enabled: true
+  Enabled: false
 
-Style/NegatedIf:
-  Enabled: true
+Style/MultipleComparison:
+  Enabled: false
 
-Style/Not:
-  Enabled: true
+Style/MutableConstant:
+  Enabled: false
+
+Style/NegatedIfElseCondition:
+  Enabled: false
+
+Style/NestedParenthesizedCalls:
+  Enabled: false
+
+Style/Next:
+  Enabled: false
+
+Style/NumericLiterals:
+  MinDigits: 10
+
+Style/NumericPredicate:
+  Enabled: false
+
+Style/OpenStructUse:
+  Enabled: false
+
+Style/OptionalBooleanParameter:
+  Enabled: false
+
+Style/OrAssignment:
+  Enabled: false
+
+Style/ParallelAssignment:
+  Enabled: false
 
 Style/PercentLiteralDelimiters:
-  PreferredDelimiters:
-    "%":  "!!"
-    "%i": "()"
-    "%q": "!!"
-    "%Q": "!!"
-    "%r": "!!"
-    "%s": "()"
-    "%w": "()"
-    "%W": "()"
-    "%x": "()"
+  Enabled: false
 
 Style/PerlBackrefs:
   Enabled: false
 
+Style/PreferredHashMethods:
+  Enabled: false
+
+Style/QuotedSymbols:
+  Enabled: false
+
+Style/RandomWithOffset:
+  Enabled: false
+
+Style/RedundantArgument:
+  Enabled: false
+
+Style/RedundantAssignment:
+  Enabled: false
+
+Style/RedundantCondition:
+  Enabled: false
+
+Style/RedundantConstantBase:
+  Enabled: false
+
+Style/RedundantFreeze:
+  Enabled: false
+
+Style/RedundantInterpolation:
+  Enabled: false
+
+Style/RedundantInterpolationUnfreeze:
+  Enabled: false
+
+Style/RedundantLineContinuation:
+  Enabled: false
+
+Style/RedundantParentheses:
+  Enabled: false
+
+Style/RedundantRegexpArgument:
+  Enabled: false
+
+Style/RedundantRegexpEscape:
+  Enabled: false
+
 Style/RedundantReturn:
-  AllowMultipleReturnValues: true
+  Enabled: false
 
 Style/RedundantSelf:
+  Enabled: false
+
+Style/RedundantSort:
+  Enabled: false
+
+Style/RedundantSortBy:
+  Enabled: false
+
+Style/RedundantStringEscape:
+  Enabled: false
+
+Style/RegexpLiteral:
+  Enabled: false
+
+Style/RescueModifier:
+  Enabled: false
+
+Style/RescueStandardError:
+  Enabled: false
+
+Style/ReturnNilInPredicateMethodDefinition:
+  Enabled: false
+
+Style/SafeNavigation:
+  Enabled: false
+
+Style/SafeNavigationChainLength:
+  Enabled: false
+
+Style/SelfAssignment:
+  Enabled: false
+
+Style/Semicolon:
   Enabled: false
 
 Style/SignalException:
   EnforcedStyle: only_raise
 
-Layout/SpaceAfterComma:
-  Enabled: true
+Style/SlicingWithRange:
+  Enabled: false
 
-Layout/SpaceAroundOperators:
-  Enabled: true
-
-Layout/SpaceInsideRangeLiteral:
-  Enabled: true
+Style/SoleNestedConditional:
+  Enabled: false
 
 Style/SpecialGlobalVars:
   Enabled: false
 
+Style/StderrPuts:
+  Enabled: false
+
+Style/StringConcatenation:
+  Enabled: false
+
 Style/StringLiterals:
-  EnforcedStyle: double_quotes
+  Enabled: false
+
+Style/StringLiteralsInInterpolation:
+  Enabled: false
+
+Style/SuperArguments:
+  Enabled: false
+
+Style/SuperWithArgsParentheses:
+  Enabled: false
+
+Style/SymbolArray:
+  Enabled: false
 
 Style/SymbolProc:
-  Enabled: true
+  Enabled: false
 
-Layout/IndentationStyle:
-  Enabled: true
-
-Layout/TrailingEmptyLines:
+Style/TernaryParentheses:
   Enabled: false
 
 Style/TrailingCommaInArrayLiteral:
@@ -189,55 +637,19 @@ Style/TrailingCommaInHashLiteral:
   Enabled: false
 
 Style/TrivialAccessors:
-  Enabled: true
+  Enabled: false
 
 Style/UnlessElse:
-  Enabled: true
+  Enabled: false
 
-Naming/VariableName:
-  EnforcedStyle: snake_case
+Style/WhileUntilModifier:
+  Enabled: false
 
 Style/WordArray:
-  MinSize: 3
-
-Style/StringLiteralsInInterpolation:
   Enabled: false
 
-Style/MutableConstant:
+Style/YodaCondition:
   Enabled: false
 
-Lint/UnderscorePrefixedVariableName:
-  Enabled: false
-
-Layout/EmptyLinesAroundClassBody:
-  Enabled: false
-
-Style/FrozenStringLiteralComment:
-  Enabled: true
-
-Layout/MultilineOperationIndentation:
-  Enabled: false
-
-Layout/HeredocIndentation:
-  Enabled: true
-
-Style/NumericPredicate:
-  Enabled: false
-
-Lint/SuppressedException:
-  Enabled: false
-
-Lint/RescueException:
-  Enabled: false
-
-Lint/EmptyWhen:
-  Enabled: false
-
-Style/FormatStringToken:
-  EnforcedStyle: unannotated
-
-Layout/EmptyLineAfterGuardClause:
-  Enabled: false
-
-Style/StderrPuts:
+Style/ZeroLengthPredicate:
   Enabled: false

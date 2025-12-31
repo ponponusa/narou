@@ -3,8 +3,8 @@
 require "rack/test"
 require "json"
 
-require_relative "../spec_helper"
-require_relative "../../lib/web/appserver"
+require "spec/spec_helper"
+require "lib/web/appserver"
 
 RSpec.describe "Narou::AppServer REST API" do
   include Rack::Test::Methods
@@ -18,7 +18,7 @@ RSpec.describe "Narou::AppServer REST API" do
   before do
     Narou::AppServer.push_server = push_server
     allow(Narou::PushServer).to receive(:instance).and_return(push_server)
-    allow(Narou::AppServer).to receive(:clear_all_cache)
+    allow(NovelListProcessor).to receive(:clear_all_cache)
     allow_any_instance_of(Narou::AppServer).to receive(:puts_hello_messages)
     allow_any_instance_of(Narou::AppServer).to receive(:start_device_ejectable_event)
     allow_any_instance_of(Narou::AppServer).to receive(:fill_general_all_no_in_database)
@@ -147,6 +147,54 @@ RSpec.describe "Narou::AppServer REST API" do
 
       post "/gem_update_last_log"
       expect(last_response.body).to include("boom")
+    end
+  end
+
+  describe "POST /api/convert" do
+    it "queues convert command for selected ids" do
+      allow(Narou::WebWorker).to receive(:push).and_yield
+      allow(CommandLine).to receive(:run!)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+
+      post "/api/convert", "ids[]" => "22"
+      expect(last_response.status).to eq(200)
+    end
+  end
+
+  describe "POST /api/freeze" do
+    it "queues freeze command for selected ids" do
+      allow(Narou::WebWorker).to receive(:push).and_yield
+      allow(CommandLine).to receive(:run!)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+
+      post "/api/freeze", "ids[]" => "22"
+      expect(last_response.status).to eq(200)
+    end
+  end
+
+  describe "POST /api/remove" do
+    it "returns 400 when no ids provided" do
+      post "/api/remove"
+      expect(last_response.status).to eq(400)
+      body = JSON.parse(last_response.body)
+      expect(body).to include("success" => false)
+    end
+
+    it "queues remove command for selected ids" do
+      allow(Narou::WebWorker).to receive(:push).and_yield
+      allow(CommandLine).to receive(:run!)
+      allow(NovelListProcessor).to receive(:clear_all_cache)
+
+      post "/api/remove", "ids[]" => "22"
+      expect(last_response.status).to eq(200)
+    end
+  end
+
+  describe "GET /api/list" do
+    it "returns novel list data" do
+      get "/api/list"
+      expect(last_response).to be_ok
+      expect(last_response.body).to be_a(String)
     end
   end
 end

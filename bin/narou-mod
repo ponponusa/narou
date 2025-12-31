@@ -7,14 +7,20 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+# 開発環境（narou.rb が存在する場所から実行）では、インストール済みの gem と
+# 競合しないよう、gem のパスを $LOAD_PATH から除外する
+if File.exist?(File.join(Dir.pwd, "narou.rb"))
+  $LOAD_PATH.reject! { |path| path.include?("narou-mod") && path.include?("gems") }
+end
+
 # YJIT bootstrap (enable only when supported; never warn on unsupported)
 begin
-  require 'rbconfig'
-  host_os = RbConfig::CONFIG['host_os']
+  require "rbconfig"
+  host_os = RbConfig::CONFIG["host_os"]
   on_windows = !!(host_os =~ /mswin|mingw|cygwin/)
 
   # 一応 NAROU_YJIT=0 の指定で明示的にオフにもできるように
-  want_yjit = ENV.fetch('NAROU_YJIT', '1') == '1'
+  want_yjit = ENV.fetch("NAROU_YJIT", "1") == "1"
 
   if want_yjit && !on_windows && defined?(RubyVM::YJIT)
     # Ruby 3.2+ 想定
@@ -35,7 +41,7 @@ begin
     unless is_windows
       require "bootsnap"
       Bootsnap.setup(
-        cache_dir: 'tmp/bootsnap-cache',
+        cache_dir: "tmp/bootsnap-cache",
         development_mode: false,
         load_path_cache: true,
         compile_cache_iseq: true,
@@ -49,7 +55,13 @@ end
 $bootsnap_enable = defined?(Bootsnap)
 
 if File.exist?("narou.rb")
+  # 開発環境: narou.rb を直接実行
   require File.join(Dir.pwd, "narou.rb")
 else
-  require_relative "../narou.rb"
+  # gem からインストールされた場合: 共通起動ロジックを実行
+  script_dir = File.expand_path("..", __dir__)
+  $LOAD_PATH.unshift(script_dir) unless $LOAD_PATH.include?(script_dir)
+
+  require "lib/loading/bootstrap"
+  Narou::Bootstrap.run(script_dir, ARGV)
 end
