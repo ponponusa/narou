@@ -160,7 +160,10 @@ class NovelConverter
         # EPUBをメモリ上に展開
         Zip::File.open(epub_path) do |zip_file|
           zip_file.each do |entry|
-            entries[entry.name] = entry.get_input_stream.read
+            data = entry.get_input_stream.read
+            # XMLファイルはUTF-8として扱う、それ以外はバイナリのまま保持
+            data.force_encoding(Encoding::UTF_8) if entry.name.end_with?(".opf", ".html", ".xhtml", ".xml")
+            entries[entry.name] = data
           end
         end
 
