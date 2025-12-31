@@ -5,7 +5,7 @@
   - フィルタリング機能
   - ソート機能
   - ページング機能
-  - タスク操作（キャンセル、一時停止、再開）
+  - タスク操作（キャンセル）
 -->
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
@@ -14,11 +14,10 @@
     getTasks,
     getTaskSummary,
     cancelTaskById,
-    pauseTask,
-    resumeTask,
     type Task,
     type TaskSummary,
     type TaskStatus,
+    type TaskType,
   } from "../lib/api";
 
   // フィルタ・ソート設定
@@ -37,6 +36,7 @@
     | "created_at"
     | "started_at"
     | "status"
+    | "type"
     | "novel_id"
     | "novel_title"
     | "novel_author"
@@ -102,6 +102,9 @@
       } else if (sortBy === "status") {
         aVal = a.status;
         bVal = b.status;
+      } else if (sortBy === "type") {
+        aVal = a.type;
+        bVal = b.type;
       } else if (sortBy === "novel_id") {
         aVal = a.novel_id || 0;
         bVal = b.novel_id || 0;
@@ -223,7 +226,6 @@
     const labels: Record<TaskStatus, string> = {
       queued: "待機中",
       running: "実行中",
-      paused: "一時停止",
       completed: "完了",
       failed: "失敗",
       canceled: "キャンセル",
@@ -247,6 +249,39 @@
   }
 
   /**
+   * タスク種別の表示文字列
+   */
+  function getTypeLabel(type: TaskType): string {
+    const labels: Record<TaskType, string> = {
+      download: "取得",
+      convert: "変換",
+      update: "更新チェック",
+      remove: "削除",
+    };
+    return labels[type] || type;
+  }
+
+  /**
+   * タスク種別のCSSクラス
+   */
+  function getTypeClass(type: TaskType): string {
+    const classes: Record<TaskType, string> = {
+      download:
+        "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
+      convert:
+        "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+      update:
+        "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
+      remove:
+        "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+    };
+    return (
+      classes[type] ||
+      "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300"
+    );
+  }
+
+  /**
    * タスクをキャンセル
    */
   async function handleCancelTask(taskId: string) {
@@ -258,32 +293,6 @@
     } catch (err) {
       console.error("タスクのキャンセルに失敗:", err);
       alert("タスクのキャンセルに失敗しました");
-    }
-  }
-
-  /**
-   * タスクを一時停止
-   */
-  async function handlePauseTask(taskId: string) {
-    try {
-      await pauseTask(taskId);
-      await fetchTasks();
-    } catch (err) {
-      console.error("タスクの一時停止に失敗:", err);
-      alert("タスクの一時停止に失敗しました");
-    }
-  }
-
-  /**
-   * タスクを再開
-   */
-  async function handleResumeTask(taskId: string) {
-    try {
-      await resumeTask(taskId);
-      await fetchTasks();
-    } catch (err) {
-      console.error("タスクの再開に失敗:", err);
-      alert("タスクの再開に失敗しました");
     }
   }
 
@@ -500,7 +509,6 @@
               <option value="">ステータス</option>
               <option value="queued">待機中</option>
               <option value="running">実行中</option>
-              <option value="paused">一時停止</option>
               <option value="completed">完了</option>
               <option value="failed">失敗</option>
               <option value="canceled">キャンセル</option>
@@ -561,6 +569,23 @@
                 <span class="flex items-center gap-1">
                   ステータス
                   {#if sortBy === "status"}
+                    <i
+                      class="fas fa-sort-{sortOrder === 'asc'
+                        ? 'up'
+                        : 'down'} text-blue-500"
+                    ></i>
+                  {:else}
+                    <i class="fas fa-sort text-gray-400"></i>
+                  {/if}
+                </span>
+              </th>
+              <th
+                class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                onclick={() => handleColumnSort("type")}
+              >
+                <span class="flex items-center gap-1">
+                  種別
+                  {#if sortBy === "type"}
                     <i
                       class="fas fa-sort-{sortOrder === 'asc'
                         ? 'up'
@@ -662,7 +687,7 @@
             {#if paginatedTasks.length === 0}
               <tr>
                 <td
-                  colspan="8"
+                  colspan="9"
                   class="px-4 py-8 text-center text-gray-600 dark:text-gray-400"
                 >
                   <i class="fas fa-inbox text-4xl mb-2 block"></i>
@@ -679,6 +704,15 @@
                       )}"
                     >
                       {getStatusLabel(task.status)}
+                    </span>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <span
+                      class="px-2 py-1 text-xs rounded font-medium {getTypeClass(
+                        task.type
+                      )}"
+                    >
+                      {getTypeLabel(task.type)}
                     </span>
                   </td>
                   <td
@@ -760,25 +794,7 @@
                   </td>
                   <td class="px-3 py-2 whitespace-nowrap text-sm">
                     <div class="flex gap-1">
-                      {#if task.status === "running"}
-                        <button
-                          onclick={() => handlePauseTask(task.id)}
-                          class="p-1.5 text-gray-600 hover:text-yellow-600 dark:text-gray-400 dark:hover:text-yellow-400 transition-colors cursor-pointer"
-                          title="一時停止"
-                        >
-                          <i class="fas fa-pause"></i>
-                        </button>
-                      {/if}
-                      {#if task.status === "paused"}
-                        <button
-                          onclick={() => handleResumeTask(task.id)}
-                          class="p-1.5 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors cursor-pointer"
-                          title="再開"
-                        >
-                          <i class="fas fa-play"></i>
-                        </button>
-                      {/if}
-                      {#if task.status === "queued" || task.status === "running" || task.status === "paused"}
+                      {#if task.status === "queued" || task.status === "running"}
                         <button
                           onclick={() => handleCancelTask(task.id)}
                           class="p-1.5 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"

@@ -2505,7 +2505,10 @@
                     onclick={() => handleSort("avg_chars_per_episode")}
                   >
                     <span class="flex items-center gap-1">
-                      平均文字数
+                      <div class="flex flex-col">
+                        <span>平均</span>
+                        <span>文字数</span>
+                      </div>
                       {#if sortBy === "avg_chars_per_episode"}
                         <i
                           class="fas fa-sort-{sortOrder === 'asc'
@@ -2684,21 +2687,21 @@
                   {/if}
                   {#if columnVisibility.episode_count}
                     <td
-                      class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
+                      class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400"
                     >
                       {novel.general_all_no ? novel.general_all_no : "-"}
                     </td>
                   {/if}
                   {#if columnVisibility.total_chars}
                     <td
-                      class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
+                      class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400"
                     >
                       {formatCharCount(novel.length)}
                     </td>
                   {/if}
                   {#if columnVisibility.avg_chars_per_episode}
                     <td
-                      class="px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
+                      class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400"
                     >
                       {novel.general_all_no && novel.length
                         ? formatCharCount(
