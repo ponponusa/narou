@@ -6,14 +6,14 @@ permissions:
 
 on:
   pull_request:
-    branches: [ "develop", "release", "test-develop", "test-release" ]
+    branches: [ "develop", "release", "draft" ]
   push:
-    branches: [ "release", "test-release" ]
+    branches: [ "release", "draft" ]
 
 jobs:
   #
   # 1) PR用ビルド・テストジョブ
-  #    - develop / release / test-develop / test-release 向け PR で走る
+  #    - develop / release  draft 向け PR で走る
   #    - RSpec を実行
   #    - Astro UI のビルドとテスト
   #
@@ -106,12 +106,12 @@ jobs:
 
   #
   # 2) Linux/macOS 向け gem をビルド
-  #    - release / test-release ブランチへの push で実行
+  #    - release / draft ブランチへの push で実行
   #    - Astro UI をビルドして含める
   #    - bootsnap を依存関係に含む
   #
   build-gem-linux:
-    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
+    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'draft')
     name: Build gem (Linux/macOS)
     runs-on: ubuntu-latest
 
@@ -176,11 +176,11 @@ jobs:
 
   #
   # 3) Windows (mingw-ucrt) 向け gem をビルド
-  #    - release / test-release ブランチへの push で実行
+  #    - release / draft ブランチへの push で実行
   #    - win32ole を依存関係に含む
   #
   build-gem-windows:
-    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'test-release')
+    if: github.event_name == 'push' && (github.ref_name == 'release' || github.ref_name == 'draft')
     name: Build gem (Windows)
     runs-on: windows-latest
 
@@ -229,10 +229,10 @@ jobs:
 
   #
   # 4) GitHub Release の作成/更新 (draft)
-  #    - test-release ブランチへの push で実行
+  #    - draft ブランチへの push で実行
   #
   release-draft:
-    if: github.event_name == 'push' && github.ref_name == 'test-release'
+    if: github.event_name == 'push' && github.ref_name == 'draft'
     name: Create/Update Draft Release (staging)
     runs-on: ubuntu-latest
     needs: [ build-gem-linux, build-gem-windows ]

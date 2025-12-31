@@ -38,6 +38,7 @@ mail_setting.yaml
 *.log
 *.log.err
 .agent/
+.claude/
 
 # Performance test data
 .narou_perf_test/
