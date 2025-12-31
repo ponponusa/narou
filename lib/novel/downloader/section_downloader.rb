@@ -208,7 +208,7 @@ class Downloader
       cookie = @setting["cookie"] || ""
       begin
         open_uri_options = make_open_uri_options("Cookie" => cookie, allow_redirections: :safe)
-        URI.open(url, "r:#{@setting["encoding"]}", open_uri_options) do |fp|
+        URI(url).open("r:#{@setting["encoding"]}", open_uri_options) do |fp|
           raw = Helper.pretreatment_source(fp.read, @setting["encoding"])
         end
       rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError,

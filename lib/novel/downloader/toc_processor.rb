@@ -27,7 +27,7 @@ class Downloader
       open_uri_options = make_open_uri_options("Cookie" => cookie, allow_redirections: :safe)
       sleep_for_download
       begin
-        URI.open(toc_url, open_uri_options) do |toc_fp|
+        URI(toc_url).open(open_uri_options) do |toc_fp|
           if toc_fp.base_uri.to_s != toc_url
             # リダイレクトされた場合。
             # ノクターン・ムーンライトのNコードを ncode.syosetu.com に渡すと、年齢認証のクッションページに飛ばされる

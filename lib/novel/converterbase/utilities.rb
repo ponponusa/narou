@@ -17,7 +17,7 @@ class ConverterBase
     # すべての行の行末空白を削除
     #
     def rstrip_all_lines(data)
-      data.gsub(/[ 　\t]+$/m, "")
+      data.gsub(/[ 　\t]+\z/m, "")
     end
   end
 end

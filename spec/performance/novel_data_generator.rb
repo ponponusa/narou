@@ -231,7 +231,13 @@ class NovelDataGenerator
         Dir.glob(File.join(raw_dir, "*.html")).each do |html_file|
           # 簡易的なHTML→TXT変換（実際の変換処理に置き換え可能）
           content = File.read(html_file)
-          txt_content = content.gsub(/<[^>]+>/, "").gsub(/\s+/, " ").strip
+          # scriptタグなどを先に削除してからHTMLタグを除去
+          txt_content = content
+            .gsub(/<script\b[^>]*>.*?<\/script>/im, "")
+            .gsub(/<style\b[^>]*>.*?<\/style>/im, "")
+            .gsub(/<[^>]+>/, "")
+            .gsub(/\s+/, " ")
+            .strip
 
           # 結果を一時ファイルに保存
           txt_file = html_file.sub("/raw/", "/txt_converted/").sub(".html", ".txt")
