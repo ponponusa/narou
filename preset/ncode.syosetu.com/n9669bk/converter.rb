@@ -22,7 +22,7 @@ converter "n9669bk 無職転生　- 異世界行ったら本気だす -" do
         return true
       end
     end
-    return false
+    false
   end
 
   def out_parameter_block?(line)
@@ -32,7 +32,7 @@ converter "n9669bk 無職転生　- 異世界行ったら本気だす -" do
         return true
       end
     end
-    return false
+    false
   end
 
   def conver_dash!(line)

@@ -4,17 +4,18 @@
 
 - `lib/` holds Ruby sources: core logic in `lib/narou/`, web helpers in `lib/web/`, and CLI subcommands under `lib/command/`.
 - `spec/` contains RSpec examples plus shared helpers in `spec/support/`.
-- CLI entry points live in `bin/narou-mod` and `narou.rb` for local execution.
+- CLI entry point is `bin/narou-mod` (use this for development).
 - Site settings, templates, and assets reside in `webnovel/`, `preset/`, and `template/`.
 - CI and release automation are under `.circleci/` and `Rakefile` tasks.
 
 ## Build, Test, and Development Commands
 
 - `bundle install`: install gem dependencies locally.
-- `bundle exec ruby narou.rb web`: boot the local web interface for manual checks.
-- `bundle exec ruby narou.rb download <novel_id>`: fetch source content for conversion experiments.
+- `bundle exec ruby bin/narou-mod web`: boot the local web interface for manual checks.
+- `bundle exec ruby bin/narou-mod download <novel_id>`: fetch source content for conversion experiments.
 - `bundle exec rspec`: run the full test suite; scope to a file with `bundle exec rspec spec/downloader_spec.rb`.
 - `bundle exec rubocop` (add `-A` to auto-correct): enforce Ruby style and catch regressions.
+- `./scripts/process_control.sh --restart` (Unix) or `.\scripts\process_control.ps1 -Restart` (Windows): stop all running servers and restart them in the background.
 
 ## Coding Style & Naming Conventions
 

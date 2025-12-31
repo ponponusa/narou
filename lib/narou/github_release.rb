@@ -53,7 +53,8 @@ module Narou
     attr_reader :token, :http, :user_agent
 
     def perform_request(uri)
-      http.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: DEFAULT_TIMEOUT, read_timeout: DEFAULT_TIMEOUT) do |client|
+      http.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: DEFAULT_TIMEOUT,
+read_timeout: DEFAULT_TIMEOUT) do |client|
         request = Net::HTTP::Get.new(uri)
         request["User-Agent"] = user_agent
         request["Accept"] = "application/vnd.github+json"

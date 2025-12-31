@@ -1,0 +1,42 @@
+# サイト基本情報
+name: カクヨム
+domain: kakuyomu.jp
+encoding: UTF-8
+top_url: https://kakuyomu.jp
+sitename: カクヨム
+
+# JSON データ抽出設定（Next.js の __NEXT_DATA__）
+json_data_source:
+  selector: "script#__NEXT_DATA__"
+  type: "application/json"
+  paths:
+    work_id: "query.workId"
+    toc: "props.pageProps.__APOLLO_STATE__.Work:{workId}.tableOfContents"
+    title: "props.pageProps.__APOLLO_STATE__.Work:{workId}.title"
+    author: "props.pageProps.__APOLLO_STATE__.Work:{workId}.author.__ref"
+    story: "props.pageProps.__APOLLO_STATE__.Work:{workId}.introduction"
+
+# 目次ページ設定（HTMLフォールバック用）
+toc_url_pattern: "https://kakuyomu.jp/works/{ncode}"
+novel_info_selectors:
+  title: "h1#workTitle a"
+  author: "span#workAuthor-activityName"
+  story: "p#introduction"
+
+# 本文ページ設定
+body_selectors:
+  - selector: "div.widget-episodeBody.js-episode-body"
+    priority: 10
+    extract: "inner_html"
+    description: "メインコンテンツ（2024年現在）"
+  - selector: "div.widget-episodeBody"
+    priority: 8
+    extract: "inner_html"
+    description: "クラス名簡略版"
+  - selector: "div.p-episode__body"
+    priority: 5
+    extract: "inner_html"
+    description: "旧デザイン"
+
+# 成功履歴
+last_successful_selectors: {}

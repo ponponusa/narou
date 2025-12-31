@@ -4,10 +4,11 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
-require_relative "appserver"
-require_relative "pushserver"
-require_relative "streaminglogger"
-require_relative "streaminginput"
-require_relative "progressbar4web"
-require_relative "helper4web"
+require "lib/output/narou_logger"
+require "lib/web/appserver"
+require "lib/web/server/push_server"
+require "lib/web/logging/streaming_logger"
+require "lib/web/overrides/input"
+require "lib/web/overrides/progressbar"
+require "lib/web/overrides/helper"
 

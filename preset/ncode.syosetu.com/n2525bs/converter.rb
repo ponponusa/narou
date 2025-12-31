@@ -9,7 +9,7 @@
 converter "n2525bs 魔剣ゾルディの女主人公とっかえひっかえ成長記録" do
   def before(io, text_type)
     super
-    io.string.gsub!(/(\/{2,})/) do
+    io.string.gsub!(%r{(/{2,})}) do
       if $1.length == 3
         "❤"
       else
@@ -30,7 +30,7 @@ converter "n2525bs 魔剣ゾルディの女主人公とっかえひっかえ成�
         return true
       end
     end
-    return false
+    false
   end
 
   def out_parameter_block?(line)
@@ -40,7 +40,7 @@ converter "n2525bs 魔剣ゾルディの女主人公とっかえひっかえ成�
         return true
       end
     end
-    return false
+    false
   end
 
   def after(io, text_type)

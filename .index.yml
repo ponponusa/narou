@@ -1,0 +1,10 @@
+# Ruby LSP のインデックス対象から除外するパターン
+excluded_patterns:
+  - "frontend/**/*"
+  - "node_modules/**/*"
+  - "vendor/**/*"
+  - "tmp/**/*"
+  - "log/**/*"
+  - ".git/**/*"
+  - "**/spec/**/*"
+  - "**/test/**/*"

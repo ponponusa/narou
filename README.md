@@ -3,9 +3,9 @@
 > [!NOTE]
 > このプロジェクトは下記プロジェクトの派生です。
 >
-> - **Original Project : [whiteleaf7/narou](https://github.com/whiteleaf7/narou) --** <sub>![GitHub last commit](https://img.shields.io/github/last-commit/whiteleaf7/narou?style=flat&labelColor=blue&color=white)</sub>
+> - **Original Project : [whiteleaf7/narou](https://github.com/whiteleaf7/narou) --**[GitHub last commit](https://img.shields.io/github/last-commit/whiteleaf7/narou?style=flat&labelColor=blue&color=white)
 >
-> - **Forked from : [Rumia-Channel/narou](https://github.com/Rumia-Channel/narou) --** <sub>![GitHub last commit](https://img.shields.io/github/last-commit/Rumia-Channel/narou?style=flat&labelColor=gold&color=pink&link=https%3A%2F%2Fgithub.com%2FRumia-Channel%2Fnarou)</sub>
+> - **Forked from : [Rumia-Channel/narou](https://github.com/Rumia-Channel/narou) --**[GitHub last commit](https://img.shields.io/github/last-commit/Rumia-Channel/narou?style=flat&labelColor=gold&color=pink&link=https%3A%2F%2Fgithub.com%2FRumia-Channel%2Fnarou)
 >
 
 素晴らしいプロジェクトを作成していただいた、[whiteleaf7](https://github.com/whiteleaf7) さん、[Rumia-Channel](https://github.com/Rumia-Channel) さんに多大なる感謝を。
@@ -33,7 +33,7 @@
 主な機能は小説家になろうの小説のダウンロード、更新管理、テキスト整形、AozoraEpub3・kindlegen連携によるEPUB/MOBI出力です。  
 その他にも変換したデータを直接電子書籍端末へ送信する機能は、メールで送信する機能などもあります。
 
-~~詳細な説明やインストール方法は **[Narou.rb_MOD説明書](https://github.com/ponponusa/narou/wiki)** を御覧ください。~~（準備中）
+~~詳細な説明やインストール方法は **[Narou.rb_MOD説明書](https://github.com/ponponusa/narou-mod/wiki)** を御覧ください。~~（準備中）
 
 ## オリジナルプロジェクトからの変更点 - Changes from Original Project
 
@@ -41,9 +41,12 @@
 
 ### 機能面
 
-- プロロタグ抽出、分離機能搭載
-- テキスト変換処理の安定化・高速化
-- TOCチェック速度の高速化
+- プロモタグ抽出、分離機能搭載
+  - 小説タイトルや著者名に影響を与えない形でプロモタグを分離
+  - Web UI上でプロモタグを表示
+- TOCチェック、テキスト変換処理の安定化・高速化
+  - 大量話数の小説での特に処理速度が向上
+  - ファイルIOを減らし、メモリ上での処理を増加
 - 認証機能をBasic認証への変更
 - 小説一覧の項目を整理
 
@@ -66,23 +69,162 @@
 - Ruby 3.4以上（※元プロジェクトから変更されています）
 - MSYS2環境（Windowsの場合）
 
+## WEBサーバーの起動について - Web Server
+
+**v2.1.0以降、WEBサーバーはフォアグラウンド実行のみ対応**しています。
+
+```bash
+# サーバー起動（フォアグラウンド実行）
+narou-mod web --boot
+
+# オプション指定
+narou-mod web --boot --port 8080 --log-file app.log
+
+# サーバー停止
+# 方法1: Ctrl+C で停止
+# 方法2: 別ターミナルから narou-mod stop
+```
+
+### バックグラウンド実行が必要な場合
+
+systemdやタスクスケジューラを使用してください：
+
+#### Linuxの場合（systemdサービス例）
+
+```bash
+# /etc/systemd/system/narou-mod.service
+[Unit]
+Description=Narou-mod Web Server
+After=network.target
+
+[Service]
+Type=simple
+User=your-user
+WorkingDirectory=/path/to/narou-mod
+ExecStart=/usr/bin/narou-mod web --log-file /var/log/narou-mod.log
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### Windowsの場合（タスクスケジューラ）
+
+タスクスケジューラで「ログオン時に実行」「非表示」設定で起動してください。
+
 ## 更新履歴 - ChangeLog
 
-![GitHub Release](https://img.shields.io/github/v/release/ponponusa/narou)
+![GitHub Release](https://img.shields.io/github/v/release/ponponusa/narou-mod)
 
-[->リリースページへ](https://github.com/ponponusa/narou/releases)
+[->リリースページへ](https://github.com/ponponusa/narou-mod/releases)
 
 ## TODO
 
 - 外部Webサーバを利用しない形でのHTTPS対応
-- bootstrap5への移行
-  - bootstrap3系では、jQuery3系に対応していないため
-  - jQuery migrateを削除したい
-- ~~小説タイトルの自動整形~~
+- ~~bootstrap5への移行~~（新フロントエンドでAstro + Svelte + Tailwind CSSに移行）
+  - ~~bootstrap3系では、jQuery3系に対応していないため~~
+  - ~~jQuery migrateを削除したい~~
+  - ~~bootstrap4で我慢する可能性......~~
+- ~~小説タイトルの自動整形~~（プロモタグの実装で対応済み）
 - セキュリティリスクのある実装の修正
 - 変換処理の並列化による高速化
   - 今後の最適化のためにもスレッドセーフにする
+- パーサーの改善
+  - サイト構造の変更に強くする
+- 表紙画像をWebUI上で設定できるようにする
+  - 自動取得は怒られる可能性があるため検討中
+- 保存容量の改善
+  - 圧縮保存の検討
+  - Yaml DatabaseからSQLite等への移行検討
+
+## フロントエンド開発 - Frontend Development
+
+このプロジェクトには、モダンなフロントエンド実装が含まれています（`frontend/` ディレクトリ）。
+
+### 技術スタック
+
+- **Astro 5.x** - 静的サイトジェネレーター
+- **Svelte 5.x** - リアクティブUIフレームワーク
+- **Tailwind CSS 4.x** - ユーティリティファーストCSS
+- **TypeScript** - 型安全な開発
+
+### セットアップ
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+詳細は [frontend/README.md](frontend/README.md) を参照してください。
+
+## API開発 - API Development
+
+このプロジェクトは REST API (API v2) を提供しており、Swagger UI で仕様を確認できます。
+
+### API ドキュメント
+
+- **Swagger UI**: <http://localhost:5678/api/docs>
+- **OpenAPI仕様書**: <http://localhost:5678/api/openapi.yaml>
+- **移行ガイド**: [docs/api_migration_guide.md](docs/api_migration_guide.md)
+
+### API v2 エンドポイント
+
+サーバーを起動後、以下のURLにアクセスしてください：
+
+```bash
+# サーバー起動
+narou-mod web --boot
+
+# Swagger UIを開く（ブラウザで）
+http://localhost:5678/api/docs
+```
+
+Swagger UIでは以下が可能です：
+
+- 全エンドポイントの仕様確認
+- リクエスト/レスポンスの例
+- インタラクティブなAPI呼び出し（Try it out機能）
+- スキーマ定義の参照
+
+### API v2 vs Legacy API
+
+- **新規開発**: API v2 (`/api/v2/*`) の使用を推奨
+- **既存コード**: Legacy API v1 (`/api/*`) は互換性のために維持
+- **移行**: [移行ガイド](docs/api_migration_guide.md) を参照
+
+詳細は [docs/web_api_endpoints.md](docs/web_api_endpoints.md) を参照してください。
+
+## Windows環境への同期 - Sync to Windows
+
+WSL環境からWindows環境へプロジェクトファイルを同期するスクリプトを提供しています。
+
+```bash
+# 設定ファイルを作成（初回のみ）
+cp rsync.env.example rsync.env
+nano rsync.env
+
+# 同期スクリプトの実行
+./sync-to-windows.sh
+
+# または、引数で指定
+./sync-to-windows.sh ~/git/narou-mod /mnt/c/git/narou
+```
+
+詳細は [docs/sync-to-windows.md](docs/sync-to-windows.md) を参照してください。
 
 ----
 
-:classical_building:「小説家になろう」は株式会社ヒナプロジェクトの登録商標です。
+## License
+
+- **Maintainer:** [ponponusa](https://github.com/ponponusa)
+- **Copyrights:**
+  - Original Project: Copyright (c) 2013-2024 whiteleaf7
+  - Forked Project: Copyright (c) 2025 Rumia-Channel
+  - This MOD Project: Copyright (c) 2025 ponponusa
+- **License:** This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) file for details.
+
+----
+
+- 「小説家になろう」は株式会社ヒナプロジェクトの登録商標です。
+- 本ソフトウェアを利用（入手、インストール、実行等）した時点で、[利用規約・免責事項](https://github.com/ponponusa/narou-mod/blob/develop/TERMS_AND_DISCLAIMER.md)に同意したものとみなします。ご利用の前に必ず内容をご確認ください。

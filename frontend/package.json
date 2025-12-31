@@ -1,0 +1,36 @@
+{
+  "name": "frontend",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && node -e \"require('fs').writeFileSync('dist/.build-commit', require('child_process').execSync('git describe --always').toString().trim())\"",
+    "preview": "astro preview",
+    "astro": "astro",
+    "check": "astro check",
+    "format": "prettier --write \"src/**/*.{ts,js,svelte,astro,css,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,svelte,astro,css,json}\"",
+    "prepare": "cd .. && husky frontend/.husky || true"
+  },
+  "lint-staged": {
+    "*.{ts,js,svelte,astro,css,json}": "prettier --write"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.5",
+    "@astrojs/svelte": "^7.2.2",
+    "@tailwindcss/vite": "^4.1.17",
+    "astro": "^5.15.4",
+    "svelte": "^5.43.5",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.1",
+    "playwright": "^1.56.1",
+    "prettier": "^3.7.2",
+    "prettier-plugin-astro": "^0.14.1",
+    "prettier-plugin-svelte": "^3.4.0"
+  }
+}
