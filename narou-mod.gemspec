@@ -183,12 +183,15 @@ Gem::Specification.new do |gem|
   # NOTE: プラットフォーム固有の gem (win32ole, bootsnap) は Gemfile の
   #       platforms 指定で管理しているため、開発時の bundle install は
   #       問題なく動作する。gemspec での指定は gem install 時のみ影響。
+  #
+  # Windows: x64-mingw-ucrt プラットフォーム固有gem
+  # Linux/macOS: Gem::Platform::RUBY (汎用gem、全アーキテクチャ対応)
   gem.platform = Gem.win_platform? ? Gem::Platform.new("x64-mingw-ucrt") : Gem::Platform::RUBY
 
   if Gem.win_platform?
     gem.add_runtime_dependency "win32ole", "~> 1.9"
   else
-    # Linux/macOS は汎用 gem（x86_64/arm64 両対応）
+    # Linux/macOS は汎用 gem（x86_64/arm64/aarch64 等、全アーキテクチャ対応）
     gem.add_runtime_dependency "bootsnap", "~> 1.18", ">= 1.18.6"
   end
 
