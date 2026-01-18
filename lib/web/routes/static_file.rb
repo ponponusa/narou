@@ -36,6 +36,8 @@ module StaticFileRoutes
         index_path = File.join(StaticFileRoutes.frontend_dist_dir, "index.html")
 
         if File.exist?(index_path)
+          # HTMLは常に最新を確認（ハッシュ付きアセットへの参照を更新するため）
+          headers "Cache-Control" => "no-cache, must-revalidate"
           send_file index_path
         else
           halt 500, "Frontend not built. Run 'cd frontend && npm run build' first."
@@ -64,6 +66,8 @@ module StaticFileRoutes
         asset_path = File.join(StaticFileRoutes.frontend_dist_dir, "_astro", asset_filename)
 
         if File.exist?(asset_path)
+          # ハッシュ付きアセットは長期キャッシュ可能（1年間）
+          headers "Cache-Control" => "public, max-age=31536000, immutable"
           send_file asset_path
         else
           halt 404
@@ -114,12 +118,13 @@ module StaticFileRoutes
       unless self.class.legacy_mode?
         json_path = File.join(StaticFileRoutes.frontend_dist_dir, "backend-port.json")
 
+        # 設定ファイルは常に最新を取得
+        headers "Cache-Control" => "no-store, must-revalidate"
+        content_type :json
         if File.exist?(json_path)
-          content_type :json
           send_file json_path
         else
           # ファイルがない場合はデフォルト値を返す
-          content_type :json
           { push_server_port: 5679 }.to_json
         end
       else
@@ -136,6 +141,8 @@ module StaticFileRoutes
           page_path = File.join(StaticFileRoutes.frontend_dist_dir, page, "index.html")
 
           if File.exist?(page_path)
+            # HTMLは常に最新を確認（ハッシュ付きアセットへの参照を更新するため）
+            headers "Cache-Control" => "no-cache, must-revalidate"
             send_file page_path
           else
             halt 404

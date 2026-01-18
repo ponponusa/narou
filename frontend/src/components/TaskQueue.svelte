@@ -55,11 +55,87 @@
   let isLoading = $state(true);
   let error = $state<string | null>(null);
 
-  // 定期更新タイマー
-  let updateTimer: ReturnType<typeof setInterval> | null = null;
+  // 経過時間リアルタイム更新用
+  let now = $state(Date.now());
+  let elapsedTimer: ReturnType<typeof setInterval> | null = null;
 
   // PushServer接続
   let pushServerUnsubscribe: (() => void) | null = null;
+
+  /**
+   * 経過時間を計算（実行中タスクはリアルタイム更新）
+   */
+  function getElapsedTime(task: Task): number {
+    if (task.status === "running" && task.started_at) {
+      // 実行中: フロントで計算（リアルタイム更新）
+      return (now - new Date(task.started_at).getTime()) / 1000;
+    } else if (task.completed_at && task.started_at) {
+      // 完了/失敗: 開始と完了の差分（固定値）
+      return (
+        (new Date(task.completed_at).getTime() -
+          new Date(task.started_at).getTime()) /
+        1000
+      );
+    }
+    // それ以外: バックエンドの値を使用
+    return task.elapsed_time;
+  }
+
+  /**
+   * サマリーデータから全タスクを抽出
+   */
+  function extractTasksFromSummary(summary: TaskSummary): Task[] {
+    const tasks: Task[] = [];
+    if (summary.current) tasks.push(summary.current);
+    if (summary.convert_current) tasks.push(summary.convert_current);
+    if (summary.queued) tasks.push(...summary.queued);
+    if (summary.convert_queued) tasks.push(...summary.convert_queued);
+    if (summary.recent_completed) tasks.push(...summary.recent_completed);
+    if (summary.recent_failed) tasks.push(...summary.recent_failed);
+    return tasks;
+  }
+
+  /**
+   * 既存のタスク配列とサマリーをマージ（差分更新）
+   * - 新規タスク: 追加
+   * - 既存タスク: 更新
+   * - サマリーに含まれない古いタスク: 完了/失敗済みは保持、queued/runningは削除（キャンセル対応）
+   */
+  function mergeTasks(existing: Task[], summary: TaskSummary): Task[] {
+    // サマリーから全タスクを抽出
+    const incomingTasks = extractTasksFromSummary(summary);
+    const incomingIds = new Set(incomingTasks.map((t) => t.id));
+
+    // 既存タスクをフィルタリング
+    // - サマリーに含まれるタスク: 保持（後で更新）
+    // - サマリーに含まれないタスク:
+    //   - queued/running: 削除（キャンセルされた可能性）
+    //   - completed/failed/canceled: 保持（履歴として）
+    const filteredExisting = existing.filter((t) => {
+      if (incomingIds.has(t.id)) return true;
+      // サマリーに含まれないqueued/runningタスクは削除
+      return t.status !== "queued" && t.status !== "running";
+    });
+
+    // フィルタ済みタスクをMapに変換
+    const taskMap = new Map(filteredExisting.map((t) => [t.id, t]));
+
+    // サマリーのタスクで更新
+    for (const task of incomingTasks) {
+      taskMap.set(task.id, task);
+    }
+
+    // 配列に戻す
+    return Array.from(taskMap.values());
+  }
+
+  /**
+   * サマリーデータでタスクを差分更新
+   */
+  function updateTasksFromSummary(summary: TaskSummary) {
+    allTasks = mergeTasks(allTasks, summary);
+    taskSummary = summary;
+  }
 
   // === Svelte 5 Runes: リアクティブな派生データ ===
   // ステップ1: フィルタリング
@@ -316,18 +392,23 @@
    * マウント時の処理
    */
   onMount(async () => {
-    // 初回データ取得
+    // 初回データ取得（全タスクをAPIから取得）
     await fetchTasks();
 
-    // 定期更新（5秒ごと）
-    updateTimer = setInterval(fetchTasks, 5000);
+    // 経過時間リアルタイム更新用タイマー（1秒ごと）
+    elapsedTimer = setInterval(() => {
+      now = Date.now();
+    }, 1000);
 
-    // PushServer通知を購読
+    // PushServer通知を購読（差分更新）
     const pushServer = getPushServer();
     if (pushServer) {
-      const listener = (data: any) => {
-        // notification.task.updated イベントをリッスン
-        fetchTasks();
+      const listener = (data: TaskSummary) => {
+        // notification.task.updated イベントのデータを直接使用して差分更新
+        // APIリクエストなしでリアルタイム更新
+        if (data) {
+          updateTasksFromSummary(data);
+        }
       };
       pushServer.on("notification.task.updated", listener);
       pushServerUnsubscribe = () =>
@@ -339,9 +420,9 @@
    * アンマウント時の処理
    */
   onDestroy(() => {
-    if (updateTimer) {
-      clearInterval(updateTimer);
-      updateTimer = null;
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer);
+      elapsedTimer = null;
     }
 
     if (pushServerUnsubscribe) {
@@ -382,7 +463,7 @@
     <div class="flex flex-col lg:flex-row gap-4">
       <!-- サマリーカード -->
       {#if taskSummary}
-        <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 lg:w-2/3">
+        <div class="grid grid-cols-2 lg:grid-cols-6 gap-2 lg:w-2/5">
           <button
             onclick={() => {
               draftStatusFilter = "running";
@@ -433,24 +514,6 @@
           </button>
           <button
             onclick={() => {
-              draftStatusFilter = "paused";
-              handleSearch();
-            }}
-            class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors cursor-pointer text-left"
-          >
-            <div class="flex flex-col items-center justify-center h-full">
-              <div class="text-xs text-yellow-600 dark:text-yellow-400 mb-1">
-                一時停止
-              </div>
-              <div
-                class="text-xl font-bold text-yellow-700 dark:text-yellow-300"
-              >
-                {allTasks.filter((t) => t.status === "paused").length}
-              </div>
-            </div>
-          </button>
-          <button
-            onclick={() => {
               draftStatusFilter = "completed";
               handleSearch();
             }}
@@ -461,7 +524,7 @@
                 完了
               </div>
               <div class="text-xl font-bold text-green-700 dark:text-green-300">
-                {taskSummary.recent_completed.length}
+                {taskSummary.completed_count}
               </div>
             </div>
           </button>
@@ -477,7 +540,7 @@
                 失敗
               </div>
               <div class="text-xl font-bold text-red-700 dark:text-red-300">
-                {taskSummary.recent_failed.length}
+                {taskSummary.failed_count}
               </div>
             </div>
           </button>
@@ -485,7 +548,7 @@
       {/if}
 
       <!-- フィルタ・ソートコントロール -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 lg:w-1/3">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 lg:w-3/5">
         <div class="flex flex-col sm:flex-row gap-4 items-end">
           <!-- テキスト検索 -->
           <div class="flex-1">
@@ -536,6 +599,14 @@
               title="フィルターをクリア"
             >
               ✕
+            </button>
+            <button
+              onclick={fetchTasks}
+              disabled={isLoading}
+              class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="テーブルを更新"
+            >
+              <i class="fas fa-sync-alt" class:fa-spin={isLoading}></i>
             </button>
           </div>
         </div>
@@ -790,7 +861,7 @@
                   <td
                     class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
                   >
-                    {task.elapsed_time.toFixed(1)}秒
+                    {getElapsedTime(task).toFixed(1)}秒
                   </td>
                   <td class="px-3 py-2 whitespace-nowrap text-sm">
                     <div class="flex gap-1">
