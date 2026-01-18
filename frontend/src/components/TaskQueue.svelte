@@ -55,11 +55,31 @@
   let isLoading = $state(true);
   let error = $state<string | null>(null);
 
-  // 定期更新タイマー
-  let updateTimer: ReturnType<typeof setInterval> | null = null;
+  // 経過時間リアルタイム更新用
+  let now = $state(Date.now());
+  let elapsedTimer: ReturnType<typeof setInterval> | null = null;
 
   // PushServer接続
   let pushServerUnsubscribe: (() => void) | null = null;
+
+  /**
+   * 経過時間を計算（実行中タスクはリアルタイム更新）
+   */
+  function getElapsedTime(task: Task): number {
+    if (task.status === "running" && task.started_at) {
+      // 実行中: フロントで計算（リアルタイム更新）
+      return (now - new Date(task.started_at).getTime()) / 1000;
+    } else if (task.completed_at && task.started_at) {
+      // 完了/失敗: 開始と完了の差分（固定値）
+      return (
+        (new Date(task.completed_at).getTime() -
+          new Date(task.started_at).getTime()) /
+        1000
+      );
+    }
+    // それ以外: バックエンドの値を使用
+    return task.elapsed_time;
+  }
 
   /**
    * サマリーデータから全タスクを抽出
@@ -361,8 +381,10 @@
     // 初回データ取得（全タスクをAPIから取得）
     await fetchTasks();
 
-    // 定期更新（30秒ごと、フォールバック用）
-    updateTimer = setInterval(fetchTasks, 30000);
+    // 経過時間リアルタイム更新用タイマー（1秒ごと）
+    elapsedTimer = setInterval(() => {
+      now = Date.now();
+    }, 1000);
 
     // PushServer通知を購読（差分更新）
     const pushServer = getPushServer();
@@ -384,9 +406,9 @@
    * アンマウント時の処理
    */
   onDestroy(() => {
-    if (updateTimer) {
-      clearInterval(updateTimer);
-      updateTimer = null;
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer);
+      elapsedTimer = null;
     }
 
     if (pushServerUnsubscribe) {
@@ -563,6 +585,14 @@
               title="フィルターをクリア"
             >
               ✕
+            </button>
+            <button
+              onclick={fetchTasks}
+              disabled={isLoading}
+              class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="テーブルを更新"
+            >
+              <i class="fas fa-sync-alt" class:fa-spin={isLoading}></i>
             </button>
           </div>
         </div>
@@ -817,7 +847,7 @@
                   <td
                     class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
                   >
-                    {task.elapsed_time.toFixed(1)}秒
+                    {getElapsedTime(task).toFixed(1)}秒
                   </td>
                   <td class="px-3 py-2 whitespace-nowrap text-sm">
                     <div class="flex gap-1">
