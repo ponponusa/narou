@@ -433,24 +433,6 @@
           </button>
           <button
             onclick={() => {
-              draftStatusFilter = "paused";
-              handleSearch();
-            }}
-            class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors cursor-pointer text-left"
-          >
-            <div class="flex flex-col items-center justify-center h-full">
-              <div class="text-xs text-yellow-600 dark:text-yellow-400 mb-1">
-                一時停止
-              </div>
-              <div
-                class="text-xl font-bold text-yellow-700 dark:text-yellow-300"
-              >
-                {allTasks.filter((t) => t.status === "paused").length}
-              </div>
-            </div>
-          </button>
-          <button
-            onclick={() => {
               draftStatusFilter = "completed";
               handleSearch();
             }}
