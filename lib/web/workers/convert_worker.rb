@@ -205,6 +205,8 @@ module Narou
           .sort_by { |t| t[:failed_at] || t[:created_at] }
           .reverse
           .first(10),
+        completed_count: (web_summary[:completed_count] || 0) + (convert_summary[:completed_count] || 0),
+        failed_count: (web_summary[:failed_count] || 0) + (convert_summary[:failed_count] || 0),
         convert_current: convert_summary[:current],
         convert_queued: convert_summary[:queued]
       }
@@ -251,11 +253,15 @@ module Narou
 
     def get_tasks_summary_impl
       @mutex.synchronize do
+        completed_tasks = @task_history.select { |t| t.status == :completed }
+        failed_tasks = @task_history.select { |t| t.status == :failed }
         {
           current: @current_task&.to_h,
           queued: @tasks.values.select(&:queued?).map(&:to_h),
-          recent_completed: @task_history.select { |t| t.status == :completed }.first(10).map(&:to_h),
-          recent_failed: @task_history.select { |t| t.status == :failed }.first(10).map(&:to_h)
+          recent_completed: completed_tasks.first(10).map(&:to_h),
+          recent_failed: failed_tasks.first(10).map(&:to_h),
+          completed_count: completed_tasks.size,
+          failed_count: failed_tasks.size
         }
       end
     end

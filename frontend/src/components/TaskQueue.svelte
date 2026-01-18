@@ -488,7 +488,7 @@
                 完了
               </div>
               <div class="text-xl font-bold text-green-700 dark:text-green-300">
-                {taskSummary.recent_completed.length}
+                {taskSummary.completed_count}
               </div>
             </div>
           </button>
@@ -504,7 +504,7 @@
                 失敗
               </div>
               <div class="text-xl font-bold text-red-700 dark:text-red-300">
-                {taskSummary.recent_failed.length}
+                {taskSummary.failed_count}
               </div>
             </div>
           </button>

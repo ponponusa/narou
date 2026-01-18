@@ -57,6 +57,8 @@ export interface TaskSummary {
   queued: Task[];
   recent_completed: Task[];
   recent_failed: Task[];
+  completed_count: number;
+  failed_count: number;
   // 変換専用ワーカーの状態
   convert_current?: Task;
   convert_queued: Task[];

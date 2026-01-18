@@ -58,6 +58,8 @@ module Narou
                         .sort_by { |t| t[:failed_at] || t[:created_at] || "" }
                         .reverse
                         .first(10),
+                completed_count: (web_summary[:completed_count] || 0) + (convert_summary[:completed_count] || 0),
+                failed_count: (web_summary[:failed_count] || 0) + (convert_summary[:failed_count] || 0),
                 convert_current: convert_summary[:current],
                 convert_queued: convert_summary[:queued] || []
               }
