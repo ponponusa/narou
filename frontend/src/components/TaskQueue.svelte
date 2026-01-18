@@ -427,7 +427,7 @@
     <div class="flex flex-col lg:flex-row gap-4">
       <!-- サマリーカード -->
       {#if taskSummary}
-        <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 lg:w-2/3">
+        <div class="grid grid-cols-2 lg:grid-cols-6 gap-2 lg:w-2/5">
           <button
             onclick={() => {
               draftStatusFilter = "running";
@@ -512,7 +512,7 @@
       {/if}
 
       <!-- フィルタ・ソートコントロール -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 lg:w-1/3">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 lg:w-3/5">
         <div class="flex flex-col sm:flex-row gap-4 items-end">
           <!-- テキスト検索 -->
           <div class="flex-1">
