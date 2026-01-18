@@ -261,7 +261,7 @@ class Downloader
     when true
       unless tags.include?("end")
         update_database if update_subtitles.count == 0
-        require "lib/novel/command/tag" unless defined?(Command::Tag)
+        require "cli/command/tag" unless defined?(Command::Tag)
         Command::Tag.execute!(%W(#{id} --add end --color white --no-overwrite-color), io: Narou::NullIO.new)
         msg = old_toc.empty? ? "完結しているようです" : "完結したようです"
         @stream.puts "<cyan>#{id_and_title.escape} は#{msg}</cyan>".termcolor
@@ -270,7 +270,7 @@ class Downloader
     when false
       if tags.include?("end")
         update_database if update_subtitles.size == 0
-        require "lib/novel/command/tag" unless defined?(Command::Tag)
+        require "cli/command/tag" unless defined?(Command::Tag)
         Command::Tag.execute!(@id, "--delete", "end", io: Narou::NullIO.new)
         @stream.puts "<cyan>#{id_and_title.escape} は連載を再開したようです</cyan>".termcolor
         return_status = :ok
@@ -340,11 +340,11 @@ class Downloader
         when "2"
           return true
         when "3"
-          require "lib/novel/command/freeze" unless defined?(Command::Freeze)
+          require "cli/command/freeze" unless defined?(Command::Freeze)
           Command::Freeze.execute!(latest_toc["toc_url"])
           return true
         when "4"
-          require "lib/novel/command/backup" unless defined?(Command::Backup)
+          require "cli/command/backup" unless defined?(Command::Backup)
           Command::Backup.execute!(latest_toc["toc_url"])
         when "5"
           if Narou.web?
@@ -358,7 +358,7 @@ class Downloader
         when "7"
           Helper.open_directory(Downloader.get_novel_data_dir_by_target(latest_toc["toc_url"]))
         when "8"
-          require "lib/novel/command/convert" unless defined?(Command::Convert)
+          require "cli/command/convert" unless defined?(Command::Convert)
           Command::Convert.execute!(latest_toc["toc_url"], sync: true)
         end
         unless Narou.web?

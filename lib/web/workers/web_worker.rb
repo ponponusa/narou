@@ -246,11 +246,15 @@ module Narou
 
     def get_tasks_summary_impl
       @mutex.synchronize do
+        completed_tasks = @task_history.select { |t| t.status == :completed }
+        failed_tasks = @task_history.select { |t| t.status == :failed }
         {
           current: @current_task&.to_h,
           queued: @tasks.values.select(&:queued?).map(&:to_h),
-          recent_completed: @task_history.select { |t| t.status == :completed }.first(10).map(&:to_h),
-          recent_failed: @task_history.select { |t| t.status == :failed }.first(10).map(&:to_h)
+          recent_completed: completed_tasks.first(10).map(&:to_h),
+          recent_failed: failed_tasks.first(10).map(&:to_h),
+          completed_count: completed_tasks.size,
+          failed_count: failed_tasks.size
         }
       end
     end

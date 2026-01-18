@@ -53,8 +53,12 @@ module Narou
             # 接続時に履歴を送信（タイムスタンプ付き）
             history_count = @history.compact.size
             $stderr.puts "[PushServer] Sending #{history_count} history messages to new connection" if $DEBUG
-            @history.compact.each do |message|
-              ws.send(JSON.generate(echo: message))
+            begin
+              @history.compact.each do |message|
+                ws.send(JSON.generate(echo: message))
+              end
+            rescue Errno::ECONNRESET, Errno::EPIPE, IOError
+              # 履歴送信中に接続が切れた場合は無視して続行
             end
 
             thread = Thread.new do

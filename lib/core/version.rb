@@ -5,9 +5,9 @@
 #
 
 module Narou
-  VERSION = "3.0.0".freeze
+  VERSION = "3.0.1".freeze
 
-  commit_path = "../commitversion"
+  commit_path = File.expand_path("../../commitversion", __dir__)
   commit_value = if File.exist?(commit_path)
                    content = File.read(commit_path).strip
                    content.empty? ? nil : content
