@@ -61,6 +61,48 @@
   // PushServer接続
   let pushServerUnsubscribe: (() => void) | null = null;
 
+  /**
+   * サマリーデータから全タスクを抽出
+   */
+  function extractTasksFromSummary(summary: TaskSummary): Task[] {
+    const tasks: Task[] = [];
+    if (summary.current) tasks.push(summary.current);
+    if (summary.convert_current) tasks.push(summary.convert_current);
+    if (summary.queued) tasks.push(...summary.queued);
+    if (summary.convert_queued) tasks.push(...summary.convert_queued);
+    if (summary.recent_completed) tasks.push(...summary.recent_completed);
+    if (summary.recent_failed) tasks.push(...summary.recent_failed);
+    return tasks;
+  }
+
+  /**
+   * 既存のタスク配列とサマリーをマージ（差分更新）
+   * - 新規タスク: 追加
+   * - 既存タスク: 更新
+   * - サマリーに含まれない古いタスク: 保持（初回ロード時のデータ）
+   */
+  function mergeTasks(existing: Task[], summary: TaskSummary): Task[] {
+    // 既存タスクをMapに変換（id → Task）
+    const taskMap = new Map(existing.map((t) => [t.id, t]));
+
+    // サマリーから全タスクを抽出して更新
+    const incomingTasks = extractTasksFromSummary(summary);
+    for (const task of incomingTasks) {
+      taskMap.set(task.id, task);
+    }
+
+    // 配列に戻す
+    return Array.from(taskMap.values());
+  }
+
+  /**
+   * サマリーデータでタスクを差分更新
+   */
+  function updateTasksFromSummary(summary: TaskSummary) {
+    allTasks = mergeTasks(allTasks, summary);
+    taskSummary = summary;
+  }
+
   // === Svelte 5 Runes: リアクティブな派生データ ===
   // ステップ1: フィルタリング
   const filteredTasks = $derived.by(() => {
@@ -316,18 +358,21 @@
    * マウント時の処理
    */
   onMount(async () => {
-    // 初回データ取得
+    // 初回データ取得（全タスクをAPIから取得）
     await fetchTasks();
 
-    // 定期更新（5秒ごと）
-    updateTimer = setInterval(fetchTasks, 5000);
+    // 定期更新（30秒ごと、フォールバック用）
+    updateTimer = setInterval(fetchTasks, 30000);
 
-    // PushServer通知を購読
+    // PushServer通知を購読（差分更新）
     const pushServer = getPushServer();
     if (pushServer) {
-      const listener = (data: any) => {
-        // notification.task.updated イベントをリッスン
-        fetchTasks();
+      const listener = (data: TaskSummary) => {
+        // notification.task.updated イベントのデータを直接使用して差分更新
+        // APIリクエストなしでリアルタイム更新
+        if (data) {
+          updateTasksFromSummary(data);
+        }
       };
       pushServer.on("notification.task.updated", listener);
       pushServerUnsubscribe = () =>
