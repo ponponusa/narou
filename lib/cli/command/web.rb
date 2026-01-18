@@ -111,7 +111,7 @@ module Command
     private
 
     def host
-      @options["host"] || "127.0.0.1"
+      @server_host || @options["host"] || "127.0.0.1"
     end
 
     # 表示用のホスト名（127.0.0.1をlocalhostに変換）
@@ -174,35 +174,38 @@ module Command
     end
 
     def boot
-      # フロントエンド設定を更新（require前に実行）
-      port = @options["port"] || 5678
-      update_frontend_env(port) if should_start_frontend?
-
-      # 起動メッセージを表示（require "lib/core/narou" より前に実行）
-      # narou.rbをrequireすると$stdoutがNarou::Loggerに置き換わるため
-      Command::OutputHelper.render("web_starting", {
-        host: display_host,
-        port: port,
-        frontend_enabled: should_start_frontend?
-      })
-
-      # Narouモジュールをロード（$stdoutがNarou::Loggerに置き換わる）
+      # Narouモジュールとappserverを先にロード（設定ファイルの読み込みに必要）
       require "lib/core/narou"
       require "lib/narou/process_manager"
       require "lib/web/appserver"
+
+      # 設定ファイルからポート/ホストを取得
+      params = Narou::AppServer.create_address(@options["port"])
+      @server_host = params[:host]
+      @server_port = params[:port]
+
+      # フロントエンド設定を更新
+      update_frontend_env(@server_port) if should_start_frontend?
+
+      # 起動メッセージを表示
+      Command::OutputHelper.render("web_starting", {
+        host: display_host,
+        port: @server_port,
+        frontend_enabled: should_start_frontend?
+      })
 
       # プロセスマネージャーを初期化
       @backend_manager = Narou::ProcessManager.new("narou-backend")
       @frontend_manager = Narou::ProcessManager.new("narou-frontend") if should_start_frontend?
 
       # 既存プロセスのクリーンアップ
-      cleanup_existing_processes(port)
+      cleanup_existing_processes(@server_port)
 
       # シグナルハンドラを設定（Ctrl+Cで停止）
       setup_signal_handlers
 
       # プロセス情報を登録
-      @backend_manager.register_process(port: port, metadata: {
+      @backend_manager.register_process(port: @server_port, metadata: {
         host: host,
         frontend_enabled: should_start_frontend?
       })
@@ -365,7 +368,7 @@ module Command
     end
 
     def start_server
-      port = @options["port"] || 5678
+      port = @server_port
 
       # Web UIモードを有効化（インタラクティブプロンプトを無効化）
       Narou.web = true

@@ -217,4 +217,44 @@ RSpec.describe Command::Web do
       end
     end
   end
+
+  describe "#boot" do
+    before do
+      allow(command).to receive(:should_start_frontend?).and_return(false)
+      allow(command).to receive(:setup_signal_handlers)
+      allow(command).to receive(:start_server)
+      allow(command).to receive(:update_frontend_env)
+
+      # ProcessManager のモック
+      backend_manager = instance_double(Narou::ProcessManager)
+      allow(backend_manager).to receive(:process_running?).and_return(false)
+      allow(backend_manager).to receive(:check_port_conflict!)
+      allow(backend_manager).to receive(:register_process)
+      allow(Narou::ProcessManager).to receive(:new).and_return(backend_manager)
+    end
+
+    it "uses create_address to get port from settings" do
+      # 設定ファイルからポートを取得することを確認
+      global_setting = { "server-port" => 9999, "server-bind" => "192.168.1.100" }
+      allow(Inventory).to receive(:load).with("global_setting", :global).and_return(global_setting)
+      allow(Inventory).to receive(:load).with(no_args).and_return({})
+
+      expect(Narou::AppServer).to receive(:create_address).with(nil).and_return({ host: "192.168.1.100", port: 9999 })
+
+      command.send(:boot)
+    end
+
+    it "passes CLI port option to create_address" do
+      # CLIオプションのポートが create_address に渡されることを確認
+      command.instance_variable_set(:@options, { "port" => 8080 })
+
+      global_setting = {}
+      allow(Inventory).to receive(:load).with("global_setting", :global).and_return(global_setting)
+      allow(Inventory).to receive(:load).with(no_args).and_return({})
+
+      expect(Narou::AppServer).to receive(:create_address).with(8080).and_return({ host: "127.0.0.1", port: 8080 })
+
+      command.send(:boot)
+    end
+  end
 end

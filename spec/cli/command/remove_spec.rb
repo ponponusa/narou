@@ -95,5 +95,17 @@ RSpec.describe Command::Remove do
       # errorメソッドが呼ばれたことを検証
       expect(command).to have_received(:error).with(/は存在しません/)
     end
+
+    it "can call tagname_to_ids without Database require error" do
+      # Database が正しく require されていることを確認
+      # 修正前: NameError (uninitialized constant Command::CommandBase::Database)
+      command.instance_variable_set(:@options, { "yes" => true })
+      allow(command).to receive(:display_help!)
+      allow(Downloader).to receive(:get_data_by_target).and_return(nil)
+      allow(command).to receive(:error)
+
+      # tagname_to_ids が NameError を起こさずに実行される
+      expect { command.execute(["test_target"]) }.not_to raise_error
+    end
   end
 end
