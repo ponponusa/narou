@@ -99,14 +99,28 @@
    * 既存のタスク配列とサマリーをマージ（差分更新）
    * - 新規タスク: 追加
    * - 既存タスク: 更新
-   * - サマリーに含まれない古いタスク: 保持（初回ロード時のデータ）
+   * - サマリーに含まれない古いタスク: 完了/失敗済みは保持、queued/runningは削除（キャンセル対応）
    */
   function mergeTasks(existing: Task[], summary: TaskSummary): Task[] {
-    // 既存タスクをMapに変換（id → Task）
-    const taskMap = new Map(existing.map((t) => [t.id, t]));
-
-    // サマリーから全タスクを抽出して更新
+    // サマリーから全タスクを抽出
     const incomingTasks = extractTasksFromSummary(summary);
+    const incomingIds = new Set(incomingTasks.map((t) => t.id));
+
+    // 既存タスクをフィルタリング
+    // - サマリーに含まれるタスク: 保持（後で更新）
+    // - サマリーに含まれないタスク:
+    //   - queued/running: 削除（キャンセルされた可能性）
+    //   - completed/failed/canceled: 保持（履歴として）
+    const filteredExisting = existing.filter((t) => {
+      if (incomingIds.has(t.id)) return true;
+      // サマリーに含まれないqueued/runningタスクは削除
+      return t.status !== "queued" && t.status !== "running";
+    });
+
+    // フィルタ済みタスクをMapに変換
+    const taskMap = new Map(filteredExisting.map((t) => [t.id, t]));
+
+    // サマリーのタスクで更新
     for (const task of incomingTasks) {
       taskMap.set(task.id, task);
     }
