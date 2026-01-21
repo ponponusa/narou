@@ -251,6 +251,13 @@ module Narou
       instance.get_tasks_summary_impl
     end
 
+    #
+    # WebWorkerとConvertWorkerの統合されたタスクサマリーを取得（クラスメソッド）
+    #
+    def self.get_combined_tasks_summary
+      instance.get_combined_tasks_summary
+    end
+
     def get_tasks_summary_impl
       @mutex.synchronize do
         completed_tasks = @task_history.select { |t| t.status == :completed }
