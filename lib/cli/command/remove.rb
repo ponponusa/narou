@@ -5,6 +5,7 @@
 #
 
 require "lib/core/narou"
+require "lib/core/database"
 require "lib/utilities/helper"
 require "lib/cli/input"
 
