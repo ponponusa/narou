@@ -154,6 +154,7 @@ module Command
     end
 
     def search_novel_by_tag(argv)
+      require "lib/cli/command/list" unless defined?(Command::List)
       List.execute!("--tag", argv.join(" "))
     end
 
