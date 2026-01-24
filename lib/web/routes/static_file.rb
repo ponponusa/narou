@@ -113,20 +113,21 @@ module StaticFileRoutes
 
     #
     # バックエンド設定JSON配信（PushServerポート番号など）
+    # 現在のサーバー設定から動的に生成
     #
     app.get "/backend-port.json" do
       unless self.class.legacy_mode?
-        json_path = File.join(StaticFileRoutes.frontend_dist_dir, "backend-port.json")
-
-        # 設定ファイルは常に最新を取得
         headers "Cache-Control" => "no-store, must-revalidate"
         content_type :json
-        if File.exist?(json_path)
-          send_file json_path
-        else
-          # ファイルがない場合はデフォルト値を返す
-          { push_server_port: 5679 }.to_json
-        end
+
+        # 現在のサーバー設定から動的に生成
+        push_server = Narou::AppServer.push_server
+        port_info = {
+          backend_port: settings.port,
+          push_server_port: push_server&.port || settings.port + 1,
+          updated_at: Time.now.iso8601
+        }
+        port_info.to_json
       else
         halt 404
       end

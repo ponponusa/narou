@@ -49,7 +49,6 @@ module Helper
   rescue Errno::ENOENT, Errno::EACCES
     false
   end
-  private_class_method :wsl_environment?
 
   # 便利メソッド（後方互換性）
   def os_windows?
