@@ -383,7 +383,14 @@ module Command
       # PushServerの初期化と起動
       push_server = Narou::PushServer.instance
       push_server.port = port + 1
-      push_server.host = host
+      # PushServerのホスト設定
+      # Docker/WSL2環境では全インターフェースでリッスン（ホストからのアクセス対応）
+      # 通常環境ではローカルのみ（セキュリティ考慮）
+      push_server.host = if Helper.in_docker? || Helper.wsl_environment?
+                           "0.0.0.0"
+                         else
+                           "127.0.0.1"
+                         end
       push_server.accepted_domains = ["*"]
       Narou::AppServer.push_server = push_server
 
