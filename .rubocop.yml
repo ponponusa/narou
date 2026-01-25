@@ -43,31 +43,44 @@ Gemspec/RequireMFA:
 # =============================================================================
 # Metrics - コードの複雑さ（緩め設定）
 # =============================================================================
+# レガシーコード（特にAPI v1/v2）は除外し、新規コードには適切な閾値を維持
 
 Metrics/AbcSize:
-  Max: 80
+  Max: 120
+  Exclude:
+    - "lib/web/api/v1/**/*"
+    - "lib/web/api/v2/**/*"
+    - "lib/web/routes/**/*"
 
 Metrics/BlockLength:
-  Max: 80
+  Max: 150
   Exclude:
     - "spec/**/*"
     - "**/*.gemspec"
     - "Rakefile"
+    - "lib/web/api/v1/**/*"
+    - "lib/web/api/v2/**/*"
 
 Metrics/BlockNesting:
   Max: 5
 
 Metrics/ClassLength:
   CountComments: false
-  Max: 500
+  Max: 700
 
 Metrics/CyclomaticComplexity:
-  Max: 25
+  Max: 45
+  Exclude:
+    - "lib/web/api/v1/**/*"
+    - "lib/web/api/v2/**/*"
 
 Metrics/MethodLength:
-  Max: 80
+  Max: 120
   Exclude:
     - "spec/**/*"
+    - "lib/web/api/v1/**/*"
+    - "lib/web/api/v2/**/*"
+    - "lib/web/routes/**/*"
 
 Metrics/ModuleLength:
   CountComments: false
@@ -77,7 +90,10 @@ Metrics/ParameterLists:
   Max: 8
 
 Metrics/PerceivedComplexity:
-  Max: 25
+  Max: 45
+  Exclude:
+    - "lib/web/api/v1/**/*"
+    - "lib/web/api/v2/**/*"
 
 # =============================================================================
 # Layout

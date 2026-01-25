@@ -168,7 +168,10 @@ class NovelConverter
           use_processes = !Helper.os_windows?
         end
 
-        stream_io.puts "Using #{use_processes ? 'process' : 'thread'}-based parallel processing (#{subtitles.size} episodes, threshold: #{parallel_threshold})" if ENV["NAROU_DEBUG"]
+        if ENV["NAROU_DEBUG"]
+          mode = use_processes ? "process" : "thread"
+          stream_io.puts "Using #{mode}-based parallel processing (#{subtitles.size} episodes, threshold: #{parallel_threshold})"
+        end
         return subtitles_to_sections_parallel(subtitles, html, use_processes: use_processes)
       end
 

@@ -233,11 +233,11 @@ class NovelDataGenerator
           content = File.read(html_file)
           # scriptタグなどを先に削除してからHTMLタグを除去
           txt_content = content
-            .gsub(/<script\b[^>]*>.*?<\/script>/im, "")
-            .gsub(/<style\b[^>]*>.*?<\/style>/im, "")
-            .gsub(/<[^>]+>/, "")
-            .gsub(/\s+/, " ")
-            .strip
+                        .gsub(/<script\b[^>]*>.*?<\/script>/im, "")
+                        .gsub(/<style\b[^>]*>.*?<\/style>/im, "")
+                        .gsub(/<[^>]+>/, "")
+                        .gsub(/\s+/, " ")
+                        .strip
 
           # 結果を一時ファイルに保存
           txt_file = html_file.sub("/raw/", "/txt_converted/").sub(".html", ".txt")
