@@ -31,7 +31,7 @@ export const BADGE_CONFIGS: Record<BadgeType, BadgeConfig> = {
     borderClass: "border-blue-700/50",
   },
   convert: {
-    label: "変換",
+    label: "CONV",
     title: "変換処理",
     bgClass: "bg-green-900/50",
     textClass: "text-green-300",
