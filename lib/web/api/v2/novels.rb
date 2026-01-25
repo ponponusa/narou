@@ -294,6 +294,11 @@ module Narou
 
           # POST /api/v2/novels/update
           # 小説更新チェック（既存小説の新着確認）
+          # @param ids [Array<Integer>] 更新対象の小説ID配列
+          # @param force_redownload [Boolean] 全話強制再ダウンロード（default: false）
+          # @param include_frozen [Boolean] 凍結小説も対象にする（default: false）
+          # @param convert_after_update [Boolean] 更新後に変換を実行（default: true）
+          # @param skip_unchanged [Boolean] 更新なしの小説の変換をスキップ（default: true）
           post "/api/v2/novels/update" do
             set_cors_headers
 
@@ -303,6 +308,8 @@ module Narou
             include_frozen = body["include_frozen"] || false
             # convert_after_update のデフォルトは true（指定がなければ変換も実行）
             convert_after_update = body.fetch("convert_after_update", true)
+            # skip_unchanged のデフォルトは true（更新なしの小説は変換をスキップ）
+            skip_unchanged = body.fetch("skip_unchanged", true)
 
             if ids.nil? || ids.empty?
               status 400
@@ -339,6 +346,9 @@ module Narou
                 is_frozen = Narou.novel_frozen?(novel_id)
                 need_temp_unfreeze = force_redownload && include_frozen && is_frozen
 
+                # 更新前の new_arrivals_date を記録（変換スキップ判定用）
+                old_new_arrivals_date = data["new_arrivals_date"]
+
                 # タスクをキューに追加
                 Narou::WebWorker.push_task(task) do
                   if force_redownload
@@ -374,18 +384,35 @@ module Narou
 
                   # 更新完了後に変換タスクをConvertWorkerに追加
                   if convert_after_update
-                    convert_task = Narou::Task.new(
-                      type: :convert,
-                      novel_id: novel_id,
-                      novel_title: novel_title,
-                      novel_author: novel_author,
-                      max_retries: 0
-                    )
+                    # 更新有無を判定（skip_unchanged が true の場合）
+                    should_convert = true
+                    if skip_unchanged && !force_redownload
+                      # データベースを再読み込みして new_arrivals_date を確認
+                      updated_data = Database.instance[novel_id]
+                      new_new_arrivals_date = updated_data&.dig("new_arrivals_date")
 
-                    require "lib/web/workers/convert_worker"
-                    Narou::ConvertWorker.push_task(convert_task) do
-                      CommandLine.run!("convert", "--no-open", novel_id.to_s)
-                      NovelListProcessor.clear_all_cache
+                      # new_arrivals_date が変化していなければ更新なしと判定
+                      if new_new_arrivals_date == old_new_arrivals_date
+                        should_convert = false
+                        # ログ出力（更新なしでスキップ）
+                        puts "#{novel_title} は更新がないため変換をスキップしました"
+                      end
+                    end
+
+                    if should_convert
+                      convert_task = Narou::Task.new(
+                        type: :convert,
+                        novel_id: novel_id,
+                        novel_title: novel_title,
+                        novel_author: novel_author,
+                        max_retries: 0
+                      )
+
+                      require "lib/web/workers/convert_worker"
+                      Narou::ConvertWorker.push_task(convert_task) do
+                        CommandLine.run!("convert", "--no-open", novel_id.to_s)
+                        NovelListProcessor.clear_all_cache
+                      end
                     end
                   end
                 end
@@ -398,6 +425,7 @@ module Narou
                 force_redownload: force_redownload,
                 include_frozen: include_frozen,
                 convert_after_update: convert_after_update,
+                skip_unchanged: skip_unchanged,
                 task_ids: task_ids
               }
 

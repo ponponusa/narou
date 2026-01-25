@@ -609,6 +609,87 @@ RSpec.describe "Narou::AppServer API v2" do
       expect(task_instance.novel_title).to eq("Test Novel 1")
       expect(task_instance.novel_author).to eq("Test Author 1")
     end
+
+    # 更新なしの小説に対する変換スキップ機能のテスト
+    describe "変換スキップ機能（更新なしの小説）" do
+      before do
+        allow(Narou::WebWorker).to receive(:push_task).and_yield
+        allow(CommandLine).to receive(:run!)
+        allow(NovelListProcessor).to receive(:clear_all_cache)
+      end
+
+      context "skip_unchanged: true（デフォルト）の場合" do
+        it "更新ありの小説のみ変換タスクを登録する" do
+          old_time = Time.now - 7200
+          new_time = Time.now
+
+          # 更新あり（ID: 1）- 2回目の呼び出しで new_arrivals_date が変化
+          call_count_1 = 0
+          allow(Database.instance).to receive(:[]).with(1) do
+            call_count_1 += 1
+            if call_count_1 == 1
+              # 更新前
+              { "id" => 1, "title" => "Updated Novel", "author" => "Author",
+                "new_arrivals_date" => old_time }
+            else
+              # 更新後（new_arrivals_date が更新された）
+              { "id" => 1, "title" => "Updated Novel", "author" => "Author",
+                "new_arrivals_date" => new_time }
+            end
+          end
+
+          # 更新なし（ID: 2）- new_arrivals_date が変化しない
+          allow(Database.instance).to receive(:[]).with(2).and_return({
+            "id" => 2,
+            "title" => "No Update Novel",
+            "author" => "Author",
+            "new_arrivals_date" => old_time
+          })
+
+          convert_task_ids = []
+          allow(Narou::ConvertWorker).to receive(:push_task) do |task, &block|
+            convert_task_ids << task.novel_id
+            block.call if block
+          end
+
+          payload = { ids: [1, 2], convert_after_update: true }.to_json
+          post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+          expect(last_response).to be_ok
+          # 更新ありの小説（ID: 1）のみ変換タスクが登録される
+          expect(convert_task_ids).to eq([1])
+          # 更新なしの小説（ID: 2）は変換タスクが登録されない
+          expect(convert_task_ids).not_to include(2)
+        end
+      end
+
+      context "skip_unchanged: false の場合" do
+        it "更新なしの小説も変換タスクを登録する" do
+          old_time = Time.now - 7200
+
+          # 更新なし（new_arrivals_date が変化しない）
+          allow(Database.instance).to receive(:[]).with(1).and_return({
+            "id" => 1,
+            "title" => "No Update Novel",
+            "author" => "Author",
+            "new_arrivals_date" => old_time
+          })
+
+          convert_task_count = 0
+          allow(Narou::ConvertWorker).to receive(:push_task) do |task, &block|
+            convert_task_count += 1
+            block.call if block
+          end
+
+          payload = { ids: [1], convert_after_update: true, skip_unchanged: false }.to_json
+          post "/api/v2/novels/update", payload, { "CONTENT_TYPE" => "application/json" }
+
+          expect(last_response).to be_ok
+          # skip_unchanged: false なので変換タスクが登録される
+          expect(convert_task_count).to eq(1)
+        end
+      end
+    end
   end
 
   describe "POST /api/v2/novels/remove" do

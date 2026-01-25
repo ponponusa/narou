@@ -580,6 +580,7 @@ paths:
         - `force_redownload`: `true` にすると全話を強制再ダウンロード（`download --force` 相当）
         - `include_frozen`: `true` にすると凍結中の小説も更新対象に含める
         - `convert_after_update`: `true` にすると更新完了後に自動変換（デフォルト: true）
+        - `skip_unchanged`: `true` にすると更新がなかった小説の変換をスキップ（デフォルト: true）
       operationId: updateNovels
       requestBody:
         required: true
@@ -607,6 +608,10 @@ paths:
                 convert_after_update:
                   type: boolean
                   description: 更新完了後に自動変換を実行
+                  default: true
+                skip_unchanged:
+                  type: boolean
+                  description: 更新がなかった小説の変換をスキップする
                   default: true
             examples:
               basic:
@@ -656,6 +661,9 @@ paths:
                       convert_after_update:
                         type: boolean
                         description: 更新後に変換を実行するか
+                      skip_unchanged:
+                        type: boolean
+                        description: 更新なしの小説の変換をスキップするか
                       task_ids:
                         type: array
                         items:
