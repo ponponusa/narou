@@ -3,6 +3,7 @@
 require "fileutils"
 require "securerandom"
 require "benchmark"
+require "nokogiri"
 
 #
 # 小説データ（raw, txt）のパフォーマンステスト用データ生成スクリプト
@@ -231,13 +232,12 @@ class NovelDataGenerator
         Dir.glob(File.join(raw_dir, "*.html")).each do |html_file|
           # 簡易的なHTML→TXT変換（実際の変換処理に置き換え可能）
           content = File.read(html_file)
-          # scriptタグなどを先に削除してからHTMLタグを除去
-          txt_content = content
-                        .gsub(/<script\b[^>]*>.*?<\/script>/im, "")
-                        .gsub(/<style\b[^>]*>.*?<\/style>/im, "")
-                        .gsub(/<[^>]+>/, "")
-                        .gsub(/\s+/, " ")
-                        .strip
+          # Nokogiriを使用して安全にHTMLからテキストを抽出
+          doc = Nokogiri::HTML(content)
+          # script/styleタグを削除
+          doc.css("script, style").remove
+          # テキストコンテンツを抽出
+          txt_content = doc.text.gsub(/\s+/, " ").strip
 
           # 結果を一時ファイルに保存
           txt_file = html_file.sub("/raw/", "/txt_converted/").sub(".html", ".txt")
