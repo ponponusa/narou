@@ -669,13 +669,17 @@
 
   /**
    * コンソールタイプを表示用にフォーマット
+   *
+   * - stdout: メイン標準出力（ダウンロード・更新処理など）
+   * - stdout2: 並列変換時の第2標準出力（並列処理が有効な場合のみ使用）
+   * - convert: 変換専用出力（EPUB/MOBI変換時）
    */
   function formatConsoleType(
     console: "stdout" | "stdout2" | "convert"
   ): string {
-    if (console === "stdout2") return "stderr";
-    if (console === "convert") return "convert";
-    return "stdout";
+    if (console === "stdout2") return "parallel"; // 並列変換用出力
+    if (console === "convert") return "convert"; // 変換専用出力
+    return "stdout"; // メイン出力
   }
 
   // イベントハンドラの参照を保持
