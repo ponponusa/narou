@@ -378,7 +378,7 @@ module Command
       # デバイス情報を一時的に差し替えてフック処理を使う
       @device = ibunko_device
       # 純青空テキストからのZIP生成（EPUB最適化要素を除去）
-      if Device::Ibunko.instance_methods(false).include?(:create_pure_aozora_zip)
+      if Device::Ibunko.method_defined?(:create_pure_aozora_zip, false)
         Device::Ibunko.instance_method(:create_pure_aozora_zip).bind(self).call
       else
         # フォールバック（互換性維持）

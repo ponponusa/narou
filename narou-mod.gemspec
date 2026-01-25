@@ -130,7 +130,7 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency "termcolorlight",     "~> 1.0",  ">= 1.1.1"
 
   # ファイル処理
-  gem.add_runtime_dependency "nokogiri",           "~> 1.18"
+  gem.add_runtime_dependency "nokogiri",           "~> 1.19"
   gem.add_runtime_dependency "rubyzip",            "~> 3.2",  ">= 3.2.0"
 
   # メール送信
@@ -149,7 +149,7 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency "erubi",              "~> 1.13.1"
   gem.add_runtime_dependency "haml",               ">= 5.2.2", "< 6"
   gem.add_runtime_dependency "sass-embedded",      "~> 1.93", ">= 1.93.2"
-  gem.add_runtime_dependency "tilt",               "~> 2.6",  ">= 2.6.1"
+  gem.add_runtime_dependency "tilt",               "~> 2.7"
 
   # TUI（ターミナルUI）
   gem.add_runtime_dependency "tty-box",            "~> 0.7"
@@ -192,20 +192,20 @@ Gem::Specification.new do |gem|
     gem.add_runtime_dependency "win32ole", "~> 1.9"
   else
     # Linux/macOS は汎用 gem（x86_64/arm64/aarch64 等、全アーキテクチャ対応）
-    gem.add_runtime_dependency "bootsnap", "~> 1.18", ">= 1.18.6"
+    gem.add_runtime_dependency "bootsnap", "~> 1"
   end
 
   # ---------------------------------------------------------------------------
   # 開発時依存関係（Development Dependencies）
   # ---------------------------------------------------------------------------
   gem.add_development_dependency "awesome_print",         "~> 1.9"
-  gem.add_development_dependency "pry",                   "~> 0.15"
-  gem.add_development_dependency "pry-byebug",            "~> 3.11"
+  gem.add_development_dependency "pry",                   "~> 0.16"
+  gem.add_development_dependency "pry-byebug",            "~> 3.12"
   gem.add_development_dependency "rack-test",             "~> 2.1"
   gem.add_development_dependency "rspec",                 "~> 3.13"
   gem.add_development_dependency "rspec-retry",           "~> 0.6"
   gem.add_development_dependency "rspec_junit_formatter", "~> 0.6"
-  gem.add_development_dependency "rubocop",               "~> 1.81", ">= 1.81.6"
+  gem.add_development_dependency "rubocop",               "~> 1.82"
   gem.add_development_dependency "ruby-prof",             "~> 1.7"
   gem.add_development_dependency "simplecov",             "~> 0.22"
   gem.add_development_dependency "timecop",               "~> 0.9"

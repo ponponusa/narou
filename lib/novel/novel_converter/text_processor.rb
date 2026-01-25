@@ -11,6 +11,14 @@ require "lib/novel/sitesetting"
 require "lib/conversion/html"
 require "lib/conversion/template"
 
+# セクションキャッシュ（オプショナル）
+begin
+  require "narou/section_cache"
+  SECTION_CACHE_AVAILABLE = true
+rescue LoadError
+  SECTION_CACHE_AVAILABLE = false
+end
+
 class NovelConverter
   #
   # テキスト整形・変換処理
@@ -168,7 +176,10 @@ class NovelConverter
           use_processes = !Helper.os_windows?
         end
 
-        stream_io.puts "Using #{use_processes ? 'process' : 'thread'}-based parallel processing (#{subtitles.size} episodes, threshold: #{parallel_threshold})" if ENV["NAROU_DEBUG"]
+        if ENV["NAROU_DEBUG"]
+          mode = use_processes ? "process" : "thread"
+          stream_io.puts "Using #{mode}-based parallel processing (#{subtitles.size} episodes, threshold: #{parallel_threshold})"
+        end
         return subtitles_to_sections_parallel(subtitles, html, use_processes: use_processes)
       end
 
@@ -206,27 +217,39 @@ class NovelConverter
       # 各スレッド/プロセス用のConverterをThread-localストレージで管理
       converter_class = load_converter(@setting.archive_path)
       thread_converters = {}
-      converter_mutex = Mutex.new unless use_processes
+
+      # スレッド/プロセスごとのキャッシュとペンディングストアを管理
+      thread_caches = {}
+      thread_pending_stores = {}
+      cache_mutex = Mutex.new unless use_processes
+      setting_for_cache = @setting
 
       parallel_options = use_processes ? { in_processes: parallel_count } : { in_threads: parallel_count }
 
       sections = Parallel.map_with_index(subtitles, parallel_options) do |subinfo, i|
+        key = subinfo["index"]
+
         # スレッド/プロセス固有のConverterを取得または作成
         if use_processes
           # プロセスベースの場合は毎回新規作成（プロセス間で共有不可）
           thread_converter = converter_class.new(@setting, @inspector, @illustration)
+          thread_cache = initialize_section_cache_for_parallel(setting_for_cache)
         else
           # スレッドベースの場合はThread-localで管理
           thread_id = Thread.current.object_id
           thread_converter = thread_converters[thread_id]
+          thread_cache = thread_caches[thread_id]
           unless thread_converter
-            thread_converter = converter_mutex.synchronize do
+            cache_mutex.synchronize do
               unless thread_converters[thread_id]
                 stream_io.puts "Creating converter for thread #{thread_id}" if ENV["NAROU_DEBUG"]
                 thread_converters[thread_id] = converter_class.new(@setting, @inspector, @illustration)
+                thread_caches[thread_id] = initialize_section_cache
+                thread_pending_stores[thread_id] = []
               end
-              thread_converters[thread_id]
             end
+            thread_converter = thread_converters[thread_id]
+            thread_cache = thread_caches[thread_id]
           end
         end
 
@@ -246,6 +269,15 @@ class NovelConverter
         # セクションをロード
         original_section = load_novel_section(subinfo, section_save_dir)
 
+        # セクションキャッシュを確認（ロックなしで読み取り）
+        if thread_cache
+          cached = thread_cache.get(index: key, original_section: original_section)
+          if cached
+            next cached
+          end
+        end
+
+        # キャッシュミス: 変換処理
         # 独立したコピーを作成
         section = original_section.dup
         section["element"] = original_section["element"].dup
@@ -287,7 +319,28 @@ class NovelConverter
           section["element"][text_type] = converted[[:element, text_type]]
         end
 
+        # プロセスベースの場合は即座にキャッシュに書き込み
+        if use_processes && thread_cache
+          thread_cache.merge_and_flush([{ index: key, original: original_section, converted: section }])
+        elsif thread_cache
+          # スレッドベースの場合はペンディングストアに追加
+          thread_id = Thread.current.object_id
+          cache_mutex.synchronize do
+            thread_pending_stores[thread_id] << { index: key, original: original_section, converted: section }
+          end
+        end
+
         section
+      end
+
+      # スレッドベースの場合、ペンディングストアをまとめてフラッシュ
+      unless use_processes
+        thread_pending_stores.each do |thread_id, pending_stores|
+          next if pending_stores.empty?
+
+          cache = thread_caches[thread_id]
+          cache&.merge_and_flush(pending_stores)
+        end
       end
 
       @use_dakuten_font = @converter.use_dakuten_font
@@ -318,8 +371,11 @@ class NovelConverter
       # 各チャンクを並列処理
       converter_class = load_converter(@setting.archive_path)
 
+      # セクションキャッシュの設定を子プロセスに渡すため、設定オブジェクトを保持
+      setting_for_cache = @setting
+
       chunk_results = Parallel.map_with_index(subtitle_chunks, in_processes: parallel_count) do |chunk, chunk_idx|
-        # プロセスごとにConverterを作成
+        # プロセスごとにConverterとキャッシュを作成
         chunk_converter = converter_class.new(@setting, @inspector, @illustration)
         chunk_html = HTML.new
         chunk_html.strip_decoration_tag = @setting.enable_strip_decoration_tag
@@ -330,10 +386,15 @@ class NovelConverter
           )
         end
 
+        # プロセスごとにセクションキャッシュを初期化
+        process_cache = initialize_section_cache_for_parallel(setting_for_cache)
+        pending_stores = []
+
         # チャンク内のエピソードを処理
         chunk_sections = []
         chunk.each_with_index do |subinfo, idx_in_chunk|
           global_index = chunk_idx * chunk_size + idx_in_chunk
+          key = subinfo["index"]
 
           # 進捗表示（10件ごと）
           trigger(:"convert_main.loop", global_index) if (global_index % 10).zero?
@@ -341,6 +402,16 @@ class NovelConverter
           # セクションをロード
           original_section = load_novel_section(subinfo, section_save_dir)
 
+          # セクションキャッシュを確認（ロックなしで読み取り）
+          if process_cache
+            cached = process_cache.get(index: key, original_section: original_section)
+            if cached
+              chunk_sections << cached
+              next
+            end
+          end
+
+          # キャッシュミス: 変換処理
           # 独立したコピーを作成
           section = original_section.dup
           section["element"] = original_section["element"].dup
@@ -382,7 +453,15 @@ class NovelConverter
             section["element"][text_type] = converted[[:element, text_type]]
           end
 
+          # 書き込みは後でまとめて行う
+          pending_stores << { index: key, original: original_section, converted: section }
+
           chunk_sections << section
+        end
+
+        # チャンク処理完了後にまとめてキャッシュに書き込み（ロック内でマージ）
+        if process_cache && pending_stores.any?
+          process_cache.merge_and_flush(pending_stores)
         end
 
         chunk_sections
@@ -401,8 +480,11 @@ class NovelConverter
     # subtitle info から変換処理をする（従来のシーケンシャル版）
     #
     def subtitles_to_sections_sequential(subtitles, html)
-      # 章データをキャッシュ
-      @__section_cache ||= {}
+      # 章データをキャッシュ（YAML読み込み用）
+      @__section_yaml_cache ||= {}
+
+      # セクションキャッシュの初期化（変換結果キャッシュ）
+      section_cache = initialize_section_cache
 
       sections = []
       section_save_dir = Downloader.get_novel_section_save_dir(@setting.archive_path)
@@ -415,12 +497,22 @@ class NovelConverter
 
         # YAMLロードをキャッシュ
         key = subinfo["index"]
-        original_section = @__section_cache[key]
+        original_section = @__section_yaml_cache[key]
         unless original_section
           original_section = load_novel_section(subinfo, section_save_dir)
-          @__section_cache[key] = original_section
+          @__section_yaml_cache[key] = original_section
         end
 
+        # セクションキャッシュを確認
+        if section_cache
+          cached = section_cache.get(index: key, original_section: original_section)
+          if cached
+            sections << cached
+            next
+          end
+        end
+
+        # キャッシュミス: 従来の変換処理
         # キャッシュを壊さないようディープ寄りにdup
         # （chapter/subtitle/elementなど後で書き換えるので）
         section = original_section.dup
@@ -470,8 +562,19 @@ class NovelConverter
           section["element"][text_type] = converted[[:element, text_type]]
         end
 
+        # セクションキャッシュに保存
+        section_cache&.store(
+          index: key,
+          original_section: original_section,
+          converted_section: section
+        )
+
         sections << section
       end
+
+      # セクションキャッシュをフラッシュ
+      section_cache&.flush
+      log_section_cache_statistics(section_cache) if ENV["NAROU_DEBUG"] && section_cache
 
       @use_dakuten_font = @converter.use_dakuten_font
       sections
@@ -485,6 +588,46 @@ class NovelConverter
     def get_title_and_author_by_text(text)
       title, author = text.split("\n", 3)
       { "title" => title, "author" => author }
+    end
+
+    private
+
+    # セクションキャッシュを初期化する
+    #
+    # @return [Narou::SectionCache, nil] キャッシュオブジェクト、または nil（無効時）
+    def initialize_section_cache
+      return nil if ENV["NAROU_DISABLE_SECTION_CACHE"] == "true"
+      return nil unless SECTION_CACHE_AVAILABLE
+
+      Narou::SectionCache.new(setting: @setting)
+    rescue StandardError => e
+      warn "セクションキャッシュを初期化できませんでした: #{e.message}" if ENV["NAROU_DEBUG"]
+      nil
+    end
+
+    # 並列処理用のセクションキャッシュを初期化する
+    #
+    # @param setting [NovelSetting] 設定オブジェクト
+    # @return [Narou::SectionCache, nil] キャッシュオブジェクト、または nil（無効時）
+    def initialize_section_cache_for_parallel(setting)
+      return nil if ENV["NAROU_DISABLE_SECTION_CACHE"] == "true"
+      return nil unless SECTION_CACHE_AVAILABLE
+
+      Narou::SectionCache.new(setting: setting)
+    rescue StandardError => e
+      warn "セクションキャッシュを初期化できませんでした: #{e.message}" if ENV["NAROU_DEBUG"]
+      nil
+    end
+
+    # セクションキャッシュの統計をログ出力する
+    #
+    # @param cache [Narou::SectionCache] キャッシュオブジェクト
+    # @return [void]
+    def log_section_cache_statistics(cache)
+      return unless cache
+
+      stats = cache.statistics
+      stream_io.puts "Section cache: #{stats[:hit_count]} hits, #{stats[:miss_count]} misses (#{stats[:hit_rate]}%)"
     end
   end
 end
