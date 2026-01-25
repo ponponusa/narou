@@ -14,7 +14,7 @@
     message: string;
     isProgress?: boolean;
     progressKey?: string;
-    processType?: "download" | "convert" | "other";
+    processType?: "download" | "convert" | "skip" | "other";
     novelId?: string;
   }
 

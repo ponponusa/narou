@@ -5,6 +5,7 @@
 export type BadgeType =
   | "download"
   | "convert"
+  | "skip"
   | "other"
   | "info"
   | "read"
@@ -36,8 +37,15 @@ export const BADGE_CONFIGS: Record<BadgeType, BadgeConfig> = {
     textClass: "text-green-300",
     borderClass: "border-green-700/50",
   },
+  skip: {
+    label: "SKIP",
+    title: "変換スキップ",
+    bgClass: "bg-yellow-900/50",
+    textClass: "text-yellow-300",
+    borderClass: "border-yellow-700/50",
+  },
   other: {
-    label: "他",
+    label: "OTHER",
     title: "その他の処理",
     bgClass: "bg-purple-900/50",
     textClass: "text-purple-300",
@@ -70,7 +78,7 @@ export const BADGE_CONFIGS: Record<BadgeType, BadgeConfig> = {
  * processType からバッジタイプを取得
  */
 export function getBadgeTypeFromProcessType(
-  processType: "download" | "convert" | "other" | undefined
+  processType: "download" | "convert" | "skip" | "other" | undefined
 ): BadgeType | null {
   if (!processType) return null;
   return processType;

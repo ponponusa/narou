@@ -12,7 +12,7 @@
     message: string;
     isProgress?: boolean; // 進捗メッセージかどうか
     progressKey?: string; // 進捗を識別するキー
-    processType?: "download" | "convert" | "other"; // 処理タイプ
+    processType?: "download" | "convert" | "skip" | "other"; // 処理タイプ
     novelId?: string; // 小説ID
   }
 
@@ -460,7 +460,7 @@
    * ログメッセージから処理タイプと小説IDを抽出
    */
   function extractProcessInfo(message: string): {
-    processType?: "download" | "convert" | "other";
+    processType?: "download" | "convert" | "skip" | "other";
     novelId?: string;
   } {
     // 小説IDを抽出
@@ -468,10 +468,13 @@
     const novelId = idMatch ? idMatch[1] : undefined;
 
     // 処理タイプを判定
-    let processType: "download" | "convert" | "other" | undefined;
+    let processType: "download" | "convert" | "skip" | "other" | undefined;
 
     if (/ダウンロード|download|DL/i.test(message)) {
       processType = "download";
+    } else if (/スキップ|skip/i.test(message)) {
+      // 変換スキップメッセージを識別
+      processType = "skip";
     } else if (/変換|convert|epub/i.test(message)) {
       processType = "convert";
     } else if (novelId || /処理|progress/i.test(message)) {
@@ -525,23 +528,39 @@
 
   /**
    * 変換系のログをフィルタ
+   * スキップログは変換ログの上部にまとめて表示
    */
   function getConvertLogs(): LogEntry[] {
-    return logs.filter(
+    const convertLogs = logs.filter(
       (log) =>
         log.console === "convert" ||
         log.processType === "convert" ||
-        (!log.processType && /変換|convert|epub/i.test(log.message))
+        log.processType === "skip" ||
+        (!log.processType &&
+          /変換|convert|epub|スキップ|skip/i.test(log.message))
     );
+
+    // スキップログと変換ログを分離
+    const skipLogs = convertLogs.filter((log) => log.processType === "skip");
+    const nonSkipLogs = convertLogs.filter((log) => log.processType !== "skip");
+
+    // それぞれを時間順でソート
+    skipLogs.sort((a, b) => a.id - b.id);
+    nonSkipLogs.sort((a, b) => a.id - b.id);
+
+    // スキップログを上部に、変換ログを下部に配置
+    return [...skipLogs, ...nonSkipLogs];
   }
 
   /**
    * その他のログをフィルタ（分割時は左ペインに表示）
+   * スキップログは変換ペインに表示するため除外
    */
   function getOtherLogs(): LogEntry[] {
     return logs.filter(
       (log) =>
         log.console !== "convert" &&
+        log.processType !== "skip" &&
         (!log.processType || log.processType === "other")
     );
   }
