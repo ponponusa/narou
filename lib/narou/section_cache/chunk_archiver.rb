@@ -41,9 +41,10 @@ module Narou
 
       # インデックスからチャンク範囲を計算する
       #
-      # @param index [Integer] section index
+      # @param index [Integer, String] section index
       # @return [Array<Integer>] [start_index, end_index]
       def chunk_range_for(index)
+        index = index.to_i
         chunk_num = ((index - 1) / CHUNK_SIZE)
         start_idx = chunk_num * CHUNK_SIZE + 1
         end_idx = start_idx + CHUNK_SIZE - 1
@@ -102,10 +103,11 @@ module Narou
 
       # 単一のエントリを更新する
       #
-      # @param index [Integer] section index
+      # @param index [Integer, String] section index
       # @param entry [CacheEntry] entry to update
       # @return [void]
       def update_entry(index:, entry:)
+        index = index.to_i
         chunk_range = chunk_range_for(index)
         existing = extract(chunk_range: chunk_range)
         existing[index] = entry
@@ -114,9 +116,10 @@ module Narou
 
       # 単一のエントリを削除する
       #
-      # @param index [Integer] section index
+      # @param index [Integer, String] section index
       # @return [void]
       def delete_entry(index:)
+        index = index.to_i
         chunk_range = chunk_range_for(index)
         existing = extract(chunk_range: chunk_range)
         existing.delete(index)

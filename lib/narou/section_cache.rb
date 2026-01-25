@@ -162,12 +162,13 @@ module Narou
 
     # キャッシュからエントリを取得する
     #
-    # @param index [Integer] section index
+    # @param index [Integer, String] section index
     # @param original_section [Hash] original section data
     # @return [Hash, nil] converted section or nil if cache miss
     def get(index:, original_section:)
       return nil unless valid_settings?
 
+      index = index.to_i
       current_hash = compute_source_hash(original_section)
       chunk_range = @archiver.chunk_range_for(index)
 
@@ -188,11 +189,12 @@ module Narou
 
     # キャッシュにエントリを保存する
     #
-    # @param index [Integer] section index
+    # @param index [Integer, String] section index
     # @param original_section [Hash] original section data
     # @param converted_section [Hash] converted section data
     # @return [void]
     def store(index:, original_section:, converted_section:)
+      index = index.to_i
       source_hash = compute_source_hash(original_section)
       chunk_range = @archiver.chunk_range_for(index)
 
