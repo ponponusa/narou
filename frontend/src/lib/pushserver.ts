@@ -23,9 +23,22 @@ export type PushServerEvent =
   | "progressbar.clear"
   | "console.clear";
 
+/**
+ * エコーメッセージ（コンソール出力）
+ *
+ * バックエンドからフロントエンドへ送信されるログメッセージ
+ */
 export interface EchoMessage {
+  /**
+   * 出力先コンソールの識別子
+   * - stdout: メイン標準出力（ダウンロード・更新処理など）
+   * - stdout2: 並列変換時の第2標準出力（並列処理が有効な場合のみ使用）
+   * - convert: 変換専用出力（EPUB/MOBI変換時）
+   */
   target_console: "stdout" | "stdout2" | "convert";
+  /** メッセージ本文 */
   body: string;
+  /** 履歴に保存しない場合は true */
   no_history?: boolean;
 }
 

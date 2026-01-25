@@ -14,7 +14,7 @@
     message: string;
     isProgress?: boolean;
     progressKey?: string;
-    processType?: "download" | "convert" | "other";
+    processType?: "download" | "convert" | "skip" | "other";
     novelId?: string;
   }
 
@@ -47,13 +47,9 @@
   });
 
   // テキストカラークラス
+  // stdout2 は並列変換用出力であり、エラーではないので黄色にしない
   const textColorClass = $derived.by(() => {
-    if (isConvertPane) {
-      return "text-gray-300";
-    }
-    return log.console === "stdout2" && log.processType !== "convert"
-      ? "text-yellow-400"
-      : "text-gray-300";
+    return "text-gray-300";
   });
 </script>
 
