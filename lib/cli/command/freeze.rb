@@ -42,6 +42,7 @@ module Command
     end
 
     def output_freeze_list
+      require "lib/cli/command/list" unless defined?(Command::List)
       List.execute!("--filter", "frozen")
     end
 

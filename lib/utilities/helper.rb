@@ -8,6 +8,7 @@ require "erb"
 require "open3"
 require "time"
 require "systemu"
+require "shellwords"
 
 #
 # 雑多なお助けメソッド群
@@ -48,7 +49,6 @@ module Helper
   rescue Errno::ENOENT, Errno::EACCES
     false
   end
-  private_class_method :wsl_environment?
 
   # 便利メソッド（後方互換性）
   def os_windows?
@@ -92,7 +92,8 @@ module Helper
   def open_browser_linux(address, error_message)
     %w(xdg-open firefox w3m).each do |browser|
       next unless command_available?(browser)
-      system(%!#{browser} "#{address}"!)
+      # 配列形式でsystemを呼び出すことでシェルインジェクションを防止
+      system(browser, address)
       return if $?.success?
     end
     warn error_message
@@ -104,11 +105,12 @@ module Helper
     end
     case determine_os
     when :windows
-      system(%!explorer "file:///#{path}"!.encode(Encoding::Windows_31J))
+      # 配列形式でコマンドインジェクションを防止
+      system("explorer", "file:///#{path}".encode(Encoding::Windows_31J))
     when :cygwin
-      system(%!cygstart "#{path}"!)
+      system("cygstart", path)
     when :mac
-      system(%!open "#{path}"!)
+      system("open", path)
     when :wsl
       open_directory_wsl(path, "フォルダが開けませんでした")
     else
@@ -154,14 +156,16 @@ module Helper
       return if $?.success?
     end
     begin
-      windows_path = `wslpath -w "#{path}"`.strip
+      # Open3.capture2を使用してシェルインジェクションを防止
+      windows_path, status = Open3.capture2("wslpath", "-w", path)
+      windows_path = windows_path.strip
       windows_path = path if windows_path.empty?
     rescue Errno::ENOENT
       windows_path = path
     end
-    escaped = windows_path.gsub("'", "''")
     begin
-      system("powershell.exe", "-NoProfile", "-Command", "Start-Process '#{escaped}'")
+      # PowerShellコマンドを配列形式で実行してインジェクションを防止
+      system("powershell.exe", "-NoProfile", "-Command", "Start-Process", "-FilePath", windows_path)
       return if $?.success?
     rescue Errno::ENOENT
       # powershell.exe が見つからない場合は警告にフォールバック

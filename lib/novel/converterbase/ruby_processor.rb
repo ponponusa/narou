@@ -56,7 +56,7 @@ class ConverterBase
         if openclose_symbols[0] == "≪" && m2 !~ /^#{AUTO_RUBY_CHARACTERS}$/
           # 《 》タイプのルビであっても、｜が存在しない場合の自動ルビ化対象はひらがな等だけである
           match
-        elsif m2 =~ /^([ぁ-んァ-ヶーゝゞ・]+)[ 　]?([ぁ-んァ-ヶーゝゞ・]*)$/
+        elsif m2 =~ /\A([ぁ-んァ-ヶーゝゞ・]+)[ 　]?([ぁ-んァ-ヶーゝゞ・]*)\z/
           build_ruby(m1, m2, $1, $2)
         else
           match
@@ -70,8 +70,8 @@ class ConverterBase
     # なろうのルビ対象文字を辿って｜を挿入する（青空文庫となろうのルビ仕様の差異吸収のため）
     # 空白もルビ対象文字に含むのはなろうの仕様である
     def build_ruby(m1, m2, f1, f2)
-      if m1 =~ /([#{CHARACTER_OF_RUBY}]+)([ 　])([#{CHARACTER_OF_RUBY}]+)$/
-        m1.sub(/([#{CHARACTER_OF_RUBY}]+)([ 　])([#{CHARACTER_OF_RUBY}]+)$/) {
+      if m1 =~ /([#{CHARACTER_OF_RUBY}]+)([ 　])([#{CHARACTER_OF_RUBY}]+)\z/
+        m1.sub(/([#{CHARACTER_OF_RUBY}]+)([ 　])([#{CHARACTER_OF_RUBY}]+)\z/) {
           if f2 == ""
             "#{$1}#{$2}［＃ルビ用縦線］#{$3}《#{ruby_youon_to_big(m2)}》"
           else
@@ -79,7 +79,7 @@ class ConverterBase
           end
         }
       else
-        m1.sub(/([#{CHARACTER_OF_RUBY}]+)$/, "［＃ルビ用縦線］\\1") + "《#{ruby_youon_to_big(m2)}》"
+        m1.sub(/([#{CHARACTER_OF_RUBY}]+)\z/, "［＃ルビ用縦線］\\1") + "《#{ruby_youon_to_big(m2)}》"
       end
     end
 

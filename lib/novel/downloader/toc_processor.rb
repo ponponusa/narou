@@ -27,7 +27,7 @@ class Downloader
       open_uri_options = make_open_uri_options("Cookie" => cookie, allow_redirections: :safe)
       sleep_for_download
       begin
-        URI.open(toc_url, open_uri_options) do |toc_fp|
+        URI(toc_url).open(open_uri_options) do |toc_fp|
           if toc_fp.base_uri.to_s != toc_url
             # リダイレクトされた場合。
             # ノクターン・ムーンライトのNコードを ncode.syosetu.com に渡すと、年齢認証のクッションページに飛ばされる
@@ -131,8 +131,8 @@ SocketError => e
         @stream.error "小説が削除されているか非公開な可能性があります"
         sleep_for_download
         if database.novel_exists?(@id)
-          require "lib/novel/downloader/command/tag" unless defined?(Command::Tag)
-          require "lib/novel/downloader/command/freeze" unless defined?(Command::Freeze)
+          require "cli/command/tag" unless defined?(Command::Tag)
+          require "cli/command/freeze" unless defined?(Command::Freeze)
           Command::Tag.execute!(%W(#{@id} --add 404 --color white --no-overwrite-color), io: Narou::NullIO.new)
           Command::Freeze.execute!(@id, "--on")
         end

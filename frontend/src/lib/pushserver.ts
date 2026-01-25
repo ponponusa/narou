@@ -59,6 +59,14 @@ export class PushServerClient {
   private isManualClose = false;
 
   constructor(host: string, port: number) {
+    this.url = "";
+    this.setUrl(host, port);
+  }
+
+  /**
+   * URLを更新（イベントハンドラは保持）
+   */
+  setUrl(host: string, port: number): void {
     this.url = `ws://${host}:${port}/`;
   }
 
@@ -255,32 +263,18 @@ export function getPushServer(): PushServerClient | null {
   if (!globalPushServer) {
     const host = window.location.hostname;
 
-    // 初期はデフォルトポートで作成
-    const port =
-      cachedPort || parseInt(import.meta.env.PUBLIC_PUSH_SERVER_PORT || "5679");
+    // インスタンスを作成（まだ接続しない）
+    // ダミーポートで作成し、ポート取得後に正しいURLで接続
+    globalPushServer = new PushServerClient(host, 0);
 
-    globalPushServer = new PushServerClient(host, port);
-
-    // 初回作成時に自動接続
-    globalPushServer.connect();
-
-    // 非同期でポート番号を取得して、ポートが異なる場合のみ再接続
+    // ポートを取得してから接続（最初から正しいポートで接続）
     if (!portInitialized) {
       portInitialized = true;
-      fetchPushServerPort().then((actualPort) => {
-        if (actualPort !== port && globalPushServer) {
-          console.log(
-            `[PushServer] Port changed from ${port} to ${actualPort}, reconnecting`
-          );
-          // 既存の接続を切断
-          globalPushServer.disconnect();
-          // 新しいポートで再作成して接続
-          globalPushServer = new PushServerClient(host, actualPort);
+      fetchPushServerPort().then((port) => {
+        if (globalPushServer) {
+          console.log(`[PushServer] Using port from backend config: ${port}`);
+          globalPushServer.setUrl(host, port);
           globalPushServer.connect();
-        } else {
-          console.log(
-            `[PushServer] Port ${actualPort} confirmed, using existing connection`
-          );
         }
       });
     }

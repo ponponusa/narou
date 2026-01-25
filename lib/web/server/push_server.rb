@@ -53,8 +53,12 @@ module Narou
             # 接続時に履歴を送信（タイムスタンプ付き）
             history_count = @history.compact.size
             $stderr.puts "[PushServer] Sending #{history_count} history messages to new connection" if $DEBUG
-            @history.compact.each do |message|
-              ws.send(JSON.generate(echo: message))
+            begin
+              @history.compact.each do |message|
+                ws.send(JSON.generate(echo: message))
+              end
+            rescue Errno::ECONNRESET, Errno::EPIPE, IOError
+              # 履歴送信中に接続が切れた場合は無視して続行
             end
 
             thread = Thread.new do
@@ -85,9 +89,9 @@ module Narou
             # WebSocketハンドシェイクエラー（通常はクライアントの切断）
             $stderr.puts "[PushServer] WebSocket error: #{e.message}" if $DEBUG
             $stderr.puts e.backtrace.first(5).join("\n") if $DEBUG
-          rescue Errno::ECONNRESET => e
-            # 接続リセットエラー（デバッグ時のみ出力）
-            $stderr.puts "[PushServer] Connection reset: #{e.message}" if $DEBUG
+          rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPIPE, IOError => e
+            # 接続リセット/中断エラー（デバッグ時のみ出力）
+            $stderr.puts "[PushServer] Connection closed: #{e.message}" if $DEBUG
           rescue StandardError => e
             # その他の予期しないエラー（常に出力）
             $stderr.puts "[PushServer] Unexpected error: #{e.class}: #{e.message}"
