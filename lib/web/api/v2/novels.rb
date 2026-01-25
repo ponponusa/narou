@@ -346,8 +346,9 @@ module Narou
                 is_frozen = Narou.novel_frozen?(novel_id)
                 need_temp_unfreeze = force_redownload && include_frozen && is_frozen
 
-                # 更新前の new_arrivals_date を記録（変換スキップ判定用）
+                # 更新前の情報を記録（変換スキップ判定用）
                 old_new_arrivals_date = data["new_arrivals_date"]
+                old_last_update = data["last_update"]
 
                 # タスクをキューに追加
                 Narou::WebWorker.push_task(task) do
@@ -387,12 +388,14 @@ module Narou
                     # 更新有無を判定（skip_unchanged が true の場合）
                     should_convert = true
                     if skip_unchanged && !force_redownload
-                      # データベースを再読み込みして new_arrivals_date を確認
+                      # データベースを再読み込みして更新状態を確認
                       updated_data = Database.instance[novel_id]
                       new_new_arrivals_date = updated_data&.dig("new_arrivals_date")
+                      new_last_update = updated_data&.dig("last_update")
 
-                      # new_arrivals_date が変化していなければ更新なしと判定
-                      if new_new_arrivals_date == old_new_arrivals_date
+                      # new_arrivals_date と last_update の両方が変化していなければ更新なしと判定
+                      # （タイトル・著者名の変更時は last_update のみ変化する）
+                      if new_new_arrivals_date == old_new_arrivals_date && new_last_update == old_last_update
                         should_convert = false
                         # ログ出力（更新なしでスキップ）
                         puts "#{novel_title} は更新がないため変換をスキップしました"
