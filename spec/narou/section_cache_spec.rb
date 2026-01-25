@@ -103,7 +103,8 @@ RSpec.describe Narou::SectionCache do
         result = cache.get(index: 1, original_section: section)
 
         expect(result).not_to be_nil
-        expect(result['element']['body']).to eq('変換済み本文')
+        expect(result[:section]['element']['body']).to eq('変換済み本文')
+        expect(result[:use_dakuten_font]).to eq(false)
       end
     end
 
@@ -264,12 +265,14 @@ RSpec.describe Narou::SectionCache do
         {
           index: 1,
           original: { 'subtitle' => '第1話', 'element' => { 'body' => '本文1' } },
-          converted: { 'subtitle' => '第1話', 'element' => { 'body' => '変換済み1' } }
+          converted: { 'subtitle' => '第1話', 'element' => { 'body' => '変換済み1' } },
+          use_dakuten_font: false
         },
         {
           index: 2,
           original: { 'subtitle' => '第2話', 'element' => { 'body' => '本文2' } },
-          converted: { 'subtitle' => '第2話', 'element' => { 'body' => '変換済み2' } }
+          converted: { 'subtitle' => '第2話', 'element' => { 'body' => '変換済み2' } },
+          use_dakuten_font: true
         }
       ]
 
@@ -281,7 +284,14 @@ RSpec.describe Narou::SectionCache do
         index: 1,
         original_section: { 'subtitle' => '第1話', 'element' => { 'body' => '本文1' } }
       )
-      expect(result1['element']['body']).to eq('変換済み1')
+      expect(result1[:section]['element']['body']).to eq('変換済み1')
+      expect(result1[:use_dakuten_font]).to eq(false)
+
+      result2 = new_cache.get(
+        index: 2,
+        original_section: { 'subtitle' => '第2話', 'element' => { 'body' => '本文2' } }
+      )
+      expect(result2[:use_dakuten_font]).to eq(true)
     end
   end
 

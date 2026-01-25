@@ -22,7 +22,7 @@ module Narou
   class SectionCache
     META_FILENAME = 'meta.yaml'
     LOCK_FILENAME = '.lock'
-    CACHE_VERSION = 1
+    CACHE_VERSION = 2
 
     attr_reader :hit_count, :miss_count
 
@@ -168,7 +168,7 @@ module Narou
     #
     # @param index [Integer, String] section index
     # @param original_section [Hash] original section data
-    # @return [Hash, nil] converted section or nil if cache miss
+    # @return [Hash, nil] { section:, use_dakuten_font: } or nil if cache miss
     def get(index:, original_section:)
       return nil unless valid_settings?
 
@@ -186,7 +186,10 @@ module Narou
       entry = @memory_cache[chunk_range][normalized]
       if entry&.valid?(current_hash: current_hash)
         @hit_count += 1
-        return deep_dup(entry.converted_section)
+        return {
+          section: deep_dup(entry.converted_section),
+          use_dakuten_font: entry.use_dakuten_font
+        }
       end
 
       @miss_count += 1
@@ -198,8 +201,9 @@ module Narou
     # @param index [Integer, String] section index
     # @param original_section [Hash] original section data
     # @param converted_section [Hash] converted section data
+    # @param use_dakuten_font [Boolean] whether dakuten font markers were detected
     # @return [void]
-    def store(index:, original_section:, converted_section:)
+    def store(index:, original_section:, converted_section:, use_dakuten_font: false)
       normalized = normalize_index(index)
       return if normalized < 1 # 不正なindexは保存しない
 
@@ -208,7 +212,8 @@ module Narou
 
       entry = CacheEntry.new(
         source_hash: source_hash,
-        converted_section: converted_section
+        converted_section: converted_section,
+        use_dakuten_font: use_dakuten_font
       )
 
       @memory_cache[chunk_range] ||= @archiver.extract(chunk_range: chunk_range)
@@ -301,7 +306,7 @@ module Narou
     # 上書きせずにマージして書き込む
     #
     # @param pending_stores [Array<Hash>] 保存待ちのエントリ
-    #   各要素は { index:, original:, converted: } の形式
+    #   各要素は { index:, original:, converted:, use_dakuten_font: } の形式
     # @return [void]
     def merge_and_flush(pending_stores)
       return if pending_stores.empty?
@@ -322,7 +327,8 @@ module Narou
           store(
             index: item[:index],
             original_section: item[:original],
-            converted_section: item[:converted]
+            converted_section: item[:converted],
+            use_dakuten_font: item[:use_dakuten_font] || false
           )
         end
 

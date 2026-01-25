@@ -10,15 +10,17 @@ module Narou
     #
     # 変換済みセクションとソースのハッシュ値を保持する
     class CacheEntry
-      attr_reader :source_hash, :converted_section
+      attr_reader :source_hash, :converted_section, :use_dakuten_font
 
       # CacheEntry を初期化する
       #
       # @param source_hash [String] SHA256 hash of original section
       # @param converted_section [Hash] converted section data
-      def initialize(source_hash:, converted_section:)
+      # @param use_dakuten_font [Boolean] whether dakuten font markers were detected
+      def initialize(source_hash:, converted_section:, use_dakuten_font: false)
         @source_hash = source_hash
         @converted_section = converted_section
+        @use_dakuten_font = use_dakuten_font
       end
 
       # キャッシュが有効かどうかを判定する
@@ -35,7 +37,8 @@ module Narou
       def to_h
         {
           'source_hash' => @source_hash,
-          'converted_section' => @converted_section
+          'converted_section' => @converted_section,
+          'use_dakuten_font' => @use_dakuten_font
         }
       end
 
@@ -46,7 +49,8 @@ module Narou
       def self.from_h(hash)
         new(
           source_hash: hash['source_hash'],
-          converted_section: hash['converted_section']
+          converted_section: hash['converted_section'],
+          use_dakuten_font: hash['use_dakuten_font'] || false
         )
       end
     end
