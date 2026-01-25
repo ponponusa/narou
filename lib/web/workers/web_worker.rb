@@ -202,9 +202,14 @@ module Narou
       push_server = Narou::AppServer.push_server
       return unless push_server
 
-      # ConvertWorkerの統合サマリーを使用（WebWorker + ConvertWorker両方のタスクを含む）
-      # これにより、WebWorkerの更新時にConvertWorkerのタスクが消えることを防ぐ
-      push_server.send_all("notification.task.updated" => Narou::ConvertWorker.get_combined_tasks_summary)
+      # ConvertWorkerが定義されている場合は統合サマリーを使用
+      # レガシーモード等でConvertWorkerがロードされていない場合はWebWorker単独のサマリーを使用
+      summary = if defined?(Narou::ConvertWorker)
+                  Narou::ConvertWorker.get_combined_tasks_summary
+                else
+                  get_tasks_summary_impl
+                end
+      push_server.send_all("notification.task.updated" => summary)
     end
 
     def countup

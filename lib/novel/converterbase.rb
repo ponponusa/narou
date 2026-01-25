@@ -37,7 +37,7 @@ class ConverterBase
   ENGLISH_SENTENCES_CHARACTERS = /[\w.,!?'" &:;-]+/
   ENGLISH_SENTENCES_MIN_LENGTH = 8 # この文字数以上アルファベットが続くと半角のまま
 
-  attr_reader :use_dakuten_font
+  attr_accessor :use_dakuten_font
   attr_accessor :output_text_dir, :subtitles, :data_type
   attr_accessor :current_index # 現在処理してる subtitles 内でのインデックス
 

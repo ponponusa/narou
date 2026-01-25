@@ -6,11 +6,11 @@
     NovelSettingsUpdateRequest,
     ReplacePattern,
   } from "../types/api";
+  import { getBackendBaseUrl } from "../lib/backend-config";
 
   // ===========================================================================================
   // Constants and Bindings
   // ===========================================================================================
-  const API_BASE_URL = "http://localhost:5678/api/v2"; // Props
   let toast: {
     show: (
       message: string,
@@ -56,7 +56,8 @@
 
     try {
       // 設定データを取得
-      const response = await fetch(`${API_BASE_URL}/novels/${id}/settings`);
+      const baseUrl = await getBackendBaseUrl();
+      const response = await fetch(`${baseUrl}/api/v2/novels/${id}/settings`);
       if (!response.ok) {
         throw new Error("設定の取得に失敗しました");
       }
@@ -115,8 +116,9 @@
         replace_pattern: replacePatterns,
       };
 
+      const baseUrl = await getBackendBaseUrl();
       const response = await fetch(
-        `${API_BASE_URL}/novels/${novelId}/settings`,
+        `${baseUrl}/api/v2/novels/${novelId}/settings`,
         {
           method: "PUT",
           headers: {

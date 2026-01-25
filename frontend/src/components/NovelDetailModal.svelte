@@ -10,6 +10,7 @@
     getNovelStory,
     updateNovels,
   } from "../lib/api";
+  import { getBackendBaseUrl } from "../lib/backend-config";
 
   // Props
   let toast: {
@@ -102,7 +103,8 @@
     if (!novel) return;
 
     try {
-      const downloadUrl = `http://localhost:5678/api/v2/novels/${novel.id}/epub`;
+      const baseUrl = await getBackendBaseUrl();
+      const downloadUrl = `${baseUrl}/api/v2/novels/${novel.id}/epub`;
       const response = await fetch(downloadUrl);
 
       if (!response.ok) {

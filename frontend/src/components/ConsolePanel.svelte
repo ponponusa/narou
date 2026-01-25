@@ -3,6 +3,24 @@
 
   PushServerからのechoイベントを受信してコンソールログを表示する
 -->
+<script lang="ts" context="module">
+  // ログエントリの型定義
+  interface LogEntry {
+    id: number;
+    timestamp: Date;
+    console: "stdout" | "stdout2" | "convert";
+    message: string;
+    isProgress?: boolean; // 進捗メッセージかどうか
+    progressKey?: string; // 進捗を識別するキー
+    processType?: "download" | "convert" | "skip" | "other"; // 処理タイプ
+    novelId?: string; // 小説ID
+  }
+
+  // グローバルログストア（ページ遷移しても保持される）
+  let globalLogs: LogEntry[] = [];
+  let globalNextId = 0;
+</script>
+
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import {
@@ -11,17 +29,6 @@
     type PushServerClient,
   } from "../lib/pushserver";
   import { LogEntry as LogEntryComponent } from "./console";
-
-  interface LogEntry {
-    id: number;
-    timestamp: Date;
-    console: "stdout" | "stdout2" | "convert";
-    message: string;
-    isProgress?: boolean; // 進捗メッセージかどうか
-    progressKey?: string; // 進捗を識別するキー
-    processType?: "download" | "convert" | "other"; // 処理タイプ
-    novelId?: string; // 小説ID
-  }
 
   // localStorageから設定を読み込む
   const STORAGE_KEY = "narou-console-settings";
@@ -66,7 +73,8 @@
     }
   }
 
-  let logs = $state<LogEntry[]>([]);
+  // グローバルログストアからローカルステートを初期化（ページ遷移時にログを引き継ぐ）
+  let logs = $state<LogEntry[]>([...globalLogs]);
   let isOpen = $state(false);
   let autoScroll = $state(true); // 進捗を1行で表示するか
   let compactProgress = $state(true); // 進捗を1行で表示するか
@@ -77,7 +85,7 @@
   let logContainer = $state<HTMLDivElement | undefined>();
   let leftPaneContainer = $state<HTMLDivElement | undefined>();
   let rightPaneContainer = $state<HTMLDivElement | undefined>();
-  let nextId = 0;
+  let nextId = globalNextId;
   let unsubscribe: (() => void) | null = null;
   let isConnected = $state(false);
   let lastUpdateTime = 0;
@@ -86,6 +94,12 @@
     message: string;
     timestamp?: string;
   }> = [];
+
+  // ログ変更時にグローバルストアを同期
+  $effect(() => {
+    globalLogs = [...logs];
+    globalNextId = nextId;
+  });
 
   // プログレスバーの状態
   let currentProgressBar: {
@@ -446,7 +460,7 @@
    * ログメッセージから処理タイプと小説IDを抽出
    */
   function extractProcessInfo(message: string): {
-    processType?: "download" | "convert" | "other";
+    processType?: "download" | "convert" | "skip" | "other";
     novelId?: string;
   } {
     // 小説IDを抽出
@@ -454,10 +468,13 @@
     const novelId = idMatch ? idMatch[1] : undefined;
 
     // 処理タイプを判定
-    let processType: "download" | "convert" | "other" | undefined;
+    let processType: "download" | "convert" | "skip" | "other" | undefined;
 
     if (/ダウンロード|download|DL/i.test(message)) {
       processType = "download";
+    } else if (/スキップ|skip/i.test(message)) {
+      // 変換スキップメッセージを識別
+      processType = "skip";
     } else if (/変換|convert|epub/i.test(message)) {
       processType = "convert";
     } else if (novelId || /処理|progress/i.test(message)) {
@@ -511,23 +528,39 @@
 
   /**
    * 変換系のログをフィルタ
+   * スキップログは変換ログの上部にまとめて表示
    */
   function getConvertLogs(): LogEntry[] {
-    return logs.filter(
+    const convertLogs = logs.filter(
       (log) =>
         log.console === "convert" ||
         log.processType === "convert" ||
-        (!log.processType && /変換|convert|epub/i.test(log.message))
+        log.processType === "skip" ||
+        (!log.processType &&
+          /変換|convert|epub|スキップ|skip/i.test(log.message))
     );
+
+    // スキップログと変換ログを分離
+    const skipLogs = convertLogs.filter((log) => log.processType === "skip");
+    const nonSkipLogs = convertLogs.filter((log) => log.processType !== "skip");
+
+    // それぞれを時間順でソート
+    skipLogs.sort((a, b) => a.id - b.id);
+    nonSkipLogs.sort((a, b) => a.id - b.id);
+
+    // スキップログを上部に、変換ログを下部に配置
+    return [...skipLogs, ...nonSkipLogs];
   }
 
   /**
    * その他のログをフィルタ（分割時は左ペインに表示）
+   * スキップログは変換ペインに表示するため除外
    */
   function getOtherLogs(): LogEntry[] {
     return logs.filter(
       (log) =>
         log.console !== "convert" &&
+        log.processType !== "skip" &&
         (!log.processType || log.processType === "other")
     );
   }
@@ -669,13 +702,17 @@
 
   /**
    * コンソールタイプを表示用にフォーマット
+   *
+   * - stdout: メイン標準出力（ダウンロード・更新処理など）
+   * - stdout2: 並列変換時の第2標準出力（並列処理が有効な場合のみ使用）
+   * - convert: 変換専用出力（EPUB/MOBI変換時）
    */
   function formatConsoleType(
     console: "stdout" | "stdout2" | "convert"
   ): string {
-    if (console === "stdout2") return "stderr";
-    if (console === "convert") return "convert";
-    return "stdout";
+    if (console === "stdout2") return "parallel"; // 並列変換用出力
+    if (console === "convert") return "convert"; // 変換専用出力
+    return "stdout"; // メイン出力
   }
 
   // イベントハンドラの参照を保持

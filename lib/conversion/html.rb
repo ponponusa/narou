@@ -79,11 +79,11 @@ class HTML
   def ruby_to_aozora(text = @string)
     text.tr("《》", "≪≫")
         .gsub(%r{<ruby>(.+?)</ruby>}i) do
-      splited_ruby = $1.split(/<rt>/i)
-      next delete_tag(splited_ruby[0]) unless splited_ruby[1]
-      ruby_base = delete_tag(splited_ruby[0].split(/<rp>/i)[0])
-      ruby_text = delete_tag(splited_ruby[1].split(/<rp>/i)[0])
-      "｜#{ruby_base}《#{ruby_text}》"
+          splited_ruby = $1.split(/<rt>/i)
+          next delete_tag(splited_ruby[0]) unless splited_ruby[1]
+          ruby_base = delete_tag(splited_ruby[0].split(/<rp>/i)[0])
+          ruby_text = delete_tag(splited_ruby[1].split(/<rp>/i)[0])
+          "｜#{ruby_base}《#{ruby_text}》"
     end
   end
 

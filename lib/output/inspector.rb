@@ -4,6 +4,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require "fileutils"
+
 #
 # 小説の状態を監視・検査する
 #
@@ -87,12 +89,33 @@ class Inspector
     }.compact.join("\n\n")
   end
 
+  # 調査ログをファイルに保存する
+  #
+  # メッセージがない場合はファイルを作成しない。
+  # archive_path が無効な場合も処理をスキップする。
+  #
+  # @param path [String, nil] 保存先パス（省略時は archive_path/調査ログ.txt）
+  # @return [void]
   def save(path = nil)
+    # メッセージがない場合はファイルを作成しない
+    return if @messages.empty?
+
+    # archive_path が無効な場合はスキップ
+    return if @setting.archive_path.nil? || @setting.archive_path.empty?
+
     path = File.join(@setting.archive_path, INSPECT_LOG_NAME) if path.nil?
-    File.open(path, "w") do |fp|
+
+    # ディレクトリが存在しない場合は作成
+    dir = File.dirname(path)
+    FileUtils.mkdir_p(dir) unless File.directory?(dir)
+
+    File.open(path, "w:UTF-8") do |fp|
       fp.puts "--- ログ出力 #{Time.now} ---"
+      fp.puts "対象: #{@setting.title}" if @setting.respond_to?(:title) && @setting.title
       display(ALL, fp)
     end
+  rescue StandardError => e
+    warn "調査ログの保存に失敗しました: #{e.message}"
   end
 
   def log(message)

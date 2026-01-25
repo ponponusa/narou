@@ -23,6 +23,7 @@
   } from "../lib/api";
   import type { Novel, TagInfo } from "../types/api";
   import { getPushServer, type PushServerClient } from "../lib/pushserver";
+  import { getBackendBaseUrl } from "../lib/backend-config";
   import { progressStore } from "../lib/progressStore";
   import { isServerStopped } from "../lib/stores/serverStatus";
   import { measurePerformance, PerformanceMarker } from "../lib/performance";
@@ -1305,7 +1306,8 @@
       processingNovelIds.add(novelId);
       processingNovelIds = new Set(processingNovelIds);
 
-      const downloadUrl = `http://localhost:5678/api/v2/novels/${novelId}/epub`;
+      const baseUrl = await getBackendBaseUrl();
+      const downloadUrl = `${baseUrl}/api/v2/novels/${novelId}/epub`;
       const response = await fetch(downloadUrl);
 
       if (!response.ok) {

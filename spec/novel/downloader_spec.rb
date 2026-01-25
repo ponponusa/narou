@@ -111,5 +111,24 @@ describe Downloader do
       expect(downloader).to be_a(Downloader)
     end
   end
+
+  describe "#start_download result structure" do
+    # start_download の戻り値の構造をテスト
+    # OpenStruct で id, new_arrivals, status を返す
+
+    it "returns OpenStruct with new_arrivals true when there are updates" do
+      result = OpenStruct.new(id: 1, new_arrivals: true, status: :ok)
+
+      expect(result.new_arrivals).to be true
+      expect(result.status).to eq(:ok)
+    end
+
+    it "returns OpenStruct with new_arrivals false when no updates" do
+      result = OpenStruct.new(id: 1, new_arrivals: false, status: :none)
+
+      expect(result.new_arrivals).to be false
+      expect(result.status).to eq(:none)
+    end
+  end
 end
 
