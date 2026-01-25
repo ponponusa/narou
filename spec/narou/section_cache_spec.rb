@@ -209,6 +209,30 @@ RSpec.describe Narou::SectionCache do
         # キャッシュがクリアされていること
         expect(File.exist?(File.join(new_cache.chapters_dir, 'chunk_0001-0200.zst'))).to be false
       end
+
+      it '全設定ハッシュ配下のキャッシュが削除されること' do
+        # 現在のキャッシュを作成
+        FileUtils.mkdir_p(cache.chapters_dir)
+        meta = {
+          'version' => 1,
+          'settings_hash' => cache.instance_variable_get(:@settings_hash),
+          'converter_version' => '1.0.0', # 古いバージョン
+          'created_at' => Time.now.iso8601
+        }
+        File.write(File.join(cache.chapters_dir, 'meta.yaml'), YAML.dump(meta))
+        File.write(File.join(cache.chapters_dir, 'chunk_0001-0200.zst'), 'dummy')
+
+        # 別の設定ハッシュのキャッシュも作成
+        other_cache_dir = File.join(cache.chapters_base_dir, 'othersettings1234')
+        FileUtils.mkdir_p(other_cache_dir)
+        File.write(File.join(other_cache_dir, 'chunk_0001-0200.zst'), 'other_dummy')
+
+        # 新しいキャッシュインスタンスを作成（clear_all_settings_caches が実行される）
+        described_class.new(setting: setting)
+
+        # 両方のキャッシュが削除されていること
+        expect(Dir.exist?(other_cache_dir)).to be false
+      end
     end
   end
 

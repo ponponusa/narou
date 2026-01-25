@@ -219,25 +219,38 @@ class NovelConverter
       thread_converters = {}
       converter_mutex = Mutex.new unless use_processes
 
+      # スレッド/プロセスごとのキャッシュとペンディングストアを管理
+      thread_caches = {}
+      thread_pending_stores = {}
+      cache_mutex = Mutex.new unless use_processes
+      setting_for_cache = @setting
+
       parallel_options = use_processes ? { in_processes: parallel_count } : { in_threads: parallel_count }
 
       sections = Parallel.map_with_index(subtitles, parallel_options) do |subinfo, i|
+        key = subinfo["index"]
+
         # スレッド/プロセス固有のConverterを取得または作成
         if use_processes
           # プロセスベースの場合は毎回新規作成（プロセス間で共有不可）
           thread_converter = converter_class.new(@setting, @inspector, @illustration)
+          thread_cache = initialize_section_cache_for_parallel(setting_for_cache)
         else
           # スレッドベースの場合はThread-localで管理
           thread_id = Thread.current.object_id
           thread_converter = thread_converters[thread_id]
+          thread_cache = thread_caches[thread_id]
           unless thread_converter
-            thread_converter = converter_mutex.synchronize do
+            cache_mutex.synchronize do
               unless thread_converters[thread_id]
                 stream_io.puts "Creating converter for thread #{thread_id}" if ENV["NAROU_DEBUG"]
                 thread_converters[thread_id] = converter_class.new(@setting, @inspector, @illustration)
+                thread_caches[thread_id] = initialize_section_cache
+                thread_pending_stores[thread_id] = []
               end
-              thread_converters[thread_id]
             end
+            thread_converter = thread_converters[thread_id]
+            thread_cache = thread_caches[thread_id]
           end
         end
 
@@ -257,6 +270,15 @@ class NovelConverter
         # セクションをロード
         original_section = load_novel_section(subinfo, section_save_dir)
 
+        # セクションキャッシュを確認（ロックなしで読み取り）
+        if thread_cache
+          cached = thread_cache.get(index: key, original_section: original_section)
+          if cached
+            next cached
+          end
+        end
+
+        # キャッシュミス: 変換処理
         # 独立したコピーを作成
         section = original_section.dup
         section["element"] = original_section["element"].dup
@@ -298,7 +320,28 @@ class NovelConverter
           section["element"][text_type] = converted[[:element, text_type]]
         end
 
+        # プロセスベースの場合は即座にキャッシュに書き込み
+        if use_processes && thread_cache
+          thread_cache.merge_and_flush([{ index: key, original: original_section, converted: section }])
+        elsif thread_cache
+          # スレッドベースの場合はペンディングストアに追加
+          thread_id = Thread.current.object_id
+          cache_mutex.synchronize do
+            thread_pending_stores[thread_id] << { index: key, original: original_section, converted: section }
+          end
+        end
+
         section
+      end
+
+      # スレッドベースの場合、ペンディングストアをまとめてフラッシュ
+      unless use_processes
+        thread_pending_stores.each do |thread_id, pending_stores|
+          next if pending_stores.empty?
+
+          cache = thread_caches[thread_id]
+          cache&.merge_and_flush(pending_stores)
+        end
       end
 
       @use_dakuten_font = @converter.use_dakuten_font

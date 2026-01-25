@@ -70,8 +70,8 @@ module Narou
 
     # キャッシュの整合性をチェックし、必要に応じて修復する
     #
-    # - ディレクトリ名（16文字）とメタのフルハッシュが一致しない場合は clear
-    # - converter_version が変更された場合は clear
+    # - ディレクトリ名（16文字）とメタのフルハッシュが一致しない場合は現在のキャッシュをクリア
+    # - converter_version が変更された場合は全設定ハッシュ配下を削除（ロック付き）
     #
     # @return [void]
     def validate_and_repair_cache
@@ -85,14 +85,37 @@ module Narou
         return
       end
 
-      # converter_version の検証（変更時はキャッシュ全消去）
+      # converter_version の検証（変更時は全設定ハッシュ配下を削除）
       if meta['converter_version'] != Narou::VERSION
         if ENV['NAROU_DEBUG']
-          warn "コンバータバージョン変更を検出 (#{meta['converter_version']} -> #{Narou::VERSION})、キャッシュをクリアします"
+          warn "コンバータバージョン変更を検出 (#{meta['converter_version']} -> #{Narou::VERSION})、全キャッシュをクリアします"
         end
-        clear
+        clear_all_settings_caches
         nil
       end
+    end
+
+    # 全設定ハッシュ配下のキャッシュを削除する（ロック保護付き）
+    #
+    # converter_version 変更時に呼び出される。
+    # ベースディレクトリ配下の全キャッシュを削除する。
+    #
+    # @return [void]
+    def clear_all_settings_caches
+      return unless Dir.exist?(@chapters_base_dir)
+
+      with_lock do
+        Dir.glob(File.join(@chapters_base_dir, '*')).each do |entry|
+          next unless File.directory?(entry)
+          next if File.basename(entry) == LOCK_FILENAME.sub(/^\./, '')
+
+          FileUtils.rm_rf(entry)
+        end
+      end
+
+      # メモリキャッシュもクリア
+      @memory_cache.clear
+      @dirty_chunks.clear
     end
 
     # 古いキャッシュディレクトリを削除する（ロック保護付き）
