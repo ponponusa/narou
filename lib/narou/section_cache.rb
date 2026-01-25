@@ -169,6 +169,8 @@ module Narou
       return nil unless valid_settings?
 
       index = index.to_i
+      return nil if index < 1 # 不正なindexはキャッシュ無効扱い
+
       current_hash = compute_source_hash(original_section)
       chunk_range = @archiver.chunk_range_for(index)
 
@@ -195,6 +197,8 @@ module Narou
     # @return [void]
     def store(index:, original_section:, converted_section:)
       index = index.to_i
+      return if index < 1 # 不正なindexは保存しない
+
       source_hash = compute_source_hash(original_section)
       chunk_range = @archiver.chunk_range_for(index)
 

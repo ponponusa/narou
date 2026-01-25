@@ -108,6 +108,8 @@ module Narou
       # @return [void]
       def update_entry(index:, entry:)
         index = index.to_i
+        return if index < 1 # 不正なindexは無視
+
         chunk_range = chunk_range_for(index)
         existing = extract(chunk_range: chunk_range)
         existing[index] = entry
@@ -120,6 +122,8 @@ module Narou
       # @return [void]
       def delete_entry(index:)
         index = index.to_i
+        return if index < 1 # 不正なindexは無視
+
         chunk_range = chunk_range_for(index)
         existing = extract(chunk_range: chunk_range)
         existing.delete(index)
