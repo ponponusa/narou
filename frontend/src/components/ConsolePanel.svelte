@@ -3,15 +3,8 @@
 
   PushServerからのechoイベントを受信してコンソールログを表示する
 -->
-<script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import {
-    getPushServer,
-    type EchoMessage,
-    type PushServerClient,
-  } from "../lib/pushserver";
-  import { LogEntry as LogEntryComponent } from "./console";
-
+<script lang="ts" context="module">
+  // ログエントリの型定義
   interface LogEntry {
     id: number;
     timestamp: Date;
@@ -22,6 +15,20 @@
     processType?: "download" | "convert" | "other"; // 処理タイプ
     novelId?: string; // 小説ID
   }
+
+  // グローバルログストア（ページ遷移しても保持される）
+  let globalLogs: LogEntry[] = [];
+  let globalNextId = 0;
+</script>
+
+<script lang="ts">
+  import { onMount, onDestroy } from "svelte";
+  import {
+    getPushServer,
+    type EchoMessage,
+    type PushServerClient,
+  } from "../lib/pushserver";
+  import { LogEntry as LogEntryComponent } from "./console";
 
   // localStorageから設定を読み込む
   const STORAGE_KEY = "narou-console-settings";
@@ -66,7 +73,8 @@
     }
   }
 
-  let logs = $state<LogEntry[]>([]);
+  // グローバルログストアからローカルステートを初期化（ページ遷移時にログを引き継ぐ）
+  let logs = $state<LogEntry[]>([...globalLogs]);
   let isOpen = $state(false);
   let autoScroll = $state(true); // 進捗を1行で表示するか
   let compactProgress = $state(true); // 進捗を1行で表示するか
@@ -77,7 +85,7 @@
   let logContainer = $state<HTMLDivElement | undefined>();
   let leftPaneContainer = $state<HTMLDivElement | undefined>();
   let rightPaneContainer = $state<HTMLDivElement | undefined>();
-  let nextId = 0;
+  let nextId = globalNextId;
   let unsubscribe: (() => void) | null = null;
   let isConnected = $state(false);
   let lastUpdateTime = 0;
@@ -86,6 +94,12 @@
     message: string;
     timestamp?: string;
   }> = [];
+
+  // ログ変更時にグローバルストアを同期
+  $effect(() => {
+    globalLogs = [...logs];
+    globalNextId = nextId;
+  });
 
   // プログレスバーの状態
   let currentProgressBar: {
