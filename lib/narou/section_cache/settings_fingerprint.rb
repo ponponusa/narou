@@ -33,10 +33,14 @@ module Narou
         enable_transform_date
         date_format
         enable_convert_horizontal_ellipsis
+        enable_convert_page_break
+        to_page_break_threshold
         enable_dakuten_font
         enable_ruby_youon_to_big
         enable_pack_blank_line
         enable_kana_ni_to_kanji_ni
+        enable_insert_word_separator
+        enable_insert_char_separator
         enable_strip_decoration_tag
         enable_prolonged_sound_mark_to_dash
         enable_erase_introduction
