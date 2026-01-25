@@ -156,8 +156,9 @@ class NovelConverter
       # 並列処理の閾値（環境変数で制御可能、デフォルト: 100エピソード）
       parallel_threshold = (ENV["NAROU_PARALLEL_THRESHOLD"] || "100").to_i
 
-      # 並列処理が有効な場合（デフォルト有効、環境変数で無効化可能）
-      parallel_enabled = ENV["NAROU_PARALLEL_CONVERT"] != "false" && subtitles.size >= parallel_threshold
+      # 並列処理が有効な場合（デフォルト無効、環境変数で有効化可能）
+      # セクションキャッシュにより並列化の必要性が低下したため、デフォルトでは無効
+      parallel_enabled = ENV["NAROU_PARALLEL_CONVERT"] == "true" && subtitles.size >= parallel_threshold
 
       if parallel_enabled
         # プロセスベースの並列化を使用（GILの影響を回避）
