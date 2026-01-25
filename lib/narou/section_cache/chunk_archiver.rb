@@ -23,8 +23,11 @@ module Narou
     #
     # 200話単位でチャンクを作成し、zstd（優先）またはgzip（フォールバック）で圧縮する
     class ChunkArchiver
-      # チャンクサイズ（最小値は1、0以下は200にフォールバック）
-      CHUNK_SIZE = [(ENV['NAROU_CACHE_CHUNK_SIZE'] || '200').to_i, 1].max
+      # チャンクサイズ（0以下や非数値は200にフォールバック）
+      CHUNK_SIZE = begin
+        val = (ENV['NAROU_CACHE_CHUNK_SIZE'] || '200').to_i
+        val > 0 ? val : 200
+      end
       ARCHIVE_VERSION = 1
 
       # ChunkArchiver を初期化する

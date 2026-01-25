@@ -217,7 +217,6 @@ class NovelConverter
       # 各スレッド/プロセス用のConverterをThread-localストレージで管理
       converter_class = load_converter(@setting.archive_path)
       thread_converters = {}
-      converter_mutex = Mutex.new unless use_processes
 
       # スレッド/プロセスごとのキャッシュとペンディングストアを管理
       thread_caches = {}
