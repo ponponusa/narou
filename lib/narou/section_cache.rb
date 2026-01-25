@@ -47,6 +47,10 @@ module Narou
       @hit_count = 0
       @miss_count = 0
 
+      # toc.yaml からインデックス正規化マッピングを構築
+      # （カクヨムのような巨大IDを連番に変換するため）
+      @index_to_position = build_index_mapping
+
       # キャッシュの整合性チェックと自動修復
       validate_and_repair_cache
 
@@ -168,18 +172,18 @@ module Narou
     def get(index:, original_section:)
       return nil unless valid_settings?
 
-      index = index.to_i
-      return nil if index < 1 # 不正なindexはキャッシュ無効扱い
+      normalized = normalize_index(index)
+      return nil if normalized < 1 # 不正なindexはキャッシュ無効扱い
 
       current_hash = compute_source_hash(original_section)
-      chunk_range = @archiver.chunk_range_for(index)
+      chunk_range = @archiver.chunk_range_for(normalized)
 
       # メモリキャッシュを確認
       unless @memory_cache.key?(chunk_range)
         @memory_cache[chunk_range] = @archiver.extract(chunk_range: chunk_range)
       end
 
-      entry = @memory_cache[chunk_range][index]
+      entry = @memory_cache[chunk_range][normalized]
       if entry&.valid?(current_hash: current_hash)
         @hit_count += 1
         return deep_dup(entry.converted_section)
@@ -196,11 +200,11 @@ module Narou
     # @param converted_section [Hash] converted section data
     # @return [void]
     def store(index:, original_section:, converted_section:)
-      index = index.to_i
-      return if index < 1 # 不正なindexは保存しない
+      normalized = normalize_index(index)
+      return if normalized < 1 # 不正なindexは保存しない
 
       source_hash = compute_source_hash(original_section)
-      chunk_range = @archiver.chunk_range_for(index)
+      chunk_range = @archiver.chunk_range_for(normalized)
 
       entry = CacheEntry.new(
         source_hash: source_hash,
@@ -208,7 +212,7 @@ module Narou
       )
 
       @memory_cache[chunk_range] ||= @archiver.extract(chunk_range: chunk_range)
-      @memory_cache[chunk_range][index] = entry
+      @memory_cache[chunk_range][normalized] = entry
       @dirty_chunks.add(chunk_range)
     end
 
@@ -305,7 +309,7 @@ module Narou
       with_lock do
         # ロック取得後に最新のチャンクを再読込
         affected_chunks = pending_stores.map do |item|
-          @archiver.chunk_range_for(item[:index])
+          @archiver.chunk_range_for(normalize_index(item[:index]))
         end.uniq
 
         affected_chunks.each do |chunk_range|
@@ -328,6 +332,43 @@ module Narou
     end
 
     private
+
+    # toc.yaml からインデックス正規化マッピングを構築する
+    #
+    # カクヨムのような巨大なエピソードID（例: '4852201425154905928'）を
+    # 連番（1, 2, 3...）に正規化するためのマッピングを作成する
+    #
+    # @return [Hash<String, Integer>] 元のindex => 連番位置 のマッピング
+    def build_index_mapping
+      toc_path = File.join(@setting.archive_path, 'toc.yaml')
+      return {} unless File.exist?(toc_path)
+
+      toc = YAML.safe_load_file(toc_path, permitted_classes: [Time])
+      subtitles = toc['subtitles'] || []
+
+      mapping = {}
+      subtitles.each_with_index do |subtitle, i|
+        original_index = subtitle['index']
+        next unless original_index
+
+        mapping[original_index.to_s] = i + 1 # 1-based position
+      end
+      mapping
+    rescue StandardError
+      {}
+    end
+
+    # インデックスを正規化する
+    #
+    # toc.yaml に基づくマッピングが存在する場合は連番に変換する
+    # マッピングがない場合は元の値を整数として返す
+    #
+    # @param index [Integer, String] section index
+    # @return [Integer] normalized index
+    def normalize_index(index)
+      str_index = index.to_s
+      @index_to_position[str_index] || str_index.to_i
+    end
 
     def meta_path
       File.join(@chapters_dir, META_FILENAME)
