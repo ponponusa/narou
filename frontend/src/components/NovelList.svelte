@@ -67,12 +67,14 @@
   let filterText = $state("");
   let selectedTag = $state<string[]>([]);
   let selectedSite = $state<string[]>([]);
+  let selectedNovelType = $state<string[]>([]);
   let selectedStatus = $state<string[]>([]);
 
   // フォーム入力中の一時的な値
   let draftFilterText = $state("");
   let draftSelectedTag = $state<string[]>([]);
   let draftSelectedSite = $state<string[]>([]);
+  let draftSelectedNovelType = $state<string[]>([]);
   let draftSelectedStatus = $state<string[]>([]);
 
   // フィルタ処理中フラグ
@@ -161,6 +163,7 @@
         pageSize,
         selectedTag: selectedTag,
         selectedSite: selectedSite,
+        selectedNovelType: selectedNovelType,
         selectedStatus: selectedStatus,
         sortBy,
         sortOrder,
@@ -201,6 +204,11 @@
           : settings.selectedSite
             ? [settings.selectedSite]
             : [];
+        selectedNovelType = Array.isArray(settings.selectedNovelType)
+          ? settings.selectedNovelType
+          : settings.selectedNovelType
+            ? [settings.selectedNovelType]
+            : [];
         selectedStatus = Array.isArray(settings.selectedStatus)
           ? settings.selectedStatus
           : settings.selectedStatus
@@ -212,6 +220,7 @@
         // draft変数も初期化
         draftSelectedTag = [...selectedTag];
         draftSelectedSite = [...selectedSite];
+        draftSelectedNovelType = [...selectedNovelType];
         draftSelectedStatus = [...selectedStatus];
       }
     } catch (err) {
@@ -434,7 +443,15 @@
           marker.mark("site");
         }
 
-        // 3. 状態フィルタ
+        // 3. 掲載種別フィルタ
+        if (selectedNovelType.length > 0) {
+          result = result.filter(
+            (n) => n.novel_type && selectedNovelType.includes(n.novel_type)
+          );
+          marker.mark("novel_type");
+        }
+
+        // 4. 状態フィルタ
         if (selectedStatus.length > 0) {
           result = result.filter((n) => selectedStatus.includes(n.status));
           marker.mark("status");
@@ -1195,6 +1212,7 @@
       filterText = draftFilterText;
       selectedTag = [...draftSelectedTag];
       selectedSite = [...draftSelectedSite];
+      selectedNovelType = [...draftSelectedNovelType];
       selectedStatus = [...draftSelectedStatus];
       currentPage = 0;
 
@@ -1247,10 +1265,12 @@
     draftFilterText = "";
     draftSelectedTag = [];
     draftSelectedSite = [];
+    draftSelectedNovelType = [];
     draftSelectedStatus = [];
     filterText = "";
     selectedTag = [];
     selectedSite = [];
+    selectedNovelType = [];
     selectedStatus = [];
     sortBy = "updated_at";
     sortOrder = "desc";
@@ -1632,20 +1652,34 @@
               />
             </div>
 
-            <!-- 状態フィルター -->
-            <div>
-              <MultiSelectDropdown
-                id="statusFilter"
-                label="状態"
-                bind:value={draftSelectedStatus}
-                options={[
-                  { value: "凍結", label: "凍結" },
-                  { value: "完結", label: "完結" },
-                  { value: "削除", label: "削除" },
-                  { value: "中断", label: "中断" },
-                ]}
-                placeholder="すべて"
-              />
+            <!-- 掲載種別・状態フィルター -->
+            <div class="flex gap-2">
+              <div class="flex-1 min-w-0">
+                <MultiSelectDropdown
+                  id="novelTypeFilter"
+                  label="種別"
+                  bind:value={draftSelectedNovelType}
+                  options={[
+                    { value: "短編", label: "短編" },
+                    { value: "連載", label: "連載" },
+                  ]}
+                  placeholder="すべて"
+                />
+              </div>
+              <div class="flex-1 min-w-0">
+                <MultiSelectDropdown
+                  id="statusFilter"
+                  label="状態"
+                  bind:value={draftSelectedStatus}
+                  options={[
+                    { value: "凍結", label: "凍結" },
+                    { value: "完結", label: "完結" },
+                    { value: "削除", label: "削除" },
+                    { value: "中断", label: "中断" },
+                  ]}
+                  placeholder="すべて"
+                />
+              </div>
             </div>
 
             <!-- アクション -->
@@ -1674,7 +1708,7 @@
           </div>
 
           <!-- アクティブフィルター表示 -->
-          {#if filterText || selectedTag || selectedSite || selectedStatus || sortBy}
+          {#if filterText || selectedTag || selectedSite || selectedNovelType || selectedStatus || sortBy}
             <div class="mt-3 flex flex-wrap gap-2 items-center">
               <span class="text-xs text-gray-600 dark:text-gray-400"
                 >フィルター:</span
@@ -1698,6 +1732,13 @@
                   class="px-2 py-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded whitespace-nowrap"
                 >
                   サイト: {selectedSite}
+                </span>
+              {/if}
+              {#if selectedNovelType}
+                <span
+                  class="px-2 py-1 text-xs bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 rounded whitespace-nowrap"
+                >
+                  種別: {selectedNovelType}
                 </span>
               {/if}
               {#if selectedStatus}
