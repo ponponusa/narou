@@ -1652,34 +1652,34 @@
               />
             </div>
 
-            <!-- 掲載種別フィルター -->
-            <div>
-              <MultiSelectDropdown
-                id="novelTypeFilter"
-                label="種別"
-                bind:value={draftSelectedNovelType}
-                options={[
-                  { value: "短編", label: "短編" },
-                  { value: "連載", label: "連載" },
-                ]}
-                placeholder="すべて"
-              />
-            </div>
-
-            <!-- 状態フィルター -->
-            <div>
-              <MultiSelectDropdown
-                id="statusFilter"
-                label="状態"
-                bind:value={draftSelectedStatus}
-                options={[
-                  { value: "凍結", label: "凍結" },
-                  { value: "完結", label: "完結" },
-                  { value: "削除", label: "削除" },
-                  { value: "中断", label: "中断" },
-                ]}
-                placeholder="すべて"
-              />
+            <!-- 掲載種別・状態フィルター -->
+            <div class="flex gap-2">
+              <div class="flex-1 min-w-0">
+                <MultiSelectDropdown
+                  id="novelTypeFilter"
+                  label="種別"
+                  bind:value={draftSelectedNovelType}
+                  options={[
+                    { value: "短編", label: "短編" },
+                    { value: "連載", label: "連載" },
+                  ]}
+                  placeholder="すべて"
+                />
+              </div>
+              <div class="flex-1 min-w-0">
+                <MultiSelectDropdown
+                  id="statusFilter"
+                  label="状態"
+                  bind:value={draftSelectedStatus}
+                  options={[
+                    { value: "凍結", label: "凍結" },
+                    { value: "完結", label: "完結" },
+                    { value: "削除", label: "削除" },
+                    { value: "中断", label: "中断" },
+                  ]}
+                  placeholder="すべて"
+                />
+              </div>
             </div>
 
             <!-- アクション -->
