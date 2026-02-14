@@ -477,6 +477,7 @@ module NovelListProcessor
     item[:author].to_s.match?(search_regex) ||
     item[:sitename].to_s.match?(search_regex) ||
     item[:status].to_s.match?(search_regex) ||
+    item[:novel_type].to_s.match?(search_regex) ||
     item[:raw_tags].any? { |tag| tag.match?(search_regex) }
   end
 
