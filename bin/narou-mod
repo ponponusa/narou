@@ -40,8 +40,9 @@ begin
     is_windows = Gem.win_platform? rescue (/mswin|mingw|cygwin|bccwin|wince|emx/ =~ RUBY_PLATFORM)
     unless is_windows
       require "bootsnap"
+      require "tmpdir"
       Bootsnap.setup(
-        cache_dir: "tmp/bootsnap-cache",
+        cache_dir: File.join(Dir.tmpdir, "narou-mod-bootsnap"),
         development_mode: false,
         load_path_cache: true,
         compile_cache_iseq: true,
