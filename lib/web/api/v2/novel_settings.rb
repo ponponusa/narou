@@ -170,7 +170,7 @@ module Narou
                 )
               else
                 status 400
-                json error_response("VALIDATION_ERROR", "#{error_list.size} settings have errors", error_list)
+                json error_response("VALIDATION_ERROR", "#{error_list.size} settings have errors", details: error_list)
               end
             rescue StandardError => e
               status 500
