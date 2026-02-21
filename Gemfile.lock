@@ -70,9 +70,13 @@ GEM
     docile (1.4.1)
     drb (2.2.3)
     erubi (1.13.1)
-    ffi (1.17.3-x86_64-linux-gnu)
+    ffi (1.17.3)
+    ffi (1.17.3-x64-mingw-ucrt)
     fiddle (1.1.8)
-    google-protobuf (4.33.5-x86_64-linux-gnu)
+    google-protobuf (4.33.5)
+      bigdecimal
+      rake (>= 13)
+    google-protobuf (4.33.5-x64-mingw-ucrt)
       bigdecimal
       rake (>= 13)
     haml (5.2.2)
@@ -96,6 +100,7 @@ GEM
     memoist (0.16.2)
     method_source (1.1.0)
     mini_mime (1.1.5)
+    mini_portile2 (2.8.9)
     minitest (6.0.1)
       prism (~> 1.5)
     msgpack (1.8.0)
@@ -113,7 +118,10 @@ GEM
       net-protocol
     nio4r (2.7.5)
     nkf (0.2.0)
-    nokogiri (1.19.1-x86_64-linux-gnu)
+    nokogiri (1.19.1)
+      mini_portile2 (~> 2.8.2)
+      racc (~> 1.4)
+    nokogiri (1.19.1-x64-mingw-ucrt)
       racc (~> 1.4)
     open_uri_redirections (0.2.1)
     ostruct (0.6.3)
@@ -191,10 +199,15 @@ GEM
       prism (~> 1.7)
     ruby-prof (1.7.2)
       base64
+    ruby-prof (1.7.2-x64-mingw-ucrt)
+      base64
     ruby-progressbar (1.13.0)
     ruby2_keywords (0.0.5)
     rubyzip (3.2.2)
-    sass-embedded (1.97.3-x86_64-linux-gnu)
+    sass-embedded (1.97.3)
+      google-protobuf (~> 4.31)
+      rake (>= 13)
+    sass-embedded (1.97.3-x64-mingw-ucrt)
       google-protobuf (~> 4.31)
     securerandom (0.4.1)
     simplecov (0.22.0)
@@ -256,10 +269,12 @@ GEM
     unicode-display_width (2.6.0)
     unicode_utils (1.4.0)
     uri (1.1.1)
+    win32ole (1.9.3)
     wisper (2.0.1)
 
 PLATFORMS
-  x86_64-linux-gnu
+  ruby
+  x64-mingw-ucrt
 
 DEPENDENCIES
   awesome_print (~> 1.9)
