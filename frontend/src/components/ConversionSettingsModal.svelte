@@ -79,7 +79,7 @@
           workingSettings[item.name] = item.value;
         });
       } else {
-        throw new Error(result.error || "設定の取得に失敗しました");
+        throw new Error(result.error?.message || "設定の取得に失敗しました");
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -134,7 +134,7 @@
         toast?.show("設定を保存しました", "success");
         closeModal();
       } else {
-        throw new Error(result.error || "設定の保存に失敗しました");
+        throw new Error(result.error?.message || "設定の保存に失敗しました");
       }
     } catch (error) {
       console.error("Error saving settings:", error);

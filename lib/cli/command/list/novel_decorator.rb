@@ -4,6 +4,8 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require "lib/cli/command/tag"
+
 module Command
   class List < CommandBase
     class NovelDecorator

@@ -28,8 +28,8 @@ module Narou
       end
 
       # エラーレスポンス
-      def error_response(code, message)
-        {
+      def error_response(code, message, details: nil)
+        response = {
           success: false,
           error: {
             code: code,
@@ -37,6 +37,8 @@ module Narou
           },
           timestamp: Time.now.to_i
         }
+        response[:error][:details] = details if details
+        response
       end
     end
 
