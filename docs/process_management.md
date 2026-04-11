@@ -12,7 +12,7 @@ narou-modは堅牢なプロセス管理機能を提供し、サーバーの起�
 
 - 既存のnarou-modプロセスが実行中かどうか
 - 必要なポート(デフォルト: 5678, 5679, 4321)が使用可能かどうか
-- プロセス情報ファイル(`tmp/pids/*.pid`)の整合性
+- プロセス情報ファイル(`<システム一時ディレクトリ>/narou-mod/<hash>/pids/*.pid`)の整合性
 
 ### 2. ポート競合検出
 
@@ -49,10 +49,12 @@ bundle exec ruby narou.rb web --force
 
 ## プロセス情報ファイル
 
-プロセス情報は`tmp/pids/`ディレクトリに保存されます:
+プロセス情報はシステムの一時ディレクトリ配下に保存されます（プロジェクトごとにハッシュで分離）:
 
 ```bash
-tmp/pids/
+# Linux: /tmp/narou-mod/<hash>/pids/
+# macOS: /var/folders/.../<hash>/pids/
+pids/
 ├── narou-backend.pid    # バックエンドプロセス情報
 ├── narou-backend.port   # 使用ポート
 ├── narou-frontend.pid   # フロントエンドプロセス情報
@@ -138,7 +140,7 @@ Windows側とWSL側や、ホスト側とDocker側で別々にプロセスが起�
 プロセスが異常終了した場合、PIDファイルが残ることがあります:
 
 ```bash
-rm -f tmp/pids/*.pid tmp/pids/*.port
+rm -rf /tmp/narou-mod/
 ```
 
 または起動時に自動的にクリーンアップされます。
