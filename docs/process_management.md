@@ -12,7 +12,7 @@ narou-modは堅牢なプロセス管理機能を提供し、サーバーの起�
 
 - 既存のnarou-modプロセスが実行中かどうか
 - 必要なポート(デフォルト: 5678, 5679, 4321)が使用可能かどうか
-- プロセス情報ファイル(`tmp/pids/*.pid`)の整合性
+- プロセス情報ファイル(`<システム一時ディレクトリ>/narou-mod/<hash>/pids/*.pid`)の整合性
 
 ### 2. ポート競合検出
 
@@ -49,10 +49,12 @@ bundle exec ruby narou.rb web --force
 
 ## プロセス情報ファイル
 
-プロセス情報は`tmp/pids/`ディレクトリに保存されます:
+プロセス情報はシステムの一時ディレクトリ配下に保存されます（プロジェクトごとにハッシュで分離）:
 
 ```bash
-tmp/pids/
+# Linux: /tmp/narou-mod/<hash>/pids/
+# macOS: /var/folders/.../T/narou-mod/<hash>/pids/
+pids/
 ├── narou-backend.pid    # バックエンドプロセス情報
 ├── narou-backend.port   # 使用ポート
 ├── narou-frontend.pid   # フロントエンドプロセス情報
@@ -98,13 +100,13 @@ bundle exec ruby narou.rb web --force
 ### プロセスのクリーンアップ
 
 ```bash
-./bin/cleanup_processes.sh
+./scripts/process_control.sh
 ```
 
 または
 
 ```bash
-./bin/cleanup_processes.sh -y  # 自動承認
+./scripts/process_control.sh --kill --force  # 確認なしで全プロセス終了
 ```
 
 ## トラブルシューティング
@@ -121,7 +123,7 @@ bundle exec ruby narou.rb web --force
 **対処法:**
 
 1. 表示されたプロセスを手動で停止: `kill 12345`
-2. クリーンアップスクリプトを実行: `./bin/cleanup_processes.sh`
+2. クリーンアップスクリプトを実行: `./scripts/process_control.sh`
 3. 別のポートを指定: `narou web -p 8000`
 4. 強制起動: `narou web --force`
 
@@ -131,14 +133,16 @@ Windows側とWSL側や、ホスト側とDocker側で別々にプロセスが起�
 
 1. **Windows/ホストOS側を確認**: タスクマネージャーまたは`tasklist | findstr ruby`や、ホストOSのプロセス管理ツールで確認
 2. **WSL/Docker側を確認**: `ps aux | grep ruby`
-3. **両方をクリーンアップ**: 各環境で`cleanup_processes.sh`を実行
+3. **両方をクリーンアップ**: 各環境で`scripts/process_control.sh`を実行
 
 ### PIDファイルが残っている
 
 プロセスが異常終了した場合、PIDファイルが残ることがあります:
 
 ```bash
-rm -f tmp/pids/*.pid tmp/pids/*.port
+# 現在のプロジェクトの一時ファイルのみ削除（ruby で tmp_dir を確認）
+ruby -e 'require "tmpdir"; require "digest"; hash = Digest::SHA256.hexdigest(Dir.pwd)[0,8]; puts File.join(Dir.tmpdir, "narou-mod", hash)'
+# 表示されたパスを削除
 ```
 
 または起動時に自動的にクリーンアップされます。
@@ -174,4 +178,4 @@ rm -f tmp/pids/*.pid tmp/pids/*.port
 
 - [process_manager.rb](../lib/narou/process_manager.rb) - 実装
 - [process_manager_spec.rb](../spec/narou/process_manager_spec.rb) - テスト
-- [cleanup_processes.sh](../bin/cleanup_processes.sh) - クリーンアップスクリプト
+- [process_control.sh](../scripts/process_control.sh) - クリーンアップスクリプト
