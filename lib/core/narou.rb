@@ -7,6 +7,7 @@
 require "fileutils"
 require "memoist"
 require "pathname"
+require "tmpdir"
 require "active_support/core_ext/object/blank"
 require "lib/utilities/helper"
 require "lib/core/inventory"
@@ -46,6 +47,13 @@ module Narou
 
     def last_commit_year
       2025
+    end
+
+    # PIDファイルやログなど一時ファイル用ディレクトリ
+    # Narou.root_dir/tmp/ ではなくシステムの一時ディレクトリを使用することで
+    # ホームディレクトリに ~/tmp が作成される問題を回避する
+    def tmp_dir
+      File.join(Dir.tmpdir, "narou-mod")
     end
 
     def root_dir

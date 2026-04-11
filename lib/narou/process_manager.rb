@@ -18,10 +18,9 @@ module Narou
 
     attr_reader :pid_file_path, :port_file_path
 
-    def initialize(service_name, root_dir: Narou.root_dir)
+    def initialize(service_name, root_dir: nil)
       @service_name = service_name
-      @root_dir = root_dir
-      @pid_dir = File.join(@root_dir, "tmp", "pids")
+      @pid_dir = File.join(Narou.tmp_dir, "pids")
       @pid_file_path = File.join(@pid_dir, "#{@service_name}.pid")
       @port_file_path = File.join(@pid_dir, "#{@service_name}.port")
 

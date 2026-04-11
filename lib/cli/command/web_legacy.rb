@@ -185,7 +185,7 @@ module Command
 
       if @daemon_mode
         $stdout.puts "WEBサーバーをバックグラウンドで起動しています..."
-        $stdout.puts "ログ: tmp/logs/narou-web.log"
+        $stdout.puts "ログ: #{File.join(Narou.tmp_dir, "logs", "narou-web.log")}"
       end
 
       max_retries = 5
@@ -362,7 +362,7 @@ module Command
         write_pid_file
 
         # ログファイルにリダイレクト
-        log_file = File.join(Narou.root_dir, "tmp", "logs", "narou-web.log")
+        log_file = File.join(Narou.tmp_dir, "logs", "narou-web.log")
         log_dir = File.dirname(log_file)
         FileUtils.mkdir_p(log_dir) unless File.exist?(log_dir)
         $stdout.reopen(log_file, "a")
@@ -380,7 +380,7 @@ module Command
     end
 
     def pid_file_path
-      File.join(Narou.root_dir, "tmp", "pids", "narou-web.pid")
+      File.join(Narou.tmp_dir, "pids", "narou-web.pid")
     end
 
     def write_pid_file

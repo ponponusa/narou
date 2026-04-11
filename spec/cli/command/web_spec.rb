@@ -7,7 +7,7 @@ RSpec.describe Command::Web do
 
   before do
     # PIDファイルのクリーンアップ
-    pid_dir = File.join(Narou.root_dir, "tmp", "pids")
+    pid_dir = File.join(Narou.tmp_dir, "pids")
     FileUtils.rm_f(Dir.glob(File.join(pid_dir, "*.pid"))) if File.exist?(pid_dir)
 
     # OutputHelperのモック（標準出力への出力を抑制）
@@ -142,7 +142,7 @@ RSpec.describe Command::Web do
 
   describe "#start_frontend" do
     let(:frontend_dir) { File.join(Narou.root_dir, "frontend") }
-    let(:frontend_log) { File.join(Narou.root_dir, "tmp", "logs", "narou-frontend.log") }
+    let(:frontend_log) { File.join(Narou.tmp_dir, "logs", "narou-frontend.log") }
 
     before do
       # frontend ディレクトリが存在することを前提とする
