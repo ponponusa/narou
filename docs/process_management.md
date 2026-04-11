@@ -106,7 +106,7 @@ bundle exec ruby narou.rb web --force
 または
 
 ```bash
-./scripts/process_control.sh -y  # 自動承認
+./scripts/process_control.sh --kill --force  # 確認なしで全プロセス終了
 ```
 
 ## トラブルシューティング

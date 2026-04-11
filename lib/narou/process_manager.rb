@@ -137,7 +137,7 @@ module Narou
         停止するには以下のコマンドを実行してください:
           kill #{pid}
         または
-          ./scripts/process_control.sh -y
+          ./scripts/process_control.sh --kill --force
       MSG
     end
 
