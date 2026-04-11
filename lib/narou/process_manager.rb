@@ -137,7 +137,7 @@ module Narou
         停止するには以下のコマンドを実行してください:
           kill #{pid}
         または
-          ./bin/cleanup_processes.sh -y
+          ./scripts/process_control.sh -y
       MSG
     end
 
@@ -165,7 +165,7 @@ module Narou
         以下のいずれかの対処を行ってください:
         1. ポートを使用しているプロセスを停止する
         2. 別のポートを指定する（--port オプション）
-        3. ./bin/cleanup_processes.sh を実行して関連プロセスをクリーンアップする
+        3. ./scripts/process_control.sh を実行して関連プロセスをクリーンアップする
       MSG
 
       raise PortConflictError, error_msg
