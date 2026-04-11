@@ -800,7 +800,7 @@ json_data_source:
   type: "application/json"
   paths:
     work_id: "query.workId"
-    toc: "props.pageProps.__APOLLO_STATE__.Work:{workId}.tableOfContents"
+    toc: "props.pageProps.__APOLLO_STATE__.Work:{workId}.tableOfContentsV2"
     title: "props.pageProps.__APOLLO_STATE__.Work:{workId}.title"
     author: "props.pageProps.__APOLLO_STATE__.Work:{workId}.author.__ref"
 

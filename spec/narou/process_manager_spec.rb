@@ -6,25 +6,28 @@ require "tmpdir"
 require "lib/narou/process_manager"
 
 describe Narou::ProcessManager do
-  let(:test_dir) { Dir.mktmpdir }
+  let(:test_tmp_dir) { Dir.mktmpdir }
   let(:service_name) { "test-service" }
-  let(:manager) { described_class.new(service_name, root_dir: test_dir) }
+  let(:manager) do
+    allow(Narou).to receive(:tmp_dir).and_return(test_tmp_dir)
+    described_class.new(service_name)
+  end
 
   after do
-    FileUtils.rm_rf(test_dir)
+    FileUtils.rm_rf(test_tmp_dir)
   end
 
   describe "#initialize" do
     it "sets correct file paths" do
-      expect(manager.pid_file_path).to eq(File.join(test_dir, "tmp", "pids", "#{service_name}.pid"))
-      expect(manager.port_file_path).to eq(File.join(test_dir, "tmp", "pids", "#{service_name}.port"))
+      expect(manager.pid_file_path).to eq(File.join(test_tmp_dir, "pids", "#{service_name}.pid"))
+      expect(manager.port_file_path).to eq(File.join(test_tmp_dir, "pids", "#{service_name}.port"))
     end
   end
 
   describe "#register_process" do
     it "creates PID directory and file" do
       manager.register_process
-      expect(File.directory?(File.join(test_dir, "tmp", "pids"))).to be true
+      expect(File.directory?(File.join(test_tmp_dir, "pids"))).to be true
       expect(File.exist?(manager.pid_file_path)).to be true
     end
 

@@ -279,7 +279,7 @@ module Command
     end
 
     def stop_frontend
-      frontend_pid_file = File.join(Narou.root_dir, "tmp", "pids", "narou-frontend.pid")
+      frontend_pid_file = File.join(Narou.tmp_dir, "pids", "narou-frontend.pid")
 
       return unless File.exist?(frontend_pid_file)
       pid = File.read(frontend_pid_file).to_i
@@ -306,7 +306,7 @@ module Command
 
     def start_frontend
       frontend_dir = File.join(Narou.root_dir, "frontend")
-      frontend_log = File.join(Narou.root_dir, "tmp", "logs", "narou-frontend.log")
+      frontend_log = File.join(Narou.tmp_dir, "logs", "narou-frontend.log")
 
       Command::OutputHelper.info("フロントエンドサーバーを起動しています...")
 
