@@ -24,5 +24,17 @@
     "**/小説データ/**": true,
     "**/.narou_perf_test/**": true,
     "**/小説データ_perf_test/**": true
+  },
+  "rubyLsp.indexing": {
+    "excludedPatterns": [
+      "frontend/**/*",
+      "node_modules/**/*",
+      "vendor/**/*",
+      "tmp/**/*",
+      "log/**/*",
+      ".git/**/*",
+      "**/spec/**/*",
+      "**/test/**/*"
+    ]
   }
 }
