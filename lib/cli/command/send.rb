@@ -5,6 +5,8 @@
 #
 
 require "lib/core/narou"
+require "lib/core/database"
+require "lib/novel/downloader"
 require "lib/utilities/helper"
 require "lib/ebook/device"
 

@@ -10,6 +10,7 @@ require "lib/novel/novelconverter"
 require "lib/core/inventory"
 require "lib/ebook/kindlestrip"
 require "lib/utilities/worker"
+require_relative "send"
 
 module Command
   class Convert < CommandBase
