@@ -79,6 +79,7 @@ module Command
         super
         argv << "--backtrace" if $display_backtrace
         argv << "--no-color" if $disable_color
+        argv << "--port" << @options["port"].to_s if @options["port"]
         argv << "--internal-boot" # 内部実行用のフラグを追加
         argv_copy = argv.dup
 

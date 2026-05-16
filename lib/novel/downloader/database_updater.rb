@@ -92,9 +92,14 @@ class Downloader
 
       auto_add_tags = Inventory.load("local_setting")["auto-add-tags"]
       if @setting["tag"] && auto_add_tags
-        clean_tag = Sanitize.fragment(@setting["tag"]).gsub(/キーワード/, "").gsub(/\"?\(\?\.\+\?\)\"?/, "").gsub(/\(\?\<?[^)]*\)/, "").strip
-        if clean_tag.length > 0
-          tags = clean_tag.split(/[ 　]+/)
+        tag_value = @setting["tag"]
+        tags = if tag_value.is_a?(Array)
+                 tag_value.map { |t| Sanitize.fragment(t).strip }.select { |t| t.length > 0 }
+               else
+                 clean_tag = Sanitize.fragment(tag_value).gsub(/キーワード/, "").gsub(/\"?\(\?\.\+\?\)\"?/, "").gsub(/\(\?\<?[^)]*\)/, "").strip
+                 clean_tag.length > 0 ? clean_tag.split(/[ 　]+/) : []
+               end
+        if tags.length > 0
           if record && record["tags"]
             old_tags = record["tags"]
             tags.concat(old_tags)
