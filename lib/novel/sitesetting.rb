@@ -114,7 +114,7 @@ class SiteSetting
                                          # rubocop:disable Layout/CommentIndentation
                                          # 通常はこれまで通りだが、valueを変更することも可能にする
         @match_values[key] = value       # yamlのキーでもmatch_valuesに設定しておくが、
-        update_match_values(match_data)  # ←ここで同名のグループ名が定義されていたら上書きされるので注意
+        update_match_values(match_data, key, source, handle)  # ←ここで同名のグループ名が定義されていたら上書きされるので注意
                                          # 例えば、title: <title>(?<title>.+?)</title> と定義されていた場合、
                                          # @match_values["title"] には (?<title>.+?) 部分の要素が反映される
                                          # rubocop:enable Layout/CommentIndentation
@@ -122,18 +122,32 @@ class SiteSetting
       end
     end
     match_data
-  end
+end
 
   def multi_match_once(source, *keys)
     clear
     multi_match(source, *keys)
   end
 
-  def update_match_values(match_data)
-    match_data.names.each do |name|
-      @match_values[name] = match_data[name] || ""
+  def update_match_values(match_data, key = nil, source = nil, handle = nil)
+    if handle.is_a?(Regexp) && key == "tags"
+      matches = source.scan(handle)
+      if matches.any?
+        if matches[0].is_a?(Array)
+          @match_values["tag"] = matches.flatten.map(&:to_s).uniq
+        else
+          @match_values["tag"] = matches.map(&:to_s).uniq
+        end
+      end
     end
-  end
+    match_data.names.each do |name|
+      value = match_data[name] || ""
+      if name == "tag" && key == "tags" && @match_values["tag"].is_a?(Array)
+        next
+      end
+      @match_values[name] = value
+    end
+end
 
   def is_container?(value)
     value.is_a?(Hash) || value.is_a?(Narou::API)
