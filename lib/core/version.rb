@@ -5,7 +5,7 @@
 #
 
 module Narou
-  VERSION = "3.1.3".freeze
+  VERSION = "3.1.4".freeze
 
   commit_path = File.expand_path("../../commitversion", __dir__)
   commit_value = if File.exist?(commit_path)
