@@ -132,7 +132,10 @@ end
   def update_match_values(match_data, key = nil, source = nil, handle = nil)
     if handle.is_a?(Regexp) && key == "tags"
       matches = source.scan(handle)
-      if matches.any?
+      # 2 件以上ヒットした場合のみ配列として扱う。
+      # 1 件のみの場合はサイト固有のクリーンアップ（空白分割等）を呼び出し側に委ねるため
+      # 従来通り単一文字列としてマッチを設定する。
+      if matches.size > 1
         if matches[0].is_a?(Array)
           @match_values["tag"] = matches.flatten.map(&:to_s).uniq
         else
