@@ -56,6 +56,10 @@ export async function getBackendConfig(): Promise<BackendConfig> {
  */
 export async function getBackendBaseUrl(): Promise<string> {
   const config = await getBackendConfig();
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    return `http://${hostname}:${config.backend_port}`;
+  }
   return `http://localhost:${config.backend_port}`;
 }
 

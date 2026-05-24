@@ -721,12 +721,7 @@ export async function downloadEpub(id: number): Promise<Blob> {
  * @param id - 小説ID
  */
 export async function deleteNovel(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/v2/novels/${id}`, {
-    method: "DELETE",
-  });
-  if (!response.ok) {
-    throw new Error(`削除に失敗しました: ${response.statusText}`);
-  }
+  await removeNovels([id]);
 }
 
 /**
