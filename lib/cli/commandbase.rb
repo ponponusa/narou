@@ -6,6 +6,7 @@
 
 require "optparse"
 require "termcolorlight"
+require "core/database"
 
 # help をログに記録しないために STDOUT に直接出力する
 # ただし、テスト環境では $stdout を使う

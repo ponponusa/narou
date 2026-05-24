@@ -5,6 +5,7 @@
 #
 
 require "lib/core/inventory"
+require "novel/downloader"
 
 module Command
   class Browser < CommandBase
