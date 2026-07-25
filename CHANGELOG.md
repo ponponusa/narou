@@ -1,5 +1,16 @@
 # 更新履歴 - ChangeLog
 
+## Unreleased
+
+### 🐛 バグ修正
+
+- **`folder` コマンドで NameError が発生する不具合を修正 (#121)**
+  - `lib/cli/command/folder.rb` で `Downloader` の require が漏れていた問題を修正。
+- **`web` コマンドで `--log-file` 等のオプションが有効化されない不具合を修正 (#120)**
+  - 子プロセス起動時の引数引き継ぎ漏れおよび `STDOUT`/`STDERR` のリダイレクト不完全を修正。
+- **Web UI サーバへのアクセスログ出力に対応 (#120)**
+  - 高頻度ポーリング API (`/api/v2/system/status`, `/api/v2/tasks`) のノイズを除外したアクセスログ出力をサポート。
+
 ## 3.1.0 (2025-01-25)
 
 ### 🎯 新機能

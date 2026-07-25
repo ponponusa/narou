@@ -4,6 +4,7 @@
 # Copyright 2013 whiteleaf. All rights reserved.
 #
 
+require "lib/novel/downloader"
 require "lib/utilities/helper"
 
 module Command

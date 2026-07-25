@@ -76,10 +76,45 @@ class Narou::AppServer < Sinatra::Base
   configure do
     set :app_file, __FILE__
     set :erb, trim: "-"
-    set :quiet, true
+    set :quiet, false
     enable :protection
     enable :sessions
     enable :static
+
+    # アクセスログ出力用のフィルター作成（高頻度ポーリングログのノイズを除外）
+    log_filter = Class.new do
+      def initialize(target = $stderr)
+        @target = target
+      end
+
+      def write(msg)
+        str = msg.to_s
+        return if str.include?("/api/v2/system/status") || str.include?("/api/v2/tasks")
+
+        @target.write(msg)
+      end
+
+      def <<(msg)
+        write(msg)
+      end
+
+      def puts(msg)
+        str = msg.to_s
+        return if str.include?("/api/v2/system/status") || str.include?("/api/v2/tasks")
+
+        @target.puts(msg)
+      end
+
+      def flush
+        @target.flush if @target.respond_to?(:flush)
+      end
+
+      def sync=(val)
+        @target.sync = val if @target.respond_to?(:sync=)
+      end
+    end.new
+
+    use Rack::CommonLogger, log_filter
 
     # gzip圧縮を有効化（API v2レスポンスの最適化）
     use Rack::Deflater
@@ -95,7 +130,7 @@ class Narou::AppServer < Sinatra::Base
 
     set :environment, :production unless $development
     set :server, :puma
-    set :server_settings, { Silent: true }
+    set :server_settings, { Silent: false }
 
     if $debug
       use BetterErrors::Middleware
