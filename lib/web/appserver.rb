@@ -83,13 +83,15 @@ class Narou::AppServer < Sinatra::Base
 
     # アクセスログ出力用のフィルター作成（高頻度ポーリングログのノイズを除外）
     log_filter = Class.new do
+      POLLING_LOG_PATTERN = %r{"GET /api/v2/(?:system/status|tasks(?:\?[^\s"]*)?)\s+HTTP/}
+
       def initialize(target = $stderr)
         @target = target
       end
 
       def write(msg)
         str = msg.to_s
-        return if str.include?("/api/v2/system/status") || str.include?("/api/v2/tasks")
+        return if str.match?(POLLING_LOG_PATTERN)
 
         @target.write(msg)
       end
@@ -100,7 +102,7 @@ class Narou::AppServer < Sinatra::Base
 
       def puts(msg)
         str = msg.to_s
-        return if str.include?("/api/v2/system/status") || str.include?("/api/v2/tasks")
+        return if str.match?(POLLING_LOG_PATTERN)
 
         @target.puts(msg)
       end
