@@ -32,6 +32,33 @@ RSpec.describe Command::Web do
         # 同様の理由でskip
         skip "外部ループの再起動ロジックは統合テストレベルで検証する（$?のモックが不可能なため）"
       end
+
+      it "forwards options to internal-boot process" do
+        expect(command).to receive(:system) do |ruby_path, x_flag, script, subcmd, *args|
+          expect(args).to include("--log-file", "test.log", "--no-browser", "--verbose", "--internal-boot")
+          true
+        end
+        system("true") # $?.exitstatus を 0 に設定
+        command.execute(["--log-file", "test.log", "--no-browser", "--verbose"])
+      end
+
+      it "removes --open-browser and appends --no-browser when rebooting" do
+        call_count = 0
+        allow(command).to receive(:system) do |_ruby_path, _x_flag, _script, _subcmd, *args|
+          call_count += 1
+          if call_count == 1
+            expect(args).to include("--open-browser")
+            system("sh", "-c", "exit 10")
+          else
+            expect(args).not_to include("--open-browser")
+            expect(args).to include("--no-browser", "--reboot")
+            expect(args.count("--no-browser")).to eq(1)
+            system("true")
+          end
+          true
+        end
+        command.execute(["--open-browser"])
+      end
     end
 
     context "with --legacy option" do
@@ -60,9 +87,20 @@ RSpec.describe Command::Web do
       end
 
       it "sets up logger with --log-file option" do
+        require "lib/web/appserver"
+
         expect(Command::OutputHelper).to receive(:setup_logger).with("app.log")
+        expect(Narou::AppServer).to receive(:configure_access_log).with(true).and_call_original
 
         command.execute(["--internal-boot", "--log-file", "app.log", "--no-browser"])
+      end
+
+      it "keeps access logging disabled without --verbose or --log-file" do
+        require "lib/web/appserver"
+
+        expect(Narou::AppServer).to receive(:configure_access_log).with(false).and_call_original
+
+        command.execute(["--internal-boot", "--no-browser"])
       end
 
       it "renders startup message" do

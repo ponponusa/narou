@@ -585,7 +585,7 @@ module Command
           tab: :detail
         },
         "user-agent" => {
-          type: :string, help:  "User-Agent 設定\n未指定時 Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          type: :string, help:  "User-Agent 設定\n未指定時は Firefox 互換の User-Agent を使用",
           tab: :detail
         },
         "webui.theme" => {

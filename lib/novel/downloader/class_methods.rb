@@ -202,6 +202,20 @@ class Downloader
       source.match(message)
     end
 
+    def cloudflare_challenge?(error)
+      return false unless error.is_a?(OpenURI::HTTPError)
+
+      response = error.io
+      if response.respond_to?(:meta) && response.meta&.[]("cf-mitigated") == "challenge"
+        return true
+      end
+      return false unless error.message.start_with?("403") && response.respond_to?(:read)
+
+      response.read.to_s.include?("Just a moment...")
+    rescue IOError
+      false
+    end
+
     #
     # 選択肢を文字列に変換
     #

@@ -58,14 +58,24 @@ module Command
 
         # 標準出力・エラー出力をログファイルにリダイレクト
         # テスト環境ではSTDOUT/STDERRがStringIOの場合があるのでスキップ
-        unless ORIGINAL_STDOUT.is_a?(StringIO) || ORIGINAL_STDERR.is_a?(StringIO)
-          ORIGINAL_STDOUT.reopen(log_file, "a")
-          ORIGINAL_STDERR.reopen(ORIGINAL_STDOUT)
-          ORIGINAL_STDOUT.sync = true
-          ORIGINAL_STDERR.sync = true
+        unless STDOUT.is_a?(StringIO) || STDERR.is_a?(StringIO)
+          STDOUT.reopen(log_file, "a")
+          STDERR.reopen(STDOUT)
+          STDOUT.sync = true
+          STDERR.sync = true
         end
       else
         # 標準出力モード（デフォルト）
+        # もし以前にログファイルへリダイレクトされていた場合は元のターミナルに戻す
+        unless STDOUT.is_a?(StringIO) || STDERR.is_a?(StringIO)
+          unless ORIGINAL_STDOUT.closed? || ORIGINAL_STDOUT.is_a?(StringIO)
+            STDOUT.reopen(ORIGINAL_STDOUT)
+            STDERR.reopen(ORIGINAL_STDERR)
+            STDOUT.sync = true
+            STDERR.sync = true
+          end
+        end
+
         # 元のSTDOUTを使ってLoggerを作成
         @logger = Logger.new(ORIGINAL_STDOUT)
         @output_mode = MODE_STDOUT

@@ -5,6 +5,10 @@
 #
 
 class Downloader
+  CLOUDFLARE_CHALLENGE_MESSAGE =
+    "Cloudflare のブラウザ確認によりアクセスが拒否されました。" \
+    "この環境からは自動ダウンロードできないため、時間を置くか別のネットワーク環境から再試行してください"
+
   # 無効なターゲットが指定された
   class InvalidTarget < StandardError; end
 
