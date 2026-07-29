@@ -53,6 +53,14 @@ RSpec.describe Command::OutputHelper do
         described_class.setup_logger(test_log_file)
         expect(described_class.instance_variable_get(:@tty_enabled)).to be false
       end
+
+      it "restores STDOUT mode when called with nil after file mode" do
+        described_class.setup_logger(test_log_file)
+        expect(described_class.instance_variable_get(:@output_mode)).to eq(:file)
+
+        described_class.setup_logger(nil)
+        expect(described_class.instance_variable_get(:@output_mode)).to eq(:stdout)
+      end
     end
   end
 

@@ -7,6 +7,52 @@ require "tmpdir"
 require "lib/novel/downloader"
 
 describe Downloader do
+  describe ".cloudflare_challenge?" do
+    def http_error(body: "", meta: {})
+      response = StringIO.new(body)
+      response.define_singleton_method(:meta) { meta }
+      OpenURI::HTTPError.new("403 Forbidden", response)
+    end
+
+    it "detects the Cloudflare mitigation response header" do
+      error = http_error(meta: {"cf-mitigated" => "challenge"})
+
+      expect(Downloader.cloudflare_challenge?(error)).to be(true)
+    end
+
+    it "detects a Cloudflare challenge page when the response header is absent" do
+      error = http_error(body: "<html><title>Just a moment...</title></html>")
+
+      expect(Downloader.cloudflare_challenge?(error)).to be(true)
+    end
+
+    it "does not classify an ordinary 403 response as a Cloudflare challenge" do
+      error = http_error(body: "Forbidden")
+
+      expect(Downloader.cloudflare_challenge?(error)).to be(false)
+    end
+
+    it "reports a clear error when a novel info request is challenged" do
+      url = "https://h.syosetu.org/?mode=ss_detail&nid=420873"
+      setting = instance_double(SiteSetting)
+      stream = double("stream")
+      downloader = Downloader.allocate
+      downloader.instance_variable_set(:@setting, setting)
+      downloader.instance_variable_set(:@stream, stream)
+      allow(downloader).to receive(:get_toc_source).and_return("<html></html>")
+      allow(setting).to receive(:multi_match)
+      allow(setting).to receive(:[]).with("novel_info_url").and_return(url)
+      allow(NovelInfo).to receive(:load).and_raise(
+        http_error(meta: {"cf-mitigated" => "challenge"})
+      )
+      expect(stream).to receive(:error).with(
+        include("Cloudflare のブラウザ確認によりアクセスが拒否されました", url)
+      )
+
+      expect(downloader.get_latest_table_of_contents(nil)).to be(false)
+    end
+  end
+
   describe ".create_subdirecotry_name" do
     context "小説家になろうのタイトルが渡された場合" do
       it do
@@ -131,4 +177,3 @@ describe Downloader do
     end
   end
 end
-

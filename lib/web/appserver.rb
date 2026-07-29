@@ -43,6 +43,7 @@ require "lib/web/api/v2/tasks"
 require "lib/web/processors/novel_list"
 require "lib/web/server/initializer"
 require "lib/web/api/documentation"
+require "lib/web/logging/filtered_access_logger"
 
 # ルートモジュールを遅延ロード（密結合回避）
 module Narou
@@ -81,6 +82,10 @@ class Narou::AppServer < Sinatra::Base
     enable :sessions
     enable :static
 
+    access_logger = Narou::FilteredAccessLogger.new
+    set :access_logger, access_logger
+    use Rack::CommonLogger, access_logger
+
     # gzip圧縮を有効化（API v2レスポンスの最適化）
     use Rack::Deflater
 
@@ -101,6 +106,13 @@ class Narou::AppServer < Sinatra::Base
       use BetterErrors::Middleware
       BetterErrors.application_root = Narou.script_dir
     end
+  end
+
+  def self.configure_access_log(enabled)
+    enabled = !!enabled
+    settings.access_logger.enabled = enabled
+    set :quiet, !enabled
+    set :server_settings, { Silent: !enabled }
   end
 
   # API v1 (Legacy) エンドポイント登録

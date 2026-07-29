@@ -207,12 +207,17 @@ class Downloader
       retry_count = LIMIT_TO_RETRY_NETWORK
       cookie = @setting["cookie"] || ""
       begin
-        open_uri_options = make_open_uri_options("Cookie" => cookie, allow_redirections: :safe)
+        open_uri_options = make_open_uri_navigation_options("Cookie" => cookie, allow_redirections: :safe)
         URI(url).open("r:#{@setting["encoding"]}", open_uri_options) do |fp|
           raw = Helper.pretreatment_source(fp.read, @setting["encoding"])
         end
       rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError,
 SocketError => e
+        if Downloader.cloudflare_challenge?(e)
+          @stream.error "#{CLOUDFLARE_CHALLENGE_MESSAGE} (#{url})"
+          raise SuspendDownload
+        end
+
         case e.message
         when /^503/
           # 503 はアクセス規制やメンテ等でリトライしてもほぼ意味がないことが多いため一度で諦める
