@@ -43,6 +43,7 @@ require "lib/web/api/v2/tasks"
 require "lib/web/processors/novel_list"
 require "lib/web/server/initializer"
 require "lib/web/api/documentation"
+require "lib/web/logging/filtered_access_logger"
 
 # ルートモジュールを遅延ロード（密結合回避）
 module Narou
@@ -76,47 +77,14 @@ class Narou::AppServer < Sinatra::Base
   configure do
     set :app_file, __FILE__
     set :erb, trim: "-"
-    set :quiet, false
+    set :quiet, true
     enable :protection
     enable :sessions
     enable :static
 
-    # アクセスログ出力用のフィルター作成（高頻度ポーリングログのノイズを除外）
-    log_filter = Class.new do
-      POLLING_LOG_PATTERN = %r{"GET /api/v2/(?:system/status|tasks(?:\?[^\s"]*)?)\s+HTTP/}
-
-      def initialize(target = $stderr)
-        @target = target
-      end
-
-      def write(msg)
-        str = msg.to_s
-        return if str.match?(POLLING_LOG_PATTERN)
-
-        @target.write(msg)
-      end
-
-      def <<(msg)
-        write(msg)
-      end
-
-      def puts(msg)
-        str = msg.to_s
-        return if str.match?(POLLING_LOG_PATTERN)
-
-        @target.puts(msg)
-      end
-
-      def flush
-        @target.flush if @target.respond_to?(:flush)
-      end
-
-      def sync=(val)
-        @target.sync = val if @target.respond_to?(:sync=)
-      end
-    end.new
-
-    use Rack::CommonLogger, log_filter
+    access_logger = Narou::FilteredAccessLogger.new
+    set :access_logger, access_logger
+    use Rack::CommonLogger, access_logger
 
     # gzip圧縮を有効化（API v2レスポンスの最適化）
     use Rack::Deflater
@@ -132,12 +100,19 @@ class Narou::AppServer < Sinatra::Base
 
     set :environment, :production unless $development
     set :server, :puma
-    set :server_settings, { Silent: false }
+    set :server_settings, { Silent: true }
 
     if $debug
       use BetterErrors::Middleware
       BetterErrors.application_root = Narou.script_dir
     end
+  end
+
+  def self.configure_access_log(enabled)
+    enabled = !!enabled
+    settings.access_logger.enabled = enabled
+    set :quiet, !enabled
+    set :server_settings, { Silent: !enabled }
   end
 
   # API v1 (Legacy) エンドポイント登録

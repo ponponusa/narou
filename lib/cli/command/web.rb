@@ -84,7 +84,6 @@ module Command
         argv << "--no-browser" if @options["no-browser"]
         argv << "--open-browser" if @options["open-browser"]
         argv << "--verbose" if @options["verbose"]
-        argv << "--legacy" if @options["legacy"]
         argv << "--force" if @options["force"]
         argv << "--internal-boot" # 内部実行用のフラグを追加
         argv_copy = argv.dup
@@ -108,6 +107,7 @@ module Command
 
             argv = argv_copy.dup
             argv.delete("--open-browser")
+            argv.delete("--no-browser")
             argv.push("--no-browser", "--reboot")
           end
         rescue Interrupt
@@ -187,6 +187,8 @@ module Command
       require "lib/core/narou"
       require "lib/narou/process_manager"
       require "lib/web/appserver"
+      access_log_enabled = !!(@options["verbose"] || @options["log-file"])
+      Narou::AppServer.configure_access_log(access_log_enabled)
 
       # 設定ファイルからポート/ホストを取得
       params = Narou::AppServer.create_address(@options["port"])

@@ -52,6 +52,7 @@ RSpec.describe Command::Web do
           else
             expect(args).not_to include("--open-browser")
             expect(args).to include("--no-browser", "--reboot")
+            expect(args.count("--no-browser")).to eq(1)
             system("true")
           end
           true
@@ -86,9 +87,20 @@ RSpec.describe Command::Web do
       end
 
       it "sets up logger with --log-file option" do
+        require "lib/web/appserver"
+
         expect(Command::OutputHelper).to receive(:setup_logger).with("app.log")
+        expect(Narou::AppServer).to receive(:configure_access_log).with(true).and_call_original
 
         command.execute(["--internal-boot", "--log-file", "app.log", "--no-browser"])
+      end
+
+      it "keeps access logging disabled without --verbose or --log-file" do
+        require "lib/web/appserver"
+
+        expect(Narou::AppServer).to receive(:configure_access_log).with(false).and_call_original
+
+        command.execute(["--internal-boot", "--no-browser"])
       end
 
       it "renders startup message" do

@@ -18,7 +18,7 @@ version: 1.0
 toc_url: https://h.syosetu.org/novel/\\k<ncode>/
 subtitles:
   - |-
-    (?:<li class="episode-list__chapter">\s*<div class="episode-list__chapter-title">(?<chapter>.+?)</div>\s*</li>\s*)?<li class="episode-list__item">\s*<a href="\./(?<index>\d+)\.html" class="episode-list__link">\s*<span class="episode-list__mark"></span>\s*<span class="episode-list__title"[^>]*>(?<subtitle>.+?)</span>\s*<time class="episode-list__date"[^>]*>(?<subdate>.+?)</time>\s*<span class="episode-list__revision"(?: title="(?<subupdate>.+?)改稿")?>.*?</span>\s*</a>\s*</li>
+    (?:<li class="episode-list__chapter">\s*<div class="episode-list__chapter-title">(?<chapter>.+?)</div>\s*</li>\s*)?<li class="episode-list__item">\s*<a href="\./(?<index>\d+)\.html" class="episode-list__link">\s*<span class="episode-list__mark"[^>]*>.*?</span>\s*<span class="episode-list__title"[^>]*>(?<subtitle>.+?)</span>\s*<time class="episode-list__date"[^>]*>(?<subdate>.+?)</time>(?:\s*<span class="episode-list__revision"(?: title="(?<subupdate>.+?)改稿")?[^>]*>.*?</span>)?\s*</a>\s*</li>
   - |-
     (?:<tr><td colspan=2><strong>(?<chapter>.+?)</strong></td></tr>)?<tr bgcolor="#.+?" class="bgcolor\d"><td width=60%><span id="(?<index>\d+?)">　</span> <a href=.+? style="text-decoration:none;">(?<subtitle>.+?)</a></td><td><NOBR>(?:<time itemprop=".+?" datetime=".+?">)?(?<subdate>.+?)(?:</time>)?(?:<span title="(?<subupdate>.+?)改稿">\(<u>改</u>\)</span>)?</NOBR></td></tr>
 

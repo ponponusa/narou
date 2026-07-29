@@ -24,7 +24,7 @@ class Downloader
       retry_count = LIMIT_TO_RETRY_NETWORK
       toc_source = ""
       cookie = @setting["cookie"] || ""
-      open_uri_options = make_open_uri_options("Cookie" => cookie, allow_redirections: :safe)
+      open_uri_options = make_open_uri_navigation_options("Cookie" => cookie, allow_redirections: :safe)
       sleep_for_download
       begin
         URI(toc_url).open(open_uri_options) do |toc_fp|
@@ -56,6 +56,11 @@ class Downloader
         end
       rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError,
 SocketError => e
+        if Downloader.cloudflare_challenge?(e)
+          @stream&.error "#{CLOUDFLARE_CHALLENGE_MESSAGE} (#{toc_url})"
+          raise SuspendDownload
+        end
+
         case e.message
         when /^503/
           @stream&.error "server message: #{e.message}"
@@ -127,7 +132,10 @@ SocketError => e
     rescue OpenURI::HTTPError, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::ETIMEDOUT, Net::OpenTimeout, IO::TimeoutError,
 SocketError => e
       raise if through_error # エラー処理はしなくていいからそのまま例外を受け取りたい時用
-      if e.message.include?("404")
+      if Downloader.cloudflare_challenge?(e)
+        url = @setting["novel_info_url"] || @setting["toc_url"]
+        @stream.error "#{CLOUDFLARE_CHALLENGE_MESSAGE} (#{url})"
+      elsif e.message.include?("404")
         @stream.error "小説が削除されているか非公開な可能性があります"
         sleep_for_download
         if database.novel_exists?(@id)

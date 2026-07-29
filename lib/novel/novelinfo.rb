@@ -47,7 +47,7 @@ class NovelInfo
       info_source = @toc_source
     else
       cookie = @setting["cookie"] || ""
-      open_uri_options = make_open_uri_options("Cookie" => cookie, allow_redirections: :safe)
+      open_uri_options = make_open_uri_navigation_options("Cookie" => cookie, allow_redirections: :safe)
       URI(info_url).open(open_uri_options) do |fp|
         info_source = Helper.restore_entity(Helper.pretreatment_source(fp.read, @setting["encoding"]))
         raise Downloader::DownloaderNotFoundError if Downloader.detect_error_message(@setting, info_source)

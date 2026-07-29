@@ -57,6 +57,20 @@ RSpec.describe SiteSetting do
         expect(setting["subdate"]).to eq("2026/07/23 23:09")
         expect(setting["subupdate"]).to eq("2026/07/24 09:43")
       end
+
+      it "accepts a non-empty mark and an omitted revision span" do
+        html = CURRENT_EPISODE_LIST_HTML
+               .sub(
+                 '<span class="episode-list__mark"></span>',
+                 '<span class="episode-list__mark">NEW</span>'
+               )
+               .sub(%r{\s*<span class="episode-list__revision".*?</span>}m, "")
+
+        expect(setting.multi_match_once(html, "subtitles")).to be_truthy
+        expect(setting["index"]).to eq("12")
+        expect(setting["subtitle"]).to eq("第十二話")
+        expect(setting["subupdate"]).to be_blank
+      end
     end
   end
 end
