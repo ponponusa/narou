@@ -11,11 +11,32 @@ require "lib/core/inventory"
 # open-uri で http → https へのリダイレクトを有効にする
 require "open_uri_redirections"
 
+module Narou
+  module OpenURIOptions
+    DEFAULT_USER_AGENT =
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0".freeze
+    # Accept-Encoding を明示すると Net::HTTP の自動展開が無効になるため、ここでは指定しない。
+    DEFAULT_HEADERS = {
+      "Accept" => "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language" => "ja,en-US;q=0.9,en;q=0.8",
+      "Accept-Charset" => "utf-8",
+      "Connection" => "keep-alive"
+    }.freeze
+
+    module_function
+
+    def build(add)
+      configured_user_agent = Inventory.load("local_setting")["user-agent"]
+      DEFAULT_HEADERS
+        .merge("User-Agent" => configured_user_agent || DEFAULT_USER_AGENT)
+        .merge(add)
+    end
+  end
+end
+
 # open-uri に渡すオプションを生成（必要に応じて extensions/*.rb でオーバーライドする）
 def make_open_uri_options(add)
-  ua = Inventory.load("local_setting")["user-agent"] || "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-  add.merge(ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE)
-  add.merge("User-Agent" => ua)
+  Narou::OpenURIOptions.build(add)
 end
 
 #
