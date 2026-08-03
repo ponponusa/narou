@@ -1,0 +1,4 @@
+snapshots/
+skill-workspaces/
+**/__pycache__/
+*.pyc

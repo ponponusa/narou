@@ -1,0 +1,43 @@
+# agent-context-maintainer:begin
+schema_version: 1
+reviewed: "2026-07-02"
+providers:
+  codex:
+    profile: ".agents/profiles/codex.md"
+    bridge_files: ["AGENTS.md"]
+    source_urls:
+      - "https://agents.md/"
+  claude:
+    profile: ".agents/profiles/claude.md"
+    bridge_files: ["CLAUDE.md", "AGENTS.md"]
+    source_urls:
+      - "https://code.claude.com/docs/en/memory"
+  gemini:
+    profile: ".agents/profiles/gemini.md"
+    bridge_files: ["GEMINI.md", ".gemini/settings.json", "AGENTS.md"]
+    source_urls:
+      - "https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/configuration.md"
+  cursor:
+    profile: ".agents/profiles/cursor.md"
+    bridge_files: ["AGENTS.md"]
+    source_urls:
+      - "https://docs.cursor.com/context/rules"
+  copilot:
+    profile: ".agents/profiles/copilot.md"
+    bridge_files: [".github/copilot-instructions.md", "AGENTS.md"]
+    source_urls:
+      - "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions"
+  antigravity:
+    profile: ".agents/profiles/antigravity.md"
+    bridge_files: ["AGENTS.md", "GEMINI.md"]
+    source_urls:
+      - "https://antigravity.google/"
+  generic:
+    profile: ".agents/profiles/generic.md"
+    bridge_files: ["AGENTS.md"]
+    source_urls:
+      - "https://agents.md/"
+notes:
+  - "Provider bridge files should point back to AGENTS.md instead of duplicating shared policy."
+  - "When a provider changes its loading contract, update this registry, the bridge file, and the matching profile together."
+# agent-context-maintainer:end

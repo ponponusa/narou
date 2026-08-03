@@ -12,6 +12,60 @@ on:
 
 jobs:
   #
+  # Repository-local AI agent context and skill drift check
+  #
+  agent-context-check:
+    if: github.event_name == 'pull_request'
+    name: agent-context-check
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHONPYCACHEPREFIX: ${{ runner.temp }}/agent-context-pycache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate agent context script
+        run: |
+          python3 -c "from pathlib import Path; p = Path('.agents/skills/agent-context-maintainer/scripts/agent_context.py'); compile(p.read_text(encoding='utf-8'), str(p), 'exec')"
+
+      - name: Check agent context and project skills
+        run: |
+          python3 .agents/skills/agent-context-maintainer/scripts/agent_context.py check .
+          python3 .agents/skills/agent-context-maintainer/scripts/agent_context.py skills check .
+
+      - name: Check generated agent context drift
+        run: |
+          python3 .agents/skills/agent-context-maintainer/scripts/agent_context.py scaffold . --agent codex
+          python3 .agents/skills/agent-context-maintainer/scripts/agent_context.py skills sync .
+          python3 .agents/skills/agent-context-maintainer/scripts/agent_context.py skills routes .
+          git diff --exit-code -- \
+            AGENTS.md \
+            CLAUDE.md \
+            GEMINI.md \
+            .github/copilot-instructions.md \
+            .gemini/settings.json \
+            .agents
+          untracked=$(git ls-files --others --exclude-standard -- \
+            AGENTS.md \
+            CLAUDE.md \
+            GEMINI.md \
+            .github/copilot-instructions.md \
+            .gemini/settings.json \
+            .agents)
+          if [ -n "$untracked" ]; then
+            echo "Generated agent context contains untracked files:"
+            echo "$untracked"
+            exit 1
+          fi
+
+  #
   # 1) PR用ビルド・テストジョブ
   #    - develop / release  draft 向け PR で走る
   #    - RSpec を実行
@@ -437,4 +491,3 @@ jobs:
           body_path: ${{ steps.gen_body.outputs.body_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
