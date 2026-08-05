@@ -1,95 +1,76 @@
-# Repository Guidelines (Frontend / Astro + Svelte)
+# Frontend Agent Instructions
 
-`narou-mod` のフロントエンド (`frontend/`) 向けガイドです。Astro 5 + Svelte 5 + Tailwind CSS 4 + TypeScript で構成されています。リポジトリ全体のルールとバックエンド (Ruby) のガイドは [../AGENTS.md](../AGENTS.md) を参照してください。
+These instructions apply to `frontend/`. First follow `../AGENTS.md`, `../.agents/core.md`, and `../.agents/routing.md`; this file contains only Astro/Svelte-specific rules.
 
-## Tech Stack
+## Current Stack and Boundaries
 
-- **Astro 5.x**: ルーティング / 静的サイト生成 / アイランドアーキテクチャ。
-- **Svelte 5.x**: UI コンポーネント。Runes API (`$state`, `$props`, `$derived`) を使用。
-- **Tailwind CSS 4.x**: ユーティリティファースト CSS。設定は `tailwind.config.js`、Vite プラグインは `astro.config.mjs` で適用。
-- **TypeScript 5.x**: `tsconfig.json` は `astro/tsconfigs/strict` を継承。
-- **Playwright**: E2E テスト (`e2e/`)。
+- Astro 5 with the Svelte integration provides pages, layouts, static output, and development proxying.
+- Svelte 5 components use runes such as `$state`, `$props`, `$derived`, `$effect`, and `$bindable`.
+- Tailwind CSS 4 is loaded through `@tailwindcss/vite`; shared CSS starts in `src/styles/global.css`.
+- TypeScript 5 runs in Astro strict mode with bundler module resolution.
+- Playwright is the current browser test framework. There is no Vitest/unit-test command in `package.json`.
+- npm and `package-lock.json` are the dependency source of truth; CI uses Node.js 20.
 
-## Project Structure & Module Organization
+Exact package versions belong to `package-lock.json`. Check `package.json`, the lockfile, and framework config before relying on a version-sensitive API.
 
-```
-frontend/
-├── src/
-│   ├── components/     # Svelte コンポーネント (Header, NovelList, Modal 系 など)
-│   │   └── console/    # コンソール関連の細分コンポーネント
-│   ├── layouts/        # Astro レイアウト (BaseLayout.astro など)
-│   ├── lib/            # API クライアント・ストア・ユーティリティ
-│   │   ├── api.ts             # バックエンド REST API ラッパ
-│   │   ├── backend-config.ts  # public/backend-port.json から動的にポート解決
-│   │   ├── progressStore.ts   # 進捗ストア
-│   │   ├── pushserver.ts      # WebSocket / Push 連携
-│   │   └── stores/            # Svelte stores
-│   ├── pages/          # Astro ページ (index, settings, tasks, help, settings-debug)
-│   ├── styles/         # グローバル CSS (Tailwind import)
-│   └── types/          # API・ドメイン型定義
-├── public/             # 静的ファイル (`backend-port.json` は実行時生成・gitignore)
-├── e2e/                # Playwright E2E テスト
-├── astro.config.mjs    # Astro / Vite / プロキシ / Svelte 設定
-├── svelte.config.js    # Svelte preprocess
-├── tailwind.config.js  # Tailwind 設定
-├── tsconfig.json       # TypeScript 設定
-├── .prettierrc         # Prettier 設定 (tab=2, double quote, trailing comma=es5)
-└── package.json
-```
+## Source Map
 
-## Build, Test, and Development Commands
+- `src/pages/`: Astro routes (`index`, `settings`, `settings-debug`, `tasks`, and `help`).
+- `src/layouts/`: shared Astro layouts.
+- `src/components/`: Svelte UI; console-specific components are under `src/components/console/`.
+- `src/lib/api.ts`: typed wrappers for backend REST calls.
+- `src/lib/backend-config.ts`: runtime backend/push-server port resolution.
+- `src/lib/pushserver.ts` and `src/lib/progressStore.ts`: push and progress integration.
+- `src/lib/stores/`: client stores such as server status.
+- `src/types/api.ts`: shared API/domain types.
+- `public/backend-port.json`: runtime-generated and ignored; never treat it as source.
+- `e2e/`: Playwright flows.
 
-すべて `frontend/` ディレクトリ内で実行します。
+## Commands
 
-- `npm install`: 依存をインストール。
-- `npm run dev`: 開発サーバ起動 (`http://localhost:4321`)。`/api/*` はバックエンドへプロキシ。
-- `npm run build`: プロダクションビルド (`dist/`)。ビルド後に `git describe --always` の結果を `dist/.build-commit` に書き出す。
-- `npm run preview`: ビルド成果物のプレビュー。
-- `npm run check`: `astro check` で TypeScript / テンプレートの型検査。
-- `npm run format` / `npm run format:check`: Prettier の整形 / 検査。
-- `npx playwright test`: E2E テストを実行（必要に応じて `npx playwright install`）。
+Run these from `frontend/`:
 
-### バックエンドとの連携
+- `npm ci`: reproduce the lockfile environment; use this for validation and CI parity.
+- `npm install`: use only when intentionally changing dependencies/lockfile.
+- `npm run dev`: start Astro on port 4321.
+- `npm run build`: create `dist/` and write `dist/.build-commit` from `git describe`.
+- `npm run preview`: preview the built output.
+- `npm run check`: run Astro/TypeScript diagnostics.
+- `npm run format`: format supported source files.
+- `npm run format:check`: check formatting without writing.
+- `npx playwright test`: run browser tests; Playwright starts/reuses the Astro dev server.
 
-- 開発時は `astro.config.mjs` の Vite プロキシ経由で `/api/*` が `http://localhost:<port>` に転送されます。
-- バックエンドポートは `public/backend-port.json` から読み込み、未生成時は `5678` をフォールバック。本ファイルは `.gitignore` 対象なので、ローカル起動スクリプトに任せて手動で作らない。
-- API 連携ロジックの追加は `src/lib/api.ts` と `src/types/` の型定義をペアで更新する。
+For the integrated local stack, inspect and use `../scripts/process_control.sh` or `../scripts/process_control.ps1`. The backend defaults are 5678 for REST and 5679 for push when `backend-port.json` is unavailable.
 
-## Coding Style & Naming Conventions
+## Implementation Rules
 
-- インデント 2 スペース、ダブルクォート、行幅 80、末尾カンマは `es5`（`.prettierrc`）。
-- ファイル命名:
-  - Svelte コンポーネント: `PascalCase.svelte`
-  - Astro ページ: `kebab-case.astro`（または `index.astro`）
-  - ユーティリティ / 型: `camelCase.ts`
-- TypeScript は strict。`any` の使用は避け、`src/types/` に型を寄せる。
-- Svelte は Svelte 5 Runes (`$state`, `$props`, `$derived`, `$effect`) を採用。`export let` 等の旧記法を新規追加しない。
-- スタイリングは Tailwind を第一選択。コンポーネント固有の `<style>` は Tailwind で表現困難な場合のみ。
-- `husky` + `lint-staged` でステージ済みファイルが `prettier --write` されるため、コミット前にローカルで整形しておく。
+- Use 2 spaces, double quotes, 80-column formatting, and ES5 trailing commas as configured by `.prettierrc`.
+- Component files use `PascalCase.svelte`; Astro routes use `kebab-case.astro` or `index.astro`; TypeScript modules follow the existing local naming pattern.
+- Use Svelte 5 runes for new state and props. Do not introduce legacy `export let` component APIs or regress a runes-based component to Svelte 4 patterns.
+- Keep TypeScript strict. Avoid `any`; update `src/types/api.ts` or a nearby explicit interface when the contract changes.
+- Prefer Tailwind utilities and existing design patterns. Add component CSS only when the style is not reasonably expressible with the current system.
+- Keep browser-only APIs out of server-side execution. Guard `window`, `document`, storage, and event subscriptions and clean up subscriptions/timers in effects.
+- Route REST calls through `src/lib/api.ts`; do not scatter raw endpoint construction through components.
+- Keep endpoint paths, request/response types, and Ruby API behavior synchronized. API changes normally require both backend specs/docs and frontend types/wrappers.
+- Resolve backend/push ports through `backend-config.ts` or the existing dev proxy; do not hard-code a new host/port in UI code.
+- Preserve the stopped-server fallback and reconnection behavior when changing initial loading or server-status UI.
+- Do not edit `dist/`, `.astro/`, `playwright-report/`, `test-results/`, `node_modules/`, or runtime port files as source.
 
-## Testing Guidelines
+## Validation
 
-- E2E は `e2e/*.spec.ts` に Playwright で記述。`playwright.config.ts` を参照。
-- 型の健全性は `npm run check` で必ず通す。CI でも同コマンドが走る (`.github/workflows/ci.yml`)。
-- ユニットテストは未導入（Vitest 導入予定）。新規導入時は `*.test.ts` を対象コンポーネントの近くに配置する方針。
+Choose checks based on the change:
 
-## Commit & Pull Request Guidelines
+1. Run `npm run format:check` and `npm run check` for TypeScript, Astro, or Svelte changes.
+2. Run `npm run build` for routing, configuration, bundling, or integration changes.
+3. Run the relevant Playwright test for user-visible flows; add/update coverage when behavior changes.
+4. For layout or interaction changes, verify the built UI in a browser at relevant desktop/mobile widths and capture evidence for the PR.
+5. For backend integration, run the matching Ruby API specs as well as frontend checks.
 
-- フロントエンド単独の変更でも、コミット件名は命令形でリポジトリ全体の方針 ([../AGENTS.md](../AGENTS.md)) に従う。
-- PR には UI 変更のスクリーンショット、または操作録画を添付する。
-- API 仕様や URL を変える場合は、対応するバックエンド側の変更とまとめる（あるいは PR を相互リンク）。
-- CI では `npm ci` → `npm run build` → `npm run check` が走る。ローカルで同じ流れを通してから push する。
+If a broad baseline check fails outside the changed slice, establish the focused result first and report the unrelated failure rather than masking it.
 
-## Security & Configuration Tips
+## Security and Handoff
 
-- `.env` は `.env.example` を雛形にローカルで作成。シークレットや本番 URL は含めない。
-- 公開ビルドに含めたくない値は `PUBLIC_` プレフィックスを付けない (Astro の規約)。
-- バックエンド API の URL 直書きは避け、`src/lib/backend-config.ts` か `import.meta.env` 経由で取得する。
-- `public/backend-port.json` と `dist/.build-commit` はランタイム / ビルド生成物。`.gitignore` 済みのまま運用する。
-
-## Agent-Specific Instructions
-
-- 既存 Svelte 5 + Astro 5 のパターンに沿う。レガシー記法 (`<script context="module">` の濫用、`export let` の新規追加、Svelte 4 ストア記法への退行) は避ける。
-- 不要な依存追加・大規模リライトは行わず、最小スコープの変更を心がける。
-- 変更後は最低限 `npm run check` を走らせる。UI 変更時はブラウザでの動作確認を併用する（バックエンド未起動でも `ServerStoppedBanner` 経由でフォールバックが見える設計）。
-- ルートの [../AGENTS.md](../AGENTS.md) のコミット ID 規約（`ponpon.USA <init0531.usa@gmail.com>` 固定）はフロントエンド作業時も同様に遵守する。
+- Never expose secrets through `PUBLIC_` variables or bundle private URLs/credentials into browser code.
+- Treat backend response strings and downloaded novel metadata as untrusted; use Svelte's normal escaped rendering unless reviewed sanitization is explicitly required.
+- UI PRs should describe the tested flow and include screenshots or recordings when visuals changed.
+- Report exact commands, browser coverage, skipped checks, and whether the backend was live or a stopped-server fallback was used.

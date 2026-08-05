@@ -267,13 +267,6 @@ ruby spec/performance/yaml_database_generator.rb benchmark-all
 3. **データ削除**: テスト後は必ず `cleanup` を実行してください
 4. **本番環境**: 本番データと混在しないよう注意してください
 
-## 関連ドキュメント
-
-- [データベース構造ドキュメント](../../docs/database_structure.md)
-- [小説データ構造ドキュメント](../../docs/novel_data_structure.md)
-- [コマンド実行フロー](../../docs/command_execution_flows.md)
-
 ## ライセンス
 
 このツールは Narou.rb MOD の一部として MIT ライセンスで提供されます。
-

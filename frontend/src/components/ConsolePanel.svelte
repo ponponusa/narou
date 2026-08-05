@@ -770,9 +770,7 @@
     // プログレスバーイベント
     handleProgressBarInit = (data: any) => {
       const consoleType = (data.target_console || "stdout") as
-        | "stdout"
-        | "stdout2"
-        | "convert";
+        "stdout" | "stdout2" | "convert";
 
       // 進捗開始のログエントリを作成
       const newLog: LogEntry = {
