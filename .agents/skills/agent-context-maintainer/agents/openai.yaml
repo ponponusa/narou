@@ -1,0 +1,6 @@
+# Codex-specific adapter metadata. Other platforms ignore this file;
+# delete it if you do not use Codex.
+interface:
+  display_name: "Agent Context Maintainer"
+  short_description: "Maintain agent-specific repo context"
+  default_prompt: "Use $agent-context-maintainer to inspect this repository and update AGENTS.md plus .agents context for the current AI agent."

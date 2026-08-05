@@ -1,0 +1,33 @@
+# agent-context-maintainer:begin
+schema_version: 1
+source_reviewed: "2026-07-04"
+generated_by: "agent-context-maintainer"
+skills:
+  - name: "agent-context-maintainer"
+    path: ".agents/skills/agent-context-maintainer/SKILL.md"
+    directory: ".agents/skills/agent-context-maintainer"
+    validity: "valid"
+    lifecycle: "active"
+    description: "Create, update, and validate repository-local AI agent context files such as AGENTS.md, .agents/core.md, .agents/routing.md, provider-specific profiles, and task SKILL.md routing. Use when an AI coding agent (Codex, Claude Code, Gemini, Copilot, Cursor, or others) is asked to make AGENTS.md or SKILL instructions self-maintaining, inspect the current path and generate optimal agent context for it, or keep agent instructions synchronized with the repository's actual structure."
+    compatibility: null
+    allowed_tools: null
+    codex_metadata: ".agents/skills/agent-context-maintainer/agents/openai.yaml"
+    quality:
+      eval_coverage: "missing"
+      has_trigger_evals: false
+      has_negative_trigger_evals: false
+      has_assertions: false
+    counts:
+      lines: 85
+      bytes: 5084
+      scripts: 1
+      references: 8
+      assets: 0
+      evals: 0
+    warnings:
+      - "missing-evals"
+      - "script-without-compatibility"
+      - "codex-metadata-unparsed"
+    errors:
+      []
+# agent-context-maintainer:end
