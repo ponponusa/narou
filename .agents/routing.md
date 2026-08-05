@@ -87,6 +87,7 @@ If required context is absent, state the gap clearly, make the safest local assu
 
 - Verify documentation claims against current code and manifests.
 - Keep `docs/openapi.yaml` synchronized with the implemented API. Treat Markdown files in the independent local `docs/_tmp/` repository as unreviewed working material, not current documentation.
+- Keep `README.md` focused on the project introduction and end-user usage; developer setup, build, and workflow documentation belongs in `docs/development.md` and must stay aligned with CI and the scripts it describes.
 - Put new investigations, plans, design drafts, decision notes, and time-bound reports in `docs/_tmp/` and record them in its review index.
 - Promote a Markdown document to tracked `docs/` only after checking it against current code, manifests, tests, and runtime behavior and updating public references.
 - If private findings change public behavior or an accepted contract, promote only the verified conclusions into the relevant tracked documentation and leave the working notes private.

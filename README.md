@@ -69,6 +69,22 @@
 - Ruby 3.4以上（※元プロジェクトから変更されています）
 - MSYS2環境（Windowsの場合）
 
+## インストール - Installation
+
+[リリースページ](https://github.com/ponponusa/narou-mod/releases)から、お使いのプラットフォームに対応した gem ファイルを取得してインストールしてください。
+
+```bash
+# Linux / macOS
+gem install ./narou-mod-<version>.gem
+```
+
+```powershell
+# Windows
+gem install ./narou-mod-<version>-x64-mingw-ucrt.gem
+```
+
+`<version>` は `3.1.6` のようなバージョン番号です（リリースタグ末尾のコミットIDは gem ファイル名には含まれません）。バージョンごとの具体的なコマンドは、各リリースの「インストール案内」に記載されています。
+
 ## WEBサーバーの起動について - Web Server
 
 **v2.1.0以降、WEBサーバーはフォアグラウンド実行のみ対応**しています。
@@ -118,14 +134,9 @@ WantedBy=multi-user.target
 
 [->リリースページへ](https://github.com/ponponusa/narou-mod/releases)
 
-## TODO
+## 今後の予定 - Roadmap
 
 - 外部Webサーバを利用しない形でのHTTPS対応
-- ~~bootstrap5への移行~~（新フロントエンドでAstro + Svelte + Tailwind CSSに移行）
-  - ~~bootstrap3系では、jQuery3系に対応していないため~~
-  - ~~jQuery migrateを削除したい~~
-  - ~~bootstrap4で我慢する可能性......~~
-- ~~小説タイトルの自動整形~~（プロモタグの実装で対応済み）
 - セキュリティリスクのある実装の修正
 - 変換処理の並列化による高速化
   - 今後の最適化のためにもスレッドセーフにする
@@ -137,79 +148,9 @@ WantedBy=multi-user.target
   - 圧縮保存の検討
   - Yaml DatabaseからSQLite等への移行検討
 
-## フロントエンド開発 - Frontend Development
+## 開発者向け情報 - For Developers
 
-このプロジェクトには、モダンなフロントエンド実装が含まれています（`frontend/` ディレクトリ）。
-
-### 技術スタック
-
-- **Astro 5.x** - 静的サイトジェネレーター
-- **Svelte 5.x** - リアクティブUIフレームワーク
-- **Tailwind CSS 4.x** - ユーティリティファーストCSS
-- **TypeScript** - 型安全な開発
-
-### セットアップ
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-詳細は [frontend/README.md](frontend/README.md) を参照してください。
-
-## API開発 - API Development
-
-このプロジェクトは REST API (API v2) を提供しており、Swagger UI で仕様を確認できます。
-
-### API ドキュメント
-
-- **Swagger UI**: <http://localhost:5678/api/docs>
-- **OpenAPI仕様書**: <http://localhost:5678/api/openapi.yaml>
-- **OpenAPIソース**: [docs/openapi.yaml](docs/openapi.yaml)
-
-### API v2 エンドポイント
-
-サーバーを起動後、以下のURLにアクセスしてください：
-
-```bash
-# サーバー起動
-narou-mod web --boot
-
-# Swagger UIを開く（ブラウザで）
-http://localhost:5678/api/docs
-```
-
-Swagger UIでは以下が可能です：
-
-- 全エンドポイントの仕様確認
-- リクエスト/レスポンスの例
-- インタラクティブなAPI呼び出し（Try it out機能）
-- スキーマ定義の参照
-
-### API v2 vs Legacy API
-
-- **新規開発**: API v2 (`/api/v2/*`) の使用を推奨
-- **既存コード**: Legacy API v1 (`/api/*`) は互換性のために維持
-- **契約確認**: [OpenAPI仕様書](docs/openapi.yaml) を参照
-
-## Windows環境への同期 - Sync to Windows
-
-WSL環境からWindows環境へプロジェクトファイルを同期するスクリプトを提供しています。
-
-```bash
-# 設定ファイルを作成（初回のみ）
-cp rsync.env.example rsync.env
-nano rsync.env
-
-# 同期スクリプトの実行
-./sync-to-windows.sh
-
-# または、引数で指定
-./sync-to-windows.sh ~/git/narou-mod /mnt/c/git/narou
-```
-
-オプションの詳細は `./sync-to-windows.sh --help` で確認できます。
+開発環境の構築、バックエンド/フロントエンド/API の開発ワークフロー、ビルド・リリース、Windows 環境への同期については [docs/development.md](docs/development.md) を参照してください。
 
 ----
 

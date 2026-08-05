@@ -7,7 +7,7 @@ This file is the source of truth for repository-wide policy. Keep provider-speci
 
 - Root: `narou-mod`
 - Detected languages: Ruby, Markdown, JavaScript, TypeScript, Python
-- Approximate tracked context files scanned: 557
+- Approximate tracked context files scanned: 558
 
 ## Detected Manifests
 
@@ -21,6 +21,7 @@ This file is the source of truth for repository-wide policy. Keep provider-speci
 - `GEMINI.md`
 - `README.md`
 - `.github/copilot-instructions.md`
+- `docs/development.md`
 - `docs/openapi.yaml`
 - `frontend/AGENTS.md`
 - `frontend/CLAUDE.md`
@@ -84,13 +85,13 @@ Run these from the repository root:
 
 - Always read `AGENTS.md`, this file, `.agents/routing.md`, and the matching provider profile before editing.
 - Follow `frontend/AGENTS.md` for every change under `frontend/`.
-- Treat `README.md`, `CHANGELOG.md`, and `docs/openapi.yaml` as publishable product documentation, not substitutes for current code verification. Other project Markdown documents remain unreviewed under `docs/_tmp/` until explicitly promoted.
+- Treat `README.md`, `CHANGELOG.md`, `docs/openapi.yaml`, and `docs/development.md` as publishable product documentation, not substitutes for current code verification. Other project Markdown documents remain unreviewed under `docs/_tmp/` until explicitly promoted.
 - Do not read or summarize `.env*`, credentials, private keys, local databases, raw logs, dependency caches, coverage output, or build output unless the user explicitly places them in scope.
 - Do not edit generated artifacts such as `frontend/dist/`, coverage reports, built `.gem` files, `commitversion`, or runtime-generated `frontend/public/backend-port.json` as source files.
 
 ## Documentation Lifecycle
 
-- Keep only reviewed, publishable documentation in the parent repository's tracked `docs/` tree. At present, `docs/openapi.yaml` is the only reviewed document there.
+- Keep only reviewed, publishable documentation in the parent repository's tracked `docs/` tree. At present, `docs/openapi.yaml` and `docs/development.md` are the reviewed documents there.
 - Use `docs/_tmp/` for local-only investigations, implementation plans, design drafts, decision notes, performance reports, and handoff material that should not be published with the project.
 - Treat every Markdown document currently under `docs/_tmp/` as unverified until its claims have been checked against current code, manifests, tests, and runtime behavior.
 - Treat `docs/_tmp/` as an independent local Git repository ignored by the parent repository. Do not add a remote, push it, or publish its contents unless the user explicitly requests that action.
