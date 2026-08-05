@@ -3,7 +3,7 @@
 <!-- agent-context-maintainer:begin -->
 ## Codex Profile
 
-- Active detected profile: no
+- Active detected profile: yes
 
 ## Behavior
 

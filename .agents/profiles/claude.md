@@ -3,7 +3,7 @@
 <!-- agent-context-maintainer:begin -->
 ## Claude Profile
 
-- Active detected profile: yes
+- Active detected profile: no
 
 ## Behavior
 

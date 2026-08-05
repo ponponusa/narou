@@ -19,9 +19,6 @@ jobs:
     name: agent-context-check
     runs-on: ubuntu-latest
 
-    env:
-      PYTHONPYCACHEPREFIX: ${{ runner.temp }}/agent-context-pycache
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,6 +27,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Set Python cache prefix
+        run: echo "PYTHONPYCACHEPREFIX=${RUNNER_TEMP}/agent-context-pycache" >> "$GITHUB_ENV"
 
       - name: Validate agent context script
         run: |
@@ -319,6 +319,9 @@ jobs:
 
       - name: Generate release body with license info
         id: gen_body
+        env:
+          LINUX_GEM: ${{ needs.build-gem-linux.outputs.gemfile }}
+          WINDOWS_GEM: ${{ needs.build-gem-windows.outputs.gemfile }}
         run: |
           CURRENT_TAG="${{ needs.build-gem-linux.outputs.version }}"
           ALL_TAGS=$(git tag --sort=-creatordate)
@@ -333,13 +336,13 @@ jobs:
             echo "### Linux / macOS"
             echo ""
             echo "\`\`\`bash"
-            echo "gem install ./narou-mod-${CURRENT_TAG}-x86_64-linux.gem"
+            echo "gem install ./${LINUX_GEM}"
             echo "\`\`\`"
             echo ""
             echo "### Windows"
             echo ""
             echo "\`\`\`powershell"
-            echo "gem install ./narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem"
+            echo "gem install ./${WINDOWS_GEM}"
             echo "\`\`\`"
             echo ""
             echo "---"
@@ -428,6 +431,9 @@ jobs:
 
       - name: Generate release body with license info
         id: gen_body
+        env:
+          LINUX_GEM: ${{ needs.build-gem-linux.outputs.gemfile }}
+          WINDOWS_GEM: ${{ needs.build-gem-windows.outputs.gemfile }}
         run: |
           CURRENT_TAG="${{ needs.build-gem-linux.outputs.version }}"
           ALL_TAGS=$(git tag --sort=-creatordate)
@@ -439,13 +445,13 @@ jobs:
             echo "### Linux / macOS"
             echo ""
             echo "\`\`\`bash"
-            echo "gem install ./narou-mod-${CURRENT_TAG}-x86_64-linux.gem"
+            echo "gem install ./${LINUX_GEM}"
             echo "\`\`\`"
             echo ""
             echo "### Windows"
             echo ""
             echo "\`\`\`powershell"
-            echo "gem install ./narou-mod-${CURRENT_TAG}-x64-mingw-ucrt.gem"
+            echo "gem install ./${WINDOWS_GEM}"
             echo "\`\`\`"
             echo ""
             echo "---"

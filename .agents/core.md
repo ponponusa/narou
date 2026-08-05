@@ -141,7 +141,7 @@ CI's PR path installs frontend dependencies, builds/checks Astro, and runs RSpec
 - Use imperative commit subjects and reference related issues as `#123` when applicable.
 - Normal feature/fix work targets `develop`. Release promotion is `develop` to `release`; `draft` is used for staging validation.
 - Pushes to `release` or `draft` build platform gems and can create/update GitHub Releases. Do not push or merge to those branches without an explicit release request.
-- The gem version may include the `commitversion` suffix in tags/assets. Verify the computed version and both Linux/macOS and Windows artifacts during release work.
+- Release tags append the `commitversion` commit suffix to the gem version (for example `3.1.6-<commit>`), while gem asset filenames use the plain gem version and the Linux/macOS gem has no platform suffix (`narou-mod-<version>.gem` vs `narou-mod-<version>-x64-mingw-ucrt.gem`). Verify the computed version and both artifacts during release work.
 - Stage explicit paths in a mixed worktree and leave unrelated local artifacts out of commits.
 
 ## Repository Handoff Requirements
