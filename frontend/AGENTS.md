@@ -40,7 +40,7 @@ Run these from `frontend/`:
 - `npm run format:check`: check formatting without writing.
 - `npx playwright test`: run browser tests; Playwright starts/reuses the Astro dev server.
 
-For the integrated local stack, prefer the repository process scripts documented in `../docs/process_management.md`. The backend defaults are 5678 for REST and 5679 for push when `backend-port.json` is unavailable.
+For the integrated local stack, inspect and use `../scripts/process_control.sh` or `../scripts/process_control.ps1`. The backend defaults are 5678 for REST and 5679 for push when `backend-port.json` is unavailable.
 
 ## Implementation Rules
 

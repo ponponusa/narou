@@ -7,7 +7,7 @@ This file is the source of truth for repository-wide policy. Keep provider-speci
 
 - Root: `narou-mod`
 - Detected languages: Ruby, Markdown, JavaScript, TypeScript, Python
-- Approximate tracked context files scanned: 577
+- Approximate tracked context files scanned: 556
 
 ## Detected Manifests
 
@@ -21,31 +21,14 @@ This file is the source of truth for repository-wide policy. Keep provider-speci
 - `GEMINI.md`
 - `README.md`
 - `.github/copilot-instructions.md`
-- `docs/api_migration_guide.md`
-- `docs/astro_web_ui_features.md`
-- `docs/code_cleanup_analysis.md`
-- `docs/command_execution_flows.md`
-- `docs/database_structure.md`
-- `docs/dependency_upgrade_analysis.md`
-- `docs/development_environment_setup.md`
-- `docs/html_parser_analysis.md`
-- `docs/legacy_web_ui_features.md`
-- `docs/legacy_webui_deprecation_plan.md`
-- `docs/novel_data_structure.md`
 - `docs/openapi.yaml`
-- `docs/parallel_processing_README.md`
-- `docs/parallel_processing_guide.md`
-- `docs/performance_analysis_legend.md`
-- `docs/performance_improvements_summary.md`
-- `docs/process_management.md`
-- `docs/ractor_parallelization_report.md`
-- `docs/refactoring_large_files_design.md`
-- `docs/sync-to-windows.md`
-- `docs/web_api_endpoints.md`
-- `docs/web_ui_comparison.md`
 - `frontend/AGENTS.md`
 - `frontend/CLAUDE.md`
 - `frontend/GEMINI.md`
+- `frontend/README.md`
+- `scripts/README_dummy_data.md`
+- `spec/fixtures/.test_dot_narou/README.md`
+- `spec/performance/README.md`
 
 ## Context Boundaries
 
@@ -101,9 +84,19 @@ Run these from the repository root:
 
 - Always read `AGENTS.md`, this file, `.agents/routing.md`, and the matching provider profile before editing.
 - Follow `frontend/AGENTS.md` for every change under `frontend/`.
-- Treat `README.md`, `CHANGELOG.md`, `docs/`, and `docs/openapi.yaml` as product documentation, not substitutes for current code verification.
+- Treat `README.md`, `CHANGELOG.md`, and `docs/openapi.yaml` as publishable product documentation, not substitutes for current code verification. Other project Markdown documents remain unreviewed under `docs/_tmp/` until explicitly promoted.
 - Do not read or summarize `.env*`, credentials, private keys, local databases, raw logs, dependency caches, coverage output, or build output unless the user explicitly places them in scope.
 - Do not edit generated artifacts such as `frontend/dist/`, coverage reports, built `.gem` files, `commitversion`, or runtime-generated `frontend/public/backend-port.json` as source files.
+
+## Documentation Lifecycle
+
+- Keep only reviewed, publishable documentation in the parent repository's tracked `docs/` tree. At present, `docs/openapi.yaml` is the only reviewed document there.
+- Use `docs/_tmp/` for local-only investigations, implementation plans, design drafts, decision notes, performance reports, and handoff material that should not be published with the project.
+- Treat every Markdown document currently under `docs/_tmp/` as unverified until its claims have been checked against current code, manifests, tests, and runtime behavior.
+- Treat `docs/_tmp/` as an independent local Git repository ignored by the parent repository. Do not add a remote, push it, or publish its contents unless the user explicitly requests that action.
+- Private placement is not a substitute for secret storage. Never put credentials, tokens, private keys, personal data, downloaded novel content, or raw sensitive logs in `docs/_tmp/`.
+- Consult `docs/_tmp/` only when the task needs the relevant local research or plan. Do not copy its contents into public artifacts wholesale.
+- Promote a document back to tracked `docs/` only after review. When local findings change an accepted public contract or current behavior, update the relevant tracked documentation, tests, changelog, or agent context in the same implementation change.
 
 ## Repository Editing Rules
 

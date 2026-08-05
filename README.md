@@ -166,7 +166,7 @@ npm run dev
 
 - **Swagger UI**: <http://localhost:5678/api/docs>
 - **OpenAPI仕様書**: <http://localhost:5678/api/openapi.yaml>
-- **移行ガイド**: [docs/api_migration_guide.md](docs/api_migration_guide.md)
+- **OpenAPIソース**: [docs/openapi.yaml](docs/openapi.yaml)
 
 ### API v2 エンドポイント
 
@@ -191,9 +191,7 @@ Swagger UIでは以下が可能です：
 
 - **新規開発**: API v2 (`/api/v2/*`) の使用を推奨
 - **既存コード**: Legacy API v1 (`/api/*`) は互換性のために維持
-- **移行**: [移行ガイド](docs/api_migration_guide.md) を参照
-
-詳細は [docs/web_api_endpoints.md](docs/web_api_endpoints.md) を参照してください。
+- **契約確認**: [OpenAPI仕様書](docs/openapi.yaml) を参照
 
 ## Windows環境への同期 - Sync to Windows
 
@@ -211,7 +209,7 @@ nano rsync.env
 ./sync-to-windows.sh ~/git/narou-mod /mnt/c/git/narou
 ```
 
-詳細は [docs/sync-to-windows.md](docs/sync-to-windows.md) を参照してください。
+オプションの詳細は `./sync-to-windows.sh --help` で確認できます。
 
 ----
 

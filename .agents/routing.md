@@ -56,13 +56,13 @@ If required context is absent, state the gap clearly, make the safest local assu
 ### Supported sites and parsers
 
 - Inspect `webnovel/`, `preset/parsers/`, `preset/parsers/legacy_archive/`, and `lib/narou/parsers/` before choosing the active definition path.
-- Read `docs/html_parser_analysis.md` when changing parser architecture, not for a narrow selector or fixture fix.
+- When changing parser architecture, consult `docs/_tmp/html_parser_analysis.md` if the local documentation repository contains it; do not require that private plan for a narrow selector or fixture fix.
 - Validate network-dependent behavior with fixtures first and keep adult/non-adult or legacy variants aligned when they share behavior.
 
 ### Sinatra Web UI and REST API
 
 - Read `lib/web/appserver.rb` and the relevant modules under `lib/web/api/`, `lib/web/routes/`, `lib/web/helpers/`, `lib/web/workers/`, or `lib/web/server/`.
-- API contract changes also require `docs/openapi.yaml`, `docs/web_api_endpoints.md`, and relevant `spec/web/` coverage.
+- API contract changes require `docs/openapi.yaml` and relevant `spec/web/` coverage. If present, `docs/_tmp/web_api_endpoints.md` is an unverified historical aid, not a contract source.
 - Legacy Haml/static UI changes use `lib/web/views/` and `lib/web/public/`; do not apply frontend conventions there.
 
 ### Astro/Svelte frontend
@@ -73,7 +73,7 @@ If required context is absent, state the gap clearly, make the safest local assu
 
 ### Process management and local development
 
-- Read `scripts/process_control.sh`, `scripts/process_control.ps1`, `docs/process_management.md`, and `docs/development_environment_setup.md` as applicable to the host platform.
+- Read `scripts/process_control.sh` and `scripts/process_control.ps1` as applicable to the host platform. Local documents such as `docs/_tmp/process_management.md` and `docs/_tmp/development_environment_setup.md` are unverified aids only.
 - Treat port files, PID files, and logs as runtime output, not source.
 
 ### CI, dependency, and release work
@@ -85,7 +85,10 @@ If required context is absent, state the gap clearly, make the safest local assu
 ### Documentation
 
 - Verify documentation claims against current code and manifests.
-- Update `README.md`, `frontend/README.md`, API docs, or focused files under `docs/` according to the affected audience; avoid creating a second source of truth.
+- Keep `docs/openapi.yaml` synchronized with the implemented API. Treat Markdown files in the independent local `docs/_tmp/` repository as unreviewed working material, not current documentation.
+- Put new investigations, plans, design drafts, decision notes, and time-bound reports in `docs/_tmp/` and record them in its review index.
+- Promote a Markdown document to tracked `docs/` only after checking it against current code, manifests, tests, and runtime behavior and updating public references.
+- If private findings change public behavior or an accepted contract, promote only the verified conclusions into the relevant tracked documentation and leave the working notes private.
 
 ### Agent context
 

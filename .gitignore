@@ -74,6 +74,8 @@ document
 
 .serena
 # Temporary files
+# Local-only independent repository for private development documents
+/docs/_tmp/
 tmp/pids/
 tmp/logs/
 rsync.env
