@@ -191,6 +191,50 @@ description: What this task skill does and when to use it.
 
 Task skill は core policy を複製せず、参照する形にします。
 
+Skill content は progressive disclosure を前提に構成します。ホストは skill
+context を段階的にロードします: 初期の skill 一覧に載るのは `name` と
+`description` だけで(Codex は path も含む)、SKILL.md 本文の全文は skill が
+選択されたときにロードされ、同梱ファイルはエージェントが必要と判断したとき
+だけ読まれます。SKILL.md 本文は手順の骨子に留め(既存の 500 行 warning と
+整合)、詳細資料は `references/` 配下に置いて SKILL.md から相対パスで参照
+します。
+
+Skill directory 内の subfolder の役割:
+
+- `scripts/` には skill が呼び出す決定的な補助スクリプトを置きます。
+- `references/` には必要時に読まれる詳細ドキュメントを置きます。
+- `assets/` には template などの同梱物(指示以外のファイル)を置きます。
+
+SKILL.md からこれらの folder への相対参照は `skills check` の
+local-reference 検証が対象とし、symlink 越え・ディレクトリ脱出・参照先欠損を
+拒否します。
+
+## SkillOps Validation Scope
+
+`skills check` と `skills eval` の次の 2 つの境界は、ギャップではなく
+意図した決定です。
+
+- **`agents/openai.yaml` は検出するが、スキーマは検証しません。**
+  `skills check` は adapter ファイル自体(通常ファイルであること、symlink でも
+  symlink されたディレクトリの配下でもないこと、安全に読めること、UTF-8 として
+  妥当であること)を検証したうえで
+  `codex-metadata-unparsed` を報告します。この warning は仕様であり、欠陥では
+  ありません。完全なスキーマ検証にはネストした YAML パーサ(2 階層までの map +
+  scalar map の list)か YAML 依存の追加が必要で、dependency-free 原則と衝突
+  します。同梱の限定パーサは、利用者が実際に `openai.yaml` を書き、検証を
+  必要とするようになった時点で再検討します。adapter のスキーマ事実は
+  `reports/provider-review-2026-08.md` に記録されています。
+- **Eval workspace snapshot は `references/` のみコピーします。** snapshot の
+  コピーは UTF-8 テキスト前提(`read_text` / `write_text` + inventory と同じ
+  secret / binary / サイズ / symlink 除外)で、これが secret と binary の境界を
+  強制可能にしています。`scripts/` を含めるには実行権限の保持が、`assets/` は
+  バイナリデータを含み得るため、いずれもサイズ上限を備えた byte copy 設計が
+  先に必要です。snapshot の範囲拡張は、`skills eval --runner codex` に実運用の
+  需要が出てから行います。読めないファイルの skip はこの任意の reference
+  ファイルに限られます。`SKILL.md` 自体は評価対象そのものであり、欠落している
+  場合、symlink である場合、UTF-8 として読めない場合、workspace 作成はエラーで
+  失敗します。
+
 ## Safety Model
 
 Inventory は次を skip します。

@@ -7,7 +7,7 @@ This file is the source of truth for repository-wide policy. Keep provider-speci
 
 - Root: `narou-mod`
 - Detected languages: Ruby, Markdown, JavaScript, TypeScript, Python
-- Approximate tracked context files scanned: 556
+- Approximate tracked context files scanned: 557
 
 ## Detected Manifests
 

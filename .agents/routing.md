@@ -15,6 +15,7 @@ Use this file to choose only the additional context needed for the current task.
 - Implementation: inspect manifests, existing patterns, and nearest tests before editing.
 - Documentation: reconcile private planning docs with public docs when both exist.
 - Security or privacy: read security guidance before changing storage, logging, sync, or agent-context behavior.
+- Changing or adding custom subagent definitions: read the provider's native agents directory listed in your profile.
 - New repeated workflow: create or update `.agents/skills/<task>/SKILL.md`.
 
 ## Detected Tests

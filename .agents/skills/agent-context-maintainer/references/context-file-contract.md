@@ -22,6 +22,16 @@ Do not put Claude import syntax or Claude-specific profile paths in `AGENTS.md`;
 
 `.agents/skills/*/SKILL.md` contains task-specific procedures. Use it when a repeated workflow deserves a focused trigger and checklist.
 
+### Role separation: core, rules, skills
+
+Choose the layer by scope and trigger:
+
+- Policy that applies to **every agent, loaded at all times** belongs in `.agents/core.md`.
+- Policy that should apply **only when specific paths are touched** belongs in a path-scoped rules layer. This tool does not generate one yet: a shared `.agents/rules/` source is **future/planned** (see the Review Rule below — never reference it as an existing path). Until it exists, keep path-conditional policy in `.agents/core.md` or route it per task via `.agents/routing.md`. Providers with native path-scoped rule mechanisms load those independently of this tool.
+- **Procedures for repeated tasks** belong in `.agents/skills/*/SKILL.md`, not in core policy.
+
+Codex's `.codex/rules/` directory is an exec-policy allowlist for running commands outside the sandbox, not instruction context; it is outside this tool's management scope and is not a rules layer in the sense above.
+
 ## Generated Blocks
 
 Generated content should live between:

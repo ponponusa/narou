@@ -30,9 +30,13 @@ PROVIDERS: dict[str, dict[str, object]] = {
             "Use scoped patches and preserve unrelated user changes.",
             "Run focused validation and report exact commands.",
             "Create durable repo-local artifacts for long-running work.",
+            "Custom subagents may be defined in `.codex/agents/*.toml`; read them before changing delegation behavior. Do not treat `.codex/rules/` as instructions — it is an exec-policy allowlist.",
         ],
         "bridge_files": ["AGENTS.md"],
-        "source_urls": ["https://agents.md/"],
+        "source_urls": [
+            "https://agents.md/",
+            "https://learn.chatgpt.com/docs/agent-configuration/subagents",
+        ],
         # Only set while Codex sandboxing is active; unsandboxed Codex
         # sessions fall back to generic and should pass --agent codex.
         "detect_env": ["CODEX_SANDBOX", "CODEX_SANDBOX_NETWORK_DISABLED"],
@@ -43,9 +47,13 @@ PROVIDERS: dict[str, dict[str, object]] = {
             "Use strengths in long-form design review and cross-document reconciliation.",
             "State assumptions and open questions explicitly.",
             "Convert analysis into concrete edits when implementation is requested.",
+            "Custom subagents may be defined in `.claude/agents/*.md`; read them before changing delegation behavior.",
         ],
         "bridge_files": ["CLAUDE.md", "AGENTS.md"],
-        "source_urls": ["https://code.claude.com/docs/en/memory"],
+        "source_urls": [
+            "https://code.claude.com/docs/en/memory",
+            "https://code.claude.com/docs/en/sub-agents",
+        ],
         "detect_env": ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT"],
     },
     "gemini": {
@@ -54,10 +62,12 @@ PROVIDERS: dict[str, dict[str, object]] = {
             "Use broad-context synthesis across docs and manifests.",
             "Attribute repository facts to checked local files.",
             "Verify current local state before treating recalled context as fact.",
+            "Custom subagents may be defined in `.gemini/agents/*.md`; read them before changing delegation behavior.",
         ],
         "bridge_files": ["GEMINI.md", ".gemini/settings.json", "AGENTS.md"],
         "source_urls": [
-            "https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/configuration.md"
+            "https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/configuration.md",
+            "https://github.com/google-gemini/gemini-cli/blob/main/docs/core/subagents.md",
         ],
         "detect_env": ["GEMINI_CLI"],
     },
@@ -78,10 +88,12 @@ PROVIDERS: dict[str, dict[str, object]] = {
             "Prefer concise repository-wide guidance that reduces cloud-agent exploration.",
             "Keep task-specific instructions out of `.github/copilot-instructions.md`.",
             "Use `AGENTS.md` and the nearest applicable routed skill for deeper workflow details.",
+            "Custom subagents may be defined in `.github/agents/*.agent.md`; read them before changing delegation behavior.",
         ],
         "bridge_files": [".github/copilot-instructions.md", "AGENTS.md"],
         "source_urls": [
-            "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions"
+            "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+            "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents",
         ],
         "detect_env": [],
     },
@@ -229,7 +241,7 @@ LANG_EXTS = {
 }
 AGENTS_REF_RE = re.compile(r"`(\.agents/[^`\s)]+)`")
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-PROVIDER_REGISTRY_REVIEWED = "2026-07-02"  # update together with reports/provider-review-*.md
+PROVIDER_REGISTRY_REVIEWED = "2026-08-04"  # update together with reports/provider-review-*.md
 MAX_SKILL_NAME_CHARS = 64
 SKILL_NAME_RE = re.compile(
     rf"^(?!.*--)[a-z0-9](?:[a-z0-9-]{{0,{MAX_SKILL_NAME_CHARS - 2}}}[a-z0-9])?$"
@@ -240,6 +252,15 @@ BACKTICK_LOCAL_PATH_RE = re.compile(r"`((?:scripts|references|assets|evals)/[^`]
 NEGATION_RE = re.compile(r"\b(do not|don't|never|avoid|must not|should not)\b", re.I)
 RISK_RE = re.compile(r"\b(\.env|secret|secrets|token|tokens|credential|credentials|raw\s+logs?)\b", re.I)
 MAX_SKILL_DESCRIPTION_CHARS = 1024
+# Claude Code truncates each listing entry's combined description +
+# when_to_use at 1,536 characters (configurable host-side via
+# skillListingMaxDescChars); see reports/provider-review-2026-08.md.
+MAX_SKILL_LISTING_ENTRY_CHARS = 1536
+# Codex truncates the whole skill listing (names, descriptions, paths) at 2%
+# of the context window and falls back to 8,000 characters when the window is
+# unknown; see reports/provider-review-2026-08.md. Static checks can only
+# estimate against the fallback value.
+CODEX_LISTING_FALLBACK_BUDGET_CHARS = 8000
 MAX_SKILL_COMPATIBILITY_CHARS = 500
 MAX_SKILL_MAIN_LINES = 500
 MAX_SKILL_MD_BYTES = 1_000_000
@@ -316,6 +337,7 @@ class SkillFrontmatter:
     compatibility: Optional[str]
     license: Optional[str]
     allowed_tools: Optional[str]
+    when_to_use: Optional[str]
     metadata: Dict[str, str]
     raw: Dict[str, Any]
 
@@ -405,6 +427,19 @@ def is_binary_file(path: Path) -> bool:
     except OSError:
         return True
     return b"\0" in chunk
+
+
+def read_utf8_text(path: Path) -> Optional[str]:
+    """Read a file as UTF-8, returning None instead of raising.
+
+    is_binary_file() only detects NUL bytes in the first 4096 bytes, so
+    invalid UTF-8 passes skip_file_reason(); callers that need decodable text
+    must attempt the read explicitly.
+    """
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
 
 
 def git_ignored_paths(root: Path, paths: list[Path]) -> set[str]:
@@ -716,6 +751,7 @@ def parse_skill_frontmatter(text: str) -> Tuple[Optional[SkillFrontmatter], str,
         compatibility=raw.get("compatibility") if isinstance(raw.get("compatibility"), str) else None,
         license=raw.get("license") if isinstance(raw.get("license"), str) else None,
         allowed_tools=raw.get("allowed-tools") if isinstance(raw.get("allowed-tools"), str) else None,
+        when_to_use=raw.get("when_to_use") if isinstance(raw.get("when_to_use"), str) else None,
         metadata=metadata,
         raw=raw,
     )
@@ -1081,6 +1117,15 @@ def validate_skill_directory(root: Path, skill_dir: Path) -> SkillInfo:
                 warnings.append(diag(rel_skill_md, "missing-trigger-boundary", "description should describe when to use the skill"))
             if compatibility is not None and len(compatibility) > MAX_SKILL_COMPATIBILITY_CHARS:
                 errors.append(diag(rel_skill_md, "long-compatibility", "compatibility exceeds 500 characters"))
+            if len(description) + len(frontmatter.when_to_use or "") > MAX_SKILL_LISTING_ENTRY_CHARS:
+                warnings.append(
+                    diag(
+                        rel_skill_md,
+                        "long-listing-entry",
+                        f"combined description and when_to_use exceed {MAX_SKILL_LISTING_ENTRY_CHARS} characters "
+                        "(Claude Code truncates the listing entry)",
+                    )
+                )
             lifecycle_value = explicit_lifecycle(frontmatter)
             if lifecycle_value and lifecycle_value not in SKILL_LIFECYCLES:
                 warnings.append(diag(rel_skill_md, "invalid-lifecycle", "unknown lifecycle metadata; defaulting to active"))
@@ -1108,9 +1153,25 @@ def validate_skill_directory(root: Path, skill_dir: Path) -> SkillInfo:
     if scripts and not compatibility:
         warnings.append(diag(rel_skill_md, "script-without-compatibility", "scripts exist but compatibility does not describe runtime requirements"))
     codex_metadata_path = skill_dir / "agents" / "openai.yaml"
-    codex_metadata = root_rel / "agents/openai.yaml" if codex_metadata_path.exists() else None
+    # exists() follows symlinks — including a symlinked agents/ parent directory —
+    # so the component-wise symlink check must come first to catch dangling links
+    # and parent links before any read attempt.
+    adapter_symlinked = has_symlink_component(skill_dir, Path("agents/openai.yaml"))
+    codex_metadata = root_rel / "agents/openai.yaml" if adapter_symlinked or codex_metadata_path.exists() else None
     if codex_metadata is not None:
-        warnings.append(diag(codex_metadata, "codex-metadata-unparsed", "agents/openai.yaml exists but is not parsed"))
+        # The inventory records that the adapter exists (the path stays in
+        # codex_metadata) even when it cannot be read; the warnings below make
+        # the unreadable cases explicit instead of hiding them.
+        if adapter_symlinked:
+            warnings.append(diag(codex_metadata, "codex-metadata-symlink", "agents/openai.yaml is a symlink or behind a symlinked directory and was not read"))
+        else:
+            skip = skip_file_reason(codex_metadata_path, codex_metadata)
+            if skip:
+                warnings.append(diag(codex_metadata, "codex-metadata-unreadable", f"agents/openai.yaml is not safe to read: {skip}"))
+            elif read_utf8_text(codex_metadata_path) is None:
+                warnings.append(diag(codex_metadata, "codex-metadata-unreadable", "agents/openai.yaml is not valid UTF-8 or could not be read"))
+            else:
+                warnings.append(diag(codex_metadata, "codex-metadata-unparsed", "agents/openai.yaml exists but is not parsed"))
     quality = skill_manifest_quality(eval_manifest)
     lifecycle = "active"
     lifecycle_value = explicit_lifecycle(frontmatter)
@@ -1286,6 +1347,20 @@ def skill_inventory_diagnostics(inv: SkillInventory) -> Tuple[List[SkillDiagnost
     for skill in inv.skills:
         warnings.extend(skill.warnings)
         errors.extend(skill.errors)
+    listing_estimate = sum(
+        len(skill.name) + len(skill.description) + len(rel_posix(skill.skill_md))
+        for skill in inv.skills
+        if skill.validity == "valid" and skill.skill_md is not None
+    )
+    if listing_estimate > CODEX_LISTING_FALLBACK_BUDGET_CHARS:
+        warnings.append(
+            SkillDiagnostic(
+                ".agents/skills",
+                "listing-budget-estimate",
+                f"estimated Codex skill listing is {listing_estimate} chars and exceeds "
+                f"{CODEX_LISTING_FALLBACK_BUDGET_CHARS} chars (fallback estimate; the real budget is 2% of the context window)",
+            )
+        )
     return warnings, errors
 
 
@@ -1564,15 +1639,23 @@ def init_skill_workspace(root: Path, skill_name: str) -> List[Tuple[str, Path]]:
     if not matches:
         raise AgentContextError(f"skill not found: {skill_name}")
     skill = matches[0]
+    # SKILL.md is the evaluation target; skipping unreadable files is only
+    # acceptable for the optional references below.
+    if skill.skill_md is None:
+        raise AgentContextError(f"skill has no SKILL.md to snapshot: {skill_name}")
+    source = root / skill.skill_md
+    if source.is_symlink():
+        raise AgentContextError(f"SKILL.md is a symlink and was not read: {rel_posix(skill.skill_md)}")
+    skill_md_text = read_utf8_text(source)
+    if skill_md_text is None:
+        raise AgentContextError(f"SKILL.md cannot be read as UTF-8: {rel_posix(skill.skill_md)}")
     workspace = next_workspace_iteration(root, skill_name)
     changes: List[Tuple[str, Path]] = []
     snapshot = workspace / "skill-snapshot"
     snapshot.mkdir(parents=True, exist_ok=True)
-    if skill.skill_md is not None:
-        source = root / skill.skill_md
-        target = snapshot / "SKILL.md"
-        target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-        changes.append(("created", target))
+    target = snapshot / "SKILL.md"
+    target.write_text(skill_md_text, encoding="utf-8")
+    changes.append(("created", target))
     for folder in ("references",):
         source_dir = root / skill.directory / folder
         if source_dir.is_dir() and not source_dir.is_symlink():
@@ -1586,10 +1669,13 @@ def init_skill_workspace(root: Path, skill_name: str) -> List[Tuple[str, Path]]:
                     source_rel = source.relative_to(root)
                     if skip_file_reason(source, source_rel):
                         continue
+                    text = read_utf8_text(source)
+                    if text is None:
+                        continue
                     rel = source.relative_to(source_dir)
                     target = snapshot / folder / rel
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+                    target.write_text(text, encoding="utf-8")
                     changes.append(("created", target))
     for case_id in skill.eval_manifest.case_ids or ["manual"]:
         safe_id = re.sub(r"[^a-zA-Z0-9_.-]+", "-", case_id).strip("-") or "manual"
@@ -2172,6 +2258,7 @@ def routing_body(inv: dict[str, object]) -> str:
     - Implementation: inspect manifests, existing patterns, and nearest tests before editing.
     - Documentation: reconcile private planning docs with public docs when both exist.
     - Security or privacy: read security guidance before changing storage, logging, sync, or agent-context behavior.
+    - Changing or adding custom subagent definitions: read the provider's native agents directory listed in your profile.
     - New repeated workflow: create or update `.agents/skills/<task>/SKILL.md`.
 
     ## Detected Tests

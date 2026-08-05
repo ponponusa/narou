@@ -22,6 +22,16 @@
 
 `.agents/skills/*/SKILL.md` には、タスク固有の手順を書きます。繰り返し発生する workflow に専用の trigger と checklist が必要な場合に使います。
 
+### 役割分担: core / rules / skills
+
+スコープとトリガーで層を選びます。
+
+- **全エージェント・常時ロード**の方針は `.agents/core.md` に置きます。
+- **特定パスに触れるときだけ**適用すべき方針は、パス限定の rules 層に置きます。ただし本ツールはまだ rules 層を生成しません: 共有ソースとしての `.agents/rules/` は **future/planned** です(下記レビュー規則を参照 — 実在するパスとして参照してはいけません)。それまでは、パス条件付きの方針は `.agents/core.md` に書くか、`.agents/routing.md` でタスク単位に誘導します。ネイティブのパス限定 rule 機構を持つ provider は、本ツールとは独立にそれらをロードします。
+- **繰り返しタスクの手順**は `.agents/skills/*/SKILL.md` に置き、core policy には書きません。
+
+Codex の `.codex/rules/` ディレクトリは sandbox 外コマンド実行の exec-policy allowlist であり、指示コンテキストではありません。本ツールの管理対象外で、上記の意味での rules 層でもありません。
+
 ## 生成ブロック
 
 生成コンテンツは次の範囲に置きます。

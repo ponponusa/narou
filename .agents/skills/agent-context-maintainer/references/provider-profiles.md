@@ -12,11 +12,13 @@ Emphasize:
 - Small, scoped patches that leave unrelated user changes untouched.
 - Focused validation, reporting the exact commands that were run.
 - Durable repo-local artifacts for long-running work.
+- Awareness of native custom subagents (`.codex/agents/*.toml`) before changing delegation behavior.
 
 Avoid:
 
 - Repeating the full `core.md`.
 - Long speculative design essays when the task is implementable.
+- Treating `.codex/rules/` as instruction context; it is an exec-policy allowlist.
 
 ## Claude
 
@@ -25,6 +27,7 @@ Emphasize:
 - Strong long-form reasoning for design reviews and cross-document reconciliation.
 - Explicit assumptions and open questions.
 - Careful handling of architectural tradeoffs.
+- Awareness of native custom subagents (`.claude/agents/*.md`) before changing delegation behavior.
 
 Avoid:
 
@@ -37,6 +40,7 @@ Emphasize:
 - Broad context synthesis across many files.
 - Fast inventory of docs, manifests, and generated artifacts.
 - Clear source attribution for repository facts.
+- Awareness of native custom subagents (`.gemini/agents/*.md`) before changing delegation behavior.
 
 Avoid:
 
@@ -62,6 +66,7 @@ Emphasize:
 - Concise repository-wide guidance that reduces cloud-agent exploration.
 - Keeping `.github/copilot-instructions.md` as a bridge back to `AGENTS.md`.
 - Using `.agents/profiles/copilot.md` and routed skills for provider-specific workflow details.
+- Awareness of native custom agents (`.github/agents/*.agent.md`) before changing delegation behavior.
 
 Avoid:
 

@@ -12,11 +12,13 @@ profile 文言の正本は `scripts/agent_context.py` の `PROVIDERS` dict で�
 - 無関係な user changes に触れない、小さく scoped な patch。
 - focused validation と、実行したコマンドの正確な報告。
 - 長期作業での durable な repo-local artifact。
+- delegation behavior を変更する前に、ネイティブの custom subagent(`.codex/agents/*.toml`)を把握すること。
 
 避けること:
 
 - `core.md` 全体を繰り返す。
 - 実装可能なタスクで長い speculative design essay に寄りすぎる。
+- `.codex/rules/` を instruction context として扱う。これは exec-policy allowlist である。
 
 ## Claude
 
@@ -25,6 +27,7 @@ profile 文言の正本は `scripts/agent_context.py` の `PROVIDERS` dict で�
 - design review や cross-document reconciliation で長文推論の強みを活かす。
 - assumptions と open questions を明示する。
 - architectural tradeoff を丁寧に扱う。
+- delegation behavior を変更する前に、ネイティブの custom subagent(`.claude/agents/*.md`)を把握する。
 
 避けること:
 
@@ -37,6 +40,7 @@ profile 文言の正本は `scripts/agent_context.py` の `PROVIDERS` dict で�
 - 多数のファイルを横断した broad context synthesis。
 - docs、manifests、generated artifacts の高速 inventory。
 - repository facts に対する明確な source attribution。
+- delegation behavior を変更する前に、ネイティブの custom subagent(`.gemini/agents/*.md`)を把握する。
 
 避けること:
 
@@ -62,6 +66,7 @@ profile 文言の正本は `scripts/agent_context.py` の `PROVIDERS` dict で�
 - cloud agent の探索を減らす concise な repository-wide guidance。
 - `.github/copilot-instructions.md` を `AGENTS.md` への bridge として保つ。
 - provider-specific な workflow details は `.agents/profiles/copilot.md` と routed skills に置く。
+- delegation behavior を変更する前に、ネイティブの custom agent(`.github/agents/*.agent.md`)を把握する。
 
 避けること:
 
