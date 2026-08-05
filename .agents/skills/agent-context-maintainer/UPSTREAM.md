@@ -30,10 +30,11 @@ English upstream documentation is authoritative; Japanese companion files follow
 
 ## Local integration patch
 
-`scripts/agent_context.py` carries two small idempotency fixes:
+`scripts/agent_context.py` carries three small local fixes:
 
 - Preserve the line boundary when a replaced managed block is followed by hand-written content, and preserve a final newline for a block at EOF. The pinned upstream implementation consumes the end-marker newline, which can concatenate the marker with the following heading or leave generated-only files without a newline.
 - Treat an unchanged generated skill-route block as a no-op instead of rewriting `.agents/routing.md` on every `skills routes` run.
+- Omit the checkout-directory basename (`Root:` line) from the generated `core.md` snapshot and `skill-health.md` summary. The basename is not repository-stable, so embedding it makes the CI drift check fail for checkouts cloned under a different directory name.
 
 Keep these patches until upstream contains equivalent fixes, then remove them during a reviewed pin update. Re-verified against `v0.1.0` on 2026-08-05: upstream still lacks both fixes, so both patches were re-applied unchanged.
 

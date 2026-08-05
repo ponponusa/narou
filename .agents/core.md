@@ -5,7 +5,6 @@ This file is the source of truth for repository-wide policy. Keep provider-speci
 <!-- agent-context-maintainer:begin -->
 ## Repository Snapshot
 
-- Root: `narou-mod`
 - Detected languages: Ruby, Markdown, JavaScript, TypeScript, Python
 - Approximate tracked context files scanned: 558
 

@@ -1453,7 +1453,6 @@ def skill_report_body(inv: SkillInventory, reviewed_date: str = SKILL_REGISTRY_R
         "## Summary",
         "",
         f"- Source reviewed: {reviewed_date}",
-        f"- Root: `{sanitize_inline(inv.root.name)}`",
         f"- Skills scanned: {len(inv.skills)}",
         f"- Valid: {valid}",
         f"- Invalid: {invalid}",
@@ -2207,7 +2206,6 @@ def core_body(inv: dict[str, object]) -> str:
     return f"""
     ## Repository Snapshot
 
-    - Root: `{inv["root_name"]}`
     - Detected languages: {languages}
     - Approximate tracked context files scanned: {inv["file_count"]}
 

@@ -4,7 +4,6 @@
 ## Summary
 
 - Source reviewed: 2026-07-04
-- Root: `narou-mod`
 - Skills scanned: 1
 - Valid: 1
 - Invalid: 0
