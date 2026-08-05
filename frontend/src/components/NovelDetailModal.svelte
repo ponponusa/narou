@@ -38,8 +38,7 @@
   let onDeleteCallback: (() => void) | null = null;
   let onTagEditCallback: ((novelId: number) => void) | null = null;
   let onConversionSettingsCallback:
-    | ((novelId: number, title: string) => void)
-    | null = null;
+    ((novelId: number, title: string) => void) | null = null;
 
   /**
    * Toast参照を設定

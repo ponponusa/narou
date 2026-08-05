@@ -20,11 +20,7 @@ export interface ApiV2Response<T> {
  */
 export type TaskType = "download" | "convert" | "update" | "remove";
 export type TaskStatus =
-  | "queued"
-  | "running"
-  | "completed"
-  | "failed"
-  | "canceled";
+  "queued" | "running" | "completed" | "failed" | "canceled";
 
 export interface TaskError {
   message: string;
@@ -180,11 +176,7 @@ export interface LogMessage {
  * 小説設定項目の型
  */
 export type NovelSettingType =
-  | "boolean"
-  | "integer"
-  | "string"
-  | "select"
-  | "multiple";
+  "boolean" | "integer" | "string" | "select" | "multiple";
 
 /**
  * 個別小説設定項目

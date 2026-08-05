@@ -3,13 +3,7 @@
  */
 
 export type BadgeType =
-  | "download"
-  | "convert"
-  | "skip"
-  | "other"
-  | "info"
-  | "read"
-  | "novelId";
+  "download" | "convert" | "skip" | "other" | "info" | "read" | "novelId";
 
 export interface BadgeConfig {
   label: string;
