@@ -38,12 +38,12 @@
     "@types/node": "^24.13.3",
     "html-validate": "^10.17.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.5.2",
+    "lint-staged": "^17.3.0",
     "parse5": "^8.0.1",
     "playwright": "^1.58.2",
     "prettier": "^3.8.1",
     "prettier-plugin-astro": "^0.14.1",
-    "prettier-plugin-svelte": "^3.5.0"
+    "prettier-plugin-svelte": "^4.1.1"
   },
   "overrides": {
     "yaml": "^2.8.3"

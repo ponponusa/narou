@@ -17,6 +17,7 @@
 
 - **フロントエンドのメジャー依存関係を更新**
   - Astro 7 / `@astrojs/svelte` 9 / TypeScript 6 へ移行し、`npm audit` で報告されていた Astro と間接依存の既知脆弱性を解消。
+  - lint-staged 17 / prettier-plugin-svelte 4 へ更新し、新しい Svelte 整形結果を適用。
 
 ## 3.1.7 (2026-08-05)
 
