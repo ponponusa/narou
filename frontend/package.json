@@ -7,12 +7,15 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "dev:e2e": "node scripts/run-playwright-dev-server.mjs",
     "build": "astro build && node -e \"require('fs').writeFileSync('dist/.build-commit', require('child_process').execSync('git describe --always').toString().trim())\"",
     "preview": "astro preview",
     "astro": "astro",
     "check": "astro check",
     "format": "prettier --write \"src/**/*.{ts,js,svelte,astro,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,svelte,astro,css,json}\"",
+    "test:e2e:smoke": "playwright test --config=playwright.config.ts",
+    "test:e2e:integration": "playwright test --config=playwright.integration.config.ts",
     "prepare": "cd .. && husky frontend/.husky || true"
   },
   "lint-staged": {

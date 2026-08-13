@@ -5,8 +5,8 @@ This file is the source of truth for repository-wide policy. Keep provider-speci
 <!-- agent-context-maintainer:begin -->
 ## Repository Snapshot
 
-- Detected languages: Ruby, Markdown, JavaScript, TypeScript, Python
-- Approximate tracked context files scanned: 558
+- Detected languages: Ruby, Markdown, TypeScript, JavaScript, Python
+- Approximate tracked context files scanned: 566
 
 ## Detected Manifests
 
@@ -132,7 +132,7 @@ Choose the smallest validation set that proves the changed behavior, then expand
 | UI flow | Relevant Playwright test and visual/browser verification when behavior or layout changes |
 | Agent context | Project-scoped `agent_context.py check`, `skills check`, sync/routes idempotency, and `git diff --check` |
 
-CI's PR path installs frontend dependencies, builds/checks Astro, and runs RSpec. Local validation should match that sequence for changes crossing backend/frontend boundaries.
+CI's PR path installs frontend dependencies, builds/checks Astro, runs Playwright smoke/integration tests, and runs RSpec. Local validation should match that sequence for changes crossing backend/frontend boundaries.
 
 ## Git, Branches, and Releases
 

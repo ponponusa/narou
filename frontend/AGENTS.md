@@ -38,7 +38,8 @@ Run these from `frontend/`:
 - `npm run check`: run Astro/TypeScript diagnostics.
 - `npm run format`: format supported source files.
 - `npm run format:check`: check formatting without writing.
-- `npx playwright test`: run browser tests; Playwright starts/reuses the Astro dev server.
+- `npm run test:e2e:smoke`: run deterministic, backend-free browser coverage for all routes.
+- `npm run test:e2e:integration`: run the isolated Ruby backend and verify the Vite proxy path (Linux/macOS only).
 
 For the integrated local stack, inspect and use `../scripts/process_control.sh` or `../scripts/process_control.ps1`. The backend defaults are 5678 for REST and 5679 for push when `backend-port.json` is unavailable.
 
@@ -62,7 +63,7 @@ Choose checks based on the change:
 
 1. Run `npm run format:check` and `npm run check` for TypeScript, Astro, or Svelte changes.
 2. Run `npm run build` for routing, configuration, bundling, or integration changes.
-3. Run the relevant Playwright test for user-visible flows; add/update coverage when behavior changes.
+3. Run the smoke Playwright suite for user-visible flows and the integration suite for proxy/backend changes; add/update coverage when behavior changes.
 4. For layout or interaction changes, verify the built UI in a browser at relevant desktop/mobile widths and capture evidence for the PR.
 5. For backend integration, run the matching Ruby API specs as well as frontend checks.
 

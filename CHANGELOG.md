@@ -7,6 +7,12 @@
 - **フロントエンド開発環境の Node.js 最小バージョンを 24 へ変更**
   - CI、`package.json` の engines、`@types/node`、開発ドキュメントを Node.js 24 基準に統一。
 
+### ✨ 新機能
+
+- **Web バックエンドの単独起動オプションを追加**
+  - `narou-mod web --no-frontend` で Astro 開発サーバーを起動せずに REST API と PushServer だけを起動できるように変更。
+  - Astro の起動を省略しても接続先ポート情報は更新するため、別ターミナルの `npm run dev` と組み合わせて利用可能。
+
 ## 3.1.7 (2026-08-05)
 
 ### 🔧 メンテナンス
