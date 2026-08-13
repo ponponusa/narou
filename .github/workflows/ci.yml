@@ -129,6 +129,10 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Validate built HTML
+        working-directory: frontend
+        run: npm run validate:html
+
       - name: Check TypeScript types
         working-directory: frontend
         run: npm run check

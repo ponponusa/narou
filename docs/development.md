@@ -53,7 +53,7 @@ bundle exec reek                     # Ruby コード品質チェック
 
 ### 技術スタック
 
-- **Astro 5.x** - 静的サイトジェネレーター
+- **Astro 7.x** - 静的サイトジェネレーター
 - **Svelte 5.x** - リアクティブUIフレームワーク
 - **Tailwind CSS 4.x** - ユーティリティファーストCSS
 - **TypeScript** - 型安全な開発

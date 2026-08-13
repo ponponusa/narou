@@ -13,6 +13,11 @@
   - `narou-mod web --no-frontend` で Astro 開発サーバーを起動せずに REST API と PushServer だけを起動できるように変更。
   - Astro の起動を省略しても接続先ポート情報は更新するため、別ターミナルの `npm run dev` と組み合わせて利用可能。
 
+### 🔧 メンテナンス
+
+- **フロントエンドのメジャー依存関係を更新**
+  - Astro 7 / `@astrojs/svelte` 9 へ移行し、`npm audit` で報告されていた Astro と間接依存の既知脆弱性を解消。
+
 ## 3.1.7 (2026-08-05)
 
 ### 🔧 メンテナンス

@@ -4,7 +4,7 @@ These instructions apply to `frontend/`. First follow `../AGENTS.md`, `../.agent
 
 ## Current Stack and Boundaries
 
-- Astro 5 with the Svelte integration provides pages, layouts, static output, and development proxying.
+- Astro 7 with the Svelte integration provides pages, layouts, static output, and development proxying.
 - Svelte 5 components use runes such as `$state`, `$props`, `$derived`, `$effect`, and `$bindable`.
 - Tailwind CSS 4 is loaded through `@tailwindcss/vite`; shared CSS starts in `src/styles/global.css`.
 - TypeScript 5 runs in Astro strict mode with bundler module resolution.
@@ -38,6 +38,7 @@ Run these from `frontend/`:
 - `npm run check`: run Astro/TypeScript diagnostics.
 - `npm run format`: format supported source files.
 - `npm run format:check`: check formatting without writing.
+- `npm run validate:html`: validate all HTML pages in the current `dist/` output.
 - `npm run test:e2e:smoke`: run deterministic, backend-free browser coverage for all routes.
 - `npm run test:e2e:integration`: run the isolated Ruby backend and verify the Vite proxy path (Linux/macOS only).
 
