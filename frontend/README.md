@@ -22,8 +22,8 @@ Narou.rb MOD の新しいフロントエンド実装です。Astro + Svelte を�
 
 ### 前提条件
 
-- Node.js 18.x 以上
-- npm または yarn
+- Node.js 24 以上
+- npm
 
 ### インストール
 

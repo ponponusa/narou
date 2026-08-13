@@ -1,5 +1,12 @@
 # 更新履歴 - ChangeLog
 
+## Unreleased
+
+### ⚠️ 互換性変更
+
+- **フロントエンド開発環境の Node.js 最小バージョンを 24 へ変更**
+  - CI、`package.json` の engines、`@types/node`、開発ドキュメントを Node.js 24 基準に統一。
+
 ## 3.1.7 (2026-08-05)
 
 ### 🔧 メンテナンス

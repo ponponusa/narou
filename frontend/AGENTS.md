@@ -9,7 +9,7 @@ These instructions apply to `frontend/`. First follow `../AGENTS.md`, `../.agent
 - Tailwind CSS 4 is loaded through `@tailwindcss/vite`; shared CSS starts in `src/styles/global.css`.
 - TypeScript 5 runs in Astro strict mode with bundler module resolution.
 - Playwright is the current browser test framework. There is no Vitest/unit-test command in `package.json`.
-- npm and `package-lock.json` are the dependency source of truth; CI uses Node.js 20.
+- npm and `package-lock.json` are the dependency source of truth; CI uses Node.js 24.
 
 Exact package versions belong to `package-lock.json`. Check `package.json`, the lockfile, and framework config before relying on a version-sensitive API.
 

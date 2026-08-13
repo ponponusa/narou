@@ -59,7 +59,7 @@ This file is the source of truth for repository-wide policy. Keep provider-speci
 
 - Runtime baseline: Ruby 3.4 or newer; Bundler 2.7.2 in CI.
 - Backend: Sinatra 4, Rack 3, Puma, ActiveSupport 8, Nokogiri, rubyzip, Haml/Tilt, and sass-embedded.
-- Frontend: Astro 5, Svelte 5, Tailwind CSS 4, and strict TypeScript; CI uses Node.js 20 and npm.
+- Frontend: Astro 5, Svelte 5, Tailwind CSS 4, and strict TypeScript; CI uses Node.js 24 and npm.
 - Ruby entry points: `narou.rb` for the checkout and `bin/narou-mod` for the packaged executable.
 - Domain and CLI code: `lib/core/`, `lib/narou/`, `lib/novel/`, `lib/conversion/`, `lib/ebook/`, `lib/output/`, and `lib/cli/`.
 - Web server: `lib/web/appserver.rb`, with API v1 and v2 under `lib/web/api/` and legacy Haml/static UI under `lib/web/views/` and `lib/web/public/`.

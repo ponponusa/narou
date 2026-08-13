@@ -6,7 +6,7 @@ Narou.rb MOD の開発に必要な環境構築、開発ワークフロー、ビ�
 ## 必要環境 - Prerequisites
 
 - Ruby 3.4 以上 / Bundler（CI は 2.7.2 を使用）
-- Node.js 20 以上 / npm（フロントエンド開発時）
+- Node.js 24 以上 / npm（フロントエンド開発時）
 - MSYS2 環境（Windows の場合）
 
 ## バックエンド開発 - Backend Development
