@@ -16,7 +16,7 @@
 ### 🔧 メンテナンス
 
 - **フロントエンドのメジャー依存関係を更新**
-  - Astro 7 / `@astrojs/svelte` 9 へ移行し、`npm audit` で報告されていた Astro と間接依存の既知脆弱性を解消。
+  - Astro 7 / `@astrojs/svelte` 9 / TypeScript 6 へ移行し、`npm audit` で報告されていた Astro と間接依存の既知脆弱性を解消。
 
 ## 3.1.7 (2026-08-05)
 

@@ -31,7 +31,7 @@
     "astro": "^7.2.1",
     "svelte": "^5.53.0",
     "tailwindcss": "^4.2.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

@@ -7,7 +7,7 @@ Narou.rb MOD の新しいフロントエンド実装です。Astro + Svelte を�
 - **Astro 7.x**: 静的サイトジェネレーター / フレームワーク
 - **Svelte 5.x**: リアクティブUIコンポーネント
 - **Tailwind CSS 4.x**: ユーティリティファーストCSSフレームワーク
-- **TypeScript**: 型安全な開発環境
+- **TypeScript 6.x**: 型安全な開発環境
 
 ## 特徴
 

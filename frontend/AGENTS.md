@@ -7,7 +7,7 @@ These instructions apply to `frontend/`. First follow `../AGENTS.md`, `../.agent
 - Astro 7 with the Svelte integration provides pages, layouts, static output, and development proxying.
 - Svelte 5 components use runes such as `$state`, `$props`, `$derived`, `$effect`, and `$bindable`.
 - Tailwind CSS 4 is loaded through `@tailwindcss/vite`; shared CSS starts in `src/styles/global.css`.
-- TypeScript 5 runs in Astro strict mode with bundler module resolution.
+- TypeScript 6 runs in Astro strict mode with bundler module resolution.
 - Playwright is the current browser test framework. There is no Vitest/unit-test command in `package.json`.
 - npm and `package-lock.json` are the dependency source of truth; CI uses Node.js 24.
 
