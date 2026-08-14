@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../spec_helper"
+require "lib/narou/process_manager"
+require "lib/web/appserver"
 
 RSpec.describe Command::Web do
   subject(:command) { described_class.new }
@@ -75,8 +77,6 @@ RSpec.describe Command::Web do
 
     context "with --internal-boot option (internal execution mode)" do
       before do
-        require "lib/web/appserver"
-
         # Inventory のモック
         allow(Inventory).to receive(:load).and_return({"server-port" => 5678})
         allow(Narou::AppServer).to receive(:create_address).and_return({ host: "127.0.0.1", port: 5678 })
@@ -94,8 +94,6 @@ RSpec.describe Command::Web do
       end
 
       it "sets up logger with --log-file option" do
-        require "lib/web/appserver"
-
         expect(Command::OutputHelper).to receive(:setup_logger).with("app.log")
         expect(Narou::AppServer).to receive(:configure_access_log).with(true).and_call_original
 
@@ -103,8 +101,6 @@ RSpec.describe Command::Web do
       end
 
       it "keeps access logging disabled without --verbose or --log-file" do
-        require "lib/web/appserver"
-
         expect(Narou::AppServer).to receive(:configure_access_log).with(false).and_call_original
 
         command.execute(["--internal-boot", "--no-browser"])

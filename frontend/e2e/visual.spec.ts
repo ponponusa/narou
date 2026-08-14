@@ -28,6 +28,8 @@ for (const [name, path] of routes) {
       mockPushServer: true,
     });
     if (name === "settings-debug") {
+      // The Astro 5 reference build hard-codes this LAN API URL. Keep this
+      // compatibility route until that visual baseline is regenerated.
       await page.route(
         "http://172.26.39.220:33000/api/v2/settings/variables",
         async (route) => {
